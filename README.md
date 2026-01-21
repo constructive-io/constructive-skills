@@ -1,3 +1,5 @@
+This file originated from https://github.com/vercel-labs/agent-skills/blob/main/README.md and has been modified for this repository.
+
 # Constructive Skills
 
 A collection of skills for AI coding agents working with Constructive tooling. Skills are packaged instructions and scripts that extend agent capabilities for GraphQL development workflows.
