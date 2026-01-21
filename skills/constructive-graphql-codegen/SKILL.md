@@ -223,18 +223,8 @@ filter: {
 
 ## References
 
-See `references/` for detailed documentation:
+For detailed documentation on specific topics, see [references/](references/):
 
-**Generation:**
-- `cli-reference.md` — Full CLI options and examples
-- `config-reference.md` — Complete configuration options
-
-**Generated Code Structure:**
-- `hooks-output.md` — Generated hooks structure and types
-- `orm-output.md` — Generated ORM structure and types
-
-**Usage Patterns:**
-- `hooks-patterns.md` — Advanced React Query patterns
-- `orm-patterns.md` — Complex ORM queries and patterns
-- `error-handling.md` — Error handling strategies
-- `relations.md` — Working with relations
+- CLI options and configuration: `cli-reference.md`, `config-reference.md`
+- Advanced usage patterns: `hooks-patterns.md`, `orm-patterns.md`
+- Error handling and relations: `error-handling.md`, `relations.md`
