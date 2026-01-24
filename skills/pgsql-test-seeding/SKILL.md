@@ -9,7 +9,7 @@ metadata:
 
 # Seeding Test Databases with pgsql-test
 
-Load test data efficiently using loadJson, loadSql, and loadCsv methods. Create maintainable, realistic test fixtures.
+Load test data efficiently using Direct Load Methods on `PgTestClient`. This is the preferred pattern for seeding test data.
 
 ## When to Apply
 
@@ -19,6 +19,27 @@ Use this skill when:
 - Seeding data that respects or bypasses RLS
 - Creating per-test or shared test data
 
+## Two Seeding Patterns
+
+pgsql-test supports two seeding patterns:
+
+**1. Direct Load Methods (Preferred)** — Call methods directly on `PgTestClient`:
+```typescript
+const { db, teardown } = await getConnections();
+await db.loadJson({ 'users': [{ id: 1, name: 'Alice' }] });
+await db.loadCsv({ 'users': '/path/to/users.csv' });
+await db.loadSql(['/path/to/schema.sql']);
+```
+
+**2. Adapter Pattern** — Pass seed adapters to `getConnections()`:
+```typescript
+const { db, teardown } = await getConnections({}, [
+  seed.json({ 'users': [{ id: 1, name: 'Alice' }] })
+]);
+```
+
+The Direct Load Methods pattern is preferred because it's more flexible, allows seeding at any point in your test lifecycle, and keeps the `getConnections()` call clean.
+
 ## Seeding Methods Overview
 
 | Method | Best For | RLS Behavior |
@@ -26,6 +47,7 @@ Use this skill when:
 | `loadJson()` | Inline data, small datasets | Respects RLS (use `pg` to bypass) |
 | `loadSql()` | Complex data, version-controlled fixtures | Respects RLS (use `pg` to bypass) |
 | `loadCsv()` | Large datasets, spreadsheet exports | Bypasses RLS (uses COPY) |
+| `loadPgpm()` | Deploy pgpm modules | Own client handling |
 
 ## Seeding with loadJson()
 
@@ -279,8 +301,23 @@ __tests__/
 | CSV format errors | Ensure headers match column names |
 | Data persists between tests | Check beforeEach/afterEach hooks |
 
+## pgpm Seeding
+
+For pgpm-based projects, seeding happens automatically with zero configuration:
+
+```typescript
+// pgpm migrate is used automatically when no seed adapters are passed
+const { db, teardown } = await getConnections();
+```
+
+To deploy from a specific path:
+
+```typescript
+await db.loadPgpm('/path/to/pgpm-workspace', true); // with cache
+```
+
 ## References
 
+- Related skill: `pgsql-seed` for standalone seeding utilities
 - Related skill: `pgsql-test-rls` for RLS testing patterns
 - Related skill: `pgsql-test-exceptions` for handling errors
-- Related skill: `pgpm-testing` for general test setup
