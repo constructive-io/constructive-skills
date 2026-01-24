@@ -27,6 +27,59 @@ Constructive publishes from the `dist/` folder to:
 - Keep source files out of published package
 - Maintain consistent import paths
 
+## Anti-Pattern: ESM-Only with Exports Map
+
+**NEVER use this pattern:**
+
+```json
+{
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  }
+}
+```
+
+**Problems with this approach:**
+- Breaks CommonJS consumers
+- Exposes `dist/` in import paths
+- Incompatible with the dist-folder publishing pattern
+- Creates inconsistent import paths between development and published package
+
+**Instead, use the Constructive standard pattern shown below.**
+
+## Anti-Pattern: Manual Build Scripts Without Makage
+
+**NEVER use manual build scripts like this:**
+
+```json
+{
+  "scripts": {
+    "clean": "rimraf dist/**",
+    "copy": "copyfiles -f ../../LICENSE package.json dist",
+    "build": "npm run clean; tsc -p tsconfig.json; tsc -p tsconfig.esm.json; npm run copy"
+  },
+  "devDependencies": {
+    "copyfiles": "^2.4.1",
+    "rimraf": "^6.0.1"
+  }
+}
+```
+
+**Problems with this approach:**
+- Reinvents what makage already does
+- Requires multiple devDependencies (copyfiles, rimraf) instead of one (makage)
+- Manual tsconfig management for CJS/ESM builds
+- Inconsistent build behavior across packages
+- Missing features like automatic source map handling
+
+**Instead, use makage which handles all of this automatically.**
+
 ## Makage Overview
 
 [makage](https://www.npmjs.com/package/makage) is a tiny build helper that replaces cpy, rimraf, and other build tools:
