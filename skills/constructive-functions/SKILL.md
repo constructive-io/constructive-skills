@@ -48,37 +48,35 @@ constructive-functions/
 Every function exports a default async handler:
 
 ```typescript
-import { GraphQLClient } from 'graphql-request';
-import gql from 'graphql-tag';
-
-const GetUsers = gql`
-  query GetUsers {
-    users {
-      nodes {
-        id
-        username
-      }
-    }
-  }
-`;
+import { createClient } from './generated/orm';
 
 export default async (params: any, context: any) => {
-  const { client } = context;  // GraphQL client
-  
-  // Access request payload
-  const { to, subject, body } = params;
-  
-  // Query the database via GraphQL
-  const data = await client.request(GetUsers);
-  
-  // Return response (JSON)
-  return { success: true, users: data.users };
+  const db = createClient({
+    endpoint: process.env.GRAPHQL_ENDPOINT || 'http://constructive-server:3000/graphql',
+    headers: context.headers,
+  });
+
+  // Type-safe query using generated ORM client
+  const result = await db.user
+    .findMany({
+      select: { id: true, username: true },
+      first: 10,
+    })
+    .execute();
+
+  if (!result.ok) {
+    return { error: 'Query failed', details: result.errors };
+  }
+
+  return { success: true, users: result.data.users.nodes };
 };
 ```
 
 The `context` object provides:
-- `client` — GraphQL client configured for the Constructive API
+- `client` — Legacy GraphQL client (prefer using generated ORM client instead)
 - `headers` — Request headers from the incoming HTTP request
+
+**Important:** Use the typed SDK from `@constructive-io/graphql-codegen` instead of raw gql strings. See the `graphql-codegen` skill for setup.
 
 ## Creating a New Function
 
@@ -203,10 +201,10 @@ export default async (params: any, context: any) => {
 
 ## Direct Database Access
 
-For SQL execution, use the `pg` Pool:
+For SQL execution, use `pg-cache` for connection pool management. It provides automatic caching, cleanup callbacks, and graceful shutdown handling:
 
 ```typescript
-import { Pool } from 'pg';
+import { getPgPool, close } from 'pg-cache';
 
 export default async (params: any, context: any) => {
   const { query } = params;
@@ -215,24 +213,37 @@ export default async (params: any, context: any) => {
     return { error: 'Missing "query" in payload' };
   }
 
-  const pool = new Pool({
-    user: process.env.PGUSER,
-    password: process.env.PGPASSWORD,
+  // Get or create a cached pool (automatically reused across requests)
+  const pool = getPgPool({
     host: process.env.PGHOST,
     port: Number(process.env.PGPORT || 5432),
-    database: process.env.PGDATABASE || 'launchql'
+    database: process.env.PGDATABASE || 'launchql',
+    user: process.env.PGUSER,
+    password: process.env.PGPASSWORD,
   });
 
-  let poolClient;
-  try {
-    poolClient = await pool.connect();
-    const result = await poolClient.query(query);
-    return { rowCount: result.rowCount, rows: result.rows };
-  } finally {
-    if (poolClient) poolClient.release();
-    await pool.end();
-  }
+  const result = await pool.query(query);
+  return { rowCount: result.rowCount, rows: result.rows };
+  
+  // Note: No manual cleanup needed - pg-cache handles pool lifecycle
 };
+```
+
+**Why pg-cache?**
+- **Automatic pool caching** — Pools are reused across function invocations
+- **Graceful shutdown** — Handles idle connection errors during cleanup
+- **LRU eviction** — Automatically disposes unused pools
+- **Cleanup callbacks** — Register callbacks for resource cleanup when pools are disposed
+
+For graceful shutdown in long-running processes:
+
+```typescript
+import { close } from 'pg-cache';
+
+process.on('SIGTERM', async () => {
+  await close();  // Gracefully close all cached pools
+  process.exit(0);
+});
 ```
 
 ## Build Workflow
@@ -474,20 +485,23 @@ All other errors return 500.
 
 ## Best Practices
 
-1. **Use makage for builds** — Consistent build tooling across all packages
-2. **Publish from dist/** — Prevents tree-shaking into weird import paths
-3. **Use dry-run mode** — Support `*_DRY_RUN` env var for testing without side effects
-4. **Log context** — Log request details for debugging (but not sensitive data)
-5. **Handle GraphQL errors** — Wrap `client.request()` in try/catch
-6. **Clean up resources** — Always release database connections in finally blocks
-7. **Validate input** — Check required fields early and return clear error messages
-8. **Use @pgpmjs/env** — Parse boolean env vars consistently with `parseEnvBoolean()`
+1. **Use typed SDK** — Use `@constructive-io/graphql-codegen` ORM client instead of raw gql strings
+2. **Use pg-cache** — Use `pg-cache` for database connections instead of manual Pool management
+3. **Use makage for builds** — Consistent build tooling across all packages
+4. **Publish from dist/** — Prevents tree-shaking into weird import paths
+5. **Use dry-run mode** — Support `*_DRY_RUN` env var for testing without side effects
+6. **Log context** — Log request details for debugging (but not sensitive data)
+7. **Handle errors** — Use discriminated unions (`.execute()`) for explicit error handling
+8. **Validate input** — Check required fields early and return clear error messages
+9. **Use @pgpmjs/env** — Parse boolean env vars consistently with `parseEnvBoolean()`
 
 ## References
 
+- Related skill: `graphql-codegen` for typed GraphQL SDK generation
 - Related skill: `pnpm-publishing` for full npm publishing workflow
 - Related skill: `pnpm-workspace` for workspace setup
 - [constructive-functions repo](https://github.com/constructive-io/constructive-functions)
 - [Knative Serving docs](https://knative.dev/docs/serving/)
 - [@constructive-io/knative-job-fn](https://www.npmjs.com/package/@constructive-io/knative-job-fn)
+- [pg-cache on npm](https://www.npmjs.com/package/pg-cache)
 - [makage on npm](https://www.npmjs.com/package/makage)
