@@ -96,18 +96,21 @@ mkdir -p functions/my-function/__tests__
   "name": "@constructive-io/my-function-fn",
   "version": "0.1.0",
   "description": "My Knative function",
-  "author": "Constructive",
+  "author": "Constructive <developers@constructive.io>",
   "private": false,
+  "main": "index.js",
+  "module": "esm/index.js",
+  "types": "index.d.ts",
   "publishConfig": {
     "access": "public",
     "directory": "dist"
   },
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "clean": "rimraf dist",
+    "copy": "makage assets",
+    "clean": "makage clean",
+    "prepublishOnly": "npm run build",
+    "build": "makage build",
     "test": "jest --forceExit __tests__/index.test.ts",
     "start": "node ../../_runtimes/node/runner.js dist/index.js"
   },
@@ -122,28 +125,30 @@ mkdir -p functions/my-function/__tests__
     "@types/node": "latest",
     "@types/jest": "latest",
     "jest": "latest",
+    "makage": "0.1.10",
     "ts-jest": "latest",
     "typescript": "latest",
-    "pgsql-test": "latest",
-    "rimraf": "latest"
+    "pgsql-test": "latest"
   }
 }
 ```
+
+**Critical fields for publishing:**
+- `publishConfig.directory: "dist"` — Publish from dist folder (prevents tree-shaking into weird paths)
+- `main: "index.js"` — Points to CJS build (in dist)
+- `module: "esm/index.js"` — Points to ESM build (in dist)
+- `types: "index.d.ts"` — Points to type declarations (in dist)
 
 3. Create `functions/my-function/tsconfig.json`:
 
 ```json
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2020",
-    "module": "commonjs",
-    "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "declaration": true
+    "declaration": true,
+    "declarationMap": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "__tests__"]
@@ -230,17 +235,49 @@ export default async (params: any, context: any) => {
 };
 ```
 
-## Local Development
+## Build Workflow
 
-Build and run functions locally:
+Functions use makage for builds, which handles TypeScript compilation and asset copying:
 
 ```bash
 # Install dependencies
 pnpm install
 
-# Build all functions
+# Build all functions (from workspace root)
+pnpm -r run build
+
+# Build a specific function
+cd functions/my-function
 pnpm build
 
+# Clean build artifacts
+pnpm clean
+```
+
+### Build Output Structure
+
+After `makage build`:
+
+```text
+my-function/
+├── src/
+│   └── index.ts
+├── dist/
+│   ├── index.js          # CJS build
+│   ├── index.d.ts        # Type declarations
+│   ├── esm/
+│   │   └── index.js      # ESM build
+│   ├── package.json      # Copied from root
+│   ├── README.md         # Copied from root
+│   └── LICENSE           # Copied from root
+└── package.json
+```
+
+## Local Development
+
+Run functions locally:
+
+```bash
 # Run a specific function locally
 cd functions/my-function
 pnpm start
@@ -250,6 +287,38 @@ pnpm start
 curl -X POST http://localhost:8080 \
   -H "Content-Type: application/json" \
   -d '{"key": "value"}'
+```
+
+## Publishing Functions to npm
+
+Functions follow the same publishing workflow as other PNPM packages. See the `pnpm-publishing` skill for full details.
+
+### Quick Publishing Workflow
+
+```bash
+# 1. Build all functions
+pnpm -r run build
+
+# 2. Run tests
+pnpm -r run test
+
+# 3. Version (interactive)
+pnpm lerna version
+
+# 4. Publish to npm
+pnpm lerna publish from-package
+```
+
+### Dry Run
+
+Test publishing without making changes:
+
+```bash
+# Test versioning
+pnpm lerna version --no-git-tag-version --no-push
+
+# Test publishing
+pnpm lerna publish from-package --dry-run
 ```
 
 ## Docker Build
@@ -405,15 +474,20 @@ All other errors return 500.
 
 ## Best Practices
 
-1. **Use dry-run mode** — Support `*_DRY_RUN` env var for testing without side effects
-2. **Log context** — Log request details for debugging (but not sensitive data)
-3. **Handle GraphQL errors** — Wrap `client.request()` in try/catch
-4. **Clean up resources** — Always release database connections in finally blocks
-5. **Validate input** — Check required fields early and return clear error messages
-6. **Use @pgpmjs/env** — Parse boolean env vars consistently with `parseEnvBoolean()`
+1. **Use makage for builds** — Consistent build tooling across all packages
+2. **Publish from dist/** — Prevents tree-shaking into weird import paths
+3. **Use dry-run mode** — Support `*_DRY_RUN` env var for testing without side effects
+4. **Log context** — Log request details for debugging (but not sensitive data)
+5. **Handle GraphQL errors** — Wrap `client.request()` in try/catch
+6. **Clean up resources** — Always release database connections in finally blocks
+7. **Validate input** — Check required fields early and return clear error messages
+8. **Use @pgpmjs/env** — Parse boolean env vars consistently with `parseEnvBoolean()`
 
 ## References
 
+- Related skill: `pnpm-publishing` for full npm publishing workflow
+- Related skill: `pnpm-workspace` for workspace setup
 - [constructive-functions repo](https://github.com/constructive-io/constructive-functions)
 - [Knative Serving docs](https://knative.dev/docs/serving/)
 - [@constructive-io/knative-job-fn](https://www.npmjs.com/package/@constructive-io/knative-job-fn)
+- [makage on npm](https://www.npmjs.com/package/makage)
