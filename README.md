@@ -32,6 +32,73 @@ Generate and use type-safe React Query hooks or Prisma-like ORM client from Post
 - Node.js 18+
 - PostGraphile v5+ endpoint with `_meta` query support
 
+### pgpm-docker
+
+Manage PostgreSQL Docker containers for local development using `pgpm docker` commands.
+
+**Use when:**
+- "Start postgres"
+- "Run database locally"
+- "Set up local database"
+- "Stop postgres container"
+- Need a PostgreSQL database for development/testing
+
+**Features:**
+- Start/stop PostgreSQL 17 containers
+- Custom port, user, password configuration
+- Recreate containers for fresh databases
+- Default image includes PostgreSQL 17 for `security_invoker` support
+
+**Requirements:**
+- Docker installed and running
+- Node.js 18+
+- pgpm CLI available
+
+### pgpm-env
+
+Manage PostgreSQL environment variables with profile support using `pgpm env` commands.
+
+**Use when:**
+- "Set up database environment"
+- "Load postgres env vars"
+- "Run command with database connection"
+- "Use supabase locally"
+- Need to configure database connection for commands
+
+**Features:**
+- Print export statements for shell evaluation
+- Execute commands with environment variables applied
+- Support for local Postgres and Supabase profiles
+- Standard PostgreSQL environment variables (PGHOST, PGPORT, etc.)
+
+**Requirements:**
+- Node.js 18+
+- pgpm CLI available
+
+### pgpm-testing
+
+Run PostgreSQL integration tests with isolated databases using `pgsql-test`.
+
+**Use when:**
+- "Run database tests"
+- "Set up test database"
+- "Write integration tests"
+- "Test PGPM modules"
+- Implementing tests that need PostgreSQL
+
+**Features:**
+- Isolated test databases with automatic cleanup
+- Transaction savepoints for test isolation
+- Multiple seed adapters (SQL files, functions, CSV, PGPM modules)
+- RLS testing with user context
+- Jest integration patterns
+
+**Requirements:**
+- Node.js 18+
+- Jest or compatible test runner
+- pgsql-test package
+- PostgreSQL running locally
+
 ## Usage
 
 Skills are automatically available to AI agents once installed. The agent will use them when relevant tasks are detected.
