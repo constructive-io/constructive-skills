@@ -27,6 +27,32 @@ Constructive publishes from the `dist/` folder to:
 - Keep source files out of published package
 - Maintain consistent import paths
 
+## Anti-Pattern: ESM-Only with Exports Map
+
+**NEVER use this pattern:**
+
+```json
+{
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  }
+}
+```
+
+**Problems with this approach:**
+- Breaks CommonJS consumers
+- Exposes `dist/` in import paths
+- Incompatible with the dist-folder publishing pattern
+- Creates inconsistent import paths between development and published package
+
+**Instead, use the Constructive standard pattern shown below.**
+
 ## Makage Overview
 
 [makage](https://www.npmjs.com/package/makage) is a tiny build helper that replaces cpy, rimraf, and other build tools:
