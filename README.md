@@ -55,11 +55,22 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 | `pnpm-publishing` | Publish TypeScript packages with makage |
 | `monorepo-management` | Best practices for large PNPM monorepos |
 
+### pgvector and RAG
+
+| Skill | Description |
+|-------|-------------|
+| `pgvector-setup` | Set up pgvector for vector storage in PostgreSQL |
+| `pgvector-embeddings` | Generate and store vector embeddings with Ollama |
+| `pgvector-similarity-search` | Perform semantic similarity search with pgvector |
+| `rag-pipeline` | Build complete RAG pipelines with pgvector and Ollama |
+| `ollama-integration` | Integrate Ollama for local LLM inference |
+
 ### CI/CD and Configuration
 
 | Skill | Description |
 |-------|-------------|
 | `github-workflows-pgpm` | GitHub Actions for database testing |
+| `github-workflows-ollama` | GitHub Actions for Ollama and pgvector testing |
 | `environment-configuration` | Configure environments with @pgpmjs/env |
 
 ### Other
