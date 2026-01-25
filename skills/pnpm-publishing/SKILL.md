@@ -29,7 +29,7 @@ Constructive publishes from the `dist/` folder to:
 
 ## Anti-Pattern: ESM-Only with Exports Map
 
-**NEVER use this pattern:**
+**NEVER use the `exports` map pattern:**
 
 ```json
 {
@@ -40,6 +40,10 @@ Constructive publishes from the `dist/` folder to:
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./api": {
+      "import": "./dist/api/index.js",
+      "types": "./dist/api/index.d.ts"
     }
   }
 }
@@ -52,6 +56,53 @@ Constructive publishes from the `dist/` folder to:
 - Creates inconsistent import paths between development and published package
 
 **Instead, use the Constructive standard pattern shown below.**
+
+## Deep Nested Imports (Recommended for Tree-Shaking)
+
+Deep nested imports via file path are **fully supported and recommended** for tree-shaking. With dist-folder publishing, the `dist/` folder becomes the package root, so consumers can import directly from subdirectories:
+
+```typescript
+// These imports work correctly with dist-folder publishing:
+import { OrmClient } from '@my-org/sdk/api';
+import { AdminClient } from '@my-org/sdk/admin';
+import { AuthClient } from '@my-org/sdk/auth';
+```
+
+This works because the published package structure looks like:
+
+```text
+@my-org/sdk (on npm)
+├── index.js           # Main entry point
+├── api/
+│   └── index.js       # API-specific code
+├── admin/
+│   └── index.js       # Admin-specific code
+└── auth/
+    └── index.js       # Auth-specific code
+```
+
+**Benefits of this approach:**
+- Full tree-shaking support (only import what you need)
+- Works with both CommonJS and ESM
+- No `exports` map needed
+- Clean import paths without `dist/`
+
+**Source structure for nested imports:**
+
+```text
+my-package/
+├── src/
+│   ├── index.ts       # Re-exports or shared code
+│   ├── api/
+│   │   └── index.ts   # API module
+│   ├── admin/
+│   │   └── index.ts   # Admin module
+│   └── auth/
+│       └── index.ts   # Auth module
+└── package.json
+```
+
+After `makage build`, the `dist/` folder mirrors this structure and becomes the published package root.
 
 ## Anti-Pattern: Manual Build Scripts Without Makage
 
