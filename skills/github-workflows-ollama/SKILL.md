@@ -23,7 +23,7 @@ Use this skill when:
 ## Complete Workflow Template
 
 ```yaml
-name: pgpm tests
+name: CI tests
 on:
   pull_request:
     branches:
@@ -33,10 +33,16 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-tests
+  cancel-in-progress: true
+
+env:
+  PGPM_VERSION: '2.7.9'
+
 jobs:
   test:
     runs-on: ubuntu-latest
-    container: pyramation/node-sqitch:20.12.0
     continue-on-error: true
     strategy:
       fail-fast: false
@@ -45,15 +51,15 @@ jobs:
           - my-rag-package
 
     env:
-      PGHOST: pg_db
+      PGHOST: localhost
       PGPORT: 5432
       PGUSER: postgres
       PGPASSWORD: password
-      OLLAMA_HOST: http://ollama:11434
+      OLLAMA_HOST: http://localhost:11434
 
     services:
       pg_db:
-        image: pyramation/pgvector:13.3-alpine
+        image: pyramation/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -64,20 +70,6 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
-
-      minio_cdn:
-        image: minio/minio:edge-cicd
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-        ports:
-          - 9000:9000
-          - 9001:9001
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live || exit 1"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
 
       ollama:
         image: ollama/ollama:latest
@@ -96,7 +88,7 @@ jobs:
       - name: Setup pnpm
         uses: pnpm/action-setup@v2
         with:
-          version: 9
+          version: 10
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -104,11 +96,17 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Install
+      - name: Install dependencies
         run: pnpm install
 
+      - name: Cache pgpm CLI
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: pgpm-${{ runner.os }}-${{ env.PGPM_VERSION }}
+
       - name: Install pgpm CLI globally
-        run: npm install -g pgpm@latest
+        run: npm install -g pgpm@${{ env.PGPM_VERSION }}
 
       - name: Build
         run: pnpm -r build
@@ -122,7 +120,7 @@ jobs:
         run: |
           echo "Waiting for Ollama to be ready..."
           for i in $(seq 1 30); do
-            if wget -q -O - http://ollama:11434/api/tags > /dev/null 2>&1; then
+            if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
               echo "Ollama is ready!"
               break
             fi
@@ -130,10 +128,10 @@ jobs:
             sleep 2
           done
           echo "Pulling nomic-embed-text model (for embeddings)..."
-          wget -q -O - --post-data='{"name": "nomic-embed-text"}' --header='Content-Type: application/json' http://ollama:11434/api/pull
+          curl -s -X POST http://localhost:11434/api/pull -d '{"name": "nomic-embed-text"}'
           echo ""
           echo "Pulling mistral model (for RAG response generation)..."
-          wget -q -O - --post-data='{"name": "mistral"}' --header='Content-Type: application/json' http://ollama:11434/api/pull
+          curl -s -X POST http://localhost:11434/api/pull -d '{"name": "mistral"}'
 
       - name: Test ${{ matrix.package }}
         run: cd ./packages/${{ matrix.package }} && pnpm test
@@ -143,12 +141,12 @@ jobs:
 
 ### PostgreSQL with pgvector
 
-Use a pgvector-enabled PostgreSQL image:
+Use the Constructive PostgreSQL image with pgvector and other extensions:
 
 ```yaml
 services:
   pg_db:
-    image: pyramation/pgvector:13.3-alpine
+    image: pyramation/postgres:17
     env:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -161,10 +159,27 @@ services:
       - 5432:5432
 ```
 
-Alternative images:
-- `pyramation/pgvector:13.3-alpine` - PostgreSQL 13 with pgvector
-- `ghcr.io/constructive-io/docker/postgres-plus:17` - PostgreSQL 17 with multiple extensions
-- `ankane/pgvector` - Official pgvector image
+For projects requiring additional extensions:
+
+```yaml
+services:
+  pg_db:
+    image: ghcr.io/constructive-io/docker/postgres-plus:17
+    env:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    options: >-
+      --health-cmd pg_isready
+      --health-interval 10s
+      --health-timeout 5s
+      --health-retries 5
+    ports:
+      - 5432:5432
+```
+
+Available images:
+- `pyramation/postgres:17` - PostgreSQL 17 with pgvector (recommended)
+- `ghcr.io/constructive-io/docker/postgres-plus:17` - PostgreSQL 17 with pgvector and additional extensions
 
 ### Ollama Service
 
@@ -183,13 +198,13 @@ Note: Ollama doesn't have a built-in health check, so we wait for it in a step.
 ```yaml
 env:
   # PostgreSQL connection
-  PGHOST: pg_db          # Service name in CI
+  PGHOST: localhost
   PGPORT: 5432
   PGUSER: postgres
   PGPASSWORD: password
 
   # Ollama connection
-  OLLAMA_HOST: http://ollama:11434
+  OLLAMA_HOST: http://localhost:11434
 ```
 
 ## Waiting for Ollama
@@ -201,7 +216,7 @@ Ollama takes time to start. Use this pattern to wait:
   run: |
     echo "Waiting for Ollama to be ready..."
     for i in $(seq 1 30); do
-      if wget -q -O - http://ollama:11434/api/tags > /dev/null 2>&1; then
+      if curl -s http://localhost:11434/api/tags > /dev/null 2>&1; then
         echo "Ollama is ready!"
         break
       fi
@@ -217,17 +232,13 @@ Models must be pulled before tests run:
 ```yaml
 - name: Pull embedding model
   run: |
-    wget -q -O - \
-      --post-data='{"name": "nomic-embed-text"}' \
-      --header='Content-Type: application/json' \
-      http://ollama:11434/api/pull
+    curl -s -X POST http://localhost:11434/api/pull \
+      -d '{"name": "nomic-embed-text"}'
 
 - name: Pull generation model
   run: |
-    wget -q -O - \
-      --post-data='{"name": "mistral"}' \
-      --header='Content-Type: application/json' \
-      http://ollama:11434/api/pull
+    curl -s -X POST http://localhost:11434/api/pull \
+      -d '{"name": "mistral"}'
 ```
 
 ### Model Pull Times
@@ -263,7 +274,7 @@ module.exports = {
 - name: Setup pnpm
   uses: pnpm/action-setup@v2
   with:
-    version: 9
+    version: 10
 
 - name: Setup Node.js
   uses: actions/setup-node@v4
@@ -328,7 +339,7 @@ jobs:
 
     services:
       postgres:
-        image: pyramation/pgvector:13.3-alpine
+        image: pyramation/postgres:17
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -373,7 +384,7 @@ jobs:
   if: failure()
   run: |
     echo "Checking Ollama status..."
-    wget -q -O - http://ollama:11434/api/tags || echo "Ollama not responding"
+    curl -s http://localhost:11434/api/tags || echo "Ollama not responding"
 ```
 
 ### Check PostgreSQL
@@ -382,8 +393,8 @@ jobs:
 - name: Debug PostgreSQL
   if: failure()
   run: |
-    psql -h pg_db -U postgres -c "SELECT version();"
-    psql -h pg_db -U postgres -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
+    psql -h localhost -U postgres -c "SELECT version();"
+    psql -h localhost -U postgres -c "SELECT * FROM pg_extension WHERE extname = 'vector';"
 ```
 
 ## Best Practices

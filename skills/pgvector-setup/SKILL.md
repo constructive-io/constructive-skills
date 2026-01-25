@@ -26,15 +26,15 @@ pgvector must be available in your PostgreSQL instance. Use one of these Docker 
 
 | Image | Description |
 |-------|-------------|
-| `pyramation/pgvector:13.3-alpine` | PostgreSQL 13 with pgvector |
-| `ghcr.io/constructive-io/docker/postgres-plus:17` | PostgreSQL 17 with pgvector and other extensions |
+| `pyramation/postgres:17` | PostgreSQL 17 with pgvector (recommended) |
+| `ghcr.io/constructive-io/docker/postgres-plus:17` | PostgreSQL 17 with pgvector and additional extensions |
 
 ## Quick Start
 
 ### 1. Start PostgreSQL with pgvector
 
 ```bash
-pgpm docker start --image pyramation/pgvector:13.3-alpine
+pgpm docker start --image pyramation/postgres:17
 eval "$(pgpm env)"
 ```
 
