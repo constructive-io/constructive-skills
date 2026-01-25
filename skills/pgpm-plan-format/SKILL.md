@@ -132,10 +132,14 @@ Dependencies can also be declared in SQL deploy files using the `-- requires:` c
 -- Deploy module-name:schemas/public/tables/posts to pg
 -- requires: schemas/public/tables/users
 
-BEGIN;
--- SQL here
-COMMIT;
+CREATE TABLE posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid REFERENCES users(id),
+  content text
+);
 ```
+
+**Note:** Do not wrap SQL in `BEGIN`/`COMMIT` transactions - pgpm handles transactions automatically.
 
 These are used by pgpm for dependency resolution but the plan file format is what gets parsed first.
 
