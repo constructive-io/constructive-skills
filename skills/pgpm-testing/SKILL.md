@@ -11,6 +11,14 @@ metadata:
 
 Run PostgreSQL integration tests with isolated databases using the `pgsql-test` package.
 
+## Testing Framework Standard
+
+**IMPORTANT**: Constructive projects use **Jest** as the standard testing framework. Do NOT use vitest, mocha, or other test runners unless explicitly approved. Jest provides:
+- Consistent testing experience across all packages
+- Built-in mocking and assertion libraries
+- Snapshot testing support
+- Parallel test execution
+
 ## When to Apply
 
 Use this skill when:
