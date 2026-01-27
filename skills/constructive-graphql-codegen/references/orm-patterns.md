@@ -62,6 +62,22 @@ async function UserPage({ params }: { params: { id: string } }) {
 
 ## Query Patterns
 
+### Find First Matching Record
+
+```typescript
+// Find first user matching criteria
+const user = await db.user.findFirst({
+  select: { id: true, name: true, email: true },
+  filter: { role: { eq: 'ADMIN' } },
+  orderBy: ['CREATED_AT_DESC'],
+}).execute().unwrap();
+
+// Returns first match or null if none found
+if (user) {
+  console.log('Found admin:', user.name);
+}
+```
+
 ### Complex Filtering
 
 ```typescript
@@ -391,6 +407,87 @@ async function getCachedUser(id: string) {
 async function invalidateUserCache(id: string) {
   await redis.del(`user:${id}`);
 }
+```
+
+## QueryBuilder API
+
+### Inspect Generated GraphQL
+
+```typescript
+const query = db.user.findMany({
+  select: { id: true, name: true, email: true },
+  filter: { role: { eq: 'ADMIN' } },
+  first: 10,
+});
+
+// Inspect the generated GraphQL query
+console.log(query.toGraphQL());
+// Output:
+// query UsersQuery($filter: UserFilter, $first: Int) {
+//   users(filter: $filter, first: $first) {
+//     nodes { id name email }
+//     totalCount
+//     pageInfo { hasNextPage hasPreviousPage startCursor endCursor }
+//   }
+// }
+
+// Inspect the variables
+console.log(query.getVariables());
+// Output: { filter: { role: { eq: 'ADMIN' } }, first: 10 }
+
+// Execute when ready
+const result = await query.execute();
+```
+
+### Debug Queries
+
+```typescript
+// Log all queries in development
+async function executeWithLogging<T>(query: QueryBuilder<T>) {
+  if (process.env.NODE_ENV === 'development') {
+    console.log('GraphQL Query:', query.toGraphQL());
+    console.log('Variables:', JSON.stringify(query.getVariables(), null, 2));
+  }
+  return query.execute();
+}
+
+// Usage
+const result = await executeWithLogging(
+  db.user.findMany({ select: { id: true }, first: 10 })
+);
+```
+
+## Client Configuration
+
+### Update Headers at Runtime
+
+```typescript
+import { createClient } from '@/generated/orm';
+
+const db = createClient({
+  endpoint: 'https://api.example.com/graphql',
+  headers: { Authorization: 'Bearer initial-token' },
+});
+
+// Later, update headers (e.g., after login)
+db.setHeaders({
+  Authorization: 'Bearer new-token',
+  'X-User-Id': 'user-123',
+});
+
+// Headers are now updated for all subsequent requests
+const users = await db.user.findMany({}).execute();
+```
+
+### Get Current Endpoint
+
+```typescript
+const db = createClient({
+  endpoint: 'https://api.example.com/graphql',
+});
+
+// Get the current endpoint
+console.log(db.getEndpoint()); // 'https://api.example.com/graphql'
 ```
 
 ## Type-Safe Utilities

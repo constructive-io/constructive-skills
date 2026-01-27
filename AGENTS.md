@@ -79,6 +79,37 @@ Skills are loaded on-demand — only the skill name and description are loaded a
 - **Prefer scripts over inline code** — script execution doesn't consume context (only output does)
 - **File references work one level deep** — link directly from SKILL.md to supporting files
 
+### Reference Documentation
+
+The `references/` directory contains detailed documentation split into focused sections for selective reading by agents. This minimizes token usage by allowing agents to read only what's needed for the specific task.
+
+**Structure:**
+```
+skills/
+  {skill-name}/
+    SKILL.md
+    references/
+      {topic-1}.md    # Focused documentation on specific topic
+      {topic-2}.md    # Another focused topic
+```
+
+**Best Practices:**
+- **Split by topic** — separate concerns into individual files (e.g., `cli-reference.md`, `hooks-patterns.md`, `error-handling.md`)
+- **Clear naming** — file names should indicate exactly what content they contain
+- **Reference from SKILL.md** — list all reference files with brief descriptions so agents know which to read
+- **Selective reading** — agents should read only the relevant reference files for their current task
+- **Keep focused** — each reference file should cover one specific aspect (API, patterns, configuration, etc.)
+
+**Example:**
+If a skill generates both hooks and ORM code, split references into:
+- `hooks-output.md` - API reference for generated hooks
+- `hooks-patterns.md` - Usage patterns and examples for hooks
+- `orm-output.md` - API reference for generated ORM
+- `orm-patterns.md` - Usage patterns and examples for ORM
+- `config-reference.md` - Configuration options
+
+This allows agents helping with ORM queries to read only `orm-patterns.md` instead of loading all documentation.
+
 ### Script Requirements
 
 - Use `#!/bin/bash` shebang
