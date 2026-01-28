@@ -11,7 +11,7 @@ PGPM uses the `genomic` library to scaffold projects from templates. Templates a
 ```
 my-boilerplates/
   .boilerplates.json       # Root config (points to default directory)
-  default/                 # Default template variant
+  pgpm/                    # Default template variant (PGPM)
     module/
       .boilerplate.json    # Module template config
       package.json         # Template files with placeholders
@@ -37,7 +37,7 @@ The `.boilerplates.json` file at the repository root specifies the default templ
 
 ```json
 {
-  "dir": "default"
+  "dir": "pgpm"
 }
 ```
 
@@ -257,6 +257,13 @@ pgpm init workspace --repo myorg/my-boilerplates --from-branch develop
 
 # Use a variant directory
 pgpm init workspace --repo myorg/my-boilerplates --dir custom-variant
+
+# Use the --template flag (recommended)
+pgpm init --template pnpm/module --repo myorg/my-boilerplates
+pgpm init -t custom-variant/module --repo myorg/my-boilerplates
+
+# Create workspace + module in one command
+pgpm init -t pnpm/module -w --repo myorg/my-boilerplates
 ```
 
 ## Best Practices
