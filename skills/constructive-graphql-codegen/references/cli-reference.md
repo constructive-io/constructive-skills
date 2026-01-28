@@ -2,179 +2,124 @@
 
 Complete reference for `graphql-codegen` CLI commands.
 
-## graphql-codegen generate
+## graphql-codegen
 
-Generate React Query hooks from a PostGraphile GraphQL endpoint.
+Generate type-safe React Query hooks and/or ORM client from GraphQL schema.
 
 ```bash
-npx graphql-codegen generate [options]
+npx graphql-codegen [options]
 ```
 
-### Options
+### Source Options (choose one)
 
 | Option | Alias | Description | Default |
 |--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required (or use config) |
-| `--schema <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
+| `--endpoint <url>` | `-e` | GraphQL endpoint URL | - |
+| `--schema-file <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
+| `--schemas <list>` | - | PostgreSQL schemas (comma-separated) | - |
+| `--api-names <list>` | - | API names for auto schema discovery | - |
+| `--config <path>` | `-c` | Path to config file | `graphql-codegen.config.ts` |
+
+### Generator Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--react-query` | Generate React Query hooks | `false` |
+| `--orm` | Generate ORM client | `false` |
+
+### Output Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
 | `--output <dir>` | `-o` | Output directory | `./generated/graphql` |
-| `--config <path>` | `-c` | Config file path | `graphql-codegen.config.ts` |
-| `--target <name>` | `-t` | Target name in config | `default` |
-| `--authorization <token>` | `-a` | Authorization header value | - |
-| `--verbose` | `-v` | Verbose output | `false` |
-| `--dry-run` | - | Preview without writing files | `false` |
-| `--watch` | `-w` | Watch mode - auto-regenerate on schema changes | `false` |
-| `--poll-interval <ms>` | - | Polling interval in milliseconds | `3000` |
-| `--debounce <ms>` | - | Debounce delay before regenerating | `800` |
-| `--touch <file>` | - | File to touch on schema change | - |
-| `--no-clear` | - | Don't clear terminal on regeneration | - |
+| `--target <name>` | `-t` | Target name (for multi-target configs) | - |
 
-### Examples
-
-```bash
-# Basic generation
-npx graphql-codegen generate -e https://api.example.com/graphql
-
-# With custom output directory
-npx graphql-codegen generate -e https://api.example.com/graphql -o ./generated/hooks
-
-# With authorization
-npx graphql-codegen generate -e https://api.example.com/graphql -a "Bearer token123"
-
-# Using config file
-npx graphql-codegen generate -c ./graphql-codegen.config.ts
-
-# Specific target from config
-npx graphql-codegen generate -t production
-
-# Preview changes without writing
-npx graphql-codegen generate -e https://api.example.com/graphql --dry-run
-
-# Watch mode for development
-npx graphql-codegen generate --watch
-npx graphql-codegen generate --watch --poll-interval 5000 --debounce 1000
-
-# From schema file instead of endpoint
-npx graphql-codegen generate -s ./schema.graphql -o ./generated/hooks
-```
-
-## graphql-codegen generate-orm
-
-Generate Prisma-like ORM client from a PostGraphile GraphQL endpoint.
-
-```bash
-npx graphql-codegen generate-orm [options]
-```
-
-### Options
+### Other Options
 
 | Option | Alias | Description | Default |
 |--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required (or use config) |
-| `--schema <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
-| `--output <dir>` | `-o` | Output directory | `./generated/orm` |
-| `--config <path>` | `-c` | Config file path | `graphql-codegen.config.ts` |
-| `--target <name>` | `-t` | Target name in config | `default` |
 | `--authorization <token>` | `-a` | Authorization header value | - |
-| `--verbose` | `-v` | Verbose output | `false` |
+| `--verbose` | `-v` | Show detailed output | `false` |
 | `--dry-run` | - | Preview without writing files | `false` |
-| `--skip-custom-operations` | - | Only generate table models | `false` |
-| `--watch` | `-w` | Watch mode - auto-regenerate on schema changes | `false` |
-| `--poll-interval <ms>` | - | Polling interval in milliseconds | `3000` |
-| `--debounce <ms>` | - | Debounce delay before regenerating | `800` |
-| `--touch <file>` | - | File to touch on schema change | - |
-| `--no-clear` | - | Don't clear terminal on regeneration | - |
+| `--keep-db` | - | Keep ephemeral database (debugging) | `false` |
+| `--help` | `-h` | Show help message | - |
+| `--version` | - | Show version number | - |
 
-### Examples
+## Examples
+
+### From GraphQL Endpoint
 
 ```bash
-# Basic ORM generation
-npx graphql-codegen generate-orm -e https://api.example.com/graphql
+# Generate React Query hooks
+npx graphql-codegen --react-query -e https://api.example.com/graphql
+
+# Generate ORM client
+npx graphql-codegen --orm -e https://api.example.com/graphql
+
+# Generate both
+npx graphql-codegen --react-query --orm -e https://api.example.com/graphql
 
 # With custom output
-npx graphql-codegen generate-orm -e https://api.example.com/graphql -o ./generated/db
-
-# Watch mode for development
-npx graphql-codegen generate-orm --watch
-
-# Skip custom operations (only table CRUD)
-npx graphql-codegen generate-orm -e https://api.example.com/graphql --skip-custom-operations
-
-# Generate both hooks and ORM
-npx graphql-codegen generate -c graphql-codegen.config.ts
-npx graphql-codegen generate-orm -c graphql-codegen.config.ts
-```
-
-## graphql-codegen init
-
-Create a configuration file interactively.
-
-```bash
-npx graphql-codegen init [options]
-```
-
-### Options
-
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `--directory <dir>` | `-d` | Target directory for config file | `.` |
-| `--force` | `-f` | Force overwrite existing config | `false` |
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL to pre-populate | - |
-| `--output <dir>` | `-o` | Output directory to pre-populate | `./generated` |
-
-### Examples
-
-```bash
-# Create config (default: graphql-codegen.config.ts)
-npx graphql-codegen init
-
-# Pre-populate with endpoint and output
-npx graphql-codegen init -e https://api.example.com/graphql -o ./generated/hooks
-
-# Force overwrite existing config
-npx graphql-codegen init --force
-```
-
-## graphql-codegen introspect
-
-Inspect a GraphQL schema without generating code. Useful for debugging and verifying schema access.
-
-```bash
-npx graphql-codegen introspect [options]
-```
-
-### Options
-
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required (or --schema) |
-| `--schema <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
-| `--authorization <token>` | `-a` | Authorization header value | - |
-| `--json` | - | Output as JSON | `false` |
-
-### Examples
-
-```bash
-# Inspect schema from endpoint
-npx graphql-codegen introspect -e https://api.example.com/graphql
-
-# Inspect schema from file
-npx graphql-codegen introspect -s ./schema.graphql
-
-# Output as JSON for processing
-npx graphql-codegen introspect -e https://api.example.com/graphql --json
+npx graphql-codegen --react-query -e https://api.example.com/graphql -o ./src/generated
 
 # With authorization
-npx graphql-codegen introspect -e https://api.example.com/graphql -a "Bearer token"
+npx graphql-codegen --orm -e https://api.example.com/graphql -a "Bearer token123"
 ```
 
-### Output
+### From Schema File
 
-Without `--json`, outputs human-readable summary:
-- Tables discovered via introspection
-- Field counts and relation counts per table
-- Total tables found
+```bash
+# Generate from .graphql file
+npx graphql-codegen --react-query -s ./schema.graphql -o ./generated
 
-With `--json`, outputs structured data for programmatic use.
+# With both generators
+npx graphql-codegen --react-query --orm -s ./schema.graphql
+```
+
+### From Database
+
+```bash
+# Explicit schemas
+npx graphql-codegen --react-query --schemas public,app_public
+
+# Auto-discover from API names
+npx graphql-codegen --orm --api-names my_api
+
+# With custom output
+npx graphql-codegen --react-query --schemas public -o ./generated
+```
+
+### Using Config File
+
+```bash
+# Use default config file (graphql-codegen.config.ts)
+npx graphql-codegen
+
+# Use specific config file
+npx graphql-codegen -c ./config/codegen.config.ts
+
+# Override config with CLI options
+npx graphql-codegen -c ./config.ts --react-query --orm
+
+# Multi-target: generate specific target
+npx graphql-codegen -t production
+
+# Multi-target: generate all targets
+npx graphql-codegen
+```
+
+### Development Workflow
+
+```bash
+# Dry run to preview changes
+npx graphql-codegen --react-query -e https://api.example.com/graphql --dry-run
+
+# Verbose output for debugging
+npx graphql-codegen --orm -e https://api.example.com/graphql -v
+
+# Keep ephemeral database for debugging (when using PGPM modules)
+npx graphql-codegen --schemas public --keep-db
+```
 
 ## Environment Variables
 
@@ -182,8 +127,11 @@ The CLI respects these environment variables:
 
 | Variable | Description |
 |----------|-------------|
-| `GRAPHQL_ENDPOINT` | Default endpoint URL |
-| `GRAPHQL_AUTH_TOKEN` | Default authorization token |
+| `PGHOST` | PostgreSQL host (for database introspection) |
+| `PGPORT` | PostgreSQL port |
+| `PGDATABASE` | PostgreSQL database name |
+| `PGUSER` | PostgreSQL user |
+| `PGPASSWORD` | PostgreSQL password |
 
 ## Exit Codes
 
@@ -193,3 +141,12 @@ The CLI respects these environment variables:
 | `1` | General error |
 | `2` | Configuration error |
 | `3` | Network/schema error |
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| No code generated | Add `--react-query` or `--orm` flag |
+| "Cannot use both endpoint and schemas" | Choose one schema source |
+| "schemas and apiNames are mutually exclusive" | Use either `--schemas` or `--api-names`, not both |
+| Database connection errors | Check `PG*` environment variables |
