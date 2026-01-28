@@ -1,36 +1,86 @@
-This file originated from https://github.com/vercel-labs/agent-skills/blob/main/README.md and has been modified for this repository.
-
 # Constructive Skills
 
-A collection of skills for AI coding agents working with Constructive tooling. Skills are packaged instructions and scripts that extend agent capabilities for GraphQL development workflows.
+<p align="center" width="100%">
+  <img height="150" src="https://raw.githubusercontent.com/constructive-io/constructive/refs/heads/main/assets/logo.svg" />
+</p>
+
+A collection of skills for AI coding agents working with Constructive tooling. Skills are packaged instructions that extend agent capabilities for PostgreSQL development, GraphQL workflows, and monorepo management.
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
 
 ## Available Skills
 
-### constructive-graphql-codegen
+### PGPM (PostgreSQL Package Manager)
 
-Generate and use type-safe React Query hooks or Prisma-like ORM client from PostGraphile GraphQL endpoints using `@constructive-io/graphql-codegen`.
+| Skill | Description |
+|-------|-------------|
+| `pgpm-cli` | Complete CLI reference for all pgpm commands |
+| `pgpm-workspace` | Create and manage pgpm workspaces |
+| `pgpm-changes` | Author database changes with deploy/revert/verify |
+| `pgpm-dependencies` | Manage module dependencies |
+| `pgpm-docker` | Manage PostgreSQL Docker containers |
+| `pgpm-env` | Manage PostgreSQL environment variables |
+| `pgpm-testing` | Run PostgreSQL integration tests |
+| `pgpm-publishing` | Publish @pgpm/* SQL modules to npm |
+| `pgpm-troubleshooting` | Common issues and solutions |
 
-**Use when:**
-- "Generate GraphQL hooks"
-- "Generate ORM from GraphQL"
-- "Set up codegen for my GraphQL schema"
-- "Use the generated hooks/ORM"
-- "Query the database"
-- "Fetch data with codegen"
+### Database Testing (pgsql-test)
 
-**Features:**
-- Generates React Query hooks (TanStack Query v5) for client-side data fetching
-- Generates Prisma-like ORM client for server-side operations
-- Type-safe select with const generics for narrowed return types
-- Typed relation support (belongsTo, hasMany, manyToMany)
-- Error handling with discriminated unions (`.unwrap()`, `.unwrapOr()`)
-- Comprehensive usage patterns in references
+| Skill | Description |
+|-------|-------------|
+| `pgsql-test-rls` | Test Row-Level Security policies |
+| `pgsql-test-seeding` | Seed test databases with loadJson/loadSql/loadCsv |
+| `pgsql-test-exceptions` | Handle aborted transactions in tests |
+| `pgsql-test-snapshot` | Snapshot testing utilities (pruneIds, pruneDates) |
 
-**Requirements:**
-- Node.js 18+
-- PostGraphile v5+ endpoint with `_meta` query support
+### Drizzle ORM
+
+| Skill | Description |
+|-------|-------------|
+| `drizzle-orm` | Schema design patterns and query building |
+| `drizzle-orm-test` | Test PostgreSQL with Drizzle ORM |
+
+### GraphQL
+
+| Skill | Description |
+|-------|-------------|
+| `graphql-codegen` | Generate typed SDK from PostGraphile endpoints |
+| `constructive-graphql-codegen` | React Query hooks and ORM client generation |
+
+### PNPM Workspaces
+
+| Skill | Description |
+|-------|-------------|
+| `pnpm-workspace` | Create and configure PNPM monorepos |
+| `pnpm-publishing` | Publish TypeScript packages with makage |
+| `monorepo-management` | Best practices for large PNPM monorepos |
+
+### pgvector and RAG
+
+| Skill | Description |
+|-------|-------------|
+| `pgvector-setup` | Set up pgvector for vector storage in PostgreSQL |
+| `pgvector-embeddings` | Generate and store vector embeddings with Ollama |
+| `pgvector-similarity-search` | Perform semantic similarity search with pgvector |
+| `rag-pipeline` | Build complete RAG pipelines with pgvector and Ollama |
+| `ollama-integration` | Integrate Ollama for local LLM inference |
+
+### CI/CD and Configuration
+
+| Skill | Description |
+|-------|-------------|
+| `github-workflows-pgpm` | GitHub Actions for database testing |
+| `github-workflows-ollama` | GitHub Actions for Ollama and pgvector testing |
+| `environment-configuration` | Configure environments with @pgpmjs/env |
+
+### Other
+
+| Skill | Description |
+|-------|-------------|
+| `pgsql-parser-testing` | Test the pgsql-parser repository |
+| `supabase-test` | Test Supabase applications |
+| `readme-formatting` | Format READMEs with Constructive branding |
+| `constructive-functions` | Cloud functions with PGPM |
 
 **References:**
 
@@ -53,20 +103,20 @@ Skills are automatically available to AI agents once installed. The agent will u
 
 **Examples:**
 ```
+Deploy my database changes with pgpm
+```
+```
+Write a test for my RLS policy
+```
+```
 Generate GraphQL hooks for my PostGraphile endpoint
-```
-```
-Use the generated ORM to fetch user data with their posts
-```
-```
-Set up codegen with filtering for specific tables
 ```
 
 ## Skill Structure
 
 Each skill contains:
-- `SKILL.md` - Instructions for the agent following the Agent Skills format
-- `references/` - Supporting documentation loaded on-demand
+- `SKILL.md` — Instructions for the agent following the Agent Skills format
+- `references/` — Supporting documentation loaded on-demand (optional)
 
 ## Development
 
