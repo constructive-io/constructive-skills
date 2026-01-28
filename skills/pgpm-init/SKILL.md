@@ -32,6 +32,19 @@ pgpm init
 pgpm init module
 ```
 
+### Create Workspace + Module in One Command
+
+```bash
+# Create workspace first, then module inside it
+pgpm init -w
+
+# With a specific template variant
+pgpm init --dir pnpm -w
+pgpm init --template pnpm/module -w
+```
+
+The `-w` (or `--create-workspace`) flag creates a workspace first, then automatically creates the module inside it. This is useful when starting from scratch outside any workspace.
+
 Creates a new PGPM module with:
 - `pgpm.plan` for migrations
 - `.control` file for PostgreSQL extension metadata
@@ -123,6 +136,28 @@ pgpm init workspace --dir pnpm
 pgpm init module --dir pnpm
 ```
 
+### Use the --template Flag (Recommended)
+
+The `--template` flag (or `-t`) provides a cleaner syntax by combining the directory variant and template type into a single path:
+
+```bash
+# These are equivalent:
+pgpm init workspace --dir pnpm
+pgpm init --template pnpm/workspace
+
+# These are equivalent:
+pgpm init module --dir pnpm
+pgpm init --template pnpm/module
+
+# Short form with -t alias
+pgpm init -t pgpm/module
+pgpm init -t pnpm/workspace
+```
+
+The `--template` flag parses the path by splitting on the first `/`:
+- Everything before the slash becomes the `--dir` value
+- Everything after becomes the template type (workspace/module)
+
 ## CLI Options
 
 | Option | Description |
@@ -132,8 +167,12 @@ pgpm init module --dir pnpm
 | `--repo <repo>` | Template repository (default: constructive-io/pgpm-boilerplates) |
 | `--from-branch <branch>` | Branch/tag to use when cloning repo |
 | `--dir <variant>` | Template variant directory (e.g., pnpm, supabase) |
+| `--template, -t <path>` | Full template path (e.g., pnpm/module) - combines dir and type |
 | `--boilerplate` | Prompt to select from available boilerplates |
+| `--create-workspace, -w` | Create a workspace first, then create the module inside it |
 | `--no-tty` | Run in non-interactive mode |
+
+Note: The `-W` flag is used for the interactive workspace recovery prompt (when you run `pgpm init` outside a workspace and it asks if you want to create one).
 
 ## Workflow Examples
 
@@ -153,6 +192,18 @@ pgpm add my_first_change
 
 # 4. Deploy to database
 pgpm deploy --createdb
+```
+
+### Quick Start with -w Flag
+
+```bash
+# Create workspace + module in one command
+pgpm init -w
+# Prompts for workspace name, then module name
+# Creates workspace and module inside packages/
+
+# With PNPM template variant
+pgpm init --template pnpm/module -w
 ```
 
 ### CI/CD Pipeline Setup

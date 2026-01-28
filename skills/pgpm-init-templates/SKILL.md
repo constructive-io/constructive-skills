@@ -10,19 +10,19 @@ The `--boilerplate` flag enables interactive selection from all available templa
 
 The default boilerplate repository (`constructive-io/pgpm-boilerplates`) provides these templates:
 
-### Default Variant (PGPM)
+### PGPM Variant (Default)
 
 | Template | Command | Description |
 |----------|---------|-------------|
-| `default/workspace` | `pgpm init workspace` | PGPM workspace with pgpm.json, migrations support |
-| `default/module` | `pgpm init` | PGPM module with pgpm.plan, .control file |
+| `pgpm/workspace` | `pgpm init workspace` or `pgpm init -t pgpm/workspace` | PGPM workspace with pgpm.json, migrations support |
+| `pgpm/module` | `pgpm init` or `pgpm init -t pgpm/module` | PGPM module with pgpm.plan, .control file |
 
 ### PNPM Variant (Pure TypeScript/JavaScript)
 
 | Template | Command | Description |
 |----------|---------|-------------|
-| `pnpm/workspace` | `pgpm init workspace --dir pnpm` | Pure PNPM workspace (no pgpm files) |
-| `pnpm/module` | `pgpm init --dir pnpm` | Pure PNPM package (no pgpm.plan/.control) |
+| `pnpm/workspace` | `pgpm init workspace --dir pnpm` or `pgpm init -t pnpm/workspace` | Pure PNPM workspace (no pgpm files) |
+| `pnpm/module` | `pgpm init --dir pnpm` or `pgpm init -t pnpm/module` | Pure PNPM package (no pgpm.plan/.control) |
 
 ## Using --boilerplate
 
@@ -42,18 +42,48 @@ pgpm init pnpm/workspace --boilerplate
 pgpm init pnpm/module --boilerplate
 ```
 
+## Using --template (Recommended)
+
+The `--template` flag (or `-t`) provides a cleaner syntax for specifying templates:
+
+```bash
+# Create PNPM workspace
+pgpm init --template pnpm/workspace
+pgpm init -t pnpm/workspace
+
+# Create PNPM module
+pgpm init --template pnpm/module
+pgpm init -t pnpm/module
+
+# Create PGPM workspace
+pgpm init -t pgpm/workspace
+
+# Create workspace + module in one command
+pgpm init -t pnpm/module -w
+```
+
+The `--template` flag parses the path by splitting on `/`:
+- `pnpm/module` → dir=`pnpm`, type=`module`
+- `pgpm/workspace` → dir=`pgpm`, type=`workspace`
+
 ## Template Variants
 
-### PGPM Templates (default/)
+### PGPM Templates (pgpm/)
 
 Use for PostgreSQL extension development with migrations:
 
 ```bash
 # Create PGPM workspace
 pgpm init workspace
+pgpm init -t pgpm/workspace
 
 # Create PGPM module (inside workspace)
 pgpm init
+pgpm init -t pgpm/module
+
+# Create workspace + module in one command
+pgpm init -w
+pgpm init -t pgpm/module -w
 ```
 
 **Creates:**
@@ -69,9 +99,14 @@ Use for pure TypeScript/JavaScript packages without PostgreSQL:
 ```bash
 # Create PNPM workspace
 pgpm init workspace --dir pnpm
+pgpm init -t pnpm/workspace
 
 # Create PNPM package (inside workspace)
 pgpm init --dir pnpm
+pgpm init -t pnpm/module
+
+# Create workspace + module in one command
+pgpm init -t pnpm/module -w
 ```
 
 **Creates:**
@@ -165,8 +200,9 @@ pgpm init --boilerplate --repo myorg/my-boilerplates
 
 ## Best Practices
 
-1. Use `--dir pnpm` for pure TypeScript/JavaScript packages
-2. Use default templates for PostgreSQL extension development
-3. Use `--boilerplate` when exploring available templates
-4. Always specify template path with `--boilerplate` in CI/CD
-5. Create organization-specific boilerplates for standardized project setup
+1. Use `--template pnpm/module` (or `-t pnpm/module`) for pure TypeScript/JavaScript packages
+2. Use default templates (`pgpm init`) for PostgreSQL extension development
+3. Use `--boilerplate` when exploring available templates interactively
+4. Use `-w` flag to create workspace + module in one command when starting fresh
+5. Always specify template path with `--template` or `--boilerplate` in CI/CD
+6. Create organization-specific boilerplates for standardized project setup

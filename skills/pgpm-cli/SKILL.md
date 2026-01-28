@@ -143,8 +143,16 @@ pgpm init workspace
 # Create new module (inside workspace)
 pgpm init
 
-# Use custom template
-pgpm init --repo https://github.com/org/templates.git --template-path my-template
+# Use full template path (recommended)
+pgpm init --template pnpm/module
+pgpm init -t pgpm/workspace
+
+# Create workspace + module in one command
+pgpm init -w
+pgpm init --template pnpm/module -w
+
+# Use custom template repository
+pgpm init --repo https://github.com/org/templates.git --template my-template
 ```
 
 ### Change Management
