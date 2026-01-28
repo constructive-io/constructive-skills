@@ -8,7 +8,7 @@ Complete reference for `graphql-codegen.config.ts` configuration options.
 Create configuration using:
 
 ```bash
-npx graphql-codegen init
+npx @constructive-io/graphql-codegen init
 ```
 
 Or manually create `graphql-codegen.config.ts`:
@@ -136,7 +136,7 @@ Path to GraphQL schema file (.graphql).
 }
 ```
 
-#### `db` (NEW in v3.0)
+#### `db`
 
 Database configuration for direct PostgreSQL introspection.
 
@@ -506,14 +506,14 @@ export default defineConfig({
 Generate specific target:
 
 ```bash
-npx graphql-codegen -t production
-npx graphql-codegen -t admin
+npx @constructive-io/graphql-codegen generate --target production
+npx @constructive-io/graphql-codegen generate --target admin
 ```
 
 Generate all targets:
 
 ```bash
-npx graphql-codegen
+npx @constructive-io/graphql-codegen generate
 ```
 
 ## Complete Example (v3.0)

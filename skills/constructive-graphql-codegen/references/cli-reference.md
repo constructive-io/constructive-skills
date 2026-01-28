@@ -2,12 +2,12 @@
 
 Complete reference for `graphql-codegen` CLI commands.
 
-## graphql-codegen
+## graphql-codegen generate
 
 Generate type-safe React Query hooks and/or ORM client from GraphQL schema.
 
 ```bash
-npx graphql-codegen [options]
+npx @constructive-io/graphql-codegen generate [options]
 ```
 
 ### Source Options (choose one)
@@ -24,7 +24,7 @@ npx graphql-codegen [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--react-query` | Generate React Query hooks | `false` |
+| `--reactQuery` | Generate React Query hooks | `false` |
 | `--orm` | Generate ORM client | `false` |
 
 ### Output Options
@@ -51,74 +51,74 @@ npx graphql-codegen [options]
 
 ```bash
 # Generate React Query hooks
-npx graphql-codegen --react-query -e https://api.example.com/graphql
+npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql
 
 # Generate ORM client
-npx graphql-codegen --orm -e https://api.example.com/graphql
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql
 
 # Generate both
-npx graphql-codegen --react-query --orm -e https://api.example.com/graphql
+npx @constructive-io/graphql-codegen generate --reactQuery --orm --endpoint https://api.example.com/graphql
 
 # With custom output
-npx graphql-codegen --react-query -e https://api.example.com/graphql -o ./src/generated
+npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql --output ./generated
 
 # With authorization
-npx graphql-codegen --orm -e https://api.example.com/graphql -a "Bearer token123"
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --authorization "Bearer token123"
 ```
 
 ### From Schema File
 
 ```bash
 # Generate from .graphql file
-npx graphql-codegen --react-query -s ./schema.graphql -o ./generated
+npx @constructive-io/graphql-codegen generate --reactQuery --schema-file ./schema.graphql --output ./generated
 
 # With both generators
-npx graphql-codegen --react-query --orm -s ./schema.graphql
+npx @constructive-io/graphql-codegen generate --reactQuery --orm --schema-file ./schema.graphql
 ```
 
 ### From Database
 
 ```bash
 # Explicit schemas
-npx graphql-codegen --react-query --schemas public,app_public
+npx @constructive-io/graphql-codegen generate --reactQuery --schemas public,app_public
 
 # Auto-discover from API names
-npx graphql-codegen --orm --api-names my_api
+npx @constructive-io/graphql-codegen generate --orm --api-names my_api
 
 # With custom output
-npx graphql-codegen --react-query --schemas public -o ./generated
+npx @constructive-io/graphql-codegen generate --reactQuery --schemas public --output ./generated
 ```
 
 ### Using Config File
 
 ```bash
 # Use default config file (graphql-codegen.config.ts)
-npx graphql-codegen
+npx @constructive-io/graphql-codegen generate
 
 # Use specific config file
-npx graphql-codegen -c ./config/codegen.config.ts
+npx @constructive-io/graphql-codegen generate --config ./config/codegen.config.ts
 
 # Override config with CLI options
-npx graphql-codegen -c ./config.ts --react-query --orm
+npx @constructive-io/graphql-codegen generate --config ./config.ts --reactQuery --orm
 
 # Multi-target: generate specific target
-npx graphql-codegen -t production
+npx @constructive-io/graphql-codegen generate --target production
 
 # Multi-target: generate all targets
-npx graphql-codegen
+npx @constructive-io/graphql-codegen generate
 ```
 
 ### Development Workflow
 
 ```bash
 # Dry run to preview changes
-npx graphql-codegen --react-query -e https://api.example.com/graphql --dry-run
+npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql --dry-run
 
 # Verbose output for debugging
-npx graphql-codegen --orm -e https://api.example.com/graphql -v
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --verbose
 
 # Keep ephemeral database for debugging (when using PGPM modules)
-npx graphql-codegen --schemas public --keep-db
+npx @constructive-io/graphql-codegen generate --schemas public --keep-db
 ```
 
 ## Environment Variables
@@ -146,7 +146,7 @@ The CLI respects these environment variables:
 
 | Issue | Solution |
 |-------|----------|
-| No code generated | Add `--react-query` or `--orm` flag |
+| No code generated | Add `--reactQuery` or `--orm` flag |
 | "Cannot use both endpoint and schemas" | Choose one schema source |
 | "schemas and apiNames are mutually exclusive" | Use either `--schemas` or `--api-names`, not both |
 | Database connection errors | Check `PG*` environment variables |
