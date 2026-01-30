@@ -190,7 +190,7 @@ main();
 
 ### Browser vs Node.js Compatibility
 
-**`browserCompatible` option** (v3.1.x):
+**`browserCompatible` option**:
 - **`true` (default)**: Generates browser-compatible client using standard `fetch`
 - **`false`**: Generates Node.js client with undici dispatcher for proper `*.localhost` DNS resolution
 
@@ -258,7 +258,7 @@ export default defineConfig({
   },
 });
 
-// From database (new in v3.0)
+// From database
 export default defineConfig({
   db: {
     schemas: ['public', 'app_public'],  // Explicit schemas
@@ -269,7 +269,7 @@ export default defineConfig({
   reactQuery: true,
 });
 
-// From PGPM module (new in v3.0)
+// From PGPM module
 export default defineConfig({
   db: {
     pgpm: { modulePath: './packages/my-module' },
@@ -283,7 +283,7 @@ export default defineConfig({
 ### Multi-Target Configuration
 
 ```typescript
-// Simple multi-target (v3.0 - no 'targets' wrapper needed)
+// Simple multi-target
 export default defineConfig({
   public: {
     endpoint: 'https://api.example.com/graphql',
@@ -396,7 +396,7 @@ const user = await db.user.findOne({ id }).execute().unwrap(); // throws on erro
 const user = await db.user.findOne({ id }).execute().unwrapOr(defaultUser);
 ```
 
-## Schema Sources (v3.0)
+## Schema Sources
 
 ### From GraphQL Endpoint
 
@@ -426,8 +426,6 @@ export default defineConfig({
   reactQuery: true,
 });
 ```
-
-**Note:** The CLI does not have an `init` subcommand. Create config files manually. Watch mode was removed in v3.0 - use file watchers or development tools instead.
 
 ## Query Key Factory (React Query)
 
