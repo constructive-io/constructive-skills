@@ -1,8 +1,8 @@
 # CLI Reference
 
-Complete reference for `graphql-codegen` CLI commands.
+Complete reference for `@constructive-io/graphql-codegen` CLI commands.
 
-## graphql-codegen generate
+## @constructive-io/graphql-codegen generate
 
 Generate type-safe React Query hooks and/or ORM client from GraphQL schema.
 
@@ -24,7 +24,7 @@ npx @constructive-io/graphql-codegen generate [options]
 
 | Option | Description | Default |
 |--------|-------------|---------|
-| `--reactQuery` | Generate React Query hooks | `false` |
+| `--react-query` | Generate React Query hooks | `false` |
 | `--orm` | Generate ORM client | `false` |
 
 ### Output Options
@@ -41,9 +41,7 @@ npx @constructive-io/graphql-codegen generate [options]
 | `--authorization <token>` | `-a` | Authorization header value | - |
 | `--verbose` | `-v` | Show detailed output | `false` |
 | `--dry-run` | - | Preview without writing files | `false` |
-| `--keep-db` | - | Keep ephemeral database (debugging) | `false` |
 | `--help` | `-h` | Show help message | - |
-| `--version` | - | Show version number | - |
 
 ## Examples
 
@@ -51,16 +49,16 @@ npx @constructive-io/graphql-codegen generate [options]
 
 ```bash
 # Generate React Query hooks
-npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql
 
 # Generate ORM client
 npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql
 
 # Generate both
-npx @constructive-io/graphql-codegen generate --reactQuery --orm --endpoint https://api.example.com/graphql
+npx @constructive-io/graphql-codegen generate --react-query --orm --endpoint https://api.example.com/graphql
 
 # With custom output
-npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql --output ./generated
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --output ./generated
 
 # With authorization
 npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --authorization "Bearer token123"
@@ -70,23 +68,23 @@ npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.examp
 
 ```bash
 # Generate from .graphql file
-npx @constructive-io/graphql-codegen generate --reactQuery --schema-file ./schema.graphql --output ./generated
+npx @constructive-io/graphql-codegen generate --react-query --schema-file ./schema.graphql --output ./generated
 
 # With both generators
-npx @constructive-io/graphql-codegen generate --reactQuery --orm --schema-file ./schema.graphql
+npx @constructive-io/graphql-codegen generate --react-query --orm --schema-file ./schema.graphql
 ```
 
 ### From Database
 
 ```bash
 # Explicit schemas
-npx @constructive-io/graphql-codegen generate --reactQuery --schemas public,app_public
+npx @constructive-io/graphql-codegen generate --react-query --schemas public,app_public
 
 # Auto-discover from API names
 npx @constructive-io/graphql-codegen generate --orm --api-names my_api
 
 # With custom output
-npx @constructive-io/graphql-codegen generate --reactQuery --schemas public --output ./generated
+npx @constructive-io/graphql-codegen generate --react-query --schemas public --output ./generated
 ```
 
 ### Using Config File
@@ -99,7 +97,7 @@ npx @constructive-io/graphql-codegen generate
 npx @constructive-io/graphql-codegen generate --config ./config/codegen.config.ts
 
 # Override config with CLI options
-npx @constructive-io/graphql-codegen generate --config ./config.ts --reactQuery --orm
+npx @constructive-io/graphql-codegen generate --config ./config.ts --react-query --orm
 
 # Multi-target: generate specific target
 npx @constructive-io/graphql-codegen generate --target production
@@ -112,7 +110,7 @@ npx @constructive-io/graphql-codegen generate
 
 ```bash
 # Dry run to preview changes
-npx @constructive-io/graphql-codegen generate --reactQuery --endpoint https://api.example.com/graphql --dry-run
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --dry-run
 
 # Verbose output for debugging
 npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --verbose
@@ -146,7 +144,7 @@ The CLI respects these environment variables:
 
 | Issue | Solution |
 |-------|----------|
-| No code generated | Add `--reactQuery` or `--orm` flag |
+| No code generated | Add `--react-query` or `--orm` flag |
 | "Cannot use both endpoint and schemas" | Choose one schema source |
 | "schemas and apiNames are mutually exclusive" | Use either `--schemas` or `--api-names`, not both |
 | Database connection errors | Check `PG*` environment variables |
