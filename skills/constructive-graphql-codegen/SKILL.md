@@ -481,13 +481,12 @@ filter: {
 
 | Issue | Solution |
 |-------|----------|
-| No hooks generated | Add `reactQuery: true` to config (v3.0: boolean, not object) |
+| No hooks generated | Add `reactQuery: true` to config  |
 | Schema not accessible | Verify endpoint URL and auth headers |
 | Missing `_meta` query | Ensure PostGraphile v5+ with Meta plugin |
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match |
 | Auth errors at runtime | Check `configure()` headers are set |
-| Watch mode not available | Removed in v3.0 - use external file watchers |
 | Localhost fetch errors (Node.js) | Set `browserCompatible: false` to use undici dispatcher |
 | `*.localhost` DNS issues on macOS | Use `browserCompatible: false` for proper subdomain resolution |
 
@@ -495,7 +494,7 @@ filter: {
 
 For detailed documentation on specific topics only when needed, see [references/](references/):
 
-- CLI options and configuration: `cli-reference-v3.md`, `config-reference.md`
+- CLI options and configuration: `config-reference.md`
 - Advanced usage patterns: `hooks-patterns.md`, `orm-patterns.md`
 - Error handling and relations: `error-handling.md`, `relations.md`
 - Query key factory and cache management: `query-keys.md`

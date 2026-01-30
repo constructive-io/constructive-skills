@@ -1,4 +1,4 @@
-# Configuration Reference (v3.1.x)
+# Configuration Reference
 
 Complete reference for `graphql-codegen.config.ts` configuration options.
 
@@ -32,12 +32,12 @@ export default defineConfig({
 interface GraphQLSDKConfig {
   // Single-target config
   endpoint?: string;
-  schemaFile?: string;  // Renamed from 'schema' in v3.0
-  db?: DbConfig;        // NEW in v3.0
+  schemaFile?: string;
+  db?: DbConfig;
   output?: string;
   // ... other options
   
-  // OR Multi-target config (simplified in v3.0)
+  // OR Multi-target config 
   [targetName: string]: GraphQLSDKConfigTarget;
 }
 
@@ -64,12 +64,8 @@ interface GraphQLSDKConfigTarget {
   reactQuery?: boolean;        // CHANGED: Now boolean (was ReactQueryOptions)
   orm?: boolean;               // CHANGED: Now boolean (was ORMOptions)
   queryKeys?: QueryKeyConfig;
-  
-  // Watch mode (REMOVED in v3.0)
-  // watch?: WatchConfig;
 }
 
-// NEW in v3.0: Database configuration
 interface DbConfig {
   config?: Partial<PgConfig>;  // PostgreSQL connection
   pgpm?: PgpmConfig;           // PGPM module configuration
@@ -350,7 +346,7 @@ Skip generating the root `query` field. Default: `true`.
 
 #### `reactQuery`
 
-**CHANGED in v3.0:** Now a boolean flag. Default: `false`.
+A boolean flag. Default: `false`.
 
 ```typescript
 {
@@ -434,7 +430,7 @@ Define entity relationships for cascade invalidation.
 
 #### `orm`
 
-**CHANGED in v3.0:** Now a boolean flag. Default: `false`.
+A boolean flag. Default: `false`.
 
 ```typescript
 {
@@ -449,7 +445,7 @@ Define entity relationships for cascade invalidation.
 }
 ```
 
-**Note:** In v3.0, ORM is always generated to `{output}/orm` subdirectory.
+ORM is always generated to `{output}/orm` subdirectory.
 
 ### Global Field Exclusion
 
@@ -477,8 +473,6 @@ Filtering supports glob patterns:
 | `*_archive` | "posts_archive", "users_archive" |
 
 ## Multi-Target Configuration
-
-**Simplified in v3.0** - no `targets` wrapper needed.
 
 ```typescript
 export default defineConfig({
@@ -516,7 +510,7 @@ Generate all targets:
 npx @constructive-io/graphql-codegen generate
 ```
 
-## Complete Example (v3.0)
+## Complete Example
 
 ```typescript
 import { defineConfig } from '@constructive-io/graphql-codegen';
@@ -525,8 +519,6 @@ import { defineConfig } from '@constructive-io/graphql-codegen';
 export default defineConfig({
   endpoint: process.env.GRAPHQL_ENDPOINT || 'http://localhost:5555/graphql',
   output: './generated',
-  
-  // Boolean flags (v3.0)
   reactQuery: true,
   orm: true,
 
@@ -571,7 +563,6 @@ export default defineConfig({
   },
 });
 
-// From database (v3.0)
 export default defineConfig({
   db: {
     schemas: ['public', 'app_public'],
@@ -581,7 +572,6 @@ export default defineConfig({
   reactQuery: true,
 });
 
-// From PGPM module (v3.0)
 export default defineConfig({
   db: {
     pgpm: { modulePath: './packages/my-module' },
