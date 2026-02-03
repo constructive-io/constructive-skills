@@ -2,12 +2,13 @@
 
 Complete reference for `graphql-codegen.config.ts` configuration options.
 
+
 ## Configuration File
 
 Create configuration using:
 
 ```bash
-npx graphql-codegen init
+npx @constructive-io/graphql-codegen init
 ```
 
 Or manually create `graphql-codegen.config.ts`:
@@ -29,16 +30,25 @@ export default defineConfig({
 
 ```typescript
 interface GraphQLSDKConfig {
-  targets: Record<string, GraphQLSDKConfigTarget>;
+  // Single-target config
+  endpoint?: string;
+  schemaFile?: string;
+  db?: DbConfig;
+  output?: string;
+  // ... other options
+  
+  // OR Multi-target config 
+  [targetName: string]: GraphQLSDKConfigTarget;
 }
 
 interface GraphQLSDKConfigTarget {
-  // Schema Source (one required)
-  endpoint?: string;
-  schema?: string;
+  // Schema Source (choose one)
+  endpoint?: string;           // GraphQL endpoint URL
+  schemaFile?: string;         // Path to .graphql file (renamed from 'schema')
+  db?: DbConfig;               // NEW: Database introspection
 
   // Output Configuration
-  output?: string;
+  output?: string;  // Default: './generated/graphql'
 
   // Authentication
   headers?: Record<string, string>;
@@ -47,32 +57,52 @@ interface GraphQLSDKConfigTarget {
   tables?: TableFilter;
   queries?: OperationFilter;
   mutations?: OperationFilter;
+  excludeFields?: string[];  // Global field exclusion
 
   // Code Generation
   codegen?: CodegenOptions;
+  reactQuery?: boolean;        // CHANGED: Now boolean (was ReactQueryOptions)
+  orm?: boolean;               // CHANGED: Now boolean (was ORMOptions)
+  queryKeys?: QueryKeyConfig;
+}
 
-  // ORM-specific
-  orm?: ORMOptions;
+interface DbConfig {
+  config?: Partial<PgConfig>;  // PostgreSQL connection
+  pgpm?: PgpmConfig;           // PGPM module configuration
+  schemas?: string[];          // Explicit schemas
+  apiNames?: string[];         // Auto-discover schemas from API
+  keepDb?: boolean;            // Keep ephemeral DB (debugging)
+}
+
+interface PgpmConfig {
+  modulePath?: string;         // Path to PGPM module
+  workspacePath?: string;      // Path to PGPM workspace
+  moduleName?: string;         // Module name in workspace
 }
 
 interface TableFilter {
-  include?: string[];  // Glob patterns
-  exclude?: string[];  // Glob patterns
+  include?: string[];       // Default: ['*']
+  exclude?: string[];       // Default: []
+  systemExclude?: string[]; // Default: []
 }
 
 interface OperationFilter {
-  include?: string[];
-  exclude?: string[];
+  include?: string[];       // Default: ['*']
+  exclude?: string[];       // Default: []
+  systemExclude?: string[]; // Default: ['_meta', 'query'] for queries, [] for mutations
 }
 
 interface CodegenOptions {
-  maxFieldDepth?: number;
-  skipQueryField?: boolean;
+  maxFieldDepth?: number;    // Default: 2
+  skipQueryField?: boolean;  // Default: true
 }
 
-interface ORMOptions {
-  output?: string;
-  useSharedTypes?: boolean;
+interface QueryKeyConfig {
+  style?: 'flat' | 'hierarchical';  // Default: 'hierarchical'
+  generateScopedKeys?: boolean;     // Default: true
+  generateCascadeHelpers?: boolean; // Default: true
+  generateMutationKeys?: boolean;   // Default: true
+  relationships?: Record<string, EntityRelationship>;
 }
 ```
 
@@ -84,7 +114,7 @@ Choose one of:
 
 #### `endpoint`
 
-GraphQL endpoint URL to introspect.
+GraphQL endpoint URL for live introspection.
 
 ```typescript
 {
@@ -92,13 +122,54 @@ GraphQL endpoint URL to introspect.
 }
 ```
 
-#### `schema`
+#### `schemaFile`
 
-Path to local GraphQL schema file.
+Path to GraphQL schema file (.graphql). 
 
 ```typescript
 {
-  schema: './schema.graphql',
+  schemaFile: './schema.graphql',
+}
+```
+
+#### `db`
+
+Database configuration for direct PostgreSQL introspection.
+
+```typescript
+// Explicit schemas
+{
+  db: {
+    schemas: ['public', 'app_public'],
+  },
+}
+
+// Auto-discover from API names
+{
+  db: {
+    apiNames: ['my_api'],  // Queries services_public.api_schemas
+  },
+}
+
+// With explicit database config
+{
+  db: {
+    config: {
+      host: 'localhost',
+      port: 5432,
+      database: 'mydb',
+      user: 'postgres',
+    },
+    schemas: ['public'],
+  },
+}
+
+// From PGPM module
+{
+  db: {
+    pgpm: { modulePath: './packages/my-module' },
+    schemas: ['public'],
+  },
 }
 ```
 
@@ -110,9 +181,11 @@ Directory for generated code.
 
 ```typescript
 {
-  output: './src/generated/hooks',  // Default: './generated/graphql'
+  output: './generated/hooks',  // Default: './generated/graphql'
 }
 ```
+
+**Note:** For React Query hooks, you typically want a different output than the default.
 
 ### Authentication
 
@@ -145,7 +218,7 @@ Glob patterns for tables to include. Default: `['*']` (all tables).
 
 #### `tables.exclude`
 
-Glob patterns for tables to exclude.
+Glob patterns for tables to exclude. Default: `[]`.
 
 ```typescript
 {
@@ -155,11 +228,23 @@ Glob patterns for tables to exclude.
 }
 ```
 
+#### `tables.systemExclude`
+
+System-level tables always excluded. Default: `[]`. Can be overridden.
+
+```typescript
+{
+  tables: {
+    systemExclude: [],  // Disable system excludes
+  },
+}
+```
+
 ### Query Filtering
 
 #### `queries.include`
 
-Custom queries to include. Default: all discovered queries.
+Custom queries to include. Default: `['*']` (all queries).
 
 ```typescript
 {
@@ -171,27 +256,62 @@ Custom queries to include. Default: all discovered queries.
 
 #### `queries.exclude`
 
-Custom queries to exclude. Default: `['_meta', 'query']`.
+User-defined queries to exclude. Default: `[]`.
 
 ```typescript
 {
   queries: {
-    exclude: ['_meta', 'query', 'debug*'],
+    exclude: ['debug*', 'internal*'],
+  },
+}
+```
+
+#### `queries.systemExclude`
+
+System-level queries always excluded. Default: `['_meta', 'query']`. Can be overridden to `[]` to disable.
+
+```typescript
+{
+  queries: {
+    systemExclude: [],  // Disable system excludes (not recommended)
   },
 }
 ```
 
 ### Mutation Filtering
 
-#### `mutations.include` / `mutations.exclude`
+#### `mutations.include`
 
-Same pattern as queries.
+Mutations to include. Default: `['*']` (all mutations).
 
 ```typescript
 {
   mutations: {
     include: ['login', 'logout', 'create*', 'update*'],
+  },
+}
+```
+
+#### `mutations.exclude`
+
+User-defined mutations to exclude. Default: `[]`.
+
+```typescript
+{
+  mutations: {
     exclude: ['delete*'],  // Exclude all delete mutations
+  },
+}
+```
+
+#### `mutations.systemExclude`
+
+System-level mutations always excluded. Default: `[]`.
+
+```typescript
+{
+  mutations: {
+    systemExclude: ['__internal*'],  // Add system excludes
   },
 }
 ```
@@ -222,29 +342,120 @@ Skip generating the root `query` field. Default: `true`.
 }
 ```
 
-### ORM Options
+### React Query Options
 
-#### `orm.output`
+#### `reactQuery`
 
-Separate output directory for ORM code.
+A boolean flag. Default: `false`.
 
 ```typescript
 {
-  orm: {
-    output: './src/generated/orm',
+  reactQuery: true,  // Generate React Query hooks
+}
+```
+
+**v2.x (deprecated):**
+```typescript
+{
+  reactQuery: { enabled: true },  // Old syntax
+}
+```
+
+### Query Key Configuration
+
+#### `queryKeys.style`
+
+Query key structure style. Default: `'hierarchical'`.
+
+```typescript
+{
+  queryKeys: {
+    style: 'hierarchical',  // or 'flat'
   },
 }
 ```
 
-#### `orm.useSharedTypes`
+#### `queryKeys.generateScopedKeys`
 
-Share types between hooks and ORM outputs.
+Generate scope-aware query keys. Default: `true`.
 
 ```typescript
 {
-  orm: {
-    useSharedTypes: true,
+  queryKeys: {
+    generateScopedKeys: true,
   },
+}
+```
+
+#### `queryKeys.generateCascadeHelpers`
+
+Generate cascade invalidation helpers. Default: `true`.
+
+```typescript
+{
+  queryKeys: {
+    generateCascadeHelpers: true,
+  },
+}
+```
+
+#### `queryKeys.generateMutationKeys`
+
+Generate mutation keys for tracking. Default: `true`.
+
+```typescript
+{
+  queryKeys: {
+    generateMutationKeys: true,
+  },
+}
+```
+
+#### `queryKeys.relationships`
+
+Define entity relationships for cascade invalidation.
+
+```typescript
+{
+  queryKeys: {
+    relationships: {
+      table: { parent: 'database', foreignKey: 'databaseId' },
+      field: { parent: 'table', foreignKey: 'tableId' },
+    },
+  },
+}
+```
+
+### ORM Options
+
+#### `orm`
+
+A boolean flag. Default: `false`.
+
+```typescript
+{
+  orm: true,  // Generate ORM client
+}
+```
+
+**v2.x (deprecated):**
+```typescript
+{
+  orm: { enabled: true, output: './generated/orm' },  // Old syntax
+}
+```
+
+ORM is always generated to `{output}/orm` subdirectory.
+
+### Global Field Exclusion
+
+#### `excludeFields`
+
+Exclude specific fields from all tables globally.
+
+```typescript
+{
+  excludeFields: ['internalId', 'legacyField', '__typename'],
 }
 ```
 
@@ -263,29 +474,25 @@ Filtering supports glob patterns:
 
 ## Multi-Target Configuration
 
-Define multiple targets for different environments or schemas:
-
 ```typescript
 export default defineConfig({
-  targets: {
-    development: {
-      endpoint: 'http://localhost:5555/graphql',
-      output: './src/generated/dev',
+  development: {
+    endpoint: 'http://localhost:5555/graphql',
+    output: './generated/dev',
+    reactQuery: true,
+  },
+  production: {
+    endpoint: 'https://api.prod.example.com/graphql',
+    output: './generated/prod',
+    reactQuery: true,
+    headers: {
+      Authorization: `Bearer ${process.env.PROD_API_TOKEN}`,
     },
-    production: {
-      endpoint: 'https://api.prod.example.com/graphql',
-      output: './src/generated/prod',
-      headers: {
-        Authorization: `Bearer ${process.env.PROD_API_TOKEN}`,
-      },
-    },
-    admin: {
-      endpoint: 'https://admin-api.example.com/graphql',
-      output: './src/generated/admin',
-      tables: {
-        include: ['AdminUser', 'AuditLog', 'Permission'],
-      },
-    },
+  },
+  admin: {
+    db: { schemas: ['admin'] },
+    output: './generated/admin',
+    orm: true,
   },
 });
 ```
@@ -293,8 +500,14 @@ export default defineConfig({
 Generate specific target:
 
 ```bash
-npx graphql-codegen generate -t production
-npx graphql-codegen generate -t admin
+npx @constructive-io/graphql-codegen generate --target production
+npx @constructive-io/graphql-codegen generate --target admin
+```
+
+Generate all targets:
+
+```bash
+npx @constructive-io/graphql-codegen generate
 ```
 
 ## Complete Example
@@ -302,50 +515,69 @@ npx graphql-codegen generate -t admin
 ```typescript
 import { defineConfig } from '@constructive-io/graphql-codegen';
 
+// From GraphQL endpoint
 export default defineConfig({
-  targets: {
-    default: {
-      // Schema source
-      endpoint: process.env.GRAPHQL_ENDPOINT || 'http://localhost:5555/graphql',
+  endpoint: process.env.GRAPHQL_ENDPOINT || 'http://localhost:5555/graphql',
+  output: './generated',
+  reactQuery: true,
+  orm: true,
 
-      // Output
-      output: './src/generated/hooks',
-
-      // Authentication
-      headers: {
-        Authorization: `Bearer ${process.env.API_TOKEN}`,
-      },
-
-      // Include specific tables
-      tables: {
-        include: ['User', 'Post', 'Comment', 'Category'],
-        exclude: ['*_archive', '_*'],
-      },
-
-      // Include specific custom queries
-      queries: {
-        include: ['currentUser', 'searchPosts', 'trending*'],
-        exclude: ['_meta', 'query', 'debug*'],
-      },
-
-      // Include specific mutations
-      mutations: {
-        include: ['login', 'logout', 'create*', 'update*'],
-        exclude: ['delete*'],
-      },
-
-      // Code generation options
-      codegen: {
-        maxFieldDepth: 2,
-        skipQueryField: true,
-      },
-
-      // ORM configuration
-      orm: {
-        output: './src/generated/orm',
-        useSharedTypes: true,
-      },
-    },
+  // Authentication
+  headers: {
+    Authorization: `Bearer ${process.env.API_TOKEN}`,
   },
+
+  // Filter tables
+  tables: {
+    include: ['User', 'Post', 'Comment'],
+    exclude: ['*_archive', '_*'],
+  },
+
+  // Filter queries
+  queries: {
+    include: ['currentUser', 'searchPosts', 'trending*'],
+    exclude: ['debug*'],
+  },
+
+  // Filter mutations
+  mutations: {
+    include: ['login', 'logout', 'create*', 'update*'],
+    exclude: ['delete*'],
+  },
+
+  // Exclude fields globally
+  excludeFields: ['__typename', 'internalId'],
+
+  // Code generation options
+  codegen: {
+    maxFieldDepth: 2,
+    skipQueryField: true,
+  },
+
+  // Query key factory
+  queryKeys: {
+    style: 'hierarchical',
+    generateScopedKeys: true,
+    generateCascadeHelpers: true,
+    generateMutationKeys: true,
+  },
+});
+
+export default defineConfig({
+  db: {
+    schemas: ['public', 'app_public'],
+    // OR apiNames: ['my_api'],
+  },
+  output: './generated',
+  reactQuery: true,
+});
+
+export default defineConfig({
+  db: {
+    pgpm: { modulePath: './packages/my-module' },
+    schemas: ['public'],
+  },
+  output: './generated',
+  orm: true,
 });
 ```

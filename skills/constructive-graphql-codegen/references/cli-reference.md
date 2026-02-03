@@ -4,145 +4,120 @@ Complete reference for `@constructive-io/graphql-codegen` CLI commands.
 
 ## @constructive-io/graphql-codegen generate
 
-Generate React Query hooks from a PostGraphile GraphQL endpoint.
+Generate type-safe React Query hooks and/or ORM client from GraphQL schema.
 
 ```bash
 npx @constructive-io/graphql-codegen generate [options]
 ```
 
-### Options
+### Source Options (choose one)
 
 | Option | Alias | Description | Default |
 |--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required (or use config) |
+| `--endpoint <url>` | `-e` | GraphQL endpoint URL | - |
+| `--schema-file <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
+| `--schemas <list>` | - | PostgreSQL schemas (comma-separated) | - |
+| `--api-names <list>` | - | API names for auto schema discovery | - |
+| `--config <path>` | `-c` | Path to config file | `graphql-codegen.config.ts` |
+
+### Generator Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--react-query` | Generate React Query hooks | `false` |
+| `--orm` | Generate ORM client | `false` |
+
+### Output Options
+
+| Option | Alias | Description | Default |
+|--------|-------|-------------|---------|
 | `--output <dir>` | `-o` | Output directory | `./generated/graphql` |
-| `--config <path>` | `-c` | Config file path | `@constructive-io/graphql-codegen.config.ts` |
-| `--target <name>` | `-t` | Target name in config | `default` |
-| `--authorization <token>` | `-a` | Authorization header value | - |
-| `--dry-run` | - | Preview without writing files | `false` |
-| `--skip-custom-operations` | - | Only generate table CRUD hooks | `false` |
+| `--target <name>` | `-t` | Target name (for multi-target configs) | - |
 
-### Examples
-
-```bash
-# Basic generation
-npx @constructive-io/graphql-codegen generate -e https://api.example.com/graphql
-
-# With custom output directory
-npx @constructive-io/graphql-codegen generate -e https://api.example.com/graphql -o ./src/hooks
-
-# With authorization
-npx @constructive-io/graphql-codegen generate -e https://api.example.com/graphql -a "Bearer token123"
-
-# Using config file
-npx @constructive-io/graphql-codegen generate -c ./config/@constructive-io/graphql-codegen.config.ts
-
-# Specific target from config
-npx @constructive-io/graphql-codegen generate -t production
-
-# Preview changes without writing
-npx @constructive-io/graphql-codegen generate -e https://api.example.com/graphql --dry-run
-```
-
-## @constructive-io/graphql-codegen generate-orm
-
-Generate Prisma-like ORM client from a PostGraphile GraphQL endpoint.
-
-```bash
-npx @constructive-io/graphql-codegen generate-orm [options]
-```
-
-### Options
+### Other Options
 
 | Option | Alias | Description | Default |
 |--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required (or use config) |
-| `--output <dir>` | `-o` | Output directory | `./generated/orm` |
-| `--config <path>` | `-c` | Config file path | `@constructive-io/graphql-codegen.config.ts` |
-| `--target <name>` | `-t` | Target name in config | `default` |
 | `--authorization <token>` | `-a` | Authorization header value | - |
-| `--skip-custom-operations` | - | Only generate table models | `false` |
+| `--verbose` | `-v` | Show detailed output | `false` |
+| `--dry-run` | - | Preview without writing files | `false` |
+| `--help` | `-h` | Show help message | - |
 
-### Examples
+## Examples
+
+### From GraphQL Endpoint
 
 ```bash
-# Basic ORM generation
-npx @constructive-io/graphql-codegen generate-orm -e https://api.example.com/graphql
+# Generate React Query hooks
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql
+
+# Generate ORM client
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql
+
+# Generate both
+npx @constructive-io/graphql-codegen generate --react-query --orm --endpoint https://api.example.com/graphql
 
 # With custom output
-npx @constructive-io/graphql-codegen generate-orm -e https://api.example.com/graphql -o ./src/db
-
-# Generate both hooks and ORM
-npx @constructive-io/graphql-codegen generate -c @constructive-io/graphql-codegen.config.ts
-npx @constructive-io/graphql-codegen generate-orm -c @constructive-io/graphql-codegen.config.ts
-```
-
-## @constructive-io/graphql-codegen init
-
-Create a configuration file interactively.
-
-```bash
-npx @constructive-io/graphql-codegen init [options]
-```
-
-### Options
-
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `--format <format>` | `-f` | Config format: `ts`, `js`, `json` | `ts` |
-| `--output <path>` | `-o` | Output file path | `./@constructive-io/graphql-codegen.config.ts` |
-
-### Examples
-
-```bash
-# Create TypeScript config (default)
-npx @constructive-io/graphql-codegen init
-
-# Create JavaScript config
-npx @constructive-io/graphql-codegen init -f js
-
-# Create JSON config
-npx @constructive-io/graphql-codegen init -f json -o ./config/@constructive-io/graphql-codegen.json
-```
-
-## @constructive-io/graphql-codegen introspect
-
-Inspect a GraphQL schema without generating code. Useful for debugging and verifying schema access.
-
-```bash
-npx @constructive-io/graphql-codegen introspect [options]
-```
-
-### Options
-
-| Option | Alias | Description | Default |
-|--------|-------|-------------|---------|
-| `--endpoint <url>` | `-e` | GraphQL endpoint URL | Required |
-| `--authorization <token>` | `-a` | Authorization header value | - |
-| `--json` | - | Output as JSON | `false` |
-
-### Examples
-
-```bash
-# Inspect schema
-npx @constructive-io/graphql-codegen introspect -e https://api.example.com/graphql
-
-# Output as JSON for processing
-npx @constructive-io/graphql-codegen introspect -e https://api.example.com/graphql --json
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --output ./generated
 
 # With authorization
-npx @constructive-io/graphql-codegen introspect -e https://api.example.com/graphql -a "Bearer token"
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --authorization "Bearer token123"
 ```
 
-### Output
+### From Schema File
 
-Without `--json`, outputs human-readable summary:
-- Tables discovered via `_meta` query
-- Custom queries found
-- Custom mutations found
-- Schema statistics
+```bash
+# Generate from .graphql file
+npx @constructive-io/graphql-codegen generate --react-query --schema-file ./schema.graphql --output ./generated
 
-With `--json`, outputs structured data for programmatic use.
+# With both generators
+npx @constructive-io/graphql-codegen generate --react-query --orm --schema-file ./schema.graphql
+```
+
+### From Database
+
+```bash
+# Explicit schemas
+npx @constructive-io/graphql-codegen generate --react-query --schemas public,app_public
+
+# Auto-discover from API names
+npx @constructive-io/graphql-codegen generate --orm --api-names my_api
+
+# With custom output
+npx @constructive-io/graphql-codegen generate --react-query --schemas public --output ./generated
+```
+
+### Using Config File
+
+```bash
+# Use default config file (graphql-codegen.config.ts)
+npx @constructive-io/graphql-codegen generate
+
+# Use specific config file
+npx @constructive-io/graphql-codegen generate --config ./config/codegen.config.ts
+
+# Override config with CLI options
+npx @constructive-io/graphql-codegen generate --config ./config.ts --react-query --orm
+
+# Multi-target: generate specific target
+npx @constructive-io/graphql-codegen generate --target production
+
+# Multi-target: generate all targets
+npx @constructive-io/graphql-codegen generate
+```
+
+### Development Workflow
+
+```bash
+# Dry run to preview changes
+npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --dry-run
+
+# Verbose output for debugging
+npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --verbose
+
+# Keep ephemeral database for debugging (when using PGPM modules)
+npx @constructive-io/graphql-codegen generate --schemas public --keep-db
+```
 
 ## Environment Variables
 
@@ -150,8 +125,11 @@ The CLI respects these environment variables:
 
 | Variable | Description |
 |----------|-------------|
-| `GRAPHQL_ENDPOINT` | Default endpoint URL |
-| `GRAPHQL_AUTH_TOKEN` | Default authorization token |
+| `PGHOST` | PostgreSQL host (for database introspection) |
+| `PGPORT` | PostgreSQL port |
+| `PGDATABASE` | PostgreSQL database name |
+| `PGUSER` | PostgreSQL user |
+| `PGPASSWORD` | PostgreSQL password |
 
 ## Exit Codes
 
@@ -161,3 +139,12 @@ The CLI respects these environment variables:
 | `1` | General error |
 | `2` | Configuration error |
 | `3` | Network/schema error |
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| No code generated | Add `--react-query` or `--orm` flag |
+| "Cannot use both endpoint and schemas" | Choose one schema source |
+| "schemas and apiNames are mutually exclusive" | Use either `--schemas` or `--api-names`, not both |
+| Database connection errors | Check `PG*` environment variables |

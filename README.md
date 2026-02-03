@@ -82,6 +82,21 @@ Skills follow the [Agent Skills](https://agentskills.io/) format.
 | `readme-formatting` | Format READMEs with Constructive branding |
 | `constructive-functions` | Cloud functions with PGPM |
 
+**References:**
+
+The skill includes detailed reference documentation split into focused sections. Agents should read only the relevant section(s) based on the specific task:
+
+- **`cli-reference.md`** - CLI commands and options for the `cnc` tool
+- **`config-reference.md`** - Configuration file structure and options
+- **`hooks-output.md`** - Generated React Query hooks API reference
+- **`hooks-patterns.md`** - Usage patterns for hooks (queries, mutations, pagination, etc.)
+- **`orm-output.md`** - Generated ORM client API reference
+- **`orm-patterns.md`** - Usage patterns for ORM (CRUD, relations, filtering, etc.)
+- **`relations.md`** - Working with relations (belongsTo, hasMany, manyToMany)
+- **`error-handling.md`** - Error handling patterns with `.unwrap()` and `.unwrapOr()`
+
+*Example: If helping with ORM queries, read `orm-patterns.md`. If setting up configuration, read `config-reference.md`. Don't read all references unless necessary.*
+
 ## Usage
 
 Skills are automatically available to AI agents once installed. The agent will use them when relevant tasks are detected.

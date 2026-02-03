@@ -62,6 +62,42 @@ async function UserPage({ params }: { params: { id: string } }) {
 
 ## Query Patterns
 
+### Find First Matching Record
+
+```typescript
+// Find first user matching criteria
+// Note: Field names (name, email, role) are schema-specific examples
+const result = await db.user.findFirst({
+  select: { id: true, name: true, email: true },
+  where: { role: { equalTo: 'ADMIN' } },
+}).execute();
+
+// Handle result with Result pattern
+if (result.ok) {
+  const user = result.data.users.nodes[0];
+  if (user) {
+    console.log('Found admin:', user.name);
+  }
+}
+
+// Or use unwrap() to throw on error
+const user = await db.user.findFirst({
+  select: { id: true, name: true, email: true },
+  where: { role: { equalTo: 'ADMIN' } },
+}).execute().unwrap();
+```
+
+**Note:** `findFirst()` does NOT support `orderBy`. If you need ordering, use `findMany()` with `first: 1`:
+
+```typescript
+const result = await db.user.findMany({
+  select: { id: true, name: true, email: true },
+  where: { role: { equalTo: 'ADMIN' } },
+  orderBy: ['CREATED_AT_DESC'],
+  first: 1,
+}).execute();
+```
+
 ### Complex Filtering
 
 ```typescript
@@ -71,26 +107,26 @@ async function searchUsers(query: string, filters: UserFilters) {
 
   return db.user.findMany({
     select: { id: true, name: true, email: true, role: true },
-    filter: {
-      AND: [
+    where: {
+      and: [
         // Text search across multiple fields
         {
-          OR: [
-            { name: { contains: query } },
-            { email: { contains: query } },
+          or: [
+            { name: { includes: query } },
+            { email: { includes: query } },
           ],
         },
         // Additional filters
-        ...(filters.role ? [{ role: { eq: filters.role } }] : []),
+        ...(filters.role ? [{ role: { equalTo: filters.role } }] : []),
         ...(filters.active !== undefined
-          ? [{ active: { eq: filters.active } }]
+          ? [{ active: { equalTo: filters.active } }]
           : []),
         ...(filters.createdAfter
-          ? [{ createdAt: { gte: filters.createdAfter } }]
+          ? [{ createdAt: { greaterThanOrEqualTo: filters.createdAfter } }]
           : []),
       ],
     },
-    orderBy: { createdAt: 'DESC' },
+    orderBy: ['CREATED_AT_DESC'],
     first: filters.limit ?? 20,
     offset: filters.offset ?? 0,
   }).execute();
@@ -143,11 +179,11 @@ async function getUserStats() {
     }).execute(),
     db.user.findMany({
       select: { id: true },
-      filter: { active: { eq: true } },
+      where: { active: { equalTo: true } },
     }).execute(),
     db.user.findMany({
       select: { id: true },
-      filter: { role: { eq: 'ADMIN' } },
+      where: { role: { equalTo: 'ADMIN' } },
     }).execute(),
   ]);
 
@@ -187,8 +223,8 @@ async function getUserWithDetails(id: string) {
             first: 3,
           },
         },
-        filter: { published: { eq: true } },
-        orderBy: { publishedAt: 'DESC' },
+        where: { published: { equalTo: true } },
+        orderBy: ['PUBLISHED_AT_DESC'],
         first: 10,
       },
       followers: {
@@ -210,13 +246,13 @@ const users = await db.user.findMany({
     name: true,
     posts: {
       select: { id: true, title: true },
-      filter: {
-        AND: [
-          { published: { eq: true } },
-          { publishedAt: { gte: '2024-01-01' } },
+      where: {
+        and: [
+          { published: { equalTo: true } },
+          { publishedAt: { greaterThanOrEqualTo: '2024-01-01' } },
         ],
       },
-      orderBy: { publishedAt: 'DESC' },
+      orderBy: ['PUBLISHED_AT_DESC'],
     },
   },
 }).execute();
@@ -303,10 +339,10 @@ async function deactivateInactiveUsers(daysSinceLogin: number) {
   // Find inactive users
   const inactiveUsers = await db.user.findMany({
     select: { id: true },
-    filter: {
-      AND: [
-        { active: { eq: true } },
-        { lastLoginAt: { lt: cutoffDate.toISOString() } },
+    where: {
+      and: [
+        { active: { equalTo: true } },
+        { lastLoginAt: { lessThan: cutoffDate.toISOString() } },
       ],
     },
   }).execute().unwrap();
@@ -393,6 +429,94 @@ async function invalidateUserCache(id: string) {
 }
 ```
 
+## QueryBuilder API
+
+### Inspect Generated GraphQL
+
+```typescript
+const query = db.user.findMany({
+  select: { id: true, name: true, email: true },
+  where: { role: { equalTo: 'ADMIN' } },
+  first: 10,
+});
+
+// Note: Inspect methods may not be available in all generated ORMs
+// Check your generated QueryBuilder for available debugging methods
+
+// Execute when ready
+const result = await query.execute();
+```
+
+### Debug Queries
+
+```typescript
+// Log all queries in development
+async function executeWithLogging<T>(query: any) {
+  if (process.env.NODE_ENV === 'development') {
+    // Note: toGraphQL() and getVariables() methods may not be available
+    // Check your generated ORM for available debugging methods
+    console.log('Executing query...');
+  }
+  return query.execute();
+}
+
+// Usage
+const result = await executeWithLogging(
+  db.user.findMany({ select: { id: true }, first: 10 })
+);
+```
+
+## Client Configuration
+
+### Creating Client with Headers
+
+```typescript
+import { createClient } from '@/generated/orm';
+
+const db = createClient({
+  endpoint: 'https://api.example.com/graphql',
+  headers: { Authorization: 'Bearer your-token' },
+});
+
+// Use the client for requests
+const users = await db.user.findMany({}).execute();
+```
+
+### Creating Authenticated Client After Login
+
+```typescript
+// Create unauthenticated client for login
+const db = createClient({
+  endpoint: 'https://api.example.com/graphql',
+});
+
+// Sign in
+const result = await db.mutation.signIn({
+  input: { email: 'user@example.com', password: 'password' },
+}, {
+  select: {
+    result: {
+      select: { sessionId: true },
+    },
+  },
+}).execute();
+
+if (result.ok && result.data.signIn.result?.sessionId) {
+  // Create new authenticated client with session
+  const authDb = createClient({
+    endpoint: 'https://api.example.com/graphql',
+    headers: {
+      'X-Session-Id': result.data.signIn.result.sessionId,
+    },
+  });
+  
+  // Use authenticated client for subsequent requests
+  const user = await authDb.query.currentUser({
+    select: { id: true, username: true },
+  }).execute();
+}
+```
+
 ## Type-Safe Utilities
 
 ### Repository Pattern
@@ -423,7 +547,7 @@ export const userRepository = {
     const db = getDb();
     const result = await db.user.findMany({
       select: defaultSelect,
-      filter: { email: { eq: email } },
+      where: { email: { equalTo: email } },
       first: 1,
     }).execute();
 
