@@ -18,18 +18,47 @@ The Constructive App boilerplate is a **frontend-only** Next.js application that
 
 ### 1. Clone the Boilerplate
 
-Use `pgpm init` with the `-w` flag to scaffold a workspace from the template:
+Use `pgpm init` with the `-w` flag to scaffold a workspace from the template. All required arguments must be provided to avoid interactive prompts:
 
 ```bash
-pgpm init -w --repo constructive-io/sandbox-templates --template nextjs/constructive-app
+pgpm init -w \
+  --repo constructive-io/sandbox-templates \
+  --template nextjs/constructive-app \
+  --no-tty \
+  --name <workspace-name> \
+  --fullName "<Author Full Name>" \
+  --email "<author@example.com>" \
+  --repoName <workspace-name> \
+  --username <github-username> \
+  --license MIT \
+  --moduleName <module-name> \
+  --extensions "plpgsql,uuid-ossp"
 ```
 
-This clones the boilerplate into a new workspace directory.
+**Required arguments for non-interactive mode (`--no-tty`):**
+
+| Argument | Description |
+|----------|-------------|
+| `--name` | Workspace directory name |
+| `--fullName` | Author's full name |
+| `--email` | Author's email |
+| `--repoName` | Repository name (typically same as workspace name) |
+| `--username` | GitHub username |
+| `--license` | License (MIT, APACHE-2.0, BSD-3-CLAUSE, etc.) |
+| `--moduleName` | Module/package name inside the workspace |
+| `--extensions` | PostgreSQL extensions (comma-separated) |
+
+The boilerplate is created at `<workspace-name>/packages/<module-name>/`.
+
+> **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
+> ```bash
+> pgpm init -w --repo constructive-io/sandbox-templates --template nextjs/constructive-app
+> ```
 
 ### 2. Install Dependencies
 
 ```bash
-cd <workspace-name>
+cd <workspace-name>/packages/<module-name>
 pnpm install
 ```
 
