@@ -64,6 +64,9 @@ Options:
   --servicesApi           Enable Services API (default: true)
   --cwd <directory>       Working directory (default: current directory)
   --database <name>       Database to use (or set PGDATABASE env var)
+
+NOTE: The --origin option does NOT have a default. If omitted, the server
+will prompt interactively. Always pass --origin explicitly for non-interactive use.
 ```
 
 ## Endpoints
@@ -81,12 +84,18 @@ Default port is **5555**.
 
 ## Non-Interactive Mode
 
-When `PGDATABASE` is set, the server skips the interactive database selection prompt. All other options have sensible defaults and can be passed as CLI flags:
+To run `cnc server` fully non-interactively (CI, scripts, background processes), you **must** pass `--origin` explicitly. The `origin` option does not have a default value, so the server will prompt for it interactively if omitted.
+
+All other options (`simpleInflection`, `oppositeBaseNames`, `postgis`, `servicesApi`, `port`) have `useDefault: true` and won't prompt.
 
 ```bash
 # Fully non-interactive — suitable for CI or scripts
-PGDATABASE=constructive cnc server --port 5555
+PGDATABASE=constructive cnc server --port 5555 --origin '*'
 ```
+
+**Required flags for non-interactive mode:**
+- `PGDATABASE` env var (or `--database`) — skips database selection prompt
+- `--origin <url>` — skips CORS origin prompt (use `'*'` for dev/CI, or a specific URL)
 
 ## Environment Variables
 
@@ -174,7 +183,7 @@ Use this pattern in a workflow to start `cnc server` for e2e testing:
 
 - name: Start cnc server
   run: |
-    PGDATABASE=constructive cnc server --port 5555 &
+    PGDATABASE=constructive cnc server --port 5555 --origin '*' &
     # Wait for server readiness
     for i in $(seq 1 30); do
       if curl -sf http://api.localhost:5555/graphql \
