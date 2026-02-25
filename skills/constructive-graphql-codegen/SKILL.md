@@ -1,6 +1,6 @@
 ---
 name: constructive-graphql-codegen
-description: Generate and use type-safe React Query hooks or Prisma-like ORM client from GraphQL endpoints, databases, or PGPM modules using @constructive-io/graphql-codegen v3.x. Use when asked to "generate GraphQL hooks", "generate ORM", "set up codegen", "use generated hooks", "query with ORM", "fetch data", or when implementing data fetching for a PostGraphile backend or PostgreSQL database.
+description: Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL endpoints, databases, or PGPM modules using @constructive-io/graphql-codegen. Also generates documentation (README, AGENTS.md, skills/, mcp.json). Use when asked to "generate GraphQL hooks", "generate ORM", "generate CLI", "set up codegen", "generate docs", "generate skills", or when implementing data fetching for a PostGraphile backend.
 compatibility: Node.js 22+, PostgreSQL 14+, PostGraphile v5+ (optional)
 metadata:
   author: constructive-io
@@ -9,15 +9,16 @@ metadata:
 
 # Constructive GraphQL Codegen
 
-Generate type-safe React Query hooks or Prisma-like ORM client from PostGraphile GraphQL endpoints.
+Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from PostGraphile GraphQL endpoints. Also generates documentation in multiple formats.
 
 ## When to Apply
 
 Use this skill when:
 - Setting up GraphQL code generation for a PostGraphile backend
-- User asks to generate hooks, ORM, or type-safe GraphQL client
+- User asks to generate hooks, ORM, CLI, or type-safe GraphQL client
+- Generating documentation (README, AGENTS.md, skill files, MCP tool definitions)
 - Implementing features that need to fetch or mutate data
-- Using previously generated hooks or ORM code
+- Using previously generated hooks, ORM, or CLI code
 - Regenerating code after schema changes
 
 **Important**: Always prefer generated code over raw GraphQL queries or SQL.
@@ -40,6 +41,12 @@ npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/gr
 
 ```bash
 npx @constructive-io/graphql-codegen --orm -e https://api.example.com/graphql -o ./generated
+```
+
+### Generate CLI
+
+```bash
+npx @constructive-io/graphql-codegen --cli -e https://api.example.com/graphql -o ./generated
 ```
 
 ### Generate from Database
@@ -134,6 +141,13 @@ interface GenerateOptions {
   // Generators
   reactQuery?: boolean;  // Default: false
   orm?: boolean;         // Default: false
+  cli?: CliConfig | boolean; // Default: false — generate inquirerer CLI
+  
+  // Documentation (generated alongside code)
+  docs?: DocsConfig | boolean; // Default: { readme: true, agents: true, mcp: false, skills: false }
+  
+  // Node.js HTTP adapter (auto-enabled when cli is true)
+  nodeHttpAdapter?: boolean; // Default: false
   
   // Filtering
   tables?: { include?, exclude?, systemExclude? };
@@ -144,9 +158,6 @@ interface GenerateOptions {
   // Authentication
   headers?: Record<string, string>;
   authorization?: string;  // Convenience for Authorization header
-  
-  // Client Options
-  browserCompatible?: boolean;  // Default: true (use false for Node.js with undici)
   
   // Options
   verbose?: boolean;
@@ -188,38 +199,17 @@ async function main() {
 main();
 ```
 
-### Browser vs Node.js Compatibility
-
-**`browserCompatible` option**:
-- **`true` (default)**: Generates browser-compatible client using standard `fetch`
-- **`false`**: Generates Node.js client with undici dispatcher for proper `*.localhost` DNS resolution
-
-```typescript
-// Node.js environment with localhost subdomains
-await generate({
-  endpoint: 'http://api.localhost:3000/graphql',
-  reactQuery: true,
-  browserCompatible: false,  // Fixes DNS resolution on macOS
-});
-
-// Browser/universal environment
-await generate({
-  endpoint: 'https://api.example.com/graphql',
-  reactQuery: true,
-  browserCompatible: true,  // Default
-});
-```
-
 ## CLI Commands
 
 **Note**: The CLI does not use subcommands. All options are passed directly to `graphql-codegen`.
 
 | Command | Purpose |
 |---------|---------|
-| `npx @constructive-io/graphql-codegen` | Generate code (use `--react-query` and/or `--orm` flags) |
+| `npx @constructive-io/graphql-codegen` | Generate code (use `--react-query`, `--orm`, and/or `--cli` flags) |
 | `npx @constructive-io/graphql-codegen --react-query` | Generate React Query hooks |
 | `npx @constructive-io/graphql-codegen --orm` | Generate ORM client |
-| `npx @constructive-io/graphql-codegen --react-query --orm` | Generate both hooks and ORM |
+| `npx @constructive-io/graphql-codegen --cli` | Generate inquirerer-based CLI |
+| `npx @constructive-io/graphql-codegen --react-query --orm --cli` | Generate all three |
 
 ### Common Options
 
@@ -233,6 +223,7 @@ await generate({
 | `-c, --config <path>` | Config file path |
 | `--react-query` | Generate React Query hooks |
 | `--orm` | Generate ORM client |
+| `--cli` | Generate inquirerer-based CLI |
 | `-a, --authorization <token>` | Authorization header |
 | `-t, --target <name>` | Target name in multi-target config |
 | `--dry-run` | Preview without writing |
@@ -280,6 +271,73 @@ export default defineConfig({
 });
 ```
 
+### CLI Generation
+
+```typescript
+export default defineConfig({
+  endpoint: 'https://api.example.com/graphql',
+  output: './generated',
+  cli: true,  // Generate CLI with default tool name
+  // OR with options:
+  cli: {
+    toolName: 'myapp',      // Config stored at ~/.myapp/
+    entryPoint: true,        // Generate runnable index.ts
+    builtinNames: {          // Override infra command names
+      auth: 'credentials',
+      context: 'env',
+    },
+  },
+});
+```
+
+When `cli: true`, `nodeHttpAdapter` is auto-enabled (Node.js HTTP adapter for localhost subdomain resolution).
+
+### Documentation Generation
+
+```typescript
+export default defineConfig({
+  endpoint: 'https://api.example.com/graphql',
+  output: './generated',
+  orm: true,
+  docs: true,  // Enable all doc formats
+  // OR configure individually:
+  docs: {
+    readme: true,   // README.md — human-readable overview
+    agents: true,   // AGENTS.md — structured for LLM consumption
+    mcp: false,     // mcp.json — MCP tool definitions
+    skills: true,   // skills/ — per-command .md skill files (Devin-compatible)
+  },
+});
+```
+
+**`docs.skills`**: Generates a `skills/` directory with individual `.md` files for each command. Compatible with Devin and similar agent skill systems. Each skill file contains description, usage, and examples.
+
+**`docs.agents`**: Generates an `AGENTS.md` with tool definitions, exact signatures, input/output schemas, workflow recipes, and machine-parseable sections.
+
+**`docs.mcp`**: Generates an `mcp.json` with MCP (Model Context Protocol) tool definitions. Each CLI command becomes a tool with typed JSON Schema `inputSchema`.
+
+### Node.js HTTP Adapter
+
+```typescript
+export default defineConfig({
+  endpoint: 'http://api.localhost:3000/graphql',
+  output: './generated',
+  orm: true,
+  nodeHttpAdapter: true,  // Generates node-fetch.ts with NodeHttpAdapter
+});
+```
+
+The `NodeHttpAdapter` uses `node:http`/`node:https` for requests, enabling local development with subdomain-based routing (e.g., `auth.localhost:3000`). No global patching required.
+
+```typescript
+import { NodeHttpAdapter } from './orm/node-fetch';
+import { createClient } from './orm';
+
+const db = createClient({
+  adapter: new NodeHttpAdapter(endpoint, headers),
+});
+```
+
 ### Multi-Target Configuration
 
 ```typescript
@@ -294,6 +352,7 @@ export default defineConfig({
     db: { schemas: ['admin'] },
     output: './generated/admin',
     orm: true,
+    cli: true,
   },
 });
 ```
@@ -342,6 +401,49 @@ function CreateUser() {
   );
 }
 ```
+
+## Using Generated CLI
+
+When `cli: true` is set, codegen generates inquirerer-based CLI commands to `{output}/cli/`.
+
+### Generated Structure
+
+```
+generated/cli/
+  commands/           # One file per table + custom operations
+    users.ts          # CRUD commands for users table
+    posts.ts          # CRUD commands for posts table
+    my-query.ts       # Custom query command
+  command-map.ts      # Maps command names to handlers
+  executor.ts         # Command executor with auth context
+  utils.ts            # Shared utilities
+  node-fetch.ts       # NodeHttpAdapter for localhost
+  index.ts            # Entry point (if entryPoint: true)
+```
+
+### Running the CLI
+
+If `entryPoint: true` is set:
+
+```bash
+npx ts-node generated/cli/index.ts
+```
+
+Or integrate the command map into your own CLI:
+
+```typescript
+import { commands } from './generated/cli/command-map';
+import { Inquirerer } from 'inquirerer';
+
+const prompter = new Inquirerer();
+await commands.users.list(argv, prompter);
+```
+
+### Built-in Infrastructure Commands
+
+The CLI includes infrastructure commands:
+- **auth** (or `credentials` if name collides) — manage API credentials stored via appstash
+- **context** (or `env` if name collides) — manage endpoint and auth context
 
 ## Using Generated ORM
 
@@ -480,19 +582,21 @@ filter: {
 | Issue | Solution |
 |-------|----------|
 | No hooks generated | Add `reactQuery: true` to config  |
+| No CLI generated | Add `cli: true` to config |
 | Schema not accessible | Verify endpoint URL and auth headers |
 | Missing `_meta` query | Ensure PostGraphile v5+ with Meta plugin |
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match |
 | Auth errors at runtime | Check `configure()` headers are set |
-| Localhost fetch errors (Node.js) | Set `browserCompatible: false` to use undici dispatcher |
-| `*.localhost` DNS issues on macOS | Use `browserCompatible: false` for proper subdomain resolution |
+| Localhost fetch errors (Node.js) | Enable `nodeHttpAdapter: true` for localhost subdomain resolution |
+| No skill files generated | Set `docs: { skills: true }` in config |
 
 ## References
 
 For detailed documentation on specific topics only when needed, see [references/](references/):
 
-- CLI options and configuration: `config-reference.md`
+- CLI options and configuration: `cli-reference.md`, `config-reference.md`
 - Advanced usage patterns: `hooks-patterns.md`, `orm-patterns.md`
 - Error handling and relations: `error-handling.md`, `relations.md`
 - Query key factory and cache management: `query-keys.md`
+- Generated output structure: `hooks-output.md`, `orm-output.md`
