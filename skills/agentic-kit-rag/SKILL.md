@@ -85,11 +85,9 @@ RAG_CHAT_MODEL=llama3.2
 
 ### 1. Set Up Local Database with PGPM
 
-```bash
-# Start PostgreSQL with pgvector
-pgpm docker start --image pyramation/postgres:17
-eval "$(pgpm env)"
+Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm-docker` skill) and PG env vars are loaded (see `pgpm-env` skill).
 
+```bash
 # Run the setup script
 bash /mnt/skills/user/agentic-kit-rag/scripts/setup-rag-database.sh
 ```
@@ -498,7 +496,7 @@ async function addDocument(title: string, content: string, metadata = {}) {
 | Issue | Solution |
 |-------|----------|
 | "RAG_DATABASE_URL not set" | Set the environment variable or pass databaseUrl to createRAGKit |
-| "Connection refused" to database | Ensure PostgreSQL is running: `pgpm docker start` |
+| "Connection refused" to database | Ensure PostgreSQL is running (see `pgpm-docker` skill) |
 | "Connection refused" to Ollama | Ensure Ollama is running: `ollama serve` |
 | "type vector does not exist" | Run the setup script to install pgvector extension |
 | No context retrieved | Lower RAG_SIMILARITY_THRESHOLD or add more documents |

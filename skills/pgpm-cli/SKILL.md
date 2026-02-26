@@ -26,9 +26,8 @@ Use this skill when:
 # Install pgpm globally
 npm install -g pgpm
 
-# Start local Postgres and export env vars
-pgpm docker start
-eval "$(pgpm env)"
+# Ensure PostgreSQL is running and env vars are loaded
+# See pgpm-docker and pgpm-env skills for setup
 
 # Create workspace and module
 pgpm init workspace
