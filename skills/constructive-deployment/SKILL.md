@@ -34,13 +34,10 @@ Use this skill when:
 make up
 # OR: docker-compose up -d
 
-# 2. Load pgpm environment variables
-eval "$(pgpm env)"
-
-# 3. Bootstrap database roles
+# 2. Bootstrap database roles (ensure PG env vars are loaded — see pgpm-env skill)
 pgpm admin-users bootstrap --yes
 
-# 4. Deploy all database modules
+# 3. Deploy all database modules
 pgpm deploy --createdb --workspace --all --yes
 ```
 
@@ -96,8 +93,9 @@ docker-compose -f docker-compose.jobs.yml up -d
 
 ### Deploy to Local Database
 
+> **Prerequisite:** Ensure PostgreSQL is running and PG env vars are loaded. See `pgpm-docker` and `pgpm-env` skills.
+
 ```bash
-eval "$(pgpm env)"
 pgpm deploy --createdb --workspace --all --yes
 ```
 
@@ -118,15 +116,12 @@ pgpm deploy --workspace --all --yes
 ### Verify Deployment
 
 ```bash
-eval "$(pgpm env)"
 pgpm verify
 ```
 
 ### Revert (Rollback)
 
 ```bash
-eval "$(pgpm env)"
-
 # Revert last change
 pgpm revert --yes
 
@@ -214,7 +209,7 @@ All Docker Compose services share the `constructive-net` network, allowing inter
 
 | Issue | Cause | Fix |
 |-------|-------|-----|
-| Port 5432 in use | Another Postgres instance running | Stop it or use `pgpm docker start --port 5433` |
+| Port 5432 in use | Another Postgres instance running | Stop it or change the port in `docker-compose.yml` |
 | `security_invoker` error | Postgres version < 17 | Use `postgres-plus:17` or `pyramation/postgres:17` image |
 | `role "authenticated" does not exist` | Missing bootstrap | Run `pgpm admin-users bootstrap --yes` |
 | Container not on network | Network mismatch | Check `docker network ls` for `constructive-net` |

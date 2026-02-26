@@ -132,15 +132,11 @@ Tracks all changes in deployment order.
 
 ## Environment Setup
 
-Before deploying, configure PostgreSQL connection:
+Before deploying, ensure PostgreSQL is running and connection variables are loaded.
+
+> See `pgpm-docker` skill for starting PostgreSQL and `pgpm-env` skill for loading environment variables.
 
 ```bash
-# Start PostgreSQL via Docker
-pgpm docker start
-
-# Load environment variables
-eval "$(pgpm env)"
-
 # Verify connection
 psql -c "SELECT version();"
 
@@ -189,8 +185,8 @@ pgpm add schemas/app/functions/create_user --requires schemas/app/tables/users
 | Issue | Solution |
 |-------|----------|
 | "Cannot connect to Docker" | Start Docker Desktop first |
-| "PGHOST not set" | Run `eval "$(pgpm env)"` |
-| "Connection refused" | Run `pgpm docker start` |
+| "PGHOST not set" | Load PG env vars (see `pgpm-env` skill) |
+| "Connection refused" | Ensure PostgreSQL is running (see `pgpm-docker` skill) |
 | Module not found | Ensure you're inside a workspace with `pgpm.json` |
 
 ## References

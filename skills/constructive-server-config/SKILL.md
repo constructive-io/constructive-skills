@@ -60,9 +60,9 @@ cnc server --host 0.0.0.0 --port 3000 --origin "*"
 
 The server reads its configuration from environment variables. Set these before starting:
 
-```bash
-eval "$(pgpm env)"  # Load database connection vars
+> **Prerequisite:** Ensure PG env vars are loaded (see `pgpm-env` skill) before starting the server.
 
+```bash
 # Required
 export PGDATABASE=constructive
 
@@ -180,8 +180,9 @@ API_META_SCHEMAS=metaschema_public,services_public,metaschema_modules_public,con
 
 ### Start local dev server
 
+> Ensure PG env vars are loaded (see `pgpm-env` skill).
+
 ```bash
-eval "$(pgpm env)"
 export PGDATABASE=constructive
 cnc server --host 0.0.0.0 --port 3000 --origin "*"
 ```
@@ -222,5 +223,5 @@ API_IS_PUBLIC=true \
 | Server hangs on start | Missing `--origin` flag | Add `--origin "*"` for non-interactive mode |
 | No schemas exposed | `API_EXPOSED_SCHEMAS` not set | Set the env var with comma-separated schema names |
 | Auth errors | Wrong role configuration | Check `API_ANON_ROLE` and `API_ROLE_NAME` |
-| Can't connect to DB | Missing pgpm env | Run `eval "$(pgpm env)"` first |
+| Can't connect to DB | PG env vars not loaded | See `pgpm-env` skill for loading database connection variables |
 | GraphiQL shows empty schema | Server not running or wrong port | Verify server is up and explorer points to correct URL |

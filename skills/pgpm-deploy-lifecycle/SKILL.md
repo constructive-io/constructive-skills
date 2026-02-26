@@ -197,9 +197,9 @@ This is the gold standard for validating migrations — it proves:
 
 ### First-time workspace deploy
 
+> **Prerequisite:** Ensure PostgreSQL is running and environment is loaded. See `pgpm-docker` and `pgpm-env` skills for setup.
+
 ```bash
-pgpm docker start --recreate
-eval "$(pgpm env)"
 pgpm admin-users bootstrap --yes
 pgpm deploy --createdb --workspace --all --yes
 ```
@@ -207,7 +207,6 @@ pgpm deploy --createdb --workspace --all --yes
 ### Deploy after adding new changes
 
 ```bash
-eval "$(pgpm env)"
 pgpm deploy
 pgpm verify
 ```
@@ -215,7 +214,6 @@ pgpm verify
 ### Revert a bad deploy
 
 ```bash
-eval "$(pgpm env)"
 pgpm revert --yes
 # Fix the issue, then redeploy
 pgpm deploy
@@ -230,9 +228,9 @@ pgpm deploy --to @v1.0.0
 
 ### Validate all migrations (CI)
 
+> **Note:** In CI, start Postgres and load env vars first. See `pgpm-docker` and `pgpm-env` skills, or `github-workflows-pgpm` for CI-specific patterns.
+
 ```bash
-pgpm docker start --recreate
-eval "$(pgpm env)"
 pgpm admin-users bootstrap --yes
 pgpm test-packages --full-cycle --workspace --all
 ```

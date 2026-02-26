@@ -33,10 +33,7 @@ pgvector must be available in your PostgreSQL instance. Use one of these Docker 
 
 ### 1. Start PostgreSQL with pgvector
 
-```bash
-pgpm docker start --image pyramation/postgres:17
-eval "$(pgpm env)"
-```
+Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm-docker` skill) and PG env vars are loaded (see `pgpm-env` skill).
 
 ### 2. Create Schema and Tables
 
