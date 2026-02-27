@@ -1,4 +1,7 @@
-# Constructive Functions
+---
+name: constructive-functions
+description: Build and deploy Knative-style HTTP cloud functions for the Constructive platform. Use when creating serverless functions for Constructive (email, webhooks, background jobs), building functions that interact with the Constructive GraphQL API, or running PGPM commands programmatically.
+---
 
 Build and deploy Knative-style HTTP cloud functions for the Constructive platform.
 

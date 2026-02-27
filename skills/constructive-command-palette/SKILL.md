@@ -1,4 +1,7 @@
-# Constructive Command Palette
+---
+name: constructive-command-palette
+description: Build command palettes with navigation and executable commands using @constructive-io/ui. Use when building a command palette (Cmd+K / Ctrl+K interface), implementing keyboard-driven navigation, or creating searchable command menus.
+---
 
 Build command palettes with navigation and executable commands using @constructive-io/ui.
 

@@ -1,4 +1,7 @@
-# Constructive Next.js UI Kit
+---
+name: constructive-nextjs-ui
+description: Build modern Next.js applications using the @constructive-io/ui component library. Use when creating a new Next.js application with Constructive UI components, building dashboards, admin panels, or web applications.
+---
 
 Build modern Next.js applications using the @constructive-io/ui component library.
 

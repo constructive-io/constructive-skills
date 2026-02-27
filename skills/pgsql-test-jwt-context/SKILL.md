@@ -1,4 +1,7 @@
-# pgsql-test-jwt-context
+---
+name: pgsql-test-jwt-context
+description: Setting up JWT claims and role-based context for RLS testing with pgsql-test. Use when testing Row-Level Security policies, simulating authenticated users with JWT claims, or configuring PostgreSQL session variables for RLS.
+---
 
 Setting up JWT claims and role-based context for RLS testing with pgsql-test.
 

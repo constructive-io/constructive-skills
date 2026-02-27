@@ -1,4 +1,7 @@
-# pgsql-test-helpers
+---
+name: pgsql-test-helpers
+description: Creating reusable test helper functions and constants for consistent, maintainable database tests. Use when extracting common test patterns into helpers, defining shared constants, or reducing duplication in pgsql-test suites.
+---
 
 Creating reusable test helper functions and constants for consistent, maintainable database tests.
 

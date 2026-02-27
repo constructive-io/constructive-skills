@@ -1,4 +1,7 @@
-# fbp-spec
+---
+name: fbp-spec
+description: Storage specification and manipulation API for flow-based programming graphs. Use when working with FBP graph storage, manipulating graph data structures, or using the @fbp/spec package.
+---
 
 Storage specification and manipulation API for flow-based programming graphs.
 
