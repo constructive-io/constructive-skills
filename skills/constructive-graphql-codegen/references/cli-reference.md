@@ -1,13 +1,11 @@
 # CLI Reference
 
-Complete reference for `@constructive-io/graphql-codegen` CLI commands.
+Complete reference for `@constructive-io/graphql-codegen` CLI.
 
-## @constructive-io/graphql-codegen generate
-
-Generate type-safe React Query hooks and/or ORM client from GraphQL schema.
+**Note**: The CLI does not use subcommands. All options are passed directly to `graphql-codegen`.
 
 ```bash
-npx @constructive-io/graphql-codegen generate [options]
+npx @constructive-io/graphql-codegen [options]
 ```
 
 ### Source Options (choose one)
@@ -16,6 +14,7 @@ npx @constructive-io/graphql-codegen generate [options]
 |--------|-------|-------------|---------|
 | `--endpoint <url>` | `-e` | GraphQL endpoint URL | - |
 | `--schema-file <path>` | `-s` | Path to GraphQL schema file (.graphql) | - |
+| `--schema-dir <path>` | - | Directory of `.graphql` files (auto multi-target) | - |
 | `--schemas <list>` | - | PostgreSQL schemas (comma-separated) | - |
 | `--api-names <list>` | - | API names for auto schema discovery | - |
 | `--config <path>` | `-c` | Path to config file | `graphql-codegen.config.ts` |
@@ -26,6 +25,15 @@ npx @constructive-io/graphql-codegen generate [options]
 |--------|-------------|---------|
 | `--react-query` | Generate React Query hooks | `false` |
 | `--orm` | Generate ORM client | `false` |
+| `--cli` | Generate inquirerer-based CLI | `false` |
+
+### Schema Export Options
+
+| Option | Description | Default |
+|--------|-------------|--------|
+| `--schema-only` | Export schema to `.graphql` file (no code generation) | `false` |
+| `--schema-only-output <dir>` | Output directory for schema export | Same as `--output` |
+| `--schema-only-filename <name>` | Filename for exported schema | `schema.graphql` |
 
 ### Output Options
 
@@ -45,78 +53,95 @@ npx @constructive-io/graphql-codegen generate [options]
 
 ## Examples
 
-### From GraphQL Endpoint
+### Schema Export (recommended first step)
 
 ```bash
-# Generate React Query hooks
-npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql
+# Export from database
+npx @constructive-io/graphql-codegen --schema-only --schemas public --schema-only-output ./schemas --schema-only-filename public.graphql
 
-# Generate ORM client
-npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql
+# Export from endpoint
+npx @constructive-io/graphql-codegen --schema-only -e https://api.example.com/graphql --schema-only-output ./schemas
 
-# Generate both
-npx @constructive-io/graphql-codegen generate --react-query --orm --endpoint https://api.example.com/graphql
+# Export from PGPM module (via config)
+npx @constructive-io/graphql-codegen --schema-only -c graphql-codegen.config.ts
+```
 
-# With custom output
-npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --output ./generated
+### From Schema Directory (recommended)
 
-# With authorization
-npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --authorization "Bearer token123"
+```bash
+# Generate from directory of .graphql files (auto multi-target)
+npx @constructive-io/graphql-codegen --react-query --orm --schema-dir ./schemas -o ./generated
 ```
 
 ### From Schema File
 
 ```bash
 # Generate from .graphql file
-npx @constructive-io/graphql-codegen generate --react-query --schema-file ./schema.graphql --output ./generated
+npx @constructive-io/graphql-codegen --react-query -s ./schema.graphql -o ./generated
 
 # With both generators
-npx @constructive-io/graphql-codegen generate --react-query --orm --schema-file ./schema.graphql
+npx @constructive-io/graphql-codegen --react-query --orm -s ./schema.graphql
+```
+
+### From GraphQL Endpoint
+
+```bash
+# Generate React Query hooks
+npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/graphql
+
+# Generate ORM client
+npx @constructive-io/graphql-codegen --orm -e https://api.example.com/graphql
+
+# Generate all three
+npx @constructive-io/graphql-codegen --react-query --orm --cli -e https://api.example.com/graphql
+
+# With custom output
+npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/graphql -o ./generated
+
+# With authorization
+npx @constructive-io/graphql-codegen --orm -e https://api.example.com/graphql -a "Bearer token123"
 ```
 
 ### From Database
 
 ```bash
 # Explicit schemas
-npx @constructive-io/graphql-codegen generate --react-query --schemas public,app_public
+npx @constructive-io/graphql-codegen --react-query --schemas public,app_public
 
 # Auto-discover from API names
-npx @constructive-io/graphql-codegen generate --orm --api-names my_api
+npx @constructive-io/graphql-codegen --orm --api-names my_api
 
 # With custom output
-npx @constructive-io/graphql-codegen generate --react-query --schemas public --output ./generated
+npx @constructive-io/graphql-codegen --react-query --schemas public -o ./generated
 ```
 
 ### Using Config File
 
 ```bash
 # Use default config file (graphql-codegen.config.ts)
-npx @constructive-io/graphql-codegen generate
+npx @constructive-io/graphql-codegen
 
 # Use specific config file
-npx @constructive-io/graphql-codegen generate --config ./config/codegen.config.ts
+npx @constructive-io/graphql-codegen -c ./config/codegen.config.ts
 
 # Override config with CLI options
-npx @constructive-io/graphql-codegen generate --config ./config.ts --react-query --orm
+npx @constructive-io/graphql-codegen -c ./config.ts --react-query --orm
 
 # Multi-target: generate specific target
-npx @constructive-io/graphql-codegen generate --target production
+npx @constructive-io/graphql-codegen --target production
 
 # Multi-target: generate all targets
-npx @constructive-io/graphql-codegen generate
+npx @constructive-io/graphql-codegen
 ```
 
 ### Development Workflow
 
 ```bash
 # Dry run to preview changes
-npx @constructive-io/graphql-codegen generate --react-query --endpoint https://api.example.com/graphql --dry-run
+npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/graphql --dry-run
 
 # Verbose output for debugging
-npx @constructive-io/graphql-codegen generate --orm --endpoint https://api.example.com/graphql --verbose
-
-# Keep ephemeral database for debugging (when using PGPM modules)
-npx @constructive-io/graphql-codegen generate --schemas public --keep-db
+npx @constructive-io/graphql-codegen --orm -e https://api.example.com/graphql --verbose
 ```
 
 ## Environment Variables
@@ -144,7 +169,9 @@ The CLI respects these environment variables:
 
 | Issue | Solution |
 |-------|----------|
-| No code generated | Add `--react-query` or `--orm` flag |
+| No code generated | Add `--react-query`, `--orm`, or `--cli` flag |
 | "Cannot use both endpoint and schemas" | Choose one schema source |
 | "schemas and apiNames are mutually exclusive" | Use either `--schemas` or `--api-names`, not both |
 | Database connection errors | Check `PG*` environment variables |
+| Schema export produces empty file | Verify database/endpoint has tables in specified schemas |
+| `--schema-dir` generates nothing | Ensure directory contains `.graphql` files |

@@ -472,7 +472,7 @@ export default defineConfig({
 
 #### 2. Explicit multi-target
 
-Define each target explicitly when they have different sources or options:
+Define each target explicitly when they have different sources or options. Targets can mix any schema source:
 
 ```typescript
 export default defineConfig({
@@ -482,10 +482,15 @@ export default defineConfig({
     reactQuery: true,
   },
   admin: {
-    schemaFile: './schemas/admin.graphql',
+    endpoint: 'https://admin.example.com/graphql',
     output: './generated/admin',
     orm: true,
     cli: true,
+  },
+  internal: {
+    db: { schemas: ['internal'] },
+    output: './generated/internal',
+    orm: true,
   },
 });
 ```
@@ -823,10 +828,16 @@ filter: {
 
 ## References
 
-For detailed documentation on specific topics only when needed, see [references/](references/):
+For detailed documentation on specific topics, see the [references/](references/) directory:
 
-- CLI options and configuration: `cli-reference.md`, `config-reference.md`
-- Advanced usage patterns: `hooks-patterns.md`, `orm-patterns.md`
-- Error handling and relations: `error-handling.md`, `relations.md`
-- Query key factory and cache management: `query-keys.md`
-- Generated output structure: `hooks-output.md`, `orm-output.md`
+| Reference | Contents |
+|-----------|----------|
+| [cli-reference.md](references/cli-reference.md) | All CLI flags, schema export options, environment variables, exit codes |
+| [config-reference.md](references/config-reference.md) | Full `defineConfig()` interface, all options (schemaDir, schemaOnly, cli, docs, nodeHttpAdapter, filtering, queryKeys), multi-target config, complete examples for every schema source |
+| [hooks-output.md](references/hooks-output.md) | Generated hooks file structure, hook signatures, type exports |
+| [hooks-patterns.md](references/hooks-patterns.md) | Next.js setup, dependent/parallel queries, infinite scroll, optimistic updates, error handling |
+| [orm-output.md](references/orm-output.md) | Generated ORM file structure, client API, select/filter/relation types |
+| [orm-patterns.md](references/orm-patterns.md) | Singleton/per-request clients, complex filtering, relations, batch operations, repository pattern |
+| [error-handling.md](references/error-handling.md) | Discriminated unions, `.unwrap()`/`.unwrapOr()`, React Query error handling, server-side patterns |
+| [relations.md](references/relations.md) | BelongsTo/HasMany/ManyToMany queries, nested relations, filtering/ordering/pagination on relations |
+| [query-keys.md](references/query-keys.md) | Query key factory, invalidation helpers, mutation keys, cascade invalidation, prefetching |
