@@ -1,4 +1,7 @@
-# constructive-boilerplate-authoring
+---
+name: constructive-boilerplate-authoring
+description: Create and customize boilerplate templates for pgpm init. Use when authoring custom boilerplate templates, configuring .boilerplate.json, defining placeholder questions, or setting up a custom template repository.
+---
 
 Create and customize boilerplate templates for `pgpm init`.
 

@@ -1,4 +1,7 @@
-# GraphQL Codegen
+---
+name: graphql-codegen
+description: Generate type-safe GraphQL SDKs from your Constructive database schema. Use when generating type-safe React Query hooks, creating a Prisma-like ORM client, or building typed GraphQL queries and mutations for cloud functions.
+---
 
 Generate type-safe GraphQL SDKs from your Constructive database schema.
 

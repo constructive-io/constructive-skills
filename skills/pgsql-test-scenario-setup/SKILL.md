@@ -1,4 +1,7 @@
-# pgsql-test-scenario-setup
+---
+name: pgsql-test-scenario-setup
+description: Structuring complex test scenarios with proper isolation, transaction management, and multi-client patterns. Use when building complex RLS test scenarios, managing test isolation, or implementing multi-client database test patterns.
+---
 
 Structuring complex test scenarios with proper isolation, transaction management, and multi-client patterns.
 

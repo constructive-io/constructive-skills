@@ -1,4 +1,7 @@
-# constructive-boilerplate-pgpm-init
+---
+name: constructive-boilerplate-pgpm-init
+description: Initialize workspaces and modules using the pgpm init command. Supports PGPM (PostgreSQL) and PNPM (TypeScript/JavaScript) templates, interactive and non-interactive modes, and custom template repositories. Use when scaffolding a new workspace or module with pgpm init.
+---
 
 Initialize workspaces and modules using the `pgpm init` command. Supports PGPM (PostgreSQL) and PNPM (TypeScript/JavaScript) templates, interactive and non-interactive modes, and custom template repositories.
 

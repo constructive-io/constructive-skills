@@ -1,4 +1,7 @@
-# GitHub Workflows for PGPM and Database Testing
+---
+name: github-workflows-pgpm
+description: Configure GitHub Actions workflows for PostgreSQL database testing, PGPM migrations, and CI/CD pipelines in Constructive projects. Use when setting up CI/CD for a PGPM-based project, configuring PostgreSQL service containers in GitHub Actions, or running database tests in CI.
+---
 
 Configure GitHub Actions workflows for PostgreSQL database testing, PGPM migrations, and CI/CD pipelines in Constructive projects.
 

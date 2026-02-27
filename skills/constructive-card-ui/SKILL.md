@@ -1,4 +1,7 @@
-# Constructive Card UI Patterns
+---
+name: constructive-card-ui
+description: Build card-based interfaces using the @constructive-io/ui Card component. Use when building card layouts, dashboards, stat cards, profile cards, product cards, or interactive clickable cards.
+---
 
 Build beautiful card-based interfaces using the @constructive-io/ui Card component.
 

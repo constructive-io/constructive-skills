@@ -1,4 +1,7 @@
-# Yanse Terminal Colors
+---
+name: yanse-terminal-colors
+description: Use yanse for terminal color styling instead of chalk. Use when adding colors to CLI output or terminal logs in Constructive projects.
+---
 
 Use `yanse` for terminal color styling instead of `chalk`.
 

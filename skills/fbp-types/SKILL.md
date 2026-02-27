@@ -1,4 +1,7 @@
-# fbp-types
+---
+name: fbp-types
+description: Flow-Based Programming TypeScript types and GraphSchemata specification. Use when working with FBP type definitions, graph schemata, or the @fbp/types package.
+---
 
 Flow-Based Programming TypeScript types and GraphSchemata specification.
 
