@@ -1,4 +1,4 @@
-# constructive-app-boilerplate
+# constructive-boilerplate-nextjs-app
 
 Set up and develop with the Constructive App frontend boilerplate — a Next.js application with authentication, organization management, invites, members, and a GraphQL SDK.
 
