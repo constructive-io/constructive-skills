@@ -1,4 +1,4 @@
-# pgpm-boilerplates
+# constructive-boilerplate-authoring
 
 Create and customize boilerplate templates for `pgpm init`.
 
