@@ -344,7 +344,7 @@ const publicSchema = database.schemas?.nodes?.find(
 );
 
 // 2. Create domains for routing
-const subdomains = ['api', 'app', 'admin', 'meta'];
+const subdomains = ['api', 'app', 'meta'];
 const domains: Record<string, string> = {};
 
 for (const subdomain of subdomains) {
@@ -403,20 +403,13 @@ async function setupApi(opts: {
   return api;
 }
 
-// 4. Set up services with different access levels
+// 4. Set up services
 await setupApi({
   name: 'public',
   roleName: 'authenticated',
   anonRole: 'anonymous',
   schemaIds: [publicSchema.id],
   domainId: domains['api'],
-});
-
-await setupApi({
-  name: 'admin',
-  roleName: 'administrator',
-  anonRole: 'administrator',
-  domainId: domains['admin'],
 });
 
 await setupApi({
@@ -492,9 +485,15 @@ A single database typically has several APIs with different access levels:
 | API Name | `roleName` | `anonRole` | Purpose |
 |----------|-----------|-----------|---------|
 | `public` | `authenticated` | `anonymous` | Public-facing API |
-| `admin` | `administrator` | `administrator` | Admin dashboard |
-| `super` | `administrator` | `administrator` | Super admin |
 | `meta` | `authenticated` | `anonymous` | Metadata/schema introspection |
+
+> **DANGEROUS — Development/Testing Only!**
+>
+> APIs with `administrator` as both `roleName` and `anonRole` (e.g., `admin`, `super`)
+> should **never** exist in production. These grant full administrator access to
+> anonymous users. They are only used in local development and test environments.
+> If you see administrator APIs in a production setup, treat it as a critical
+> security misconfiguration.
 
 ### Domain routing pattern
 
@@ -503,7 +502,6 @@ Each API gets its own subdomain:
 | Subdomain | Domain | Linked To |
 |-----------|--------|-----------|
 | `api` | `example.com` | `public` API |
-| `admin` | `example.com` | `admin` API |
 | `app` | `example.com` | Site (frontend) |
 | `meta` | `example.com` | `meta` API |
 
