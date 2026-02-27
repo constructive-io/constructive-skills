@@ -1,27 +1,110 @@
 ---
 name: constructive-graphql-codegen
-description: Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL endpoints, databases, or PGPM modules using @constructive-io/graphql-codegen. Also generates documentation (README, AGENTS.md, skills/, mcp.json). Use when asked to "generate GraphQL hooks", "generate ORM", "generate CLI", "set up codegen", "generate docs", "generate skills", or when implementing data fetching for a PostGraphile backend.
+description: Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL endpoints, schema files/directories, databases, or PGPM modules using @constructive-io/graphql-codegen. Also generates documentation (README, AGENTS.md, skills/, mcp.json). Use when asked to "generate GraphQL hooks", "generate ORM", "generate CLI", "set up codegen", "generate docs", "generate skills", "export schema", or when implementing data fetching for a PostGraphile backend.
 compatibility: Node.js 22+, PostgreSQL 14+, PostGraphile v5+ (optional)
 metadata:
   author: constructive-io
-  version: "3.1.x"
+  version: "4.5.x"
 ---
 
 # Constructive GraphQL Codegen
 
-Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from PostGraphile GraphQL endpoints. Also generates documentation in multiple formats.
+Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL schema files, endpoints, databases, or PGPM modules. Also generates documentation in multiple formats.
 
 ## When to Apply
 
 Use this skill when:
 - Setting up GraphQL code generation for a PostGraphile backend
 - User asks to generate hooks, ORM, CLI, or type-safe GraphQL client
+- Exporting a GraphQL schema from a database or endpoint
 - Generating documentation (README, AGENTS.md, skill files, MCP tool definitions)
 - Implementing features that need to fetch or mutate data
 - Using previously generated hooks, ORM, or CLI code
 - Regenerating code after schema changes
 
 **Important**: Always prefer generated code over raw GraphQL queries or SQL.
+
+## Recommended Workflow: Schema Export + Schema Directory
+
+The **recommended approach** is a two-step workflow using schema export followed by `schemaDir`. This is the most deterministic and portable way to use codegen:
+
+### Step 1: Export schema(s) to `.graphql` files
+
+Export your schema from any source (database, PGPM module, endpoint) into a directory of `.graphql` files:
+
+```bash
+# Export from database
+npx @constructive-io/graphql-codegen --schema-only --schemas public --schema-only-output ./schemas --schema-only-filename public.graphql
+
+# Export from PGPM module (via config)
+npx @constructive-io/graphql-codegen --schema-only -c graphql-codegen.config.ts
+
+# Export from endpoint
+npx @constructive-io/graphql-codegen --schema-only -e https://api.example.com/graphql --schema-only-output ./schemas
+```
+
+Or programmatically:
+
+```typescript
+import { generate } from '@constructive-io/graphql-codegen';
+
+// Export from database
+await generate({
+  db: { schemas: ['public'] },
+  schemaOnly: true,
+  schemaOnlyOutput: './schemas',
+  schemaOnlyFilename: 'public.graphql',
+});
+
+// Export from PGPM module
+await generate({
+  db: {
+    pgpm: { modulePath: './packages/my-module' },
+    schemas: ['app_public'],
+  },
+  schemaOnly: true,
+  schemaOnlyOutput: './schemas',
+  schemaOnlyFilename: 'app_public.graphql',
+});
+```
+
+### Step 2: Generate code from the schema directory
+
+Point `schemaDir` at the directory containing your `.graphql` files. Each file automatically becomes a separate target:
+
+```typescript
+// graphql-codegen.config.ts
+import { defineConfig } from '@constructive-io/graphql-codegen';
+
+export default defineConfig({
+  schemaDir: './schemas',   // Directory of .graphql files
+  output: './generated',    // Each file becomes ./generated/{name}/
+  reactQuery: true,
+  orm: true,
+});
+```
+
+```bash
+npx @constructive-io/graphql-codegen -c graphql-codegen.config.ts
+```
+
+Given `schemas/public.graphql` and `schemas/admin.graphql`, this produces:
+
+```
+generated/
+  public/          # Generated from public.graphql
+    hooks/
+    orm/
+  admin/           # Generated from admin.graphql
+    hooks/
+    orm/
+```
+
+**Why this approach is best:**
+- **Deterministic** — `.graphql` files are static, version-controllable artifacts
+- **Portable** — no live database or endpoint needed at code generation time
+- **Fast** — no network requests or ephemeral database creation during codegen
+- **Reviewable** — schema changes show up as clear diffs in version control
 
 ## Quick Start
 
@@ -34,19 +117,25 @@ pnpm add @constructive-io/graphql-codegen
 ### Generate React Query Hooks
 
 ```bash
-npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/graphql -o ./generated
+npx @constructive-io/graphql-codegen --react-query -s ./schemas/public.graphql -o ./generated
 ```
 
 ### Generate ORM Client
 
 ```bash
-npx @constructive-io/graphql-codegen --orm -e https://api.example.com/graphql -o ./generated
+npx @constructive-io/graphql-codegen --orm -s ./schemas/public.graphql -o ./generated
 ```
 
 ### Generate CLI
 
 ```bash
-npx @constructive-io/graphql-codegen --cli -e https://api.example.com/graphql -o ./generated
+npx @constructive-io/graphql-codegen --cli -s ./schemas/public.graphql -o ./generated
+```
+
+### Generate from Endpoint
+
+```bash
+npx @constructive-io/graphql-codegen --react-query -e https://api.example.com/graphql -o ./generated
 ```
 
 ### Generate from Database
@@ -127,12 +216,13 @@ interface GenerateOptions {
   // Schema source (choose one)
   endpoint?: string;
   schemaFile?: string;
+  schemaDir?: string;       // Directory of .graphql files — auto-expands to multi-target
   db?: {
     config?: { host, port, database, user, password };
     schemas?: string[];
-    apiNames?: string[];
+    apiNames?: string[];    // Auto-discover schemas from services_public.api_schemas
     pgpm?: { modulePath, workspacePath, moduleName };
-    keepDb?: boolean;
+    keepDb?: boolean;       // Keep ephemeral DB after introspection (debugging)
   };
   
   // Output
@@ -142,6 +232,11 @@ interface GenerateOptions {
   reactQuery?: boolean;  // Default: false
   orm?: boolean;         // Default: false
   cli?: CliConfig | boolean; // Default: false — generate inquirerer CLI
+  
+  // Schema export (instead of code generation)
+  schemaOnly?: boolean;          // Export schema to .graphql file, skip codegen
+  schemaOnlyOutput?: string;     // Output directory for exported schema
+  schemaOnlyFilename?: string;   // Filename (default: 'schema.graphql')
   
   // Documentation (generated alongside code)
   docs?: DocsConfig | boolean; // Default: { readme: true, agents: true, mcp: false, skills: false }
@@ -217,6 +312,7 @@ main();
 |--------|-------------|
 | `-e, --endpoint <url>` | GraphQL endpoint URL |
 | `-s, --schema-file <path>` | Path to GraphQL schema file |
+| `--schema-dir <path>` | Directory of `.graphql` files (auto multi-target) |
 | `--schemas <list>` | PostgreSQL schemas (comma-separated) |
 | `--api-names <list>` | API names for auto schema discovery |
 | `-o, --output <dir>` | Output directory (default: `./generated/graphql`) |
@@ -224,6 +320,9 @@ main();
 | `--react-query` | Generate React Query hooks |
 | `--orm` | Generate ORM client |
 | `--cli` | Generate inquirerer-based CLI |
+| `--schema-only` | Export schema to `.graphql` file (no code generation) |
+| `--schema-only-output <dir>` | Output directory for schema export |
+| `--schema-only-filename <name>` | Filename for exported schema (default: `schema.graphql`) |
 | `-a, --authorization <token>` | Authorization header |
 | `-t, --target <name>` | Target name in multi-target config |
 | `--dry-run` | Preview without writing |
@@ -238,12 +337,28 @@ Create a configuration file manually:
 ```typescript
 import { defineConfig } from '@constructive-io/graphql-codegen';
 
+// RECOMMENDED: From a directory of .graphql schema files
+export default defineConfig({
+  schemaDir: './schemas',
+  output: './generated',
+  reactQuery: true,
+  orm: true,
+});
+
+// From a single schema file
+export default defineConfig({
+  schemaFile: './schemas/public.graphql',
+  output: './generated',
+  reactQuery: true,
+  orm: true,
+});
+
 // From GraphQL endpoint
 export default defineConfig({
   endpoint: 'https://api.example.com/graphql',
   output: './generated',
-  reactQuery: true,  // Generate React Query hooks
-  orm: true,         // Generate ORM client
+  reactQuery: true,
+  orm: true,
   headers: {
     Authorization: `Bearer ${process.env.API_TOKEN}`,
   },
@@ -340,22 +455,58 @@ const db = createClient({
 
 ### Multi-Target Configuration
 
+There are three ways to get multi-target generation:
+
+#### 1. Schema directory (recommended)
+
+`schemaDir` automatically creates one target per `.graphql` file in the directory:
+
 ```typescript
-// Simple multi-target
+export default defineConfig({
+  schemaDir: './schemas',   // Contains public.graphql, admin.graphql, etc.
+  output: './generated',    // Produces ./generated/public/, ./generated/admin/, etc.
+  reactQuery: true,
+  orm: true,
+});
+```
+
+#### 2. Explicit multi-target
+
+Define each target explicitly when they have different sources or options:
+
+```typescript
 export default defineConfig({
   public: {
-    endpoint: 'https://api.example.com/graphql',
+    schemaFile: './schemas/public.graphql',
     output: './generated/public',
     reactQuery: true,
   },
   admin: {
-    db: { schemas: ['admin'] },
+    schemaFile: './schemas/admin.graphql',
     output: './generated/admin',
     orm: true,
     cli: true,
   },
 });
 ```
+
+#### 3. Auto-expand from multiple API names
+
+When `db.apiNames` contains multiple entries, each API name automatically becomes a separate target:
+
+```typescript
+export default defineConfig({
+  db: { apiNames: ['public', 'admin'] },
+  output: './generated',  // Produces ./generated/public/, ./generated/admin/
+  orm: true,
+});
+```
+
+This queries `services_public.api_schemas` for each API name to resolve the corresponding PostgreSQL schemas, then generates each target independently.
+
+#### Shared PGPM sources in multi-target
+
+When multiple targets share the same PGPM module, the codegen automatically deduplicates ephemeral database creation. One ephemeral database is created and reused across all targets that reference the same module, avoiding redundant deploys.
 
 ## Using Generated Hooks
 
@@ -500,6 +651,29 @@ const user = await db.user.findOne({ id }).execute().unwrapOr(defaultUser);
 
 ## Schema Sources
 
+The codegen supports 6 schema source modes. The **recommended** approach is schema export + `schemaDir` (see top of this document).
+
+| Priority | Source | Config Key | Best For |
+|----------|--------|-----------|----------|
+| **1 (recommended)** | Schema directory | `schemaDir: './schemas'` | Deterministic, portable, multi-target |
+| 2 | Schema file | `schemaFile: './schema.graphql'` | Single schema, simple projects |
+| 3 | PGPM module (path) | `db.pgpm.modulePath` | Schema export from a pgpm module |
+| 4 | PGPM workspace | `db.pgpm.workspacePath + moduleName` | Schema export from a pgpm workspace |
+| 5 | Database | `db.schemas` or `db.apiNames` | Schema export from a live database |
+| 6 | Endpoint | `endpoint` | Schema export from a running server |
+
+### From Schema Directory (recommended)
+
+```bash
+npx @constructive-io/graphql-codegen --react-query --orm --schema-dir ./schemas -o ./generated
+```
+
+### From Schema File
+
+```bash
+npx @constructive-io/graphql-codegen --react-query -s ./schemas/public.graphql -o ./generated
+```
+
 ### From GraphQL Endpoint
 
 ```bash
@@ -519,7 +693,7 @@ npx @constructive-io/graphql-codegen --react-query --api-names my_api
 ### From PGPM Module
 
 ```typescript
-// In config file
+// In config file — direct path
 export default defineConfig({
   db: {
     pgpm: { modulePath: './packages/my-module' },
@@ -527,7 +701,61 @@ export default defineConfig({
   },
   reactQuery: true,
 });
+
+// In config file — workspace + module name
+export default defineConfig({
+  db: {
+    pgpm: {
+      workspacePath: '.',
+      moduleName: 'my-module',
+    },
+    schemas: ['app_public'],
+  },
+  orm: true,
+});
 ```
+
+PGPM module sources create an ephemeral database, deploy the module, introspect the schema via PostGraphile, then tear down the database (unless `keepDb: true` for debugging).
+
+## Schema Export
+
+Schema export (`schemaOnly: true`) fetches a schema from any source and writes it as a `.graphql` SDL file without generating any code. This is the recommended first step in the two-step workflow.
+
+### CLI
+
+```bash
+# Export from database
+npx @constructive-io/graphql-codegen --schema-only --schemas public --schema-only-output ./schemas --schema-only-filename public.graphql
+
+# Export from endpoint
+npx @constructive-io/graphql-codegen --schema-only -e https://api.example.com/graphql --schema-only-output ./schemas
+
+# Export from PGPM module (via config)
+npx @constructive-io/graphql-codegen --schema-only -c codegen.config.ts
+```
+
+### Programmatic
+
+```typescript
+import { generate } from '@constructive-io/graphql-codegen';
+
+const result = await generate({
+  db: { schemas: ['public'] },
+  schemaOnly: true,
+  schemaOnlyOutput: './schemas',
+  schemaOnlyFilename: 'public.graphql',
+});
+
+console.log(result.message); // "Schema exported to ./schemas/public.graphql"
+```
+
+### Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `schemaOnly` | Enable schema export mode (no code generation) | `false` |
+| `schemaOnlyOutput` | Output directory for the exported schema | Same as `output` |
+| `schemaOnlyFilename` | Filename for the exported schema | `schema.graphql` |
 
 ## Query Key Factory (React Query)
 
@@ -590,6 +818,8 @@ filter: {
 | Auth errors at runtime | Check `configure()` headers are set |
 | Localhost fetch errors (Node.js) | Enable `nodeHttpAdapter: true` for localhost subdomain resolution |
 | No skill files generated | Set `docs: { skills: true }` in config |
+| Schema export produces empty file | Verify database/endpoint has tables in the specified schemas |
+| `schemaDir` generates nothing | Ensure directory contains `.graphql` files (not `.gql` or other extensions) |
 
 ## References
 
