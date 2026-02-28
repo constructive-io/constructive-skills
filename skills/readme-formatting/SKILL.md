@@ -261,4 +261,4 @@ When formatting a README, verify:
 - Logo assets: https://github.com/constructive-io/constructive/tree/main/assets
 - Shields.io badges: https://shields.io/
 - Related skill: `pnpm-publishing` for publishing workflow
-- Related skill: `pgpm-publishing` for pgpm module publishing
+- Related skill: `pgpm` (`references/publishing.md`) for pgpm module publishing

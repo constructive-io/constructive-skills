@@ -1,11 +1,3 @@
----
-name: pgpm-dependencies
-description: Manage module dependencies in pgpm workspaces. Use when asked to "add a dependency", "reference another module", "manage cross-module dependencies", or when working with multi-module database projects.
-compatibility: pgpm CLI, PostgreSQL
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # Managing PGPM Dependencies
 
@@ -212,6 +204,6 @@ pgpm deploy --database myapp_dev --yes
 
 ## References
 
-- Related skill: `pgpm-workspace` for workspace setup
-- Related skill: `pgpm-changes` for authoring changes
-- Related skill: `pgpm-testing` for testing modules
+- Related reference: `references/workspace.md` for workspace setup
+- Related reference: `references/changes.md` for authoring changes
+- Related reference: `references/testing.md` for testing modules

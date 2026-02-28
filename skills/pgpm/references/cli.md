@@ -1,11 +1,3 @@
----
-name: pgpm-cli
-description: Complete reference for pgpm CLI commands. Use when asked to "deploy database", "run migrations", "manage pgpm modules", "test packages", or when working with PostgreSQL package management.
-compatibility: pgpm, PostgreSQL, Node.js 18+
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # pgpm CLI Reference
 
@@ -27,7 +19,7 @@ Use this skill when:
 npm install -g pgpm
 
 # Ensure PostgreSQL is running and env vars are loaded
-# See pgpm-docker and pgpm-env skills for setup
+# See references/docker.md and references/env.md for setup
 
 # Create workspace and module
 pgpm init workspace
@@ -164,7 +156,7 @@ pgpm add my_change
 
 This creates three files in `sql/`:
 - `deploy/my_change.sql` — Deploy script
-- `revert/my_change.sql` — Revert script  
+- `revert/my_change.sql` — Revert script
 - `verify/my_change.sql` — Verify script
 
 **pgpm remove** — Remove a database change
@@ -380,7 +372,7 @@ pgpm test-packages --full-cycle --continue-on-fail
 
 ## References
 
-- Related skill: `pgpm-workspace` for workspace structure
-- Related skill: `pgpm-changes` for authoring changes
-- Related skill: `pgpm-dependencies` for module dependencies
+- Related reference: `references/workspace.md` for workspace structure
+- Related reference: `references/changes.md` for authoring changes
+- Related reference: `references/dependencies.md` for module dependencies
 - Related skill: `github-workflows-pgpm` for CI/CD workflows

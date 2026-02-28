@@ -22,7 +22,7 @@ Use this skill when:
 
 ## Prerequisites
 
-- PostgreSQL 17+ running with a deployed Constructive database (see `pgpm-docker` and `pgpm-env` skills)
+- PostgreSQL 17+ running with a deployed Constructive database (see `pgpm` skill — `references/docker.md` and `references/env.md`)
 - `@constructive-io/cli` installed (`npm install -g @constructive-io/cli` or available from the monorepo)
 - Database users bootstrapped via `pgpm admin-users bootstrap --yes`
 
@@ -76,7 +76,7 @@ cnc server --host 0.0.0.0 --port 3000 --origin "*"
 
 The server reads its configuration from environment variables. Set these before starting:
 
-> **Prerequisite:** Ensure PG env vars are loaded (see `pgpm-env` skill) before starting the server.
+> **Prerequisite:** Ensure PG env vars are loaded (see `pgpm` skill, `references/env.md`) before starting the server.
 
 ```bash
 # Required
@@ -228,7 +228,7 @@ API_META_SCHEMAS=metaschema_public,services_public,metaschema_modules_public,con
 
 ### Start local dev server
 
-> Ensure PG env vars are loaded (see `pgpm-env` skill).
+> Ensure PG env vars are loaded (see `pgpm` skill, `references/env.md`).
 
 ```bash
 export PGDATABASE=constructive
@@ -345,7 +345,7 @@ The `cnc server` command:
 | Port already in use | Another instance running | `lsof -ti:5555 \| xargs kill -9` |
 | No schemas exposed | `API_EXPOSED_SCHEMAS` not set | Set the env var with comma-separated schema names |
 | Auth errors | Wrong role configuration | Check `API_ANON_ROLE` and `API_ROLE_NAME` |
-| Can't connect to DB | PG env vars not loaded | See `pgpm-env` skill for loading database connection variables |
+| Can't connect to DB | PG env vars not loaded | See `pgpm` skill (`references/env.md`) for loading database connection variables |
 | Endpoints return 404 | Database not deployed | Deploy with `pgpm deploy --createdb --workspace --all --yes` |
 | GraphiQL shows empty schema | Server not running or wrong port | Verify server is up and explorer points to correct URL |
 | Subdomain routing not working | DNS issue | `*.localhost` should resolve automatically; if not, add to `/etc/hosts` |
@@ -353,7 +353,7 @@ The `cnc server` command:
 
 ## References
 
-- Related skill: `pgpm-docker` for PostgreSQL container management
-- Related skill: `pgpm-env` for environment variable setup
+- Related skill: `pgpm` (`references/docker.md`) for PostgreSQL container management
+- Related skill: `pgpm` (`references/env.md`) for environment variable setup
 - Related skill: `constructive-graphql-codegen` for generating CLI from schema
 - Related skill: `constructive-deployment` for Docker Compose and production deployment

@@ -1,10 +1,3 @@
----
-name: pgpm-deploy-lifecycle
-description: Full lifecycle of pgpm database deployments — deploy, verify, revert, tagging, and status checking. Use when asked to "deploy a module", "revert a migration", "verify deployments", "tag a release", "check deployment status", or when running pgpm deploy/revert/verify commands.
-compatibility: pgpm CLI, PostgreSQL 14+, Node.js 22+
-metadata:
-  author: constructive-io
----
 
 # pgpm Deploy Lifecycle
 
@@ -197,7 +190,7 @@ This is the gold standard for validating migrations — it proves:
 
 ### First-time workspace deploy
 
-> **Prerequisite:** Ensure PostgreSQL is running and environment is loaded. See `pgpm-docker` and `pgpm-env` skills for setup.
+> **Prerequisite:** Ensure PostgreSQL is running and environment is loaded. See `references/docker.md` and `references/env.md` for setup.
 
 ```bash
 pgpm admin-users bootstrap --yes
@@ -228,7 +221,7 @@ pgpm deploy --to @v1.0.0
 
 ### Validate all migrations (CI)
 
-> **Note:** In CI, start Postgres and load env vars first. See `pgpm-docker` and `pgpm-env` skills, or `github-workflows-pgpm` for CI-specific patterns.
+> **Note:** In CI, start Postgres and load env vars first. See `references/docker.md` and `references/env.md`, or `github-workflows-pgpm` for CI-specific patterns.
 
 ```bash
 pgpm admin-users bootstrap --yes

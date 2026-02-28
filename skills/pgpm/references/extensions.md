@@ -1,11 +1,3 @@
----
-name: pgpm-extensions
-description: Manage PostgreSQL extensions and pgpm modules in a pgpm workspace. Use when asked to "add an extension", "install a module", "add a dependency", "use pgcrypto/uuid-ossp", or when working with .control files and the extensions/ directory. CRITICAL — never run CREATE EXTENSION directly; pgpm handles extension creation during deploy.
-compatibility: pgpm CLI, PostgreSQL 14+, Node.js 22+
-metadata:
-  author: constructive-io
----
-
 # pgpm Extensions
 
 How extensions and modules work in pgpm — adding dependencies, installing packages, and understanding the .control file.
@@ -83,7 +75,7 @@ The `requires` field uses **control file names**, not npm package names:
 | `uuid-ossp` | `uuid-ossp` |
 | `pgcrypto` | `pgcrypto` |
 
-See the `pgpm-module-naming` skill for the full naming convention.
+See `references/module-naming.md` for the full naming convention.
 
 ## Adding Dependencies
 

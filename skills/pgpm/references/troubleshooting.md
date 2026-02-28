@@ -1,11 +1,3 @@
----
-name: pgpm-troubleshooting
-description: Troubleshoot common pgpm, PostgreSQL, and testing issues. Use when encountering "connection refused", "PGHOST not set", "transaction aborted", Docker issues, or other pgpm-related errors.
-compatibility: pgpm CLI, PostgreSQL, Docker
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # PGPM Troubleshooting
 
@@ -316,6 +308,6 @@ If issues persist:
 
 ## References
 
-- Related skill: `pgpm-docker` for Docker management
-- Related skill: `pgpm-env` for environment configuration
+- Related reference: `references/docker.md` for Docker management
+- Related reference: `references/env.md` for environment configuration
 - Related skill: `pgsql-test-exceptions` for transaction handling

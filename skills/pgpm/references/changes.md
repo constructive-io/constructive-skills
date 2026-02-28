@@ -1,11 +1,3 @@
----
-name: pgpm-changes
-description: Author database changes with pgpm using the three-file pattern (deploy/revert/verify). Use when asked to "add a table", "create a function", "add a migration", "write database changes", or when modifying database schema.
-compatibility: pgpm CLI, PostgreSQL
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # Authoring Database Changes with PGPM
 
@@ -261,6 +253,6 @@ pgpm verify --database myapp_dev
 
 ## References
 
-- Related skill: `pgpm-workspace` for workspace setup
-- Related skill: `pgpm-dependencies` for cross-module dependencies
-- Related skill: `pgpm-testing` for testing database changes
+- Related reference: `references/workspace.md` for workspace setup
+- Related reference: `references/dependencies.md` for cross-module dependencies
+- Related reference: `references/testing.md` for testing database changes

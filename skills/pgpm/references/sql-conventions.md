@@ -1,10 +1,3 @@
----
-name: pgpm-sql-conventions
-description: SQL file format and conventions for pgpm migration scripts. Use when writing deploy/revert/verify SQL files, when asked about migration file format, SQL naming conventions, dependency declarations, or the three-file pattern in pgpm.
-compatibility: pgpm CLI, PostgreSQL 14+
-metadata:
-  author: constructive-io
----
 
 # pgpm SQL Conventions
 

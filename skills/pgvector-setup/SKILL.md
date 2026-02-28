@@ -33,7 +33,7 @@ pgvector must be available in your PostgreSQL instance. Use one of these Docker 
 
 ### 1. Start PostgreSQL with pgvector
 
-Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm-docker` skill) and PG env vars are loaded (see `pgpm-env` skill).
+Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm` skill, `references/docker.md`) and PG env vars are loaded (see `pgpm` skill, `references/env.md`).
 
 ### 2. Create Schema and Tables
 

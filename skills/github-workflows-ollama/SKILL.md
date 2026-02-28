@@ -420,7 +420,7 @@ jobs:
 ## References
 
 - Related skill: `github-workflows-pgpm` for general PGPM CI/CD
-- Related skill: `pgpm-testing` for database testing
+- Related skill: `pgpm` (`references/testing.md`) for database testing
 - Related skill: `rag-pipeline` for RAG implementation
 - Related skill: `ollama-integration` for Ollama client
 - [Ollama Docker documentation](https://ollama.com/blog/ollama-is-now-available-as-an-official-docker-image)

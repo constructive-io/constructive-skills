@@ -1,11 +1,3 @@
----
-name: pgpm-testing
-description: Run PostgreSQL integration tests with isolated databases using pgsql-test. Use when asked to "run database tests", "set up test database", "write integration tests", "test PGPM modules", or when implementing tests that need PostgreSQL.
-compatibility: Node.js 18+, Jest or compatible test runner, pgsql-test package, PostgreSQL running locally
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # PGPM Testing
 
@@ -170,7 +162,7 @@ For RLS (Row Level Security) testing:
 ```typescript
 test('user can only see own data', async () => {
   await db.setContext('user_id', 'user-123');
-  
+
   const result = await db.query('SELECT * FROM user_data');
   // Only returns rows where user_id = 'user-123'
 });
@@ -295,6 +287,6 @@ my-module/
 ## References
 
 For related skills:
-- Docker container management: See `pgpm-docker` skill
-- Environment variables: See `pgpm-env` skill
+- Docker container management: See `references/docker.md`
+- Environment variables: See `references/env.md`
 - GraphQL codegen: See `constructive-graphql-codegen` skill

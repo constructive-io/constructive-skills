@@ -1,12 +1,3 @@
----
-name: pgpm-env
-description: Manage PostgreSQL environment variables with profile support using pgpm env commands. Use when asked to "set up database environment", "load postgres env vars", "run command with database connection", "use supabase locally", or when needing to configure database connection for commands.
-compatibility: Node.js 18+, pgpm CLI available
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # PGPM Env
 
 Manage PostgreSQL environment variables with profile support using the `pgpm env` command.
@@ -210,5 +201,5 @@ The `pgpm env` command sets standard PostgreSQL environment variables that are r
 ## References
 
 For related skills:
-- Docker container management: See `pgpm-docker` skill
-- Running tests: See `pgpm-testing` skill
+- Docker container management: See `references/docker.md`
+- Running tests: See `references/testing.md`

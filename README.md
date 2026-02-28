@@ -62,21 +62,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
-| `pgpm-cli` | Complete CLI reference for all pgpm commands |
-| `pgpm-workspace` | Create and manage pgpm workspaces for modular PostgreSQL development |
-| `pgpm-changes` | Author database changes with the three-file pattern (deploy/revert/verify) |
-| `pgpm-dependencies` | Manage module dependencies in pgpm workspaces |
-| `pgpm-deploy-lifecycle` | Full lifecycle of pgpm deployments — deploy, verify, revert, tagging, status |
-| `pgpm-docker` | Manage PostgreSQL Docker containers for local development |
-| `pgpm-env` | Manage PostgreSQL environment variables with profile support |
-| `pgpm-environment-configuration` | Configure PostgreSQL and PGPM environments using @pgpmjs/env |
-| `pgpm-extensions` | Manage PostgreSQL extensions and pgpm modules (.control files, extensions/) |
-| `pgpm-module-naming` | npm package names vs control file names in pgpm modules |
-| `pgpm-plan-format` | Understand and fix pgpm.plan file format issues |
-| `pgpm-publishing` | Publish @pgpm/\* SQL modules to npm |
-| `pgpm-sql-conventions` | SQL file format and conventions for pgpm migration scripts |
-| `pgpm-testing` | Run PostgreSQL integration tests with isolated databases using pgsql-test |
-| `pgpm-troubleshooting` | Common issues and solutions for pgpm, PostgreSQL, and testing |
+| `pgpm` | PostgreSQL Package Manager — deterministic, plan-driven database migrations with dependency management. Covers CLI commands, workspaces, changes, deployments, Docker, environment, extensions, naming, plan format, publishing, SQL conventions, testing, and troubleshooting. Includes 15 reference files for detailed documentation on each topic. |
 
 ### Database Testing (pgsql-test)
 

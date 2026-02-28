@@ -1,12 +1,3 @@
----
-name: pgpm-environment-configuration
-description: Configure PostgreSQL and PGPM environments using @pgpmjs/env. Use when asked to "configure environment", "set up database connection", "manage env vars", or when working with PGPM configuration.
-compatibility: "@pgpmjs/env, pgpm, PostgreSQL, Node.js 18+"
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Environment Configuration with @pgpmjs/env
 
 Unified environment configuration for PGPM and Constructive projects. Provides config file discovery, environment variable parsing, and hierarchical option merging.
@@ -362,6 +353,6 @@ pgpm deploy --createdb
 
 ## References
 
-- Related skill: `pgpm-cli` for CLI commands
-- Related skill: `pgpm-workspace` for workspace configuration
+- Related skill: `references/cli.md` for CLI commands
+- Related skill: `references/workspace.md` for workspace configuration
 - Related skill: `github-workflows-pgpm` for CI/CD environment setup

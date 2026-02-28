@@ -1,11 +1,3 @@
----
-name: pgpm-workspace
-description: Create and manage pgpm workspaces for modular PostgreSQL development. Use when asked to "create a workspace", "initialize a project", "set up pgpm", "create a database module", or when starting a new modular database project.
-compatibility: Node.js 20+, pnpm, Docker, pgpm CLI
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # PGPM Workspaces
 
@@ -134,7 +126,7 @@ Tracks all changes in deployment order.
 
 Before deploying, ensure PostgreSQL is running and connection variables are loaded.
 
-> See `pgpm-docker` skill for starting PostgreSQL and `pgpm-env` skill for loading environment variables.
+> See `references/docker.md` for starting PostgreSQL and `references/env.md` for loading environment variables.
 
 ```bash
 # Verify connection
@@ -185,12 +177,12 @@ pgpm add schemas/app/functions/create_user --requires schemas/app/tables/users
 | Issue | Solution |
 |-------|----------|
 | "Cannot connect to Docker" | Start Docker Desktop first |
-| "PGHOST not set" | Load PG env vars (see `pgpm-env` skill) |
-| "Connection refused" | Ensure PostgreSQL is running (see `pgpm-docker` skill) |
+| "PGHOST not set" | Load PG env vars (see `references/env.md`) |
+| "Connection refused" | Ensure PostgreSQL is running (see `references/docker.md`) |
 | Module not found | Ensure you're inside a workspace with `pgpm.json` |
 
 ## References
 
-- Related skill: `pgpm-docker` for Docker management
-- Related skill: `pgpm-env` for environment configuration
-- Related skill: `pgpm-changes` for authoring database changes
+- Related reference: `references/docker.md` for Docker management
+- Related reference: `references/env.md` for environment configuration
+- Related reference: `references/changes.md` for authoring database changes

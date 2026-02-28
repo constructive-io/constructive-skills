@@ -85,7 +85,7 @@ RAG_CHAT_MODEL=llama3.2
 
 ### 1. Set Up Local Database with PGPM
 
-Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm-docker` skill) and PG env vars are loaded (see `pgpm-env` skill).
+Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm` skill, `references/docker.md`) and PG env vars are loaded (see `pgpm` skill, `references/env.md`).
 
 ```bash
 # Run the setup script
@@ -496,7 +496,7 @@ async function addDocument(title: string, content: string, metadata = {}) {
 | Issue | Solution |
 |-------|----------|
 | "RAG_DATABASE_URL not set" | Set the environment variable or pass databaseUrl to createRAGKit |
-| "Connection refused" to database | Ensure PostgreSQL is running (see `pgpm-docker` skill) |
+| "Connection refused" to database | Ensure PostgreSQL is running (see `pgpm` skill, `references/docker.md`) |
 | "Connection refused" to Ollama | Ensure Ollama is running: `ollama serve` |
 | "type vector does not exist" | Run the setup script to install pgvector extension |
 | No context retrieved | Lower RAG_SIMILARITY_THRESHOLD or add more documents |
@@ -509,4 +509,4 @@ async function addDocument(title: string, content: string, metadata = {}) {
 - Related skill: `pgvector-similarity-search` for retrieval queries
 - Related skill: `rag-pipeline` for complete RAG implementation
 - Related skill: `ollama-integration` for Ollama client details
-- Related skill: `pgpm-docker` for PostgreSQL container management
+- Related skill: `pgpm` (`references/docker.md`) for PostgreSQL container management
