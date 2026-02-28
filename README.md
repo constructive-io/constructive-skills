@@ -32,11 +32,9 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
+| `constructive-ui` | Build UIs with @constructive-io/ui — 50+ components, cva variants, Tailwind CSS v4 theming, forms, overlays, layout, animations, command palette, Stack navigation, and advanced inputs. Includes 18 reference files covering foundations, theming, registry, motion, forms, overlays, layout, sidebar, data display, advanced inputs, combobox, command palette, card patterns, Stack navigation, sheet stacking, and more. |
 | `constructive-crud-stack` | Build CRUD actions as Stack cards (iOS-style slide-in panels) for any Constructive CRM |
 | `constructive-meta-forms` | Dynamic CRUD forms using the \_meta GraphQL endpoint — zero static field configuration |
-| `constructive-card-ui` | Card-based interfaces using @constructive-io/ui (dashboards, stat cards, profile cards) |
-| `constructive-command-palette` | Command palettes (Cmd+K / Ctrl+K) with navigation and executable commands |
-| `constructive-nextjs-ui` | Next.js applications using the @constructive-io/ui component library |
 | `constructive-deployment` | Deploy the Constructive platform locally and to production (Docker Compose, pgpm, CLI) |
 | `constructive-functions` | Knative-style HTTP cloud functions for email, webhooks, and background jobs |
 | `constructive-server-config` | Configure and run the Constructive GraphQL server, GraphiQL explorer, and code generation |

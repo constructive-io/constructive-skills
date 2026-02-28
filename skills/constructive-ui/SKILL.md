@@ -234,6 +234,7 @@ See [references/input-components.md](references/input-components.md) for Input, 
 | **Popover** | Contextual info/controls, filter panels |
 | **Tooltip** | Brief hints on hover/focus |
 | **DropdownMenu** | Action menus, context menus |
+| **Command** | Command palette (Cmd+K), search-driven command execution |
 
 ```tsx
 // Dialog
@@ -262,6 +263,7 @@ Floating elements inside modals auto-elevate z-index via `useFloatingOverlayPort
 See [references/overlays.md](references/overlays.md) for all overlay components, nesting patterns.
 See [references/sheet-stacking.md](references/sheet-stacking.md) for SheetStackProvider deep dive.
 See [references/dropdown-menu-api.md](references/dropdown-menu-api.md) for DropdownMenu sub-component API.
+See [references/command-palette.md](references/command-palette.md) for full command palette system — registry, hooks, multi-step wizards, background tasks, keyboard shortcuts.
 
 ## Layout & Navigation
 
@@ -297,6 +299,28 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@constructive-io/ui/ta
 ```
 
 Also: Breadcrumb, Pagination, Stepper, Collapsible, Resizable, ScrollArea, PageHeader, Dock.
+
+### Stack Navigation (iOS-Style Card Navigation)
+
+The primary navigation pattern in the Constructive admin app. Cards push/pop from the right with peek interactions, gestures, and responsive layout.
+
+```tsx
+import { CardStackProvider, useCardStack, CardStackViewport } from '@constructive-io/ui/stack';
+
+// Root layout — wraps entire app
+<CardStackProvider layoutMode="side-by-side" defaultPeekOffset={48}>
+  {children}
+  <ClientOnlyStackViewport />
+</CardStackProvider>
+
+// Push cards imperatively
+const stack = useCardStack();
+stack.push({ title: 'Profile', Component: ProfileCard, props: { userId } });
+```
+
+Layout modes: `cascade` (overlapping peek) and `side-by-side` (master-detail). Cards support `useCardReady()` to defer queries until slide animation completes.
+
+See [references/stack-navigation.md](references/stack-navigation.md) for full Stack API — CardSpec, CardStackApi, route registry, peek gestures, mobile behavior.
 
 See [references/layout.md](references/layout.md) for all layout components.
 See [references/sidebar-api.md](references/sidebar-api.md) for Sidebar sub-component props, CSS variables.
@@ -354,7 +378,7 @@ See [references/combobox-api.md](references/combobox-api.md) for Combobox sub-co
 ## Component Catalog
 
 ### Primitives
-`button`, `badge`, `label`, `skeleton`, `card`, `separator`, `alert`
+`button`, `badge`, `label`, `skeleton`, `card` ([patterns](references/card-patterns.md)), `separator`, `alert`
 
 ### Form
 `input`, `textarea`, `checkbox`, `checkbox-group`, `radio-group`, `switch`, `select`, `progress`, `form`, `form-control`, `input-group`, `field`
@@ -375,7 +399,7 @@ See [references/combobox-api.md](references/combobox-api.md) for Combobox sub-co
 `sonner`, `toast`
 
 ### Navigation
-`stack`
+`stack` ([full reference](references/stack-navigation.md))
 
 ### Utilities
 `portal`, `lib/utils` (cn, Slot, Slottable, composeRefs, mergeProps, useControllableState), `lib/motion/motion-config`, `globals.css`
@@ -416,3 +440,6 @@ All imported via `@constructive-io/ui/{name}`.
 - [references/data-display.md](references/data-display.md) — Table, Badge, Alert, Avatar, Skeleton, Progress, Toast, effects
 - [references/advanced-inputs.md](references/advanced-inputs.md) — Autocomplete, Combobox, MultiSelect, Tags, RecordPicker, Calendar, JsonInput
 - [references/combobox-api.md](references/combobox-api.md) — Combobox sub-component props, multiple mode, useComboboxFilter
+- [references/command-palette.md](references/command-palette.md) — Full command palette system: registry, hooks, multi-step wizards, background tasks, keyboard shortcuts
+- [references/card-patterns.md](references/card-patterns.md) — Card variants (default/elevated/flat/ghost/interactive), usage patterns, grid layouts
+- [references/stack-navigation.md](references/stack-navigation.md) — iOS-style card navigation: CardStackApi, route registry, peek gestures, mobile behavior
