@@ -336,4 +336,4 @@ pnpm test:watch
 
 - Related skill: `pgsql-test-exceptions` for handling aborted transactions
 - Related skill: `pgsql-test-seeding` for seeding test data
-- Related skill: `pgpm-testing` for general test setup
+- Related skill: `pgpm` (`references/testing.md`) for general test setup

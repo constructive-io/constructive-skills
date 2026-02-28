@@ -1,11 +1,3 @@
----
-name: pgpm-docker
-description: Manage PostgreSQL Docker containers for local development using pgpm docker commands. Use when asked to "start postgres", "run database locally", "set up local database", "stop postgres container", or when needing a PostgreSQL database for development/testing.
-compatibility: Docker installed and running, Node.js 18+, pgpm CLI available
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # PGPM Docker
 
@@ -145,6 +137,6 @@ This sets:
 
 ## References
 
-For related skills:
-- Environment management: See `pgpm-env` skill
-- Running tests: See `pgpm-testing` skill
+For related references:
+- Environment management: See `references/env.md`
+- Running tests: See `references/testing.md`

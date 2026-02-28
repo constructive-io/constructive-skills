@@ -1,12 +1,3 @@
----
-name: pgpm-plan-format
-description: Understand and fix pgpm.plan file format issues. Use when encountering "Invalid line format" parse errors or when creating/editing pgpm.plan files.
-compatibility: pgpm CLI, PostgreSQL
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # PGPM Plan File Format
 
 Guide to the correct format for pgpm.plan files and common format errors.
@@ -158,6 +149,6 @@ These are used by pgpm for dependency resolution but the plan file format is wha
 
 ## References
 
-- Related skill: `pgpm-troubleshooting` for general pgpm issues
-- Related skill: `pgpm-dependencies` for dependency management
-- Related skill: `pgpm-changes` for adding changes to modules
+- Related skill: `references/troubleshooting.md` for general pgpm issues
+- Related skill: `references/dependencies.md` for dependency management
+- Related skill: `references/changes.md` for adding changes to modules

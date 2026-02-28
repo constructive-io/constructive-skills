@@ -218,5 +218,5 @@ Without savepoints, you cannot verify database state after a failed operation. T
 
 ## References
 
-- Related skill: `pgpm-testing` for general test setup
-- Related skill: `pgpm-env` for environment configuration
+- Related skill: `pgpm` (`references/testing.md`) for general test setup
+- Related skill: `pgpm` (`references/env.md`) for environment configuration

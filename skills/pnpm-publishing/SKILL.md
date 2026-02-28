@@ -412,5 +412,5 @@ Ensure `module` field points to ESM build:
 ## References
 
 - Related skill: `pnpm-workspace` for workspace setup
-- Related skill: `pgpm-publishing` for SQL module publishing
+- Related skill: `pgpm` (`references/publishing.md`) for SQL module publishing
 - [makage on npm](https://www.npmjs.com/package/makage)

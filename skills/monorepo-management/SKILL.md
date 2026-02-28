@@ -398,4 +398,4 @@ pnpm list -r --depth=0
 
 - Related skill: `pnpm-workspace` for workspace setup
 - Related skill: `pnpm-publishing` for publishing workflow
-- Related skill: `pgpm-workspace` for SQL module workspaces
+- Related skill: `pgpm` (`references/workspace.md`) for SQL module workspaces

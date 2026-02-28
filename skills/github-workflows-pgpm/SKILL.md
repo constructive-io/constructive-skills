@@ -435,7 +435,7 @@ steps:
 ## References
 
 - Related skill: `pgsql-test` for database testing framework
-- Related skill: `pgpm-workspace` for PGPM project setup
+- Related skill: `pgpm` (`references/workspace.md`) for PGPM project setup
 - Related skill: `pnpm-workspace` for PNPM monorepo configuration
 - [GitHub Actions documentation](https://docs.github.com/en/actions)
 - [pnpm/action-setup](https://github.com/pnpm/action-setup)

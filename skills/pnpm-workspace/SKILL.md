@@ -271,5 +271,5 @@ Some repos (like constructive) are **hybrid** — they have both pnpm packages a
 ## References
 
 - Related skill: `pnpm-publishing` for publishing workflow with makage
-- Related skill: `pgpm-workspace` for SQL module workspaces
-- Related skill: `pgpm-publishing` for publishing pgpm modules
+- Related skill: `pgpm` (`references/workspace.md`) for SQL module workspaces
+- Related skill: `pgpm` (`references/publishing.md`) for publishing pgpm modules

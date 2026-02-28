@@ -283,4 +283,4 @@ __tests__/
 
 - Related skill: `pgsql-test-rls` for RLS testing patterns
 - Related skill: `pgsql-test-exceptions` for handling errors
-- Related skill: `pgpm-testing` for general test setup
+- Related skill: `pgpm` (`references/testing.md`) for general test setup

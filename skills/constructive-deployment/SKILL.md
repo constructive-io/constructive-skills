@@ -34,7 +34,7 @@ Use this skill when:
 make up
 # OR: docker-compose up -d
 
-# 2. Bootstrap database roles (ensure PG env vars are loaded — see pgpm-env skill)
+# 2. Bootstrap database roles (ensure PG env vars are loaded — see pgpm skill, references/env.md)
 pgpm admin-users bootstrap --yes
 
 # 3. Deploy all database modules
@@ -93,7 +93,7 @@ docker-compose -f docker-compose.jobs.yml up -d
 
 ### Deploy to Local Database
 
-> **Prerequisite:** Ensure PostgreSQL is running and PG env vars are loaded. See `pgpm-docker` and `pgpm-env` skills.
+> **Prerequisite:** Ensure PostgreSQL is running and PG env vars are loaded. See `pgpm` skill (`references/docker.md`) and `pgpm` skill (`references/env.md`).
 
 ```bash
 pgpm deploy --createdb --workspace --all --yes

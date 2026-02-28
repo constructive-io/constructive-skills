@@ -1,11 +1,3 @@
----
-name: pgpm-publishing
-description: Publish pgpm SQL modules to npm following Constructive standards. Use when asked to "publish a pgpm module", "release SQL packages", "bundle database modules", or when preparing @pgpm/* packages for distribution.
-compatibility: pgpm CLI, pnpm, lerna, Node.js 20+
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
 
 # Publishing PGPM Modules (Constructive Standard)
 
@@ -347,7 +339,7 @@ SELECT verify_function('faker.random_name');
 
 ## References
 
-- Related skill: `pgpm-workspace` for workspace setup
-- Related skill: `pgpm-changes` for authoring SQL changes
-- Related skill: `pgpm-dependencies` for managing dependencies
+- Related reference: `references/workspace.md` for workspace setup
+- Related reference: `references/changes.md` for authoring SQL changes
+- Related reference: `references/dependencies.md` for managing dependencies
 - Related skill: `pnpm-publishing` for TypeScript package publishing

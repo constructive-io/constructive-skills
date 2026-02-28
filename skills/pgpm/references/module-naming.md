@@ -1,12 +1,3 @@
----
-name: pgpm-module-naming
-description: Understand when to use npm package names vs control file names in pgpm modules. Use when creating .control files, writing SQL requires statements, running pgpm install, or referencing dependencies between modules.
-compatibility: pgpm, PostgreSQL, Node.js 18+
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # PGPM Module Naming: npm Names vs Control File Names
 
 pgpm modules have two different identifiers that serve different purposes. Understanding when to use each is critical for correct dependency management.
@@ -179,6 +170,6 @@ Think of it this way: npm names are for the JavaScript/npm ecosystem, control na
 
 ## References
 
-- Related skill: `pgpm-cli` for CLI commands
-- Related skill: `pgpm-workspace` for workspace structure
-- Related skill: `pgpm-changes` for authoring database changes
+- Related skill: `references/cli.md` for CLI commands
+- Related skill: `references/workspace.md` for workspace structure
+- Related skill: `references/changes.md` for authoring database changes
