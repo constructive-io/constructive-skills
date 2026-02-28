@@ -46,7 +46,6 @@ pgpm init
 
 # 5. Add a change
 cd packages/pets
-pgpm add schemas/pets --requires ''
 pgpm add schemas/pets/tables/pets --requires schemas/pets
 
 # 6. Write your SQL (see "Three-File Pattern" below)
