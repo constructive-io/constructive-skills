@@ -68,13 +68,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
-| `pgsql-test-rls` | Test Row-Level Security policies with pgsql-test |
-| `pgsql-test-seeding` | Seed test databases with loadJson/loadSql/loadCsv |
-| `pgsql-test-exceptions` | Handle aborted transactions when testing expected failures |
-| `pgsql-test-snapshot` | Snapshot testing utilities (pruneIds, pruneDates) |
-| `pgsql-test-helpers` | Reusable test helper functions and constants |
-| `pgsql-test-jwt-context` | JWT claims and role-based context for RLS testing |
-| `pgsql-test-scenario-setup` | Complex test scenarios with isolation and multi-client patterns |
+| `pgsql-test` | PostgreSQL integration testing with pgsql-test — RLS policies, seeding, exceptions, snapshots, helpers, JWT context, and complex scenario setup. Includes 7 reference files for detailed documentation on each topic. |
 
 ### Drizzle ORM
 
@@ -87,12 +81,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
-| `pgvector-setup` | Set up pgvector for vector storage in PostgreSQL |
-| `pgvector-embeddings` | Generate and store vector embeddings with Ollama |
-| `pgvector-similarity-search` | Perform semantic similarity search with pgvector |
-| `rag-pipeline` | Build complete RAG pipelines with pgvector and Ollama |
-| `ollama-integration` | Integrate Ollama for local LLM inference |
-| `agentic-kit-rag` | Configure agentic-kit for RAG with pgvector and PGPM |
+| `pgvector-rag` | pgvector setup, embeddings, similarity search, RAG pipelines, Ollama integration, and agentic-kit RAG. Includes 6 reference files for detailed documentation on each topic. |
 
 ### Flow-Based Programming (FBP)
 
@@ -107,9 +96,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
-| `pnpm-workspace` | Create and configure PNPM monorepos |
-| `pnpm-publishing` | Publish TypeScript packages with makage and lerna |
-| `monorepo-management` | Best practices for large PNPM monorepos |
+| `constructive-pnpm` | PNPM monorepo workspaces, publishing with makage and lerna, and large-scale monorepo management. Includes 3 reference files for detailed documentation on each topic. |
 
 ### CI/CD
 
@@ -122,10 +109,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-safegres
 
 | Skill | Description |
 |-------|-------------|
-| `inquirerer-cli-building` | Build interactive CLI tools with inquirerer |
-| `inquirerer-anti-patterns` | Anti-patterns — do NOT use commander/inquirer.js/yargs in Constructive projects |
-| `appstash-cli` | CLI application directory management (config, caching, logging, updates) |
-| `yanse-terminal-colors` | Terminal color styling with yanse (not chalk) |
+| `inquirerer-cli` | Build interactive CLI tools with inquirerer, appstash for persistent storage, and yanse for terminal colors. Includes 4 reference files for detailed documentation on each topic. |
 
 ### Other
 
