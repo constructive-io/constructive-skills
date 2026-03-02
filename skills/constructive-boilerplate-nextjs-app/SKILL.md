@@ -58,6 +58,26 @@ The boilerplate is created at `<workspace-name>/packages/<module-name>/`.
 > pgpm init -w --repo constructive-io/sandbox-templates --template nextjs/constructive-app
 > ```
 
+#### Adding to an Existing Workspace
+
+If you already have a pgpm workspace, use `pgpm init` **without** the `-w` flag to clone the boilerplate as a new module inside it. Run this from the workspace root:
+
+```bash
+pgpm init \
+  --repo constructive-io/sandbox-templates \
+  --template nextjs/constructive-app \
+  --no-tty \
+  --moduleName <module-name> \
+  --extensions "plpgsql,uuid-ossp"
+```
+
+This creates the module at `packages/<module-name>/` within your existing workspace.
+
+> **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
+> ```bash
+> pgpm init --repo constructive-io/sandbox-templates --template nextjs/constructive-app
+> ```
+
 ### 2. Install Dependencies
 
 ```bash
