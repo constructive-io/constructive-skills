@@ -2,28 +2,27 @@
 
 Complete reference for `graphql-codegen.config.ts` configuration options.
 
+> **Note**: The programmatic `generate()` API is the recommended approach. Configuration files are an alternative for projects that prefer file-based configuration. See the main SKILL.md for programmatic usage.
 
 ## Configuration File
 
-Create configuration using:
-
-```bash
-npx @constructive-io/graphql-codegen init
-```
-
-Or manually create `graphql-codegen.config.ts`:
+Create `graphql-codegen.config.ts` manually:
 
 ```typescript
 import { defineConfig } from '@constructive-io/graphql-codegen';
 
 export default defineConfig({
-  targets: {
-    default: {
-      endpoint: 'https://api.example.com/graphql',
-      output: './src/generated/hooks',
-    },
-  },
+  endpoint: 'https://api.example.com/graphql',
+  output: './src/generated',
+  reactQuery: true,
+  orm: true,
 });
+```
+
+Run with:
+
+```bash
+npx @constructive-io/graphql-codegen -c graphql-codegen.config.ts
 ```
 
 ## Full Configuration Interface
@@ -472,50 +471,124 @@ Filtering supports glob patterns:
 | `*User` | "User", "AdminUser", "SuperUser" |
 | `*_archive` | "posts_archive", "users_archive" |
 
-## Multi-Target Configuration
+## CLI Generation
 
 ```typescript
 export default defineConfig({
-  development: {
-    endpoint: 'http://localhost:5555/graphql',
-    output: './generated/dev',
-    reactQuery: true,
-  },
-  production: {
-    endpoint: 'https://api.prod.example.com/graphql',
-    output: './generated/prod',
-    reactQuery: true,
-    headers: {
-      Authorization: `Bearer ${process.env.PROD_API_TOKEN}`,
+  endpoint: 'https://api.example.com/graphql',
+  output: './generated',
+  cli: true,  // Generate CLI with default tool name
+  // OR with options:
+  cli: {
+    toolName: 'myapp',      // Config stored at ~/.myapp/
+    entryPoint: true,        // Generate runnable index.ts
+    builtinNames: {          // Override infra command names
+      auth: 'credentials',
+      context: 'env',
     },
   },
+});
+```
+
+When `cli: true`, `nodeHttpAdapter` is auto-enabled (Node.js HTTP adapter for localhost subdomain resolution).
+
+## Documentation Generation
+
+```typescript
+export default defineConfig({
+  endpoint: 'https://api.example.com/graphql',
+  output: './generated',
+  orm: true,
+  docs: true,  // Enable all doc formats
+  // OR configure individually:
+  docs: {
+    readme: true,   // README.md -- human-readable overview
+    agents: true,   // AGENTS.md -- structured for LLM consumption
+    mcp: false,     // mcp.json -- MCP tool definitions
+    skills: true,   // skills/ -- per-command .md skill files (Devin-compatible)
+  },
+});
+```
+
+## Node.js HTTP Adapter
+
+```typescript
+export default defineConfig({
+  endpoint: 'http://api.localhost:3000/graphql',
+  output: './generated',
+  orm: true,
+  nodeHttpAdapter: true,  // Generates node-fetch.ts with NodeHttpAdapter
+});
+```
+
+The `NodeHttpAdapter` uses `node:http`/`node:https` for requests, enabling local development with subdomain-based routing (e.g., `auth.localhost:3000`).
+
+## Multi-Target Configuration
+
+### Schema directory (recommended)
+
+`schemaDir` automatically creates one target per `.graphql` file:
+
+```typescript
+export default defineConfig({
+  schemaDir: './schemas',   // Contains public.graphql, admin.graphql, etc.
+  output: './generated',    // Produces ./generated/public/, ./generated/admin/, etc.
+  reactQuery: true,
+  orm: true,
+});
+```
+
+### Explicit multi-target
+
+Define each target explicitly when they have different sources or options:
+
+```typescript
+export default defineConfig({
+  public: {
+    schemaFile: './schemas/public.graphql',
+    output: './generated/public',
+    reactQuery: true,
+  },
   admin: {
-    db: { schemas: ['admin'] },
+    schemaFile: './schemas/admin.graphql',
     output: './generated/admin',
     orm: true,
+    cli: true,
   },
+});
+```
+
+### Auto-expand from multiple API names
+
+When `db.apiNames` contains multiple entries, each API name automatically becomes a separate target:
+
+```typescript
+export default defineConfig({
+  db: { apiNames: ['public', 'admin'] },
+  output: './generated',  // Produces ./generated/public/, ./generated/admin/
+  orm: true,
 });
 ```
 
 Generate specific target:
 
 ```bash
-npx @constructive-io/graphql-codegen generate --target production
-npx @constructive-io/graphql-codegen generate --target admin
+npx @constructive-io/graphql-codegen -c graphql-codegen.config.ts --target production
 ```
 
 Generate all targets:
 
 ```bash
-npx @constructive-io/graphql-codegen generate
+npx @constructive-io/graphql-codegen -c graphql-codegen.config.ts
 ```
 
-## Complete Example
+## Complete Examples
+
+### From GraphQL endpoint
 
 ```typescript
 import { defineConfig } from '@constructive-io/graphql-codegen';
 
-// From GraphQL endpoint
 export default defineConfig({
   endpoint: process.env.GRAPHQL_ENDPOINT || 'http://localhost:5555/graphql',
   output: './generated',
@@ -562,6 +635,12 @@ export default defineConfig({
     generateMutationKeys: true,
   },
 });
+```
+
+### From database
+
+```typescript
+import { defineConfig } from '@constructive-io/graphql-codegen';
 
 export default defineConfig({
   db: {
@@ -571,6 +650,12 @@ export default defineConfig({
   output: './generated',
   reactQuery: true,
 });
+```
+
+### From PGPM module
+
+```typescript
+import { defineConfig } from '@constructive-io/graphql-codegen';
 
 export default defineConfig({
   db: {
@@ -578,6 +663,32 @@ export default defineConfig({
     schemas: ['public'],
   },
   output: './generated',
+  orm: true,
+});
+```
+
+### From schema file
+
+```typescript
+import { defineConfig } from '@constructive-io/graphql-codegen';
+
+export default defineConfig({
+  schemaFile: './schemas/public.graphql',
+  output: './generated',
+  reactQuery: true,
+  orm: true,
+});
+```
+
+### Schema directory (multi-target)
+
+```typescript
+import { defineConfig } from '@constructive-io/graphql-codegen';
+
+export default defineConfig({
+  schemaDir: './schemas',
+  output: './generated',
+  reactQuery: true,
   orm: true,
 });
 ```
