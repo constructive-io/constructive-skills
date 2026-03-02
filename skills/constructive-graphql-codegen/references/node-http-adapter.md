@@ -1,11 +1,3 @@
----
-name: constructive-node-http-adapter
-description: Fix Node.js *.localhost DNS resolution and Host header issues when calling Constructive's subdomain-routed GraphQL server.
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # NodeHttpAdapter — Localhost Subdomain Routing
 
 ## The Problem
@@ -92,7 +84,3 @@ class NodeHttpAdapter {
   getEndpoint(): string;
 }
 ```
-
-## Related
-
-- `constructive-graphql-codegen` — generates `NodeHttpAdapter` with `nodeHttpAdapter: true`
