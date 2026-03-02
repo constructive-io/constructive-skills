@@ -527,11 +527,22 @@ See `references/query-keys.md` for details.
 
 ## References
 
-For detailed documentation on specific topics, see [references/](references/):
+All references are in [references/](references/).
+
+### Workflow Guides
+
+Each major codegen workflow has a dedicated reference with full examples and options:
+
+- **`generate-schemas.md`** -- Export GraphQL schemas to `.graphql` files (schema export workflow)
+- **`generate-sdk.md`** -- Generate React Query hooks and/or ORM client (primary SDK workflow)
+- **`generate-cli.md`** -- Generate inquirerer-based CLI with CRUD commands
+- **`generate-node.md`** -- Generate NodeHttpAdapter for `*.localhost` subdomain routing
+
+### Deep-Dive References
 
 - **Using generated code**: `hooks-patterns.md`, `hooks-output.md`, `orm-patterns.md`, `orm-output.md`
 - **Error handling and relations**: `error-handling.md`, `relations.md`
 - **Query key factory and cache management**: `query-keys.md`
-- **Node.js HTTP adapter**: `node-http-adapter.md`
-- **CLI options**: `cli-reference.md`
+- **Node.js HTTP adapter (manual)**: `node-http-adapter.md`
+- **CLI flags**: `cli-reference.md`
 - **Configuration file (`defineConfig`)**: `config-reference.md`
