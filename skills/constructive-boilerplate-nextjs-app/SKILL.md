@@ -60,7 +60,7 @@ The boilerplate is created at `<workspace-name>/packages/<module-name>/`.
 
 #### Adding to an Existing Workspace
 
-If you already have a pgpm workspace, use `pgpm init` **without** the `-w` flag to clone the boilerplate as a new module inside it. Run this from the workspace root:
+If you already have a pgpm workspace (a directory with `pgpm.json`), use `pgpm init` **without** the `-w` flag to clone the boilerplate as a new module inside it. Run this from the **workspace root**:
 
 ```bash
 pgpm init \
@@ -71,7 +71,16 @@ pgpm init \
   --extensions "plpgsql,uuid-ossp"
 ```
 
-This creates the module at `packages/<module-name>/` within your existing workspace.
+**Required arguments for existing workspace (`--no-tty`):**
+
+| Argument | Description |
+|----------|-------------|
+| `--moduleName` | Module/package name for the new boilerplate |
+| `--extensions` | PostgreSQL extensions (comma-separated) |
+
+This creates the module at `packages/<module-name>/` within your existing workspace. The workspace-level arguments (`--name`, `--fullName`, `--email`, etc.) are **not needed** since the workspace already exists.
+
+> **Note:** You must run this from the workspace root or a valid `packages/` subdirectory. If you are not inside a pgpm workspace, pgpm will error with "Not inside a PGPM workspace." Use the `-w` flag (see above) to create a new workspace and module together.
 
 > **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
 > ```bash
