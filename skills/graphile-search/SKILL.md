@@ -1,98 +1,111 @@
 ---
 name: graphile-search
-description: PostGraphile v5 search plugins for the Constructive GraphQL API. Covers graphile-search-plugin (tsvector FTS), graphile-pg-textsearch-plugin (BM25), and graphile-pgvector-plugin (vector similarity). Use when querying search via GraphQL, configuring search plugins, or building new search plugins.
+description: How to query search-enabled tables via GraphQL in Constructive applications. Covers full-text search (tsvector), BM25 ranked search, and vector similarity search. Use this when you have set up search columns/indexes via constructive-sdk and need to query them through the GraphQL API.
 compatibility: PostGraphile v5, Constructive GraphQL server
 metadata:
   author: constructive-io
   version: "1.0.0"
 ---
 
-# Graphile Search Plugins
+# Querying Search via GraphQL
 
-Three PostGraphile v5 search plugins expose database search capabilities through the GraphQL API. All are included in `ConstructivePreset` and work automatically — they discover columns/indexes at startup and add the appropriate GraphQL fields.
+When you create search-enabled tables using the Constructive SDK (tsvector columns, BM25 indexes, or vector columns), the GraphQL API automatically exposes search fields. No plugin configuration is needed — the search fields appear as soon as the database has the right columns or indexes.
 
-## Plugin Overview
+## What You Get
 
-| Plugin | Package | Discovers | Condition Field | Score/Distance Field | OrderBy |
-|--------|---------|-----------|-----------------|---------------------|---------|
-| **PgSearchPlugin** | `graphile-search-plugin` | `tsvector` columns | `fullText<Column>: String` | `<column>Rank: Float` | `<COLUMN>_RANK_ASC/DESC` |
-| **Bm25SearchPlugin** | `graphile-pg-textsearch-plugin` | Text columns with BM25 indexes | `bm25<Column>: Bm25SearchInput` | `bm25<Column>Score: Float` | `BM25_<COLUMN>_SCORE_ASC/DESC` |
-| **VectorSearchPlugin** | `graphile-pgvector-plugin` | `vector` columns | `vector<Column>: VectorNearbyInput` | `<column>Distance: Float` | `<COLUMN>_DISTANCE_ASC/DESC` |
+| Search Type | What You Create in the DB | What Appears in GraphQL |
+|-------------|--------------------------|------------------------|
+| **Full-text (TSVector)** | `tsvector` column + GIN index | Condition field, rank field, rank ordering |
+| **BM25** | Text column + BM25 index | Condition field, score field, score ordering |
+| **Vector similarity** | `vector(N)` column + HNSW index | Condition field, distance field, distance ordering |
 
-All three follow the same architectural pattern and provide the same three extension points: condition fields on connection inputs, computed score/distance fields on output types, and orderBy enum values.
+## Quick Examples
 
-## ConstructivePreset Integration
+### Full-Text Search (TSVector)
 
-All search plugins are bundled into the `ConstructivePreset` (`graphile/graphile-settings/src/presets/constructive-preset.ts`):
+If your table has a `search_tsv` tsvector column:
 
-```typescript
-import { PgSearchPreset } from 'graphile-search-plugin';
-import { VectorCodecPreset, createVectorSearchPlugin } from 'graphile-pgvector-plugin';
-import { Bm25SearchPreset } from 'graphile-pg-textsearch-plugin';
-
-export const ConstructivePreset: GraphileConfig.Preset = {
-  extends: [
-    // ... other presets ...
-    PgSearchPreset({ pgSearchPrefix: 'fullText' }),  // tsvector FTS
-    VectorCodecPreset,                                // vector type codec
-    { plugins: [createVectorSearchPlugin()] },        // vector search
-    Bm25SearchPreset(),                               // BM25 search
-    // ... other presets ...
-  ],
-};
+```graphql
+query SearchArticles($query: String!) {
+  allArticles(
+    condition: { fullTextSearchTsv: $query }
+    orderBy: SEARCH_TSV_RANK_DESC
+  ) {
+    nodes {
+      id
+      title
+      searchTsvRank    # relevance score (higher = better match)
+    }
+  }
+}
 ```
 
-**Zero configuration**: If the database has tsvector columns, BM25-indexed text columns, or vector columns, the corresponding GraphQL fields appear automatically.
+### BM25 Ranked Search
 
-## Plugin Configuration
+If your table has a text column `content` with a BM25 index:
 
-### TSVector (PgSearchPreset)
-
-```typescript
-PgSearchPreset({
-  pgSearchPrefix: 'fullText',    // Condition field prefix (default: 'tsv')
-  fullTextScalarName: 'FullText', // Scalar name for filter operator
-  tsConfig: 'english',           // PostgreSQL text search config
-})
+```graphql
+query SearchDocs($query: String!) {
+  allDocuments(
+    condition: {
+      bm25Content: { query: $query }
+    }
+    orderBy: BM25_CONTENT_SCORE_ASC   # most negative = best match
+  ) {
+    nodes {
+      id
+      title
+      bm25ContentScore   # BM25 score (negative, more negative = better)
+    }
+  }
+}
 ```
 
-### BM25 (Bm25SearchPreset)
+### Vector Similarity Search
 
-```typescript
-Bm25SearchPreset({
-  conditionPrefix: 'bm25',  // Condition field prefix (default: 'bm25')
-})
+If your table has an `embedding vector(1536)` column with an HNSW index:
+
+```graphql
+query SimilarDocs($queryVector: [Float!]!) {
+  allDocuments(
+    condition: {
+      vectorEmbedding: {
+        vector: $queryVector
+        metric: COSINE
+      }
+    }
+    orderBy: EMBEDDING_DISTANCE_ASC
+    first: 10
+  ) {
+    nodes {
+      id
+      title
+      embeddingDistance   # cosine distance (0 = identical)
+    }
+  }
+}
 ```
 
-### pgvector (createVectorSearchPlugin)
+## Field Naming Conventions
 
-```typescript
-createVectorSearchPlugin({
-  defaultMetric: 'COSINE',    // Default: COSINE. Options: COSINE, L2, IP
-  maxLimit: 100,               // Max results per query
-  conditionPrefix: 'vector',   // Condition field prefix
-})
-```
+The GraphQL field names are derived from your database column names:
+
+| DB Column | Condition Field | Score/Distance Field | OrderBy |
+|-----------|----------------|---------------------|---------|
+| `search_tsv` (tsvector) | `fullTextSearchTsv` | `searchTsvRank` | `SEARCH_TSV_RANK_ASC/DESC` |
+| `content` (BM25 index) | `bm25Content` | `bm25ContentScore` | `BM25_CONTENT_SCORE_ASC/DESC` |
+| `embedding` (vector) | `vectorEmbedding` | `embeddingDistance` | `EMBEDDING_DISTANCE_ASC/DESC` |
+
+**Pattern:**
+- TSVector condition: `fullText` + camelCase column name
+- BM25 condition: `bm25` + camelCase column name
+- Vector condition: `vector` + camelCase column name
 
 ## Reference Files
 
-Detailed query patterns and architecture:
-
-- `references/query-patterns.md` — GraphQL query examples for all three plugins
-- `references/architecture.md` — WeakMap bridge pattern, plugin hooks, how to build a new search plugin
-
-## Source File Locations
-
-| Package | Directory |
-|---------|----------|
-| graphile-search-plugin | `graphile/graphile-search-plugin/src/` |
-| graphile-pg-textsearch-plugin | `graphile/graphile-pg-textsearch-plugin/src/` |
-| graphile-pgvector-plugin | `graphile/graphile-pgvector-plugin/src/` |
-| graphile-settings (preset) | `graphile/graphile-settings/src/presets/constructive-preset.ts` |
+- `references/query-patterns.md` — Detailed query examples, input types, combining search with filters, pagination
 
 ## Related Skills
 
-- `constructive-db-search` (constructive-private-skills) — SQL-level search strategies and metaschema integration
-- `graphile-pgvector` (constructive-skills) — VectorCodecPlugin, postgraphile-plugin-pgvector (root-level search fields), codegen scalar mapping, integration tests
-- `pgvector-rag` (constructive-skills) — Full RAG pipeline with embeddings
-- `constructive-graphql-codegen` (constructive-skills) — SDK generation from GraphQL schema
+- `constructive-db-search` (constructive-private-skills) — SQL-level search strategies, decision matrix, how to set up the database side
+- `graphile-pgvector` (constructive-skills) — Additional pgvector details, VectorCodecPlugin, codegen scalar mapping
