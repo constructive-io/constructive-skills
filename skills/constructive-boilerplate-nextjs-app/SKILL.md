@@ -34,8 +34,7 @@ pgpm init -w \
   --repoName <workspace-name> \
   --username <github-username> \
   --license MIT \
-  --moduleName <module-name> \
-  --extensions "plpgsql,uuid-ossp"
+  --moduleName <module-name>
 ```
 
 **Required arguments for non-interactive mode (`--no-tty`):**
@@ -49,13 +48,39 @@ pgpm init -w \
 | `--username` | GitHub username |
 | `--license` | License (MIT, APACHE-2.0, BSD-3-CLAUSE, etc.) |
 | `--moduleName` | Module/package name inside the workspace |
-| `--extensions` | PostgreSQL extensions (comma-separated) |
 
 The boilerplate is created at `<workspace-name>/packages/<module-name>/`.
 
 > **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
 > ```bash
 > pgpm init -w --repo constructive-io/sandbox-templates --template nextjs/constructive-app
+> ```
+
+#### Adding to an Existing Workspace
+
+If you already have a pnpm workspace (a directory with `pnpm-workspace.yaml`), use `pgpm init` **without** the `-w` flag to clone the boilerplate as a new module inside it. Run this from the **workspace root**:
+
+```bash
+pgpm init \
+  --repo constructive-io/sandbox-templates \
+  --template nextjs/constructive-app \
+  --no-tty \
+  --moduleName <module-name>
+```
+
+**Required arguments for existing workspace (`--no-tty`):**
+
+| Argument | Description |
+|----------|-------------|
+| `--moduleName` | Module/package name for the new boilerplate |
+
+This creates the module at `packages/<module-name>/` within your existing workspace. The workspace-level arguments (`--name`, `--fullName`, `--email`, etc.) are **not needed** since the workspace already exists.
+
+> **Note:** You must run this from the workspace root or a valid `packages/` subdirectory. If you are not inside a pnpm workspace, pgpm will error with "Not inside a PNPM workspace." Use the `-w` flag (see above) to create a new workspace and module together.
+
+> **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
+> ```bash
+> pgpm init --repo constructive-io/sandbox-templates --template nextjs/constructive-app
 > ```
 
 ### 2. Install Dependencies
