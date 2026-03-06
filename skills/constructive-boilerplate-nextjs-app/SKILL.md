@@ -27,7 +27,6 @@ Use `pgpm init` with the `-w` flag to scaffold a workspace from the template. Al
 pgpm init -w \
   --repo constructive-io/sandbox-templates \
   --template nextjs/constructive-app \
-  --no-tty \
   --name <workspace-name> \
   --fullName "<Author Full Name>" \
   --email "<author@example.com>" \
@@ -37,7 +36,7 @@ pgpm init -w \
   --moduleName <module-name>
 ```
 
-**Required arguments for non-interactive mode (`--no-tty`):**
+**Required arguments for non-interactive mode (avoid asking for user input):**
 
 | Argument | Description |
 |----------|-------------|
@@ -51,7 +50,7 @@ pgpm init -w \
 
 The boilerplate is created at `<workspace-name>/packages/<module-name>/`.
 
-> **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
+> **Interactive mode (for humans):** Prompt will be asking for the arguments missing from the required arguments list:
 > ```bash
 > pgpm init -w --repo constructive-io/sandbox-templates --template nextjs/constructive-app
 > ```
@@ -64,11 +63,10 @@ If you already have a pnpm workspace (a directory with `pnpm-workspace.yaml`), u
 pgpm init \
   --repo constructive-io/sandbox-templates \
   --template nextjs/constructive-app \
-  --no-tty \
   --moduleName <module-name>
 ```
 
-**Required arguments for existing workspace (`--no-tty`):**
+**Required arguments for existing workspace :**
 
 | Argument | Description |
 |----------|-------------|
@@ -78,7 +76,7 @@ This creates the module at `packages/<module-name>/` within your existing worksp
 
 > **Note:** You must run this from the workspace root or a valid `packages/` subdirectory. If you are not inside a pnpm workspace, pgpm will error with "Not inside a PNPM workspace." Use the `-w` flag (see above) to create a new workspace and module together.
 
-> **Interactive mode (for humans):** Omit `--no-tty` and the argument flags to get guided prompts:
+> **Interactive mode (for humans):** :
 > ```bash
 > pgpm init --repo constructive-io/sandbox-templates --template nextjs/constructive-app
 > ```
