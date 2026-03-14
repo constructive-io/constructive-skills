@@ -1,8 +1,3 @@
----
-name: github-workflows-pgpm
-description: Configure GitHub Actions workflows for PostgreSQL database testing, PGPM migrations, and CI/CD pipelines in Constructive projects. Use when setting up CI/CD for a PGPM-based project, configuring PostgreSQL service containers in GitHub Actions, or running database tests in CI.
----
-
 Configure GitHub Actions workflows for PostgreSQL database testing, PGPM migrations, and CI/CD pipelines in Constructive projects.
 
 ## When to Apply
@@ -143,7 +138,7 @@ env:
 jobs:
   test:
     runs-on: ubuntu-latest
-    
+
     strategy:
       fail-fast: false
       matrix:
@@ -244,7 +239,7 @@ on:
 jobs:
   generate-sdk:
     runs-on: ubuntu-latest
-    
+
     # ... services and setup steps ...
 
     steps:
@@ -423,14 +418,14 @@ steps:
 
 ## Best Practices
 
-1. **Always use health checks** — Ensure PostgreSQL is ready before tests run
-2. **Cache pgpm CLI** — Speeds up workflow execution significantly
-3. **Use concurrency control** — Prevent duplicate runs on rapid pushes
-4. **Configure Git** — Required for tests that use git operations
-5. **Use matrix strategy** — Run tests in parallel across packages
-6. **Bootstrap users before tests** — `pgpm admin-users` creates required roles
-7. **Use fail-fast: false** — Let all tests complete even if some fail
-8. **Pin pgpm version** — Ensure consistent behavior across runs
+1. **Always use health checks** -- Ensure PostgreSQL is ready before tests run
+2. **Cache pgpm CLI** -- Speeds up workflow execution significantly
+3. **Use concurrency control** -- Prevent duplicate runs on rapid pushes
+4. **Configure Git** -- Required for tests that use git operations
+5. **Use matrix strategy** -- Run tests in parallel across packages
+6. **Bootstrap users before tests** -- `pgpm admin-users` creates required roles
+7. **Use fail-fast: false** -- Let all tests complete even if some fail
+8. **Pin pgpm version** -- Ensure consistent behavior across runs
 
 ## References
 

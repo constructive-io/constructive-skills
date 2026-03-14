@@ -1,12 +1,3 @@
----
-name: pgpm
-description: PostgreSQL Package Manager — deterministic, plan-driven database migrations with dependency management. Use when asked to "deploy database", "run migrations", "manage pgpm modules", "add a table", "create a function", "add a migration", "write database changes", "create a workspace", "set up pgpm", "manage dependencies", "revert a migration", "verify deployments", "tag a release", "start postgres", "run database locally", "set up database environment", "load env vars", "add an extension", "install a module", "publish pgpm module", "test database", "write integration tests", "troubleshoot pgpm", or when working with PostgreSQL package management, .control files, pgpm.plan, or SQL migration scripts.
-compatibility: pgpm CLI, PostgreSQL 14+, Node.js 22+, Docker
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # pgpm (PostgreSQL Package Manager)
 
 pgpm provides deterministic, plan-driven database migrations with dependency management and modular packaging. It brings npm-style modularity to PostgreSQL database development — every change is deployed exactly once and reverted exactly once.
@@ -85,7 +76,7 @@ default_version = '0.0.1'
 requires = 'uuid-ossp,plpgsql'
 ```
 
-The `requires` field uses **control file names** (e.g., `pgpm-base32`), NOT npm names (e.g., `@pgpm/base32`). See [references/module-naming.md](references/module-naming.md) for details.
+The `requires` field uses **control file names** (e.g., `pgpm-base32`), NOT npm names (e.g., `@pgpm/base32`). See [pgpm-module-naming.md](pgpm-module-naming.md) for details.
 
 ### Workspace vs Module
 
@@ -279,7 +270,7 @@ pgpm deploy
 | `CREATE OR REPLACE` error | Remove `OR REPLACE` — pgpm is deterministic |
 | Container won't start | `pgpm docker start --recreate` for a fresh container |
 
-See [references/troubleshooting.md](references/troubleshooting.md) for detailed solutions.
+See [pgpm-troubleshooting.md](pgpm-troubleshooting.md) for detailed solutions.
 
 ## Reference Guide
 
@@ -287,25 +278,18 @@ Consult these reference files for detailed documentation on specific topics:
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/cli.md](references/cli.md) | Complete CLI command reference | Looking up command flags, options, or less common commands |
-| [references/workspace.md](references/workspace.md) | Creating and managing workspaces | Setting up a new project, understanding workspace structure |
-| [references/changes.md](references/changes.md) | Authoring database changes | Writing deploy/revert/verify scripts, using `pgpm add` |
-| [references/sql-conventions.md](references/sql-conventions.md) | SQL file format and conventions | Writing SQL files, naming conventions, header format |
-| [references/dependencies.md](references/dependencies.md) | Managing module dependencies | Within-module or cross-module dependency references |
-| [references/deploy-lifecycle.md](references/deploy-lifecycle.md) | Deploy/verify/revert lifecycle | Understanding deployment process, tagging, status checking |
-| [references/docker.md](references/docker.md) | Docker container management | Starting/stopping PostgreSQL, custom container options |
-| [references/env.md](references/env.md) | Environment variable management | Loading env vars, profiles, Supabase local development |
-| [references/environment-configuration.md](references/environment-configuration.md) | @pgpmjs/env library API | Programmatic configuration, config hierarchy, utility functions |
-| [references/extensions.md](references/extensions.md) | PostgreSQL extensions & pgpm modules | Adding extensions, installing @pgpm/* modules, .control requires |
-| [references/module-naming.md](references/module-naming.md) | npm names vs control file names | Confused about which identifier to use where |
-| [references/plan-format.md](references/plan-format.md) | pgpm.plan file format | Fixing `Invalid line format` errors, editing plan files manually |
-| [references/publishing.md](references/publishing.md) | Publishing modules to npm | Bundling, versioning with lerna, publishing @pgpm/* packages |
-| [references/testing.md](references/testing.md) | PostgreSQL integration tests | Setting up pgsql-test, seed adapters, test patterns |
-| [references/troubleshooting.md](references/troubleshooting.md) | Common issues and solutions | Debugging connection, deployment, testing, or Docker problems |
-
-## Cross-References
-
-Related skills (separate from this skill):
-- `github-workflows-pgpm` — CI/CD GitHub Actions workflows for pgpm projects
-- `constructive-boilerplate-pgpm-init` — Detailed `pgpm init` templates and boilerplate options
-- `pgsql-test-*` skills — Specialized PostgreSQL testing patterns (RLS, seeding, snapshots, JWT context)
+| [pgpm-cli.md](pgpm-cli.md) | Complete CLI command reference | Looking up command flags, options, or less common commands |
+| [pgpm-workspace.md](pgpm-workspace.md) | Creating and managing workspaces | Setting up a new project, understanding workspace structure |
+| [pgpm-changes.md](pgpm-changes.md) | Authoring database changes | Writing deploy/revert/verify scripts, using `pgpm add` |
+| [pgpm-sql-conventions.md](pgpm-sql-conventions.md) | SQL file format and conventions | Writing SQL files, naming conventions, header format |
+| [pgpm-dependencies.md](pgpm-dependencies.md) | Managing module dependencies | Within-module or cross-module dependency references |
+| [pgpm-deploy-lifecycle.md](pgpm-deploy-lifecycle.md) | Deploy/verify/revert lifecycle | Understanding deployment process, tagging, status checking |
+| [pgpm-docker.md](pgpm-docker.md) | Docker container management | Starting/stopping PostgreSQL, custom container options |
+| [pgpm-env.md](pgpm-env.md) | Environment variable management | Loading env vars, profiles, Supabase local development |
+| [pgpm-environment-configuration.md](pgpm-environment-configuration.md) | @pgpmjs/env library API | Programmatic configuration, config hierarchy, utility functions |
+| [pgpm-extensions.md](pgpm-extensions.md) | PostgreSQL extensions & pgpm modules | Adding extensions, installing @pgpm/* modules, .control requires |
+| [pgpm-module-naming.md](pgpm-module-naming.md) | npm names vs control file names | Confused about which identifier to use where |
+| [pgpm-plan-format.md](pgpm-plan-format.md) | pgpm.plan file format | Fixing `Invalid line format` errors, editing plan files manually |
+| [pgpm-publishing.md](pgpm-publishing.md) | Publishing modules to npm | Bundling, versioning with lerna, publishing @pgpm/* packages |
+| [pgpm-testing.md](pgpm-testing.md) | PostgreSQL integration tests | Setting up pgsql-test, seed adapters, test patterns |
+| [pgpm-troubleshooting.md](pgpm-troubleshooting.md) | Common issues and solutions | Debugging connection, deployment, testing, or Docker problems |
