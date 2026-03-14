@@ -1,12 +1,3 @@
----
-name: graphile-pgvector
-description: Integrate pgvector with PostGraphile v5. Use when asked to "expose vector search in GraphQL", "add embedding column to schema", "surface pgvector types in PostGraphile", "register vector codec", or when building AI-powered GraphQL APIs that need similarity search or embedding support.
-compatibility: PostGraphile v5 RC, pgvector extension, Grafast, graphile-build-pg
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Graphile + pgvector Integration
 
 Integrate pgvector with PostGraphile v5 (Grafast/graphile-build-pg) so that `vector(n)` columns are surfaced in GraphQL as a `Vector` scalar, and vector similarity search is available as first-class GraphQL query fields.
@@ -23,12 +14,12 @@ Use this skill when:
 
 | Component | Package | What it does |
 |---|---|---|
-| `VectorCodecPlugin` | `graphile-settings` | Registers a codec for the `vector` PG type → `Vector` GraphQL scalar; makes `embedding` columns visible |
+| `VectorCodecPlugin` | `graphile-settings` | Registers a codec for the `vector` PG type -> `Vector` GraphQL scalar; makes `embedding` columns visible |
 | `PgVectorPlugin` / `PgVectorPreset` | `postgraphile-plugin-pgvector` | Adds `vectorSearch<Table>` root query fields with `query`, `limit`, `offset`, `metric` args |
 
 Both must be in the preset for end-to-end vector support.
 
-## VectorCodecPlugin — Expose `vector` Columns as GraphQL Scalar
+## VectorCodecPlugin -- Expose `vector` Columns as GraphQL Scalar
 
 Without this plugin, PostGraphile silently ignores `vector(n)` columns. The codec teaches `graphile-build-pg` how to parse and serialize the type.
 
@@ -40,17 +31,17 @@ GraphQL scalar: `Vector` (serialized as `[Float]`)
 
 ### Source Location
 
-`graphile-settings/src/plugins/vector-codec.ts` — included automatically in `ConstructivePreset`.
+`graphile-settings/src/plugins/vector-codec.ts` -- included automatically in `ConstructivePreset`.
 
 ### Pure Helper Exports (Testable Standalone)
 
 ```typescript
 import { fromPgVector, toPgVector, vectorScalarConfig } from 'graphile-settings/plugins/vector-codec';
 
-// Parse PG text → JS
+// Parse PG text -> JS
 fromPgVector('[0.1,0.2,0.3]'); // => [0.1, 0.2, 0.3]
 
-// Serialize JS → PG text
+// Serialize JS -> PG text
 toPgVector([0.1, 0.2, 0.3]); // => '[0.1,0.2,0.3]'
 ```
 
@@ -104,7 +95,7 @@ Must run before `PgCodecs` processes the registry. Registers the `Vector` scalar
 
 ---
 
-## PgVectorPlugin — Vector Search GraphQL Fields
+## PgVectorPlugin -- Vector Search GraphQL Fields
 
 Adds root query fields for similarity search across configured tables.
 
@@ -114,7 +105,7 @@ Adds root query fields for similarity search across configured tables.
 pnpm add postgraphile-plugin-pgvector
 ```
 
-### Usage — Preset (Recommended)
+### Usage -- Preset (Recommended)
 
 ```typescript
 import { PgVectorPreset } from 'postgraphile-plugin-pgvector';
@@ -144,7 +135,7 @@ const preset: GraphileConfig.Preset = {
 };
 ```
 
-### Usage — Plugin Directly
+### Usage -- Plugin Directly
 
 ```typescript
 import { PgVectorPlugin } from 'postgraphile-plugin-pgvector';
@@ -193,13 +184,13 @@ query SearchDocuments($vector: [Float!]!) {
 
 | Metric | Operator | Range | Notes |
 |---|---|---|---|
-| `COSINE` | `<=>` | 0–2 | 0 = identical; recommended for normalized embeddings |
-| `L2` | `<->` | 0–∞ | Euclidean distance |
-| `IP` | `<#>` | −∞–0 | Negative inner product; higher (less negative) = more similar |
+| `COSINE` | `<=>` | 0-2 | 0 = identical; recommended for normalized embeddings |
+| `L2` | `<->` | 0-inf | Euclidean distance |
+| `IP` | `<#>` | -inf-0 | Negative inner product; higher (less negative) = more similar |
 
 ---
 
-## Codegen — `Vector` Type → `number[]`
+## Codegen -- `Vector` Type -> `number[]`
 
 When using `@constructive-io/graphql-codegen`, add the `Vector` scalar mapping so generated types use `number[]` instead of `unknown`:
 
@@ -350,7 +341,7 @@ CREATE INDEX ON pgvector_test.documents USING hnsw (embedding vector_cosine_ops)
 
 ### Key `graphile-test` Pattern Notes
 
-- `getConnections({ schemas, preset, useRoot: true }, [seed.sqlfile([...])])` — no mocks
+- `getConnections({ schemas, preset, useRoot: true }, [seed.sqlfile([...])])` -- no mocks
 - `graphile-test` has `MinimalPreset` baked in; pass your plugin preset as `extends`
 - SQL fixture must `CREATE EXTENSION IF NOT EXISTS vector;` before creating vector columns
 - Use `BEGIN` / `ROLLBACK` for transaction-scoped test isolation (not `beforeEach` schema drops)
@@ -384,16 +375,16 @@ After adding: `embedding: number[] | null` appears in all generated types, mutat
 | `VectorMetricEnum` duplicate type error | Multiple `PgVectorPreset` instances | Create the enum once outside the loop or deduplicate by name |
 | `withPgClient` not in context | Missing `makePgService` in preset | Ensure `pgServices` is configured in your PostGraphile preset |
 | `getResource` returning `null` in init hook | Table not in `schemas` list | Add the schema to `schemas` in `getConnections` or PostGraphile config |
-| `dimension mismatch` error from pgvector | Query vector length ≠ column dimension | Set `maxQueryDim` in collection config; validate before calling |
+| `dimension mismatch` error from pgvector | Query vector length != column dimension | Set `maxQueryDim` in collection config; validate before calling |
 
 ---
 
 ## References
 
-- Related skill: `pgvector-setup` — DB schema with HNSW indexes
-- Related skill: `pgvector-embeddings` — generating and storing embeddings
-- Related skill: `rag-pipeline` — full RAG pipeline from embed to LLM
-- Related skill: `agentic-kit-rag` — wiring RAG into agentic-kit chat routes
+- Related skill: `pgvector-setup` -- DB schema with HNSW indexes
+- Related skill: `pgvector-embeddings` -- generating and storing embeddings
+- Related skill: `rag-pipeline` -- full RAG pipeline from embed to LLM
+- Related skill: `agentic-kit-rag` -- wiring RAG into agentic-kit chat routes
 - [pgvector docs](https://github.com/pgvector/pgvector)
 - [PostGraphile v5 plugin guide](https://postgraphile.org/postgraphile/next/extending/)
 - [Grafast step plan API](https://grafast.org/)

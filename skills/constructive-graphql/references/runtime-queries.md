@@ -1,12 +1,3 @@
----
-name: constructive-graphql-query
-description: Use @constructive-io/graphql-query to generate GraphQL queries and mutations at runtime from PostGraphile schema metadata. Covers the _meta introspection endpoint, the cleanTable() adapter, and the full generator API (buildSelect, buildFindOne, buildCount, mutations). Use when building dynamic data layers, runtime query generation, or browser-based GraphQL against a Constructive PostGraphile backend.
-compatibility: Browser + Node.js, PostGraphile v5+, graphql-query 3.3+
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # @constructive-io/graphql-query
 
 Browser-safe runtime GraphQL query generation for PostGraphile schemas. Generate type-safe queries, mutations, and introspection pipelines at runtime or build time.
@@ -27,7 +18,7 @@ Use this skill when:
 
 ## 1. Two Introspection Paths
 
-There are two ways to get schema metadata into `CleanTable[]` — the format all generators require.
+There are two ways to get schema metadata into `CleanTable[]` -- the format all generators require.
 
 ### Path A: Standard GraphQL Introspection (recommended for new code)
 
@@ -50,7 +41,7 @@ Works with **any** GraphQL endpoint. No PostGraphile-specific features required.
 
 ### Path B: PostGraphile `_meta` Endpoint
 
-Every Constructive `app-public` GraphQL API exposes a `_meta` query (via `MetaSchemaPreset` in `graphile-settings`). It returns richer metadata than standard introspection — including `isNotNull`, `hasDefault`, FK constraints, indexes, and server-side inflection names.
+Every Constructive `app-public` GraphQL API exposes a `_meta` query (via `MetaSchemaPreset` in `graphile-settings`). It returns richer metadata than standard introspection -- including `isNotNull`, `hasDefault`, FK constraints, indexes, and server-side inflection names.
 
 ```ts
 import { cleanTable } from '@your-app/data'; // Dashboard adapter
@@ -81,16 +72,16 @@ const res = await fetch('/graphql', {
   body: JSON.stringify({ query: META_QUERY }),
 });
 const { data } = await res.json();
-const tables = data._meta.tables.map(cleanTable); // → CleanTable[]
+const tables = data._meta.tables.map(cleanTable); // -> CleanTable[]
 ```
 
-See `references/meta-introspection.md` for full `_meta` response types and the `cleanTable()` adapter.
+See `references/query-meta-introspection.md` for full `_meta` response types and the `cleanTable()` adapter.
 
 ---
 
 ## 2. Generate Queries
 
-All generators take a `CleanTable` and return a `TypedDocumentString` — call `.toString()` or pass directly to a GraphQL client.
+All generators take a `CleanTable` and return a `TypedDocumentString` -- call `.toString()` or pass directly to a GraphQL client.
 
 ### SELECT (paginated list)
 
@@ -160,7 +151,7 @@ const updateQuery = buildPostGraphileUpdate(userTable, tables);
 const deleteQuery = buildPostGraphileDelete(userTable, tables);
 ```
 
-See `references/generators-api.md` for full options and generated output for each mutation type.
+See `references/query-generators-api.md` for full options and generated output for each mutation type.
 
 ---
 
@@ -180,8 +171,8 @@ buildSelect(table, tables, {
     select: ['id', 'name', 'email'],
     exclude: ['internalNotes'],
     include: {
-      posts: ['id', 'title'],       // hasMany → wrapped in nodes { ... }
-      organization: true,           // belongsTo → direct nesting
+      posts: ['id', 'title'],       // hasMany -> wrapped in nodes { ... }
+      organization: true,           // belongsTo -> direct nesting
     },
   },
 });
@@ -249,7 +240,7 @@ Available subpaths: `/generators`, `/client`, `/ast`, `/custom-ast`, `/types/sch
 ## 7. Package Relationship
 
 ```
-@constructive-io/graphql-query  ← this package (browser-safe core)
+@constructive-io/graphql-query  <- this package (browser-safe core)
         |
         v
 @constructive-io/graphql-codegen  (Node.js CLI, depends on graphql-query)
@@ -275,10 +266,10 @@ Available subpaths: `/generators`, `/client`, `/ast`, `/custom-ast`, `/types/sch
 | Bundle error: `fs`, `pg`, `postgraphile` not found | Use subpath imports (see section 6) |
 | Empty `CleanTable.fields` | Check that introspection response includes field data |
 | Wrong mutation/query names | Ensure `table.query` and `table.inflection` are populated |
-| `_meta` returns empty tables | Check auth headers — `_meta` requires authentication |
-| `query.one` returns non-existent root field | Known issue — use `query.all` with `condition: { id: $id }` instead |
+| `_meta` returns empty tables | Check auth headers -- `_meta` requires authentication |
+| `query.one` returns non-existent root field | Known issue -- use `query.all` with `condition: { id: $id }` instead |
 
 ## References
 
-- **`references/meta-introspection.md`** — Full `_meta` query structure, response types, `cleanTable()` adapter, and platform caveats
-- **`references/generators-api.md`** — Complete API reference for all generators, options, and generated output examples
+- **`references/query-meta-introspection.md`** -- Full `_meta` query structure, response types, `cleanTable()` adapter, and platform caveats
+- **`references/query-generators-api.md`** -- Complete API reference for all generators, options, and generated output examples

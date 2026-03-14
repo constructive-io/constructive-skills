@@ -1,12 +1,3 @@
----
-name: constructive-graphql-codegen
-description: Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL endpoints, schema files/directories, databases, or PGPM modules using @constructive-io/graphql-codegen. Also generates documentation (README, AGENTS.md, skills/, mcp.json). Use when asked to "generate GraphQL hooks", "generate ORM", "generate CLI", "set up codegen", "generate docs", "generate skills", "export schema", or when implementing data fetching for a PostGraphile backend.
-compatibility: Node.js 22+, PostgreSQL 14+, PostGraphile v5+ (optional)
-metadata:
-  author: constructive-io
-  version: "4.5.x"
----
-
 # Constructive GraphQL Codegen
 
 Generate type-safe React Query hooks, Prisma-like ORM client, or inquirerer-based CLI from GraphQL schema files, endpoints, databases, or PGPM modules. Also generates documentation in multiple formats.
@@ -365,7 +356,7 @@ function CreateUser() {
 }
 ```
 
-See `references/hooks-patterns.md` and `references/hooks-output.md` for advanced patterns.
+See `references/codegen-hooks-patterns.md` and `references/codegen-hooks-output.md` for advanced patterns.
 
 ## Using Generated ORM
 
@@ -420,7 +411,7 @@ const user = await db.user.findOne({ id }).execute().unwrap(); // throws on erro
 const user = await db.user.findOne({ id }).execute().unwrapOr(defaultUser);
 ```
 
-See `references/orm-patterns.md` and `references/orm-output.md` for advanced patterns.
+See `references/codegen-orm-patterns.md` and `references/codegen-orm-output.md` for advanced patterns.
 
 ## Using Generated CLI
 
@@ -507,7 +498,7 @@ invalidate.user.detail(queryClient, id);
 remove.user(queryClient, userId);
 ```
 
-See `references/query-keys.md` for details.
+See `references/codegen-query-keys.md` for details.
 
 ## Troubleshooting
 
@@ -533,16 +524,16 @@ All references are in [references/](references/).
 
 Each major codegen workflow has a dedicated reference with full examples and options:
 
-- **`generate-schemas.md`** -- Export GraphQL schemas to `.graphql` files (schema export workflow)
-- **`generate-sdk.md`** -- Generate React Query hooks and/or ORM client (primary SDK workflow)
-- **`generate-cli.md`** -- Generate inquirerer-based CLI with CRUD commands
-- **`generate-node.md`** -- Generate NodeHttpAdapter for `*.localhost` subdomain routing
+- **`codegen-generate-schemas.md`** -- Export GraphQL schemas to `.graphql` files (schema export workflow)
+- **`codegen-generate-sdk.md`** -- Generate React Query hooks and/or ORM client (primary SDK workflow)
+- **`codegen-generate-cli.md`** -- Generate inquirerer-based CLI with CRUD commands
+- **`codegen-generate-node.md`** -- Generate NodeHttpAdapter for `*.localhost` subdomain routing
 
 ### Deep-Dive References
 
-- **Using generated code**: `hooks-patterns.md`, `hooks-output.md`, `orm-patterns.md`, `orm-output.md`
-- **Error handling and relations**: `error-handling.md`, `relations.md`
-- **Query key factory and cache management**: `query-keys.md`
-- **Node.js HTTP adapter (manual)**: `node-http-adapter.md`
-- **CLI flags**: `cli-reference.md`
-- **Configuration file (`defineConfig`)**: `config-reference.md`
+- **Using generated code**: `codegen-hooks-patterns.md`, `codegen-hooks-output.md`, `codegen-orm-patterns.md`, `codegen-orm-output.md`
+- **Error handling and relations**: `codegen-error-handling.md`, `codegen-relations.md`
+- **Query key factory and cache management**: `codegen-query-keys.md`
+- **Node.js HTTP adapter (manual)**: `codegen-node-http-adapter.md`
+- **CLI flags**: `codegen-cli-reference.md`
+- **Configuration file (`defineConfig`)**: `codegen-config-reference.md`
