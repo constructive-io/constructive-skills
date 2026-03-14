@@ -1,12 +1,3 @@
----
-name: pgsql-test
-description: PostgreSQL integration testing with pgsql-test — RLS policies, seeding, exceptions, snapshots, helpers, JWT context, and complex scenario setup. Use when asked to "test RLS", "test permissions", "seed test data", "snapshot test", "test database", "write integration tests", "test user access", "handle aborted transactions", or when writing any PostgreSQL test with pgsql-test.
-compatibility: pgsql-test, Jest/Vitest, PostgreSQL, Node.js 18+
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # pgsql-test (PostgreSQL Integration Testing)
 
 pgsql-test provides a complete testing toolkit for PostgreSQL — from RLS policy verification and test seeding to snapshot utilities and complex multi-client scenario management. All tests run in transactions with savepoint-based isolation.

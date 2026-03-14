@@ -1,13 +1,3 @@
----
-name: pgsql-parser-testing
-description: Test the pgsql-parser repository (SQL parser/deparser). Use when working in the pgsql-parser repo, fixing deparser issues, running parser tests, or validating SQL round-trips. Scoped specifically to the constructive-io/pgsql-parser repository.
-compatibility: Node.js 18+, pnpm, pgsql-parser repository
-metadata:
-  author: constructive-io
-  version: "1.0.0"
-  scope: constructive-io/pgsql-parser
----
-
 # PGSQL Parser Testing
 
 Testing workflow for the pgsql-parser repository. This skill is scoped specifically to the `constructive-io/pgsql-parser` monorepo.
@@ -41,7 +31,7 @@ pgsql-parser/
 The pgsql-parser uses AST-level equality for correctness, not string equality:
 
 ```
-parse(sql1) → ast1 → deparse(ast1) → sql2 → parse(sql2) → ast2
+parse(sql1) -> ast1 -> deparse(ast1) -> sql2 -> parse(sql2) -> ast2
 ```
 
 While `sql2 !== sql1` textually, a correct round-trip means `ast1 === ast2`.
@@ -110,7 +100,7 @@ pnpm test --testNamePattern="specific-test-name"
 ### Workflow Loop
 
 ```
-Make changes → pnpm build → pnpm test --testNamePattern="target" → pnpm test (full) → commit
+Make changes -> pnpm build -> pnpm test --testNamePattern="target" -> pnpm test (full) -> commit
 ```
 
 ## Test Utilities

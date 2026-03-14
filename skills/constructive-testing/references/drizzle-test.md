@@ -1,12 +1,3 @@
----
-name: drizzle-orm-test
-description: Test PostgreSQL databases with Drizzle ORM using drizzle-orm-test. Use when asked to "test with Drizzle", "test Drizzle ORM", "write type-safe database tests", or when testing applications using Drizzle ORM.
-compatibility: drizzle-orm-test, drizzle-orm, Jest/Vitest, PostgreSQL
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Testing with Drizzle ORM
 
 Test PostgreSQL databases with Drizzle ORM using drizzle-orm-test. Get type-safe queries, automatic context management, and RLS testing.
@@ -89,7 +80,7 @@ let drizzleDb: ReturnType<typeof drizzle>;
 
 beforeAll(async () => {
   ({ pg, db, teardown } = await getConnections());
-  
+
   // Create Drizzle client from pg connection
   drizzleDb = drizzle(pg.client);
 });
@@ -213,7 +204,7 @@ const bob = '550e8400-e29b-41d4-a716-446655440002';
 
 beforeAll(async () => {
   ({ pg, db, teardown } = await getConnections());
-  
+
   // Create Drizzle client from db connection (respects RLS)
   drizzleDb = drizzle(db.client);
 });

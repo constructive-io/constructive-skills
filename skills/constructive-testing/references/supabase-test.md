@@ -1,12 +1,3 @@
----
-name: supabase-test
-description: Test Supabase applications with supabase-test. Use when asked to "test Supabase", "test RLS with Supabase", "write Supabase tests", or when testing applications built on Supabase.
-compatibility: supabase-test, Jest/Vitest, Supabase, PostgreSQL
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Testing Supabase Applications with supabase-test
 
 TypeScript-native testing for Supabase with ephemeral databases, RLS testing, and multi-user simulation.

@@ -1,12 +1,3 @@
----
-name: drizzle-orm
-description: Drizzle ORM patterns for PostgreSQL schema design and queries. Use when asked to "design Drizzle schema", "write Drizzle queries", "set up Drizzle ORM", or when building type-safe database layers.
-compatibility: drizzle-orm, drizzle-kit, PostgreSQL, TypeScript
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Drizzle ORM Patterns
 
 Design PostgreSQL schemas and write type-safe queries with Drizzle ORM. This skill covers schema design patterns, query building, and integration with the Constructive ecosystem.
