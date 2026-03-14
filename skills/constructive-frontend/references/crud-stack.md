@@ -1,12 +1,3 @@
----
-name: constructive-crud-stack
-description: Build CRUD actions as Stack cards (iOS-style slide-in panels) for any Constructive CRM. Covers the Stack card trigger pattern, CardComponent structure, the card API (close/push/setTitle), useCardReady for deferred loading, and stacked confirm-delete. For dynamic forms that introspect _meta at runtime, see the constructive-meta-forms skill.
-compatibility: Next.js 14+ (App Router), Constructive SDK, @constructive/stack, @tanstack/react-query
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # Constructive CRUD Stack Cards
 
 Build any create/edit/delete action as a slide-in Stack card. Cancel/Save/Delete CTAs live in a sticky footer. Cards stack naturally — e.g., pushing a confirm-delete card on top of an edit card.

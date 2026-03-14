@@ -1,12 +1,3 @@
----
-name: constructive-ui
-description: Build UIs with the @constructive-io/ui component library. Use when working with Constructive UI components, Base UI primitives, cva variants, Tailwind CSS v4 theming, forms, overlays, layout, animations, advanced inputs, or the shadcn registry. Covers 50+ components across forms, overlays, layout, data display, and advanced inputs.
-compatibility: React 19, Next.js 15+, @constructive-io/ui, Tailwind CSS v4
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Constructive UI
 
 Build UIs with `@constructive-io/ui` — 50+ components on Base UI + Tailwind CSS v4.
