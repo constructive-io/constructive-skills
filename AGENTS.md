@@ -6,82 +6,86 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for different ai agents for working with Constructive tooling. Skills are packaged instructions and scripts that extend agents' capabilities.
+A collection of skills for different AI agents for working with Constructive tooling. Skills are packaged instructions and scripts that extend agents' capabilities.
 
-## Creating a New Skill
+Skills are organized as **domain-grouped umbrella skills** — each skill covers an entire area of the platform with reference docs for subtopics, following the pattern established by [vercel-labs/next-skills](https://github.com/vercel-labs/next-skills).
 
-### Directory Structure
+## Available Skills
+
+| Skill | Domain | Covers |
+|-------|--------|--------|
+| `constructive` | Platform core | Safegres security model, services/schemas, deployment, server config, cloud functions, cnc CLI |
+| `constructive-database` | Database | pgpm migrations, workspace/module init, boilerplate authoring, CI/CD for database testing |
+| `constructive-graphql` | GraphQL & API | Code generation (hooks, ORM, CLI), runtime queries, dynamic CRUD forms, pgvector integration |
+| `constructive-frontend` | UI & Frontend | @constructive-io/ui components, CRUD Stack cards, Next.js boilerplate |
+| `constructive-testing` | Testing | pgsql-test, Drizzle ORM testing, Supabase testing, SQL parser testing |
+| `constructive-ai` | AI & RAG | pgvector, Ollama embeddings, RAG pipelines, CI/CD for AI |
+| `constructive-tooling` | DevOps & CLI | PNPM workspaces, CLI development (inquirerer), README formatting, planning/specs |
+| `fbp` | Flow-Based Programming | FBP types, graph spec, evaluator, visual graph editor |
+
+All skills are **background skills** (`user-invocable: false`) — they load automatically when their domain is relevant.
+
+## Skill Structure
+
+Each skill follows the umbrella pattern — an index SKILL.md linking to reference docs:
 
 ```
 skills/
-  {skill-name}/           # kebab-case directory name
-    SKILL.md              # Required: skill definition
-    scripts/              # Required: executable scripts
-      {script-name}.sh    # Bash scripts (preferred)
-  {skill-name}.zip        # Required: packaged for distribution
+  {skill-name}/
+    SKILL.md              # Index: frontmatter + H2 summaries linking to references
+    references/           # Detailed documentation for each subtopic
+      {topic}.md
 ```
-
-### Naming Conventions
-
-- **Skill directory**: `kebab-case` (e.g., `constructive-codegen`, `log-monitor`)
-- **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.sh` (e.g., `deploy.sh`, `fetch-logs.sh`)
-- **Zip file**: Must match directory name exactly: `{skill-name}.zip`
 
 ### SKILL.md Format
 
-```markdown
+Each umbrella skill has an index SKILL.md with YAML frontmatter:
+
+```yaml
 ---
 name: {skill-name}
-description: {One sentence describing when to use this skill. Include trigger phrases like "Deploy my app", "Check logs", etc.}
+description: {Description with trigger phrases covering ALL subtopics}
+user-invocable: false
+metadata:
+  author: constructive-io
+  version: "1.0.0"
 ---
-
-# {Skill Title}
-
-{Brief description of what the skill does.}
-
-## How It Works
-
-{Numbered list explaining the skill's workflow}
-
-## Usage
-
-```bash
-bash /mnt/skills/user/{skill-name}/scripts/{script}.sh [args]
 ```
 
-**Arguments:**
-- `arg1` - Description (defaults to X)
+The body contains H2 sections — one per subtopic — with:
+- 2-4 bullet point summary
+- Trigger phrases
+- Link to the reference doc: `See [filename.md](./references/filename.md) for details.`
 
-**Examples:**
-{Show 2-3 common usage patterns}
+Required frontmatter fields:
+- `name`: Max 64 chars, lowercase + numbers + hyphens, must match directory name
+- `description`: Max 1024 chars, include trigger phrases from all subtopics
 
-## Output
+Optional frontmatter fields:
+- `user-invocable`: Set to `false` for background skills (auto-loaded)
+- `compatibility`: Environment requirements (Node.js version, dependencies)
+- `metadata`: Key-value pairs (author, version)
+- `license`: License reference
 
-{Show example output users will see}
+### Naming Conventions
 
-## Present Results to User
-
-{Template for how agent should format results when presenting to users}
-
-## Troubleshooting
-
-{Common issues and solutions, especially network/permissions errors}
-```
+- **Skill directory**: `kebab-case` (e.g., `constructive-graphql`, `constructive-ai`)
+- **SKILL.md**: Always uppercase, always this exact filename
+- **Reference docs**: `kebab-case.md`, prefixed with source name when absorbing sub-references (e.g., `pgpm-commands.md`, `ui-forms.md`)
 
 ### Best Practices for Context Efficiency
 
 Skills are loaded on-demand — only the skill name and description are loaded at startup. The full `SKILL.md` loads into context only when the agent decides the skill is relevant. To minimize context usage:
 
-- **Keep SKILL.md under 500 lines** — put detailed reference material in separate files
-- **Write specific descriptions** — helps the agent know exactly when to activate the skill
-- **Use progressive disclosure** — reference supporting files that get read only when needed
-- **Prefer scripts over inline code** — script execution doesn't consume context (only output does)
-- **File references work one level deep** — link directly from SKILL.md to supporting files
+- **Keep SKILL.md as an index** — summaries and links only, no code examples
+- **Put detailed docs in `references/`** — agents read only what's needed for the current task
+- **Write specific descriptions** — include trigger phrases from all absorbed subtopics so agents know when to activate
+- **Use progressive disclosure** — SKILL.md links to references, which may link to sub-references
+- **Split by topic** — each reference file covers one specific aspect (API, patterns, configuration, etc.)
 
 ### Reference Documentation
 
-The `references/` directory contains detailed documentation split into focused sections for selective reading by agents. This minimizes token usage by allowing agents to read only what's needed for the specific task.
+The `references/` directory contains detailed documentation split into focused sections for selective reading by agents.
 
 **Structure:**
 ```
@@ -89,41 +93,29 @@ skills/
   {skill-name}/
     SKILL.md
     references/
-      {topic-1}.md    # Focused documentation on specific topic
-      {topic-2}.md    # Another focused topic
+      {topic}.md              # Main reference doc (one per absorbed subtopic)
+      {prefix}-{subtopic}.md  # Sub-references from original skill's references/
 ```
 
 **Best Practices:**
-- **Split by topic** — separate concerns into individual files (e.g., `cli-reference.md`, `hooks-patterns.md`, `error-handling.md`)
+- **One file per absorbed skill** — each original skill becomes a reference doc
+- **Prefix sub-references** — when an absorbed skill had its own references/, prefix those filenames (e.g., `pgpm-commands.md`, `ui-forms.md`)
 - **Clear naming** — file names should indicate exactly what content they contain
 - **Reference from SKILL.md** — list all reference files with brief descriptions so agents know which to read
 - **Selective reading** — agents should read only the relevant reference files for their current task
-- **Keep focused** — each reference file should cover one specific aspect (API, patterns, configuration, etc.)
 
-**Example:**
-If a skill generates both hooks and ORM code, split references into:
-- `hooks-output.md` - API reference for generated hooks
-- `hooks-patterns.md` - Usage patterns and examples for hooks
-- `orm-output.md` - API reference for generated ORM
-- `orm-patterns.md` - Usage patterns and examples for ORM
-- `config-reference.md` - Configuration options
+### Adding a New Subtopic
 
-This allows agents helping with ORM queries to read only `orm-patterns.md` instead of loading all documentation.
+To add a new subtopic to an existing umbrella skill:
 
-### Script Requirements
+1. Create the reference doc in `references/{topic}.md`
+2. Add an H2 section to the skill's `SKILL.md` with summary and link
+3. Update the `description` in frontmatter to include new trigger phrases
 
-- Use `#!/bin/bash` shebang
-- Use `set -e` for fail-fast behavior
-- Write status messages to stderr: `echo "Message" >&2`
-- Write machine-readable output (JSON) to stdout
-- Include a cleanup trap for temp files
-- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.sh`
+### Creating a New Umbrella Skill
 
-### Creating the Zip Package
+Only create a new umbrella skill when the topic doesn't fit any existing domain. Follow the same pattern:
 
-After creating or updating a skill:
-
-```bash
-cd skills
-zip -r {skill-name}.zip {skill-name}/
-```
+1. Create `skills/{skill-name}/SKILL.md` with the index format
+2. Create `skills/{skill-name}/references/` with reference docs
+3. Update this file and `CLAUDE.md` with the new skill
