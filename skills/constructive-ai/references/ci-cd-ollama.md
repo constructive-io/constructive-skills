@@ -1,12 +1,3 @@
----
-name: github-workflows-ollama
-description: Configure GitHub Actions workflows for Ollama and pgvector testing. Use when asked to "set up CI for RAG", "configure Ollama in CI", "test embeddings in GitHub Actions", or when building CI/CD pipelines for AI applications with pgvector.
-compatibility: GitHub Actions, Docker, PostgreSQL with pgvector, Ollama
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # GitHub Workflows for Ollama and pgvector
 
 Configure GitHub Actions workflows for testing RAG pipelines, vector embeddings, and Ollama-based AI applications.

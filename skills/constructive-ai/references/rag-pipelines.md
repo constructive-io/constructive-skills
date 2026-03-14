@@ -1,12 +1,3 @@
----
-name: pgvector-rag
-description: pgvector setup, embeddings, similarity search, RAG pipelines, Ollama integration, and agentic-kit RAG. Use when asked to "set up vector database", "generate embeddings", "semantic search", "build RAG", "use Ollama", "run local LLM", "configure RAG", "create AI search", "embed documents", or when building any RAG or vector search application with PostgreSQL.
-compatibility: Node.js 18+, PostgreSQL with pgvector, Ollama, pgpm CLI
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # pgvector & RAG
 
 Complete toolkit for building vector search and RAG (Retrieval-Augmented Generation) applications with PostgreSQL. Covers pgvector schema setup, embedding generation with Ollama, similarity search, full RAG pipelines, and agentic-kit integration.
@@ -24,9 +15,9 @@ Use this skill when:
 ## Architecture
 
 ```
-Document → Chunking → Embedding → pgvector Storage
-                                        ↓
-Query → Embedding → Similarity Search → Context Retrieval → LLM Response
+Document -> Chunking -> Embedding -> pgvector Storage
+                                        |
+Query -> Embedding -> Similarity Search -> Context Retrieval -> LLM Response
 ```
 
 ## Quick Start
@@ -228,16 +219,9 @@ Consult these reference files for detailed documentation on specific topics:
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/setup.md](references/setup.md) | pgvector schema setup | Creating tables, indexes, vector dimensions, pgpm module structure |
-| [references/embeddings.md](references/embeddings.md) | Generating and storing embeddings | OllamaClient, document chunking, ingestion pipeline, batch processing |
-| [references/similarity-search.md](references/similarity-search.md) | Similarity search queries | Distance operators, thresholds, metadata filtering, performance tuning |
-| [references/rag-pipeline.md](references/rag-pipeline.md) | Complete RAG pipeline | RAGService implementation, streaming, chat history, prompt engineering |
-| [references/ollama.md](references/ollama.md) | Ollama integration | Installation, API endpoints, model selection, chat API, CI/CD setup |
-| [references/agentic-kit.md](references/agentic-kit.md) | Agentic-kit RAG | RAGProvider, createRAGKit, useAgent hook, environment config, database schema |
-
-## Cross-References
-
-Related skills (separate from this skill):
-- `graphile-pgvector` — Integrate pgvector with PostGraphile v5 GraphQL
-- `pgpm` (`references/docker.md`) — PostgreSQL container management for pgvector
-- `github-workflows-ollama` — GitHub Actions for Ollama and pgvector testing
+| [pgvector-rag-setup.md](pgvector-rag-setup.md) | pgvector schema setup | Creating tables, indexes, vector dimensions, pgpm module structure |
+| [pgvector-rag-embeddings.md](pgvector-rag-embeddings.md) | Generating and storing embeddings | OllamaClient, document chunking, ingestion pipeline, batch processing |
+| [pgvector-rag-similarity-search.md](pgvector-rag-similarity-search.md) | Similarity search queries | Distance operators, thresholds, metadata filtering, performance tuning |
+| [pgvector-rag-rag-pipeline.md](pgvector-rag-rag-pipeline.md) | Complete RAG pipeline | RAGService implementation, streaming, chat history, prompt engineering |
+| [pgvector-rag-ollama.md](pgvector-rag-ollama.md) | Ollama integration | Installation, API endpoints, model selection, chat API, CI/CD setup |
+| [pgvector-rag-agentic-kit.md](pgvector-rag-agentic-kit.md) | Agentic-kit RAG | RAGProvider, createRAGKit, useAgent hook, environment config, database schema |
