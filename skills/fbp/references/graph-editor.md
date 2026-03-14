@@ -1,8 +1,3 @@
----
-name: fbp-graph-editor
-description: Houdini-inspired graph editor for Flow-Based Programming built with React. Use when building or customizing a visual graph editor, working with the @fbp/graph-editor package.
----
-
 Houdini-inspired graph editor for Flow-Based Programming built with React.
 
 ## Installation
@@ -194,8 +189,8 @@ function App() {
         <h1 className="text-xl font-bold">{graph.name}</h1>
       </header>
       <main className="flex-1">
-        <GraphEditor 
-          graph={graph} 
+        <GraphEditor
+          graph={graph}
           onChange={setGraph}
         />
       </main>

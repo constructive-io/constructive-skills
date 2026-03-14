@@ -1,8 +1,3 @@
----
-name: fbp-spec
-description: Storage specification and manipulation API for flow-based programming graphs. Use when working with FBP graph storage, manipulating graph data structures, or using the @fbp/spec package.
----
-
 Storage specification and manipulation API for flow-based programming graphs.
 
 ## Installation
@@ -68,15 +63,15 @@ isRootPath('/')           // true
 import { insertNode, removeNode, renameNode, moveNode } from '@fbp/spec';
 
 // Insert a node at root scope
-const newGraph = insertNode(graph, '/', { 
-  name: 'add1', 
-  type: 'math/add' 
+const newGraph = insertNode(graph, '/', {
+  name: 'add1',
+  type: 'math/add'
 });
 
 // Insert into a subnet
-const newGraph = insertNode(graph, '/subnet1', { 
-  name: 'multiply1', 
-  type: 'math/multiply' 
+const newGraph = insertNode(graph, '/subnet1', {
+  name: 'multiply1',
+  type: 'math/multiply'
 });
 
 // Remove a node and connected edges
@@ -155,35 +150,35 @@ const newGraph = setPosition(graph, '/add1', 100, 200);
 ```json
 {
   "nodes": [
-    { 
-      "name": "input_a", 
-      "type": "graphInput", 
+    {
+      "name": "input_a",
+      "type": "graphInput",
       "meta": { "x": 0, "y": 0 },
       "props": [
-        { "name": "portName", "value": "a" }, 
+        { "name": "portName", "value": "a" },
         { "name": "dataType", "value": "number" }
       ]
     },
-    { 
-      "name": "input_b", 
-      "type": "graphInput", 
+    {
+      "name": "input_b",
+      "type": "graphInput",
       "meta": { "x": 0, "y": 100 },
       "props": [
-        { "name": "portName", "value": "b" }, 
+        { "name": "portName", "value": "b" },
         { "name": "dataType", "value": "number" }
       ]
     },
-    { 
-      "name": "add1", 
-      "type": "math/add", 
+    {
+      "name": "add1",
+      "type": "math/add",
       "meta": { "x": 200, "y": 50 }
     },
-    { 
-      "name": "output_sum", 
-      "type": "graphOutput", 
+    {
+      "name": "output_sum",
+      "type": "graphOutput",
       "meta": { "x": 400, "y": 50 },
       "props": [
-        { "name": "portName", "value": "sum" }, 
+        { "name": "portName", "value": "sum" },
         { "name": "dataType", "value": "number" }
       ]
     }

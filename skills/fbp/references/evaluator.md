@@ -1,8 +1,3 @@
----
-name: fbp-evaluator
-description: Lazy graph evaluator for Flow-Based Programming. Use when evaluating FBP graphs, running dataflow computations, or working with the @fbp/evaluator package.
----
-
 Lazy graph evaluator for Flow-Based Programming.
 
 ## Installation
