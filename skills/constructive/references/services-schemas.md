@@ -1,16 +1,3 @@
----
-name: constructive-services-schemas
-description: >
-  Create and configure Constructive services (APIs), attach database schemas to them,
-  set up domains, API modules, and schema grants using the @constructive-io/sdk TypeScript SDK.
-  Use when: "create an API", "set up a service", "attach schema to API", "configure domains",
-  "add API module", "grant schema access", "set up service routing".
-compatibility: Node.js 18+, @constructive-io/sdk
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Constructive Services & Schemas
 
 Configure Constructive services (APIs), attach database schemas, set up domain routing, and manage access — all via the `@constructive-io/sdk` TypeScript SDK with zero SQL.

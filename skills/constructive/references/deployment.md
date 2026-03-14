@@ -1,11 +1,3 @@
----
-name: constructive-deployment
-description: Deploy the Constructive platform locally and to production using Docker Compose, pgpm, and the Constructive CLI. Use when asked to "deploy constructive", "set up docker compose", "run constructive locally", "deploy to production", or when working with the constructive monorepo's Docker and infrastructure files.
-compatibility: Docker, Docker Compose, pgpm CLI, Node.js 22+, PostgreSQL 17+
-metadata:
-  author: constructive-io
----
-
 # Constructive Deployment
 
 How to deploy the Constructive platform — local development with Docker Compose, database migrations with pgpm, and production container builds.

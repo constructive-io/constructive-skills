@@ -1,11 +1,3 @@
----
-name: constructive-server-config
-description: Configure and run the Constructive GraphQL server (cnc server), GraphiQL explorer (cnc explorer), and code generation (cnc codegen). Use when asked to "start the server", "run cnc server", "start GraphQL API", "run GraphiQL", "configure API routing", "generate types", or when working with the Constructive CLI and PostGraphile.
-compatibility: Node.js 22+, PostgreSQL 17+, PostGraphile v5+, @constructive-io/cli 7.1.3+
-metadata:
-  author: constructive-io
----
-
 # Constructive Server Configuration
 
 How to run and configure the Constructive GraphQL API server, explorer, and codegen tools. The server exposes a multi-target GraphQL API with subdomain-based routing.

@@ -1,8 +1,3 @@
----
-name: constructive-functions
-description: Build and deploy Knative-style HTTP cloud functions for the Constructive platform. Use when creating serverless functions for Constructive (email, webhooks, background jobs), building functions that interact with the Constructive GraphQL API, or running PGPM commands programmatically.
----
-
 Build and deploy Knative-style HTTP cloud functions for the Constructive platform.
 
 ## When to Apply
@@ -197,7 +192,7 @@ export default async (params: any, context: any) => {
   };
 
   await dump(argv, prompter, {});
-  
+
   return { message: 'PGPM dump completed', args: argv };
 };
 ```
@@ -211,7 +206,7 @@ import { getPgPool, close } from 'pg-cache';
 
 export default async (params: any, context: any) => {
   const { query } = params;
-  
+
   if (!query) {
     return { error: 'Missing "query" in payload' };
   }
@@ -227,7 +222,7 @@ export default async (params: any, context: any) => {
 
   const result = await pool.query(query);
   return { rowCount: result.rowCount, rows: result.rows };
-  
+
   // Note: No manual cleanup needed - pg-cache handles pool lifecycle
 };
 ```

@@ -1,12 +1,3 @@
----
-name: constructive-safegres
-description: Safegres is Constructive's security protocol for expressing authorization as Authz* policy nodes (types + JSON configs). This skill defines each Authz* type, its config shape, semantics, and when to use it. No SQL and no SDK/grant/RLS steps.
-compatibility: Node.js 22+, @constructive-io/sdk
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Safegres (Authz* Security Protocol)
 
 Safegres is the **protocol layer** behind Constructive authorization.
