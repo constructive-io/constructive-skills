@@ -1,12 +1,3 @@
----
-name: planning-blueprinting
-description: In-repo planning and specification system for software projects. Use when asked to "create a plan", "write a spec", "document a proposal", "blueprint a feature", or when doing architectural planning work.
-compatibility: any project, markdown
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Planning and Blueprinting System
 
 A minimal, enforceable system for doing planning, blueprinting, and specification inside a codebase using two core concepts: **plans** (proposals) and **specs** (contracts).

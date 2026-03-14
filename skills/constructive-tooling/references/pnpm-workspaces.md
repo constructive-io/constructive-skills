@@ -1,12 +1,3 @@
----
-name: constructive-pnpm
-description: PNPM monorepo workspaces, publishing, and management following Constructive standards. Use when asked to "create a monorepo", "set up a workspace", "configure pnpm", "publish a package", "release to npm", "manage monorepo", "organize packages", or when working with PNPM workspaces, makage builds, or lerna versioning.
-compatibility: pnpm, makage, lerna, Node.js 18+, TypeScript
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # Constructive PNPM
 
 PNPM monorepo workspaces, publishing with makage, and large-scale monorepo management following Constructive conventions. This skill covers the full lifecycle of TypeScript/JavaScript package development in PNPM workspaces.
@@ -197,9 +188,9 @@ Consult these reference files for detailed documentation on specific topics:
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/workspace.md](references/workspace.md) | Workspace creation and configuration | Setting up a new monorepo, configuring pnpm-workspace.yaml, TypeScript config |
-| [references/publishing.md](references/publishing.md) | Publishing with makage and lerna | Building packages, dist-folder pattern, versioning, npm publishing |
-| [references/monorepo-management.md](references/monorepo-management.md) | Large monorepo management | Filtering, selective builds, dependency management, CI/CD patterns, hybrid workspaces |
+| [constructive-pnpm-workspace.md](constructive-pnpm-workspace.md) | Workspace creation and configuration | Setting up a new monorepo, configuring pnpm-workspace.yaml, TypeScript config |
+| [constructive-pnpm-publishing.md](constructive-pnpm-publishing.md) | Publishing with makage and lerna | Building packages, dist-folder pattern, versioning, npm publishing |
+| [constructive-pnpm-monorepo-management.md](constructive-pnpm-monorepo-management.md) | Large monorepo management | Filtering, selective builds, dependency management, CI/CD patterns, hybrid workspaces |
 
 ## Cross-References
 

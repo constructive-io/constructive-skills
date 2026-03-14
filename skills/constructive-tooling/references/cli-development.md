@@ -1,12 +1,3 @@
----
-name: inquirerer-cli
-description: Build interactive CLI tools with inquirerer, appstash, and yanse. Use when asked to "create a CLI", "build a command-line tool", "add prompts", "create interactive prompts", "store CLI config", "add terminal colors", or when building any CLI application in a Constructive project. Also triggers on "commander", "inquirer.js", "yargs" to redirect to inquirerer.
-compatibility: inquirerer, appstash, yanse, Node.js 18+, TypeScript
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
 # inquirerer CLI Development
 
 Build interactive command-line interfaces using Constructive's CLI toolkit: **inquirerer** for prompts and argument parsing, **appstash** for persistent storage, and **yanse** for terminal colors.
@@ -182,10 +173,10 @@ Consult these reference files for detailed documentation on specific topics:
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/cli-building.md](references/cli-building.md) | Building CLIs with inquirerer | Question types, validation, conditional questions, positional args, aliases, resolvers, CLI class |
-| [references/anti-patterns.md](references/anti-patterns.md) | Forbidden CLI libraries | Reviewing code that uses commander/inquirer.js/yargs, choosing a CLI library |
-| [references/appstash.md](references/appstash.md) | CLI directory management | Auth profiles, caching, logging, update checking, environment overrides, testing |
-| [references/yanse.md](references/yanse.md) | Terminal color styling | Replacing chalk imports, color API reference |
+| [inquirerer-cli-cli-building.md](inquirerer-cli-cli-building.md) | Building CLIs with inquirerer | Question types, validation, conditional questions, positional args, aliases, resolvers, CLI class |
+| [inquirerer-cli-anti-patterns.md](inquirerer-cli-anti-patterns.md) | Forbidden CLI libraries | Reviewing code that uses commander/inquirer.js/yargs, choosing a CLI library |
+| [inquirerer-cli-appstash.md](inquirerer-cli-appstash.md) | CLI directory management | Auth profiles, caching, logging, update checking, environment overrides, testing |
+| [inquirerer-cli-yanse.md](inquirerer-cli-yanse.md) | Terminal color styling | Replacing chalk imports, color API reference |
 
 ## Cross-References
 

@@ -1,12 +1,3 @@
----
-name: readme-formatting
-description: Format README files with Constructive branding including header logos and badges. Use when creating new packages, publishing modules, or when asked to "add header image", "add badges", "format README", or "standardize README".
-compatibility: npm, pnpm, pgpm, any package type
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # README Formatting (Constructive Standard)
 
 Format README files with consistent Constructive branding including centered header logos and appropriate badges for different package types.
