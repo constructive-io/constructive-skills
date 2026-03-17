@@ -16,10 +16,9 @@ Unified, type-safe environment configuration for all Constructive and PGPM proje
 Use this skill when:
 - Configuring database connections, server settings, CDN, SMTP, or jobs programmatically
 - Understanding how environment variables map to typed configuration objects
-- Setting up `pgpm.json` config files
 - Writing code that needs to read environment-aware configuration
 - Choosing between `@pgpmjs/env` and `@constructive-io/graphql-env`
-- Understanding the merge hierarchy (defaults → config file → env vars → overrides)
+- Understanding the merge hierarchy (defaults → env vars → runtime overrides)
 
 ## Architecture Overview
 
@@ -53,9 +52,11 @@ Two packages form a layered configuration system:
 Options are merged in this order (later overrides earlier):
 
 1. **Defaults** — `pgpmDefaults` (+ `constructiveGraphqlDefaults` for GraphQL layer)
-2. **Config file** — `pgpm.json` or `pgpm.config.js` discovered by walking up directories
+2. **Config file** — `pgpm.json` or `pgpm.config.js` (rarely needed — see [references/config-file.md](references/config-file.md))
 3. **Environment variables** — parsed from `process.env`
 4. **Runtime overrides** — passed programmatically to `getEnvOptions()`
+
+In practice, most projects only use layers 1, 3, and 4. Config files are a last resort for shared workspace settings.
 
 Arrays are **replaced**, not concatenated — the later source wins completely.
 
@@ -156,18 +157,6 @@ import { getNodeEnv } from '@pgpmjs/env';
 const env = getNodeEnv(); // 'development' | 'production' | 'test'
 ```
 
-### Config File Discovery
-
-```typescript
-import { loadConfigSync, resolvePgpmPath } from '@pgpmjs/env';
-
-// Load pgpm.json by walking up directory tree
-const config = loadConfigSync('/path/to/project');
-
-// Find the pgpm config file path
-const pgpmPath = resolvePgpmPath('/path/to/project');
-```
-
 ## Anti-Patterns
 
 **Never do this:**
@@ -199,9 +188,9 @@ const { isPublic } = opts.api;
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/env-vars.md](references/env-vars.md) | Complete environment variables reference | Looking up specific env var names, defaults, and which config key they map to |
+| [references/env-vars.md](references/env-vars.md) | Source file locations for env vars and types | Finding which source file defines a specific env var or type |
 | [references/defaults.md](references/defaults.md) | Default values for all configuration | Understanding what values are used when nothing is overridden |
-| [references/config-file.md](references/config-file.md) | pgpm.json configuration | Setting up project-level configuration files |
+| [references/config-file.md](references/config-file.md) | Config file reference (last resort) | Only when you specifically need a `pgpm.json` — this is rarely needed |
 
 ## Cross-References
 
