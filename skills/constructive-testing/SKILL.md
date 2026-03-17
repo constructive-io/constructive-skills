@@ -51,49 +51,15 @@ Choose the **highest-level framework** that fits your test scenario:
 
 ## Quick Start Patterns
 
-### Pattern 1: SQL-Level Testing (`pgsql-test`)
+### SQL-Level Testing (`pgsql-test`)
 
 Best for: RLS policies, database functions, raw SQL operations.
 
-```typescript
-import { getConnections, PgTestClient } from 'pgsql-test';
+> **See the `pgsql-test` skill for full documentation** — it covers `getConnections()`, `PgTestClient`, RLS testing, seeding (`loadJson`/`loadSql`/`loadCsv`), savepoints, snapshots, JWT context, and complex multi-client scenarios.
 
-let pg: PgTestClient;   // Superuser — bypasses RLS
-let db: PgTestClient;   // App-level — enforces RLS
-let teardown: () => Promise<void>;
+All higher-level frameworks below build on `pgsql-test` — they return the same `pg` and `db` clients with the same lifecycle hooks.
 
-beforeAll(async () => {
-  ({ pg, db, teardown } = await getConnections());
-});
-
-afterAll(async () => {
-  await teardown();
-});
-
-beforeEach(async () => {
-  await pg.beforeEach();
-  await db.beforeEach();
-});
-
-afterEach(async () => {
-  await db.afterEach();
-  await pg.afterEach();
-});
-
-it('enforces RLS', async () => {
-  // Seed with superuser
-  await pg.loadJson({
-    'app.users': [{ id: 'user-1', email: 'alice@test.com' }]
-  });
-
-  // Test with app-level client
-  db.setContext({ role: 'authenticated', 'jwt.claims.user_id': 'user-1' });
-  const result = await db.query('SELECT * FROM app.users');
-  expect(result.rows).toHaveLength(1);
-});
-```
-
-### Pattern 2: GraphQL Schema Testing (`graphile-test`)
+### GraphQL Schema Testing (`graphile-test`)
 
 Best for: Testing PostGraphile schema generation, GraphQL queries without HTTP.
 
@@ -136,7 +102,7 @@ it('returns users via GraphQL', async () => {
 });
 ```
 
-### Pattern 3: GraphQL + Constructive Plugins (`@constructive-io/graphql-test`)
+### GraphQL + Constructive Plugins (`@constructive-io/graphql-test`)
 
 Best for: Testing with full Constructive graphile-settings plugins loaded.
 
@@ -165,7 +131,7 @@ it('uses search plugin', async () => {
 });
 ```
 
-### Pattern 4: HTTP-Level Testing (`@constructive-io/graphql-server-test`)
+### HTTP-Level Testing (`@constructive-io/graphql-server-test`)
 
 Best for: Testing full HTTP request/response cycle, auth headers, middleware.
 
@@ -200,86 +166,15 @@ it('supports custom headers via SuperTest', async () => {
 });
 ```
 
-## Anti-Patterns
+## Anti-Patterns (Summary)
 
-### NEVER: Manual pg.Pool / pg.Client Creation
+These are the most common mistakes. See [references/anti-patterns.md](references/anti-patterns.md) for detailed examples and fixes.
 
-```typescript
-// BAD — Do not do this in tests!
-const pg = require('pg');
-const pool = new pg.Pool({
-  connectionString: `postgres://user:pass@localhost:5432/mydb`
-});
-
-beforeAll(() => { /* manual pool setup */ });
-afterAll(() => { pool.end(); });
-```
-
-**Why this is wrong:**
-- No test isolation (no savepoints, no rollback between tests)
-- No automatic database creation/cleanup
-- No RLS context management
-- Connection string is fragile and environment-dependent
-- Misses all the utilities (seeding, snapshots, etc.)
-
-**Do this instead:**
-```typescript
-import { getConnections } from 'pgsql-test';
-
-let pg, db, teardown;
-beforeAll(async () => {
-  ({ pg, db, teardown } = await getConnections());
-});
-afterAll(async () => { await teardown(); });
-```
-
-### NEVER: Direct `getPgPool()` in Tests (unless testing pg-cache itself)
-
-```typescript
-// BAD — bypasses test isolation
-import { getPgPool } from 'pg-cache';
-const pool = getPgPool({ database: 'mydb' });
-```
-
-`pg-cache` is an infrastructure package for production connection pooling. Tests should use `pgsql-test` which manages pools internally with proper lifecycle.
-
-### NEVER: Manual Database Creation in Tests
-
-```typescript
-// BAD — manual database management
-await adminPool.query(`CREATE DATABASE "test-${uuid}"`);
-// ... tests ...
-await adminPool.query(`DROP DATABASE "test-${uuid}"`);
-```
-
-`pgsql-test`'s `getConnections()` handles all of this automatically — creating an isolated database, installing extensions, seeding, and tearing down.
-
-### NEVER: Skipping beforeEach/afterEach Hooks
-
-```typescript
-// BAD — tests leak state to each other
-beforeAll(async () => {
-  ({ pg, db, teardown } = await getConnections());
-});
-
-it('test 1', async () => {
-  await pg.query("INSERT INTO users ...");
-  // This data persists into test 2!
-});
-```
-
-**Always include the hooks:**
-```typescript
-beforeEach(async () => {
-  await pg.beforeEach();
-  await db.beforeEach();
-});
-
-afterEach(async () => {
-  await db.afterEach();
-  await pg.afterEach();
-});
-```
+1. **Manual `pg.Pool` / `pg.Client` creation** — always use `getConnections()` from the appropriate framework
+2. **Using `pg-cache` in tests** — it's for production connection pooling, not test isolation
+3. **Manual `CREATE DATABASE` / `DROP DATABASE`** — `getConnections()` handles this automatically
+4. **Missing `beforeEach`/`afterEach` hooks** — without them, tests leak state to each other
+5. **Using a lower-level framework than needed** — e.g., raw SQL queries when testing GraphQL behavior (use `graphile-test` instead)
 
 ## Reference Guide
 
@@ -290,6 +185,8 @@ afterEach(async () => {
 
 ## Cross-References
 
-- `pgsql-test` skill — Deep dive into SQL-level testing (RLS, seeding, snapshots, savepoints)
-- `constructive-env` skill — How test frameworks resolve database configuration via `getEnvOptions()`
-- `pgpm` skill (`references/testing.md`) — PGPM test setup and seed adapters
+- **`pgsql-test` skill** — The primary reference for SQL-level testing. Covers `getConnections()`, `PgTestClient`, RLS testing, seeding, savepoints, snapshots, JWT context, helpers, and complex scenarios in detail. Start here if you're writing database-level tests.
+- **`drizzle-orm-test` skill** — Drop-in replacement for `pgsql-test` that adds type-safe queries with Drizzle ORM
+- **`supabase-test` skill** — Testing Supabase applications with ephemeral databases and multi-user simulation
+- **`constructive-env` skill** — How test frameworks resolve database configuration via `getEnvOptions()`
+- **`pgpm` skill** (`references/testing.md`) — PGPM test setup and seed adapters

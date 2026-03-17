@@ -1,83 +1,14 @@
 # Testing Framework Details
 
-Detailed API documentation for each testing framework in the Constructive stack.
+Detailed API documentation for the higher-level testing frameworks in the Constructive stack.
 
-## 1. pgsql-test (SQL-Level)
+For `pgsql-test` (SQL-level) documentation, see the **`pgsql-test` skill** — it covers `getConnections()`, `PgTestClient`, RLS testing, seeding, savepoints, snapshots, JWT context, and complex scenarios in full detail.
 
-**Package**: `pgsql-test`
-**Source**: `postgres/pgsql-test/`
-
-### `getConnections(opts?, seedAdapters?)`
-
-Creates an isolated test database and returns connection clients.
-
-**Parameters:**
-- `opts.pg` — Partial `PgConfig` overrides (host, port, user, database, etc.)
-- `opts.db` — Partial `PgTestConnectionOptions` (extensions, prefix, template, rootDb, etc.)
-- `seedAdapters` — Array of `SeedAdapter[]` (defaults to `[seed.pgpm()]`)
-
-**Returns:**
-```typescript
-interface GetConnectionResult {
-  pg: PgTestClient;         // Superuser client (bypasses RLS)
-  db: PgTestClient;         // App-level client (enforces RLS)
-  admin: DbAdmin;           // Database admin operations
-  teardown: (opts?) => Promise<void>;  // Cleanup function
-  manager: PgTestConnector; // Connection manager (pool access)
-}
-```
-
-**Lifecycle:**
-1. Creates a unique database with UUID-based name
-2. Creates app-level user role
-3. Installs extensions (from `opts.db.extensions` or defaults)
-4. Runs seed adapters (default: pgpm seed)
-5. Returns `pg` (superuser) and `db` (app-level) clients
-
-**Teardown:**
-```typescript
-await teardown();                    // Default: drops database
-await teardown({ keepDb: true });    // Keep database for debugging
-```
-
-### `PgTestClient` API
-
-```typescript
-// Transaction isolation
-await client.beforeEach();   // Start savepoint
-await client.afterEach();    // Rollback to savepoint
-
-// Context management (for RLS)
-client.setContext({ role: 'authenticated', 'jwt.claims.user_id': id });
-client.clearContext();
-
-// Queries
-const result = await client.query('SELECT * FROM users WHERE id = $1', [id]);
-
-// Savepoint management (for expected failures)
-await client.savepoint('name');
-await client.rollback('name');
-
-// Seeding
-await client.loadJson({ 'schema.table': [{ col: 'val' }] });
-await client.loadSql(['/path/to/seed.sql']);
-await client.loadCsv({ 'schema.table': '/path/to/data.csv' });
-```
-
-### Pool Access (when needed)
-
-If you genuinely need a raw `Pool` object (rare), get it from the manager:
-
-```typescript
-const { manager, pg } = await getConnections();
-const pool = manager.getPool(pg.config);
-```
-
-This is still managed by pgsql-test and cleaned up on teardown.
+All frameworks below build on `pgsql-test` and return the same `pg`/`db` clients with the same lifecycle hooks.
 
 ---
 
-## 2. graphile-test (GraphQL Schema-Level)
+## graphile-test (GraphQL Schema-Level)
 
 **Package**: `graphile-test`
 **Source**: `graphile/graphile-test/`
@@ -139,7 +70,7 @@ const result = await query({
 
 ---
 
-## 3. @constructive-io/graphql-test (Constructive Plugins)
+## @constructive-io/graphql-test (Constructive Plugins)
 
 **Package**: `@constructive-io/graphql-test`
 **Source**: `graphql/test/`
@@ -163,7 +94,7 @@ import { GraphQLTestAdapter } from '@constructive-io/graphql-test';
 
 ---
 
-## 4. @constructive-io/graphql-server-test (HTTP-Level)
+## @constructive-io/graphql-server-test (HTTP-Level)
 
 **Package**: `@constructive-io/graphql-server-test`
 **Source**: `graphql/server-test/`
