@@ -356,3 +356,4 @@ pgpm deploy --createdb
 - Related skill: `references/cli.md` for CLI commands
 - Related skill: `references/workspace.md` for workspace configuration
 - Related skill: `github-workflows-pgpm` for CI/CD environment setup
+- Related skill: `constructive-env` — Covers the full two-layer architecture (`@pgpmjs/env` + `@constructive-io/graphql-env`), GraphQL-specific env vars, SMTP config, and the "which package to import" decision guide
