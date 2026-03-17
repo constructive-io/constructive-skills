@@ -298,11 +298,36 @@ await generate({
   // OR configure individually:
   docs: {
     readme: true,   // README.md
-    agents: true,   // AGENTS.md (structured for LLM consumption)
+    agents: true,   // AGENTS.md (thin router — see below)
     mcp: false,     // mcp.json (MCP tool definitions)
     skills: true,   // skills/ (per-command .md skill files)
   },
 });
+```
+
+### Thin AGENTS.md Pattern
+
+When `docs.agents: true`, the codegen generates a thin **AGENTS.md** file that acts as a router — it lists available skills and reference files rather than duplicating their content. This keeps the AGENTS.md small and points agents to the detailed per-entity skill files in `skills/`.
+
+The generated AGENTS.md includes:
+- A summary of available entities and operations
+- Links to per-entity skill files in `skills/`
+- **Special field categories** that flag non-standard fields:
+  - **PostGIS fields** (geometry/geography columns)
+  - **pgvector fields** (vector embedding columns)
+  - **Unified Search fields** (search score, rank, similarity, distance computed fields)
+
+The special field categorization helps agents understand which fields are computed search scores vs. regular data columns, and routes them to the `graphile-search` skill for search-related documentation.
+
+### Filtering Search Fields in Generated Docs
+
+The codegen provides a `getSearchFields()` utility that categorizes computed fields by their search adapter origin:
+
+```typescript
+import { getSearchFields } from '@constructive-io/graphql-codegen';
+
+const searchFields = getSearchFields(schema);
+// Returns: { tsvector: [...], bm25: [...], trgm: [...], pgvector: [...] }
 ```
 
 ### Node.js HTTP Adapter
@@ -524,6 +549,7 @@ See `references/query-keys.md` for details.
 | No skill files generated | Set `docs: { skills: true }` |
 | Schema export produces empty file | Verify database/endpoint has tables in the specified schemas |
 | `schemaDir` generates nothing | Ensure directory contains `.graphql` files (not `.gql` or other extensions) |
+| Search fields not categorized in docs | Ensure `graphile-search` (`UnifiedSearchPreset`) is in PostGraphile preset |
 
 ## References
 
