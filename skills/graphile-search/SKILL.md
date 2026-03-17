@@ -1,6 +1,6 @@
 ---
 name: graphile-search
-description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and fullTextSearch fields. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", or when building search features on a Constructive or PostGraphile v5 stack.
+description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and fullTextSearch fields. Includes codegen SDK query patterns for all search types. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", "query search via SDK/codegen", or when building search features on a Constructive or PostGraphile v5 stack.
 compatibility: PostGraphile v5, graphile-search, graphile-build-pg, graphile-connection-filter
 metadata:
   author: constructive-io
@@ -19,6 +19,7 @@ Use this skill when:
 - Adding search capabilities to a PostGraphile v5 / Constructive GraphQL API
 - Configuring which search adapters are active
 - Understanding how search fields, filters, and scores appear in the GraphQL schema
+- Querying search-enabled tables via the generated SDK (after codegen)
 - Debugging missing search fields or unexpected trgm behavior
 - Building hybrid search combining multiple algorithms
 
@@ -209,6 +210,17 @@ Each adapter is documented in its own reference file:
 - `references/pgvector-adapter.md` — pgvector similarity search adapter
 - `references/search-adapter-interface.md` — SearchAdapter interface specification
 
+## Querying Search via Codegen SDK
+
+After running `cnc codegen`, the generated SDK client exposes search filters, score fields, and orderBy enums. See `references/codegen-sdk-queries.md` for complete query patterns covering:
+
+- **Composite fields** — `fullTextSearch` (multi-strategy filter) and `searchScore` (0..1 relevance)
+- **TSVector queries** — `fullTextSearchTsv`, `searchTsvRank`, pagination, combined filters
+- **BM25 queries** — `bm25Content`, `bm25ContentScore` (negative, sort ASC)
+- **Trigram queries** — `similarTo`/`wordSimilarTo` via `StringTrgmFilter`, adapter-level `trgmTitle`, ILIKE
+- **pgvector queries** — `vectorEmbedding`, `embeddingDistance`, distance metrics (COSINE/L2/IP)
+- **Multi-strategy patterns** — fuzzy fallback, autocomplete pipeline, semantic + keyword hybrid
+
 ## Score Semantics
 
 Each adapter declares how its scores behave for normalization in `searchScore`:
@@ -235,6 +247,5 @@ Bounded ranges use linear normalization. Unbounded ranges use sigmoid normalizat
 
 ## Related Skills
 
-- `constructive-sdk-search` (private) — SDK-level setup and querying of search
 - `constructive-db-search` (private) — SQL-level search strategies and metaschema integration
 - `constructive-graphql-codegen` — code generation from search-enabled schemas
