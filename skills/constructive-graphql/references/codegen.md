@@ -139,9 +139,7 @@ import { generate } from '@constructive-io/graphql-codegen';
 // Export from database
 await generate({
   db: { schemas: ['public'] },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'public.graphql' },
 });
 
 // Export from PGPM module
@@ -150,16 +148,13 @@ await generate({
     pgpm: { modulePath: './packages/my-module' },
     schemas: ['app_public'],
   },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'app_public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'app_public.graphql' },
 });
 
 // Export from endpoint
 await generate({
   endpoint: 'https://api.example.com/graphql',
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
+  schema: { enabled: true, output: './schemas' },
 });
 ```
 
@@ -232,9 +227,11 @@ interface GenerateOptions {
   cli?: CliConfig | boolean; // Default: false
 
   // Schema export (instead of code generation)
-  schemaOnly?: boolean;
-  schemaOnlyOutput?: string;
-  schemaOnlyFilename?: string;   // Default: 'schema.graphql'
+  schema?: {
+    enabled?: boolean;           // Enable schema export mode
+    output?: string;             // Output directory (default: same as output)
+    filename?: string;           // Default: 'schema.graphql'
+  };
 
   // Documentation (generated alongside code)
   docs?: DocsConfig | boolean; // Default: { readme: true, agents: true, mcp: false, skills: false }
