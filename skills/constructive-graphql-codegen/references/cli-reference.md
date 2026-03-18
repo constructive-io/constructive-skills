@@ -34,6 +34,14 @@ npx @constructive-io/graphql-codegen generate [options]
 | `--output <dir>` | `-o` | Output directory | `./generated/graphql` |
 | `--target <name>` | `-t` | Target name (for multi-target configs) | - |
 
+### Schema Export Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `--schema-enabled` | Export GraphQL SDL schema file | `false` |
+| `--schema-output <dir>` | Output directory for exported schema | Same as `--output` |
+| `--schema-filename <name>` | Filename for exported schema | `schema.graphql` |
+
 ### Other Options
 
 | Option | Alias | Description | Default |
