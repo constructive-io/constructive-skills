@@ -1,17 +1,17 @@
-# Mega Query Patterns
+# Combined Multi-Algorithm Search Queries
 
-Complete multi-algorithm search patterns combining tsvector, BM25, trigram, and pgvector in a single query. These are real tested patterns from the `graphile-search` test suite.
+Complete patterns for combining tsvector, BM25, trigram, and pgvector in a single query. These are real tested patterns from the `graphile-search` test suite.
 
 ---
 
-## Mega Query v1: Per-Algorithm Filters (Maximum Control)
+## Per-Algorithm Filters (Maximum Control)
 
 Each algorithm's filter is specified individually, with a composite orderBy array mixing different algorithm scores. This gives maximum control over which algorithms are active and how results are ranked.
 
 ### GraphQL
 
 ```graphql
-query MegaQueryV1_PerAlgorithmFilters {
+query PerAlgorithmFilters {
   allDocuments(
     where: {
       # tsvector: full-text search on the tsv column
@@ -73,7 +73,7 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-### When to Use v1
+### When to Use Per-Algorithm Filters
 
 - You need fine-grained control over each algorithm's parameters
 - You want to weight algorithms differently in the orderBy
@@ -92,14 +92,14 @@ const result = await db.document.findMany({
 
 ---
 
-## Mega Query v2: Unified fullTextSearch (Simplified)
+## Unified fullTextSearch (Simplified)
 
 Uses the `fullTextSearch` composite filter that fans out to all text-compatible algorithms (tsvector, BM25, trgm) automatically with a single string. pgvector still needs its own filter because it requires a vector array, not text.
 
 ### GraphQL
 
 ```graphql
-query MegaQueryV2_UnifiedSearch {
+query UnifiedSearch {
   allDocuments(
     where: {
       # fullTextSearch: single string fans out to tsvector + BM25 + trgm
@@ -153,7 +153,7 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-### When to Use v2
+### When to Use Unified fullTextSearch
 
 - You want the simplest possible multi-algorithm search
 - The same search string applies to all text-based algorithms
@@ -162,7 +162,7 @@ const result = await db.document.findMany({
 
 ---
 
-## Mega Query v2 — Text Only (No Vector)
+## Unified fullTextSearch — Text Only (No Vector)
 
 The simplest multi-algorithm search when pgvector is not available:
 
@@ -214,7 +214,7 @@ if (result.ok) {
 
 ---
 
-## Integration Test: Mega Query v1 (Server-Level)
+## Integration Test: Per-Algorithm Combined Search (Server-Level)
 
 From `constructive/graphql/server-test/__tests__/search.integration.test.ts`:
 
@@ -245,7 +245,7 @@ All score fields resolve to `number` types. The intersection of all filters dete
 
 ---
 
-## Integration Test: Mega Query v2 with Vector (Server-Level)
+## Integration Test: Unified fullTextSearch with Vector (Server-Level)
 
 From `constructive/graphql/server-test/__tests__/search.integration.test.ts`:
 
@@ -275,7 +275,7 @@ The `searchScore` is a composite 0..1 value combining all active text algorithms
 
 ---
 
-## Partial Mega Queries
+## Partial Combinations
 
 You don't have to use all algorithms. Mix and match as needed:
 

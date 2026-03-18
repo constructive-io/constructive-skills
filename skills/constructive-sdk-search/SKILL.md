@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-search
-description: Comprehensive search skill for Constructive SDK. Covers creating and querying ALL search strategies — tsvector, BM25, trigram (pg_trgm), pgvector, PostGIS spatial — plus the unified graphile-search system with composite searchScore and fullTextSearch fields. Includes mega query patterns for maximum-control and simplified multi-algorithm search. Use when adding any kind of search to tables, querying search-enabled tables via codegen SDK, or choosing a search strategy.
+description: Comprehensive search skill for Constructive SDK. Covers creating and querying ALL search strategies — tsvector, BM25, trigram (pg_trgm), pgvector, PostGIS spatial — plus the unified graphile-search system with composite searchScore and fullTextSearch fields. Includes combined multi-algorithm search patterns (per-algorithm and unified). Use when adding any kind of search to tables, querying search-enabled tables via codegen SDK, or choosing a search strategy.
 compatibility: Node.js 22+, @constructive-io/sdk, graphile-search
 metadata:
   author: constructive-io
@@ -20,7 +20,7 @@ Use this skill when:
 - Adding spatial/geospatial search (PostGIS)
 - Querying search-enabled tables via the codegen SDK
 - Using the composite `searchScore` or `fullTextSearch` fields
-- Combining multiple search strategies in a single query (mega queries)
+- Combining multiple search strategies in a single query
 - Choosing between search strategies
 
 ## Prerequisites
@@ -68,8 +68,8 @@ const db = createClient({
 | Location-based proximity ("within 5km") | PostGIS |
 | Geofencing, containment, intersection | PostGIS |
 | Multi-signal ranking (keyword + fuzzy + semantic) | Unified system (searchScore + fullTextSearch) |
-| Simplified multi-algorithm search | Mega Query v2 (fullTextSearch + SEARCH_SCORE_DESC) |
-| Maximum control over each algorithm | Mega Query v1 (per-algorithm filters + composite orderBy) |
+| Simplified multi-algorithm search | Unified fullTextSearch + SEARCH_SCORE_DESC |
+| Maximum control over each algorithm | Per-algorithm filters + composite orderBy |
 
 ## Unified Search System
 
@@ -116,16 +116,16 @@ const result = await db.article.findMany({
 
 pgvector is excluded from `fullTextSearch` because it requires a vector array input, not text.
 
-## Mega Queries — Multi-Algorithm Search
+## Combined Multi-Algorithm Search
 
 These are the two canonical patterns for combining ALL search algorithms in a single query. Both are real tested patterns from the `graphile-search` test suite.
 
-### Mega Query v1: Per-Algorithm Filters (Maximum Control)
+### Per-Algorithm Filters (Maximum Control)
 
 Each algorithm's filter specified individually with a composite orderBy array mixing different algorithm scores:
 
 ```graphql
-query MegaQueryV1_PerAlgorithmFilters {
+query PerAlgorithmFilters {
   allDocuments(
     where: {
       # tsvector: full-text search on the tsv column
@@ -187,12 +187,12 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-### Mega Query v2: Unified fullTextSearch (Simplified)
+### Unified fullTextSearch (Simplified)
 
 Uses the `fullTextSearch` composite filter that fans out to all text-compatible algorithms automatically, plus a manual pgvector filter:
 
 ```graphql
-query MegaQueryV2_UnifiedSearch {
+query UnifiedSearch {
   allDocuments(
     where: {
       # fullTextSearch: single string fans out to tsvector + BM25 + trgm
@@ -246,7 +246,7 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-### Mega Query v2 — Text Only (No Vector)
+### Unified fullTextSearch — Text Only (No Vector)
 
 When you don't have pgvector, the simplest possible multi-algorithm search:
 
@@ -358,7 +358,7 @@ Each reference covers both **creating** the search setup via SDK and **querying*
 - `references/pgvector.md` -- Creating and querying with vector similarity search (pgvector + HNSW)
 - `references/trigram.md` -- Creating and querying with fuzzy text matching (pg_trgm + GIN)
 - `references/postgis.md` -- Creating and querying with spatial/geospatial search (PostGIS)
-- `references/mega-queries.md` -- Complete mega query patterns with real test examples
+- `references/combined-search-queries.md` -- Combined multi-algorithm search patterns with real test examples
 - `references/composite.md` -- Unified system: searchScore normalization, fullTextSearch fan-out, adapter architecture
 
 ## Related Skills
