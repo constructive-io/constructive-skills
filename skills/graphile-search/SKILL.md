@@ -248,4 +248,4 @@ Bounded ranges use linear normalization. Unbounded ranges use sigmoid normalizat
 ## Related Skills
 
 - `constructive-db-search` (private) — SQL-level search strategies and metaschema integration
-- `constructive-graphql-codegen` — code generation from search-enabled schemas
+- `constructive-graphql` — code generation and querying via codegen'd SDK (includes search patterns)

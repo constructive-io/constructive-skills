@@ -21,7 +21,7 @@ Use this skill when:
 - Replacing hand-written GraphQL with generated queries
 - Needing browser-safe query generation (no Node.js APIs)
 
-**Important**: For build-time code generation (writing `.ts` files to disk, generating React Query hooks, ORM, CLI), use the `constructive-graphql-codegen` skill instead. This package (`graphql-query`) is the **core** that `graphql-codegen` depends on.
+**Important**: For build-time code generation (writing `.ts` files to disk, generating React Query hooks, ORM, CLI), use the `constructive-graphql` skill instead. This package (`graphql-query`) is the **core** that `graphql-codegen` depends on.
 
 ---
 

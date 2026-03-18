@@ -1,24 +1,6 @@
----
-name: constructive-sdk-search
-description: Comprehensive search skill for Constructive SDK. Covers creating and querying ALL search strategies — tsvector, BM25, trigram (pg_trgm), pgvector, PostGIS spatial — plus the unified search system with composite searchScore and fullTextSearch fields. Includes combined multi-algorithm search patterns. Use when adding any kind of search to tables, querying search-enabled tables via codegen SDK, or choosing a search strategy.
-compatibility: Node.js 22+, @constructive-io/sdk, graphile-search
-metadata:
-  author: constructive-io
-  version: "4.0.0"
----
-
-# Constructive SDK Search
+# Search Overview
 
 Create search columns and indexes via the SDK, run codegen, then query your data through the generated TypeScript SDK client.
-
-## When to Apply
-
-Use this skill when:
-- Adding search to a table (full-text, ranked, fuzzy, vector, spatial)
-- Querying search-enabled tables via the codegen SDK
-- Using composite `searchScore` or `fullTextSearch` fields
-- Combining multiple search strategies in a single query
-- Choosing between search strategies
 
 ## Prerequisites
 
@@ -34,22 +16,7 @@ After creating search fields/indexes, run codegen to generate the typed SDK:
 cnc codegen --orm
 ```
 
-See `constructive-graphql-codegen` skill for codegen details.
-
-## SDK Client Setup
-
-```typescript
-import { createClient } from '@constructive-io/sdk';
-
-const db = createClient({
-  endpoint: process.env.GRAPHQL_ENDPOINT,
-  headers: {
-    Authorization: `Bearer ${process.env.API_TOKEN}`,
-  },
-});
-```
-
-## Search Strategy Overview
+## Strategy Overview
 
 | Strategy | Best For | Score Direction |
 |----------|----------|-----------------|
@@ -82,7 +49,7 @@ After creating search infrastructure and running codegen, you get typed filters,
 
 ### Simple fullTextSearch (Recommended Starting Point)
 
-The simplest way to search — `fullTextSearch` fans a single string to all text-compatible algorithms (tsvector, BM25, trgm) automatically:
+The simplest way to search -- `fullTextSearch` fans a single string to all text-compatible algorithms (tsvector, BM25, trgm) automatically:
 
 ```typescript
 const result = await db.article.findMany({
@@ -95,7 +62,7 @@ const result = await db.article.findMany({
 }).execute();
 ```
 
-`searchScore` is computed server-side — you do NOT need to select individual score fields (`tsvRank`, `bodyBm25Score`, etc.) for it to work. Those are only needed if you want to display per-algorithm scores to the user.
+`searchScore` is computed server-side -- you do NOT need to select individual score fields (`tsvRank`, `bodyBm25Score`, etc.) for it to work. Those are only needed if you want to display per-algorithm scores to the user.
 
 <details>
 <summary>Equivalent GraphQL</summary>
@@ -118,7 +85,7 @@ const result = await db.article.findMany({
 
 ### Per-Algorithm Filters (Maximum Control)
 
-When you need fine-grained control — each algorithm specified individually with a composite orderBy:
+When you need fine-grained control -- each algorithm specified individually with a composite orderBy:
 
 ```typescript
 const result = await db.document.findMany({
@@ -193,28 +160,6 @@ const result = await db.document.findMany({
   },
 }).execute();
 ```
-
-<details>
-<summary>Equivalent GraphQL</summary>
-
-```graphql
-{
-  documents(
-    where: {
-      fullTextSearch: "machine learning"
-      vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
-    }
-    orderBy: [SEARCH_SCORE_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
-  ) {
-    nodes {
-      title
-      searchScore
-    }
-  }
-}
-```
-
-</details>
 
 ### Partial Combinations
 
@@ -338,7 +283,7 @@ const result = await db.restaurant.findMany({
 | `vectorEmbedding` | `{ vector, metric?, distance? }` | Vector similarity |
 | `fullTextSearch` | `String` | Composite: fans to tsvector + BM25 + trgm |
 
-Field names follow the pattern `{filterPrefix}{ColumnName}` — exact names depend on your columns.
+Field names follow the pattern `{filterPrefix}{ColumnName}` -- exact names depend on your columns.
 
 ## OrderBy Reference
 
@@ -352,18 +297,13 @@ Field names follow the pattern `{filterPrefix}{ColumnName}` — exact names depe
 
 ---
 
-## Reference Files
+## Per-Algorithm Reference Files
 
 Each reference covers both **creating** the search setup via SDK and **querying** via the codegen SDK:
 
-- `references/tsvector.md` -- Creating and querying with full-text search (tsvector + GIN)
-- `references/bm25.md` -- Creating and querying with BM25 ranked search
-- `references/pgvector.md` -- Creating and querying with vector similarity search (pgvector + HNSW)
-- `references/trigram.md` -- Creating and querying with fuzzy text matching (pg_trgm + GIN)
-- `references/postgis.md` -- Creating and querying with spatial/geospatial search (PostGIS)
-- `references/composite.md` -- Combined multi-algorithm search patterns and score field reference
-
-## Related Skills
-
-- `graphile-search` (constructive-skills) -- Plugin architecture, adapter interface, preset configuration (internal)
-- `constructive-graphql-codegen` (constructive-skills) -- Code generation from GraphQL schema
+- `search-tsvector.md` -- Creating and querying with full-text search (tsvector + GIN)
+- `search-bm25.md` -- Creating and querying with BM25 ranked search
+- `search-pgvector.md` -- Creating and querying with vector similarity search (pgvector + HNSW)
+- `search-trgm.md` -- Creating and querying with fuzzy text matching (pg_trgm + GIN)
+- `search-postgis.md` -- Creating and querying with spatial/geospatial search (PostGIS)
+- `search-composite.md` -- Combined multi-algorithm search patterns and score field reference
