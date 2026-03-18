@@ -23,7 +23,7 @@ Use this skill when:
 
 ```
 1. Provision  →  SDK creates vector(N) column + HNSW index on your table
-2. Codegen    →  cnc codegen --orm generates typed ORM with vector query support
+2. Codegen    →  @constructive-io/graphql-codegen generates typed ORM (see constructive-graphql skill)
 3. Embed      →  Application code generates embeddings (Ollama, OpenAI, etc.)
 4. Store      →  ORM or SDK inserts embeddings into the vector column
 5. Query      →  ORM queries with vectorEmbedding filter + distance ordering
