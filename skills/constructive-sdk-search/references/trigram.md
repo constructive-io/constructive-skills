@@ -58,11 +58,9 @@ if (indexResult.ok) {
 
 ## Querying Trigram Search via SDK
 
-Trigram search is now fully integrated via the trgm adapter in `graphile-search`. The plugin automatically generates similarity score fields, filter operators, and orderBy enums on qualifying tables.
+### Trigram Similarity Search
 
-### Trigram Similarity Search (via StringTrgmFilter)
-
-On tables with intentional search infrastructure (tsvector or BM25), string columns get `similarTo` and `wordSimilarTo` operators:
+On tables with search infrastructure, string columns get `similarTo` and `wordSimilarTo` operators:
 
 ```typescript
 // similarTo: overall trigram similarity
@@ -77,13 +75,6 @@ const result = await db.article.findMany({
     titleTrgmSimilarity: true,  // 0..1, higher = more similar
   },
 }).execute();
-
-if (result.ok) {
-  const articles = result.data.articles.nodes;
-  articles.forEach(a => {
-    console.log(`${a.title} (similarity: ${a.titleTrgmSimilarity})`);
-  });
-}
 ```
 
 ```typescript
@@ -95,14 +86,13 @@ const result = await db.article.findMany({
   orderBy: 'TITLE_TRGM_SIMILARITY_DESC',
   first: 10,
   select: {
-    id: true,
     title: true,
     titleTrgmSimilarity: true,
   },
 }).execute();
 ```
 
-### Adapter-Level Filter
+### Trgm Filter
 
 ```typescript
 const result = await db.article.findMany({
@@ -111,16 +101,15 @@ const result = await db.article.findMany({
   },
   orderBy: 'TITLE_TRGM_SIMILARITY_DESC',
   select: {
-    id: true,
     title: true,
     titleTrgmSimilarity: true,
   },
 }).execute();
 ```
 
-### Fast ILIKE Search (Still Works)
+### Fast ILIKE Search
 
-The GIN trigram index still accelerates `ILIKE` queries via standard filter operators:
+The GIN trigram index accelerates `ILIKE` queries:
 
 ```typescript
 const result = await db.article.findMany({
@@ -128,10 +117,7 @@ const result = await db.article.findMany({
     title: { likeInsensitive: '%postgres%' },
   },
   first: 20,
-  select: {
-    id: true,
-    title: true,
-  },
+  select: { id: true, title: true },
 }).execute();
 ```
 
@@ -143,10 +129,7 @@ const result = await db.article.findMany({
     title: { likeInsensitive: `${userInput}%` },
   },
   first: 5,
-  select: {
-    id: true,
-    title: true,
-  },
+  select: { id: true, title: true },
 }).execute();
 ```
 
@@ -161,7 +144,6 @@ const result = await db.article.findMany({
   },
   first: 20,
   select: {
-    id: true,
     title: true,
     category: true,
     titleTrgmSimilarity: true,
@@ -177,17 +159,17 @@ Trigram is most useful as a complement to other search strategies.
 
 ### Composite fullTextSearch (Easiest)
 
-The unified search plugin's `fullTextSearch` filter automatically fans a text query to tsvector, BM25, and trgm simultaneously:
+The `fullTextSearch` filter automatically fans a text query to tsvector, BM25, and trgm simultaneously:
 
 ```typescript
 const result = await db.article.findMany({
   where: {
-    fullTextSearch: 'postgres tutorial',  // searches tsvector + BM25 + trgm together
+    fullTextSearch: 'postgres tutorial',
   },
+  orderBy: 'SEARCH_SCORE_DESC',
   select: {
-    id: true,
     title: true,
-    searchScore: true,  // combined relevance across all signals
+    searchScore: true,
   },
 }).execute();
 ```
@@ -204,7 +186,7 @@ const bm25Result = await db.document.findMany({
   },
   orderBy: 'BM25_CONTENT_SCORE_ASC',
   first: 10,
-  select: { id: true, title: true, contentBm25Score: true },
+  select: { id: true, title: true },
 }).execute();
 
 const bm25Docs = bm25Result.ok ? bm25Result.data.documents.nodes : [];
@@ -219,12 +201,6 @@ if (bm25Docs.length < 3) {
     first: 10,
     select: { id: true, title: true, titleTrgmSimilarity: true },
   }).execute();
-
-  if (fuzzyResult.ok) {
-    const fuzzyDocs = fuzzyResult.data.documents.nodes
-      .filter(d => !bm25Docs.some(b => b.id === d.id));
-    // Combine results
-  }
 }
 ```
 
@@ -250,7 +226,7 @@ const search = await db.article.findMany({
   },
   orderBy: 'SEARCH_TSV_RANK_DESC',
   first: 20,
-  select: { id: true, title: true, searchTsvRank: true },
+  select: { id: true, title: true },
 }).execute();
 ```
 
@@ -258,7 +234,7 @@ const search = await db.article.findMany({
 
 ## Trgm Scoping
 
-The trgm adapter is **supplementary** — it only activates on tables where at least one "intentional search" adapter (tsvector or BM25) has detected columns. This prevents similarity fields from appearing on every table with text columns.
+Trigram only activates on tables where at least one "intentional search" infrastructure (tsvector or BM25) exists. This prevents similarity fields from appearing on every table with text columns.
 
 - Table with tsvector column -> trgm activates
 - Table with BM25 index -> trgm activates
@@ -275,13 +251,13 @@ COMMENT ON TABLE app_public.contacts IS E'@trgmSearch';
 
 ## Field Naming Convention
 
-| DB Column | Adapter Filter | Similarity Field | OrderBy |
-|-----------|---------------|------------------|---------|
+| DB Column | Filter | Similarity Field | OrderBy |
+|-----------|--------|------------------|---------|
 | `title` | `trgmTitle` | `titleTrgmSimilarity` | `TITLE_TRGM_SIMILARITY_ASC/DESC` |
 | `body` | `trgmBody` | `bodyTrgmSimilarity` | `BODY_TRGM_SIMILARITY_ASC/DESC` |
 
 **Pattern:**
-- Adapter filter: `trgm` + camelCase(column name) — accepts `{ value, threshold? }` input
+- Filter: `trgm` + camelCase(column name) — accepts `{ value, threshold? }` input
 - Similarity: camelCase(column name) + `TrgmSimilarity`
 - OrderBy: SCREAMING_SNAKE(column name) + `_TRGM_SIMILARITY_ASC` / `_TRGM_SIMILARITY_DESC`
 - Connection filter: `similarTo` / `wordSimilarTo` on the column's `StringTrgmFilter`
