@@ -1,50 +1,129 @@
 ---
 name: constructive-ai
-description: "AI and vector search capabilities — pgvector RAG pipelines (embeddings, similarity search, agentic kits), and Ollama CI/CD workflows for running LLM models in GitHub Actions. Use when building RAG pipelines, working with embeddings, running Ollama in CI, or implementing AI-powered search."
+description: "AI and vector search on the Constructive platform — provision pgvector columns and indexes via SDK, query embeddings via codegen'd ORM, build RAG pipelines with Ollama, and run LLM models in GitHub Actions CI/CD. Use when building RAG pipelines, working with embeddings, running Ollama in CI, or implementing AI-powered search within a Constructive application."
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Constructive AI
 
-Build AI-powered features with pgvector RAG pipelines and Ollama CI/CD workflows.
+Build AI-powered features on the Constructive platform: provision vector storage via SDK, query via codegen'd ORM, and integrate Ollama for embeddings and generation.
 
 ## When to Apply
 
 Use this skill when:
-- Building RAG (Retrieval-Augmented Generation) pipelines
-- Working with vector embeddings and similarity search
-- Setting up Ollama LLM models in CI/CD
-- Implementing AI-powered search or agentic workflows
+- Adding pgvector columns and indexes to a Constructive database
+- Querying vector embeddings via the generated TypeScript ORM
+- Building RAG (Retrieval-Augmented Generation) pipelines on Constructive
+- Running Ollama LLM models in CI/CD
+- Implementing AI-powered search alongside other search strategies (tsvector, BM25, trgm)
 
-## pgvector RAG
+## The Constructive AI Flow
 
-Build end-to-end RAG pipelines: embed documents → store in pgvector → similarity search → feed to LLM.
+```
+1. Provision  →  SDK creates vector(N) column + HNSW index on your table
+2. Codegen    →  cnc codegen --orm generates typed ORM with vector query support
+3. Embed      →  Application code generates embeddings (Ollama, OpenAI, etc.)
+4. Store      →  ORM or SDK inserts embeddings into the vector column
+5. Query      →  ORM queries with vectorEmbedding filter + distance ordering
+6. RAG        →  Retrieve context via ORM → feed to LLM for generation
+```
 
-See [pgvector-rag.md](./references/pgvector-rag.md) for the full RAG pipeline guide.
+> **Important:** For vector *querying* via ORM, see the `constructive-graphql` skill ([search-pgvector.md](../constructive-graphql/references/search-pgvector.md)). This skill covers the AI/RAG layer on top.
+
+## Quick Start: Provision + Query
+
+### 1. Create a vector field via SDK
+
+```typescript
+const vecField = await db.field.create({
+  data: {
+    databaseId,
+    tableId: documentsTableId,
+    name: 'embedding',
+    type: 'vector(768)',
+  },
+  select: { id: true, name: true },
+}).execute();
+```
+
+### 2. Create an HNSW index
+
+```typescript
+await db.index.create({
+  data: {
+    databaseId,
+    tableId: documentsTableId,
+    name: 'idx_documents_embedding_hnsw',
+    fieldIds: [vecField.data.createField.field.id],
+    accessMethod: 'hnsw',
+    options: { m: 16, ef_construction: 64 },
+    opClasses: ['vector_cosine_ops'],
+  },
+  select: { id: true },
+}).execute();
+```
+
+### 3. Query via codegen'd ORM
+
+```typescript
+const result = await db.document.findMany({
+  where: {
+    vectorEmbedding: {
+      vector: queryVector,
+      metric: 'COSINE',
+      distance: 0.5,
+    },
+  },
+  orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
+  first: 5,
+  select: {
+    id: true,
+    title: true,
+    content: true,
+    embeddingVectorDistance: true,
+  },
+}).execute();
+```
+
+### 4. Feed to LLM for RAG
+
+```typescript
+const context = result.data.documents.nodes
+  .map(d => d.content)
+  .join('\n\n');
+
+const answer = await ollama.generateResponse(question, context);
+```
+
+## Ollama Integration
+
+Use Ollama for local embedding generation and LLM inference. See [ollama.md](./references/ollama.md) for the full OllamaClient implementation, model selection, and API reference.
+
+```typescript
+const ollama = new OllamaClient();
+const embedding = await ollama.generateEmbedding('document text');
+const response = await ollama.generateResponse(question, context);
+```
 
 ## Ollama CI/CD
 
-Run Ollama LLM models in GitHub Actions for testing and validation.
-
-See [ollama-ci.md](./references/ollama-ci.md) for CI workflow configuration.
+Run Ollama in GitHub Actions for testing RAG pipelines. See [ollama-ci.md](./references/ollama-ci.md) for workflow templates.
 
 ## Reference Guide
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [pgvector-rag.md](./references/pgvector-rag.md) | RAG pipeline overview | Building end-to-end RAG systems |
-| [rag-embeddings.md](./references/rag-embeddings.md) | Embedding generation | Creating and storing vector embeddings |
-| [rag-similarity-search.md](./references/rag-similarity-search.md) | Similarity search | Querying vectors, distance metrics |
-| [rag-rag-pipeline.md](./references/rag-rag-pipeline.md) | Full RAG pipeline | Document ingestion → retrieval → generation |
-| [rag-setup.md](./references/rag-setup.md) | pgvector setup | Installing pgvector, creating indexes |
-| [rag-ollama.md](./references/rag-ollama.md) | Ollama integration | Using Ollama for local LLM inference |
-| [rag-agentic-kit.md](./references/rag-agentic-kit.md) | Agentic kit patterns | Building AI agents with RAG |
+| [rag-pipeline.md](./references/rag-pipeline.md) | RAG pipeline on Constructive | Building end-to-end RAG (embed → store → retrieve → generate) |
+| [ollama.md](./references/ollama.md) | Ollama client & models | Generating embeddings, LLM inference, streaming, model selection |
 | [ollama-ci.md](./references/ollama-ci.md) | Ollama GitHub Actions | Running LLM models in CI/CD |
+| [pgvector-sql.md](./references/pgvector-sql.md) | pgvector SQL reference | Raw SQL for vector tables, indexes, similarity functions (SQL-level) |
+| [agentic-kit.md](./references/agentic-kit.md) | Agentic kit RAG patterns | Building AI agents with RAG providers |
 
 ## Cross-References
 
-- `graphile-search` — Unified search plugin (includes pgvector adapter)
-- `constructive-graphql` — Search via codegen SDK (pgvector queries)
-- `pgpm` — Database migrations for vector tables
+- `constructive-graphql` — [search-pgvector.md](../constructive-graphql/references/search-pgvector.md): ORM query patterns for vector search (distance filters, metrics, ordering)
+- `constructive-graphql` — [search-composite.md](../constructive-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm in unified `searchScore`
+- `graphile-search` — Plugin internals for the unified search system (team-level)
+- `pgpm` — Database migrations for vector-enabled modules
