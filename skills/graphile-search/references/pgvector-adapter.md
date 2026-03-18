@@ -28,7 +28,7 @@ Given a table with an `embedding vector(768)` column:
 
 ```graphql
 query {
-  allDocuments(filter: {
+  allDocuments(where: {
     vectorEmbedding: { query: [0.1, 0.2, ...], metric: COSINE }
   }) {
     nodes {

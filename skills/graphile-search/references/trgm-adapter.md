@@ -50,7 +50,7 @@ Given a table with intentional search (e.g. tsvector) and a `title text` column:
 
 ```graphql
 query {
-  allArticles(filter: {
+  allArticles(where: {
     title: { similarTo: { value: "postgre", threshold: 0.2 } }
   }) {
     nodes { title }
@@ -60,7 +60,7 @@ query {
 
 ```graphql
 query {
-  allArticles(filter: {
+  allArticles(where: {
     title: { wordSimilarTo: { value: "postgres", threshold: 0.3 } }
   }) {
     nodes { title }
@@ -72,7 +72,7 @@ query {
 
 ```graphql
 query {
-  allArticles(filter: {
+  allArticles(where: {
     trgmTitle: { value: "postgre", threshold: 0.2 }
   }) {
     nodes {

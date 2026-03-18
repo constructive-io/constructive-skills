@@ -133,7 +133,7 @@ Fans out a single text query to all text-compatible adapters (tsvector, BM25, tr
 
 ```graphql
 query {
-  allArticles(filter: { fullTextSearch: "postgres tutorial" }) {
+  allArticles(where: { fullTextSearch: "postgres tutorial" }) {
     nodes {
       title
       searchScore  # composite relevance across all text search signals

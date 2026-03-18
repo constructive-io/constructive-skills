@@ -143,7 +143,7 @@ The connection filter PostGIS plugin exposes these operators on geometry/geograp
 ```graphql
 {
   locations(
-    filter: {
+    where: {
       geom: {
         coveredBy: {
           type: "Polygon"
@@ -172,7 +172,7 @@ The connection filter PostGIS plugin exposes these operators on geometry/geograp
 ```graphql
 {
   zones(
-    filter: {
+    where: {
       boundary: {
         intersects: {
           type: "Point"
@@ -196,7 +196,7 @@ The connection filter PostGIS plugin exposes these operators on geometry/geograp
 ```typescript
 // Find locations within a bounding polygon
 const result = await db.location.findMany({
-  filter: {
+  where: {
     geom: {
       coveredBy: {
         type: 'Polygon',
@@ -221,7 +221,7 @@ const result = await db.location.findMany({
 ```typescript
 // Find zones that contain a point
 const result = await db.zone.findMany({
-  filter: {
+  where: {
     boundary: {
       contains: {
         type: 'Point',
@@ -247,8 +247,6 @@ PostGIS spatial queries can be combined with text search filters for location-aw
 const result = await db.restaurant.findMany({
   where: {
     fullTextSearch: 'italian pizza',
-  },
-  filter: {
     location: {
       coveredBy: {
         type: 'Polygon',

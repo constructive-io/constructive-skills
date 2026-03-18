@@ -28,7 +28,7 @@ Given a table with a BM25 index on the `content` column:
 
 ```graphql
 query {
-  allDocuments(filter: { bm25Content: { query: "database indexing" } }) {
+  allDocuments(where: { bm25Content: { query: "database indexing" } }) {
     nodes {
       title
       contentBm25Score

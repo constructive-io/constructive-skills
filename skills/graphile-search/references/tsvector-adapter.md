@@ -29,7 +29,7 @@ Given a table with a `search_tsv tsvector` column:
 
 ```graphql
 query {
-  allArticles(filter: { fullTextSearchTsv: { matches: "postgres tutorial" } }) {
+  allArticles(where: { fullTextSearchTsv: { matches: "postgres tutorial" } }) {
     nodes { ... }
   }
 }
