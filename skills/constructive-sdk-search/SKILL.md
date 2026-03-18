@@ -124,114 +124,78 @@ These are the two canonical patterns for combining ALL search algorithms in a si
 
 Each algorithm's filter specified individually with a composite orderBy array mixing different algorithm scores:
 
+```typescript
+// Per-algorithm: each filter specified individually, composite orderBy
+const result = await db.document.findMany({
+  where: {
+    // tsvector: full-text search on the tsv column
+    tsvTsv: 'learning',
+    // BM25: ranked text search on the body column
+    bm25Body: { query: 'learning' },
+    // pg_trgm: fuzzy trigram match on the title column
+    trgmTitle: { value: 'Learning', threshold: 0.05 },
+    // pgvector: cosine similarity on the embedding column
+    vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
+  },
+  // BM25 first (ASC = more relevant), trgm tiebreaker (DESC = more similar),
+  // then vector distance (ASC = closer)
+  orderBy: ['BODY_BM25_SCORE_ASC', 'TITLE_TRGM_SIMILARITY_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
+  select: {
+    rowId: true,
+    title: true,
+    body: true,
+    tsvRank: true,                 // ts_rank(tsv, query) — higher = more relevant
+    bodyBm25Score: true,           // BM25 score — more negative = more relevant
+    titleTrgmSimilarity: true,     // similarity(title, value) — 0..1, higher = closer
+    embeddingVectorDistance: true,  // cosine distance — lower = closer
+    searchScore: true,             // composite normalized 0..1 blend
+  },
+}).execute();
+```
+
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
+
 ```graphql
-query PerAlgorithmFilters {
+{
   allDocuments(
     where: {
-      # tsvector: full-text search on the tsv column
       tsvTsv: "learning"
-
-      # BM25: ranked text search on the body column
       bm25Body: { query: "learning" }
-
-      # pg_trgm: fuzzy trigram match on the title column
       trgmTitle: { value: "Learning", threshold: 0.05 }
-
-      # pgvector: cosine similarity on the embedding column
       vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
     }
-    # Composite orderBy: BM25 first (ASC = more relevant),
-    # then trgm tiebreaker (DESC = more similar),
-    # then vector distance (ASC = closer)
     orderBy: [BODY_BM25_SCORE_ASC, TITLE_TRGM_SIMILARITY_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
   ) {
     nodes {
       rowId
       title
       body
-
-      # Per-adapter scores — each populated only when its filter is active
-      tsvRank                    # ts_rank(tsv, query) — higher = more relevant
-      bodyBm25Score              # BM25 score — more negative = more relevant
-      titleTrgmSimilarity        # similarity(title, value) — 0..1, higher = closer
-      embeddingVectorDistance     # cosine distance — lower = closer
-
-      # Composite normalized score — weighted blend of all active algorithms
+      tsvRank
+      bodyBm25Score
+      titleTrgmSimilarity
+      embeddingVectorDistance
       searchScore
     }
   }
 }
 ```
 
-**Via codegen SDK:**
-
-```typescript
-const result = await db.document.findMany({
-  where: {
-    tsvTsv: 'learning',
-    bm25Body: { query: 'learning' },
-    trgmTitle: { value: 'Learning', threshold: 0.05 },
-    vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
-  },
-  orderBy: ['BODY_BM25_SCORE_ASC', 'TITLE_TRGM_SIMILARITY_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
-  select: {
-    rowId: true,
-    title: true,
-    body: true,
-    tsvRank: true,
-    bodyBm25Score: true,
-    titleTrgmSimilarity: true,
-    embeddingVectorDistance: true,
-    searchScore: true,
-  },
-}).execute();
-```
+</details>
 
 ### Unified fullTextSearch (Simplified)
 
 Uses the `fullTextSearch` composite filter that fans out to all text-compatible algorithms automatically, plus a manual pgvector filter:
 
-```graphql
-query UnifiedSearch {
-  allDocuments(
-    where: {
-      # fullTextSearch: single string fans out to tsvector + BM25 + trgm
-      # automatically — no need to specify each algorithm separately
-      fullTextSearch: "machine learning"
-
-      # pgvector still needs its own filter (vectors aren't text)
-      vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
-    }
-    # Order by composite searchScore (higher = more relevant),
-    # then by vector distance as tiebreaker (lower = closer)
-    orderBy: [SEARCH_SCORE_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
-  ) {
-    nodes {
-      rowId
-      title
-      body
-
-      # Per-adapter scores — populated by fullTextSearch for text algorithms
-      tsvRank
-      bodyBm25Score
-      titleTrgmSimilarity
-      embeddingVectorDistance
-
-      # Composite normalized score — the single number that blends everything
-      searchScore
-    }
-  }
-}
-```
-
-**Via codegen SDK:**
-
 ```typescript
+// Unified: fullTextSearch fans to tsvector + BM25 + trgm automatically
 const result = await db.document.findMany({
   where: {
     fullTextSearch: 'machine learning',
+    // pgvector still needs its own filter (vectors aren't text)
     vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
   },
+  // searchScore combines all algorithms, vector distance as tiebreaker
   orderBy: ['SEARCH_SCORE_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
   select: {
     rowId: true,
@@ -246,9 +210,56 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
+
+```graphql
+{
+  allDocuments(
+    where: {
+      fullTextSearch: "machine learning"
+      vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
+    }
+    orderBy: [SEARCH_SCORE_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
+  ) {
+    nodes {
+      rowId
+      title
+      body
+      tsvRank
+      bodyBm25Score
+      titleTrgmSimilarity
+      embeddingVectorDistance
+      searchScore
+    }
+  }
+}
+```
+
+</details>
+
 ### Unified fullTextSearch — Text Only (No Vector)
 
 When you don't have pgvector, the simplest possible multi-algorithm search:
+
+```typescript
+const result = await db.article.findMany({
+  where: {
+    fullTextSearch: 'machine learning',
+  },
+  orderBy: 'SEARCH_SCORE_DESC',
+  select: {
+    title: true,
+    tsvRank: true,
+    titleTrgmSimilarity: true,
+    bodyTrgmSimilarity: true,
+    searchScore: true,
+  },
+}).execute();
+```
+
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
 
 ```graphql
 {
@@ -267,21 +278,7 @@ When you don't have pgvector, the simplest possible multi-algorithm search:
 }
 ```
 
-```typescript
-const result = await db.article.findMany({
-  where: {
-    fullTextSearch: 'machine learning',
-  },
-  orderBy: 'SEARCH_SCORE_DESC',
-  select: {
-    title: true,
-    tsvRank: true,
-    titleTrgmSimilarity: true,
-    bodyTrgmSimilarity: true,
-    searchScore: true,
-  },
-}).execute();
-```
+</details>
 
 ## Trigram — Supplementary Adapter
 
@@ -358,8 +355,7 @@ Each reference covers both **creating** the search setup via SDK and **querying*
 - `references/pgvector.md` -- Creating and querying with vector similarity search (pgvector + HNSW)
 - `references/trigram.md` -- Creating and querying with fuzzy text matching (pg_trgm + GIN)
 - `references/postgis.md` -- Creating and querying with spatial/geospatial search (PostGIS)
-- `references/combined-search-queries.md` -- Combined multi-algorithm search patterns with real test examples
-- `references/composite.md` -- Unified system: searchScore normalization, fullTextSearch fan-out, adapter architecture
+- `references/composite.md` -- Unified system: searchScore normalization, fullTextSearch fan-out, combined multi-algorithm search patterns, adapter architecture
 
 ## Related Skills
 

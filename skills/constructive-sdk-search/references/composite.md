@@ -1,4 +1,4 @@
-# Unified Search System — Composite Fields & Adapter Architecture
+# Unified Search System — Composite Fields, Combined Queries & Architecture
 
 The `graphile-search` plugin (`https://www.npmjs.com/package/graphile-search`) provides a unified search architecture where multiple search adapters register on the same tables and expose composite fields for cross-algorithm querying.
 
@@ -26,7 +26,7 @@ graphile-search plugin
 
 Each adapter implements:
 - **Column detection**: Which columns/indexes does this adapter operate on?
-- **Type registration**: What GraphQL filter types and score fields to add?
+- **Type registration**: What filter types and score fields to add?
 - **SQL generation**: How to generate WHERE clauses and score expressions?
 - **Score semantics**: Metric name, whether lower-is-better, and known range bounds
 
@@ -95,12 +95,8 @@ A `String` filter field that fans the same text query to all **text-compatible**
 
 ### How It Works
 
-When you write:
-```graphql
-where: { fullTextSearch: "machine learning" }
-```
+When you filter with `fullTextSearch: "machine learning"`, the plugin generates SQL equivalent to:
 
-The plugin generates SQL equivalent to:
 ```sql
 WHERE (tsv @@ plainto_tsquery('machine learning'))
    OR (body @@@ 'machine learning')
@@ -109,20 +105,26 @@ WHERE (tsv @@ plainto_tsquery('machine learning'))
 
 All matching rows from ANY algorithm are included. The `searchScore` then ranks them by a composite of whichever algorithms matched.
 
-### Combining with Per-Algorithm Filters
+### Combining fullTextSearch with Per-Algorithm Filters
 
 `fullTextSearch` can coexist with algorithm-specific filters. The specific filter narrows further:
 
-```graphql
-where: {
-  fullTextSearch: "learning"    # OR across tsvector/BM25/trgm
-  tsvTsv: "machine"             # AND narrows within tsvector matches
-}
+```typescript
+// fullTextSearch fans to tsvector/BM25/trgm via OR,
+// then tsvTsv narrows further within tsvector matches via AND
+const result = await db.document.findMany({
+  where: {
+    fullTextSearch: 'learning',
+    tsvTsv: 'machine',
+  },
+  select: {
+    title: true,
+    tsvRank: true,
+  },
+}).execute();
 ```
 
 ### Disabling fullTextSearch
-
-The feature can be disabled in the plugin configuration:
 
 ```typescript
 const plugin = createUnifiedSearchPlugin({
@@ -133,6 +135,269 @@ const plugin = createUnifiedSearchPlugin({
 ```
 
 When disabled, per-algorithm filters still work normally.
+
+---
+
+## Combined Multi-Algorithm Search
+
+Two canonical patterns for combining ALL search algorithms in a single query. Both are real tested patterns from the `graphile-search` test suite.
+
+### Per-Algorithm Filters (Maximum Control)
+
+Each algorithm's filter specified individually with a composite orderBy array mixing different algorithm scores:
+
+```typescript
+// Per-algorithm: each filter specified individually, composite orderBy
+const result = await db.document.findMany({
+  where: {
+    // tsvector: full-text search on the tsv column
+    tsvTsv: 'learning',
+    // BM25: ranked text search on the body column
+    bm25Body: { query: 'learning' },
+    // pg_trgm: fuzzy trigram match on the title column
+    trgmTitle: { value: 'Learning', threshold: 0.05 },
+    // pgvector: cosine similarity on the embedding column
+    vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
+  },
+  // BM25 first (ASC = more relevant), trgm tiebreaker (DESC = more similar),
+  // then vector distance (ASC = closer)
+  orderBy: ['BODY_BM25_SCORE_ASC', 'TITLE_TRGM_SIMILARITY_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
+  select: {
+    rowId: true,
+    title: true,
+    body: true,
+    tsvRank: true,                 // ts_rank(tsv, query) — higher = more relevant
+    bodyBm25Score: true,           // BM25 score — more negative = more relevant
+    titleTrgmSimilarity: true,     // similarity(title, value) — 0..1, higher = closer
+    embeddingVectorDistance: true,  // cosine distance — lower = closer
+    searchScore: true,             // composite normalized 0..1 blend
+  },
+}).execute();
+```
+
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
+
+```graphql
+{
+  allDocuments(
+    where: {
+      tsvTsv: "learning"
+      bm25Body: { query: "learning" }
+      trgmTitle: { value: "Learning", threshold: 0.05 }
+      vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
+    }
+    orderBy: [BODY_BM25_SCORE_ASC, TITLE_TRGM_SIMILARITY_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
+  ) {
+    nodes {
+      rowId
+      title
+      body
+      tsvRank
+      bodyBm25Score
+      titleTrgmSimilarity
+      embeddingVectorDistance
+      searchScore
+    }
+  }
+}
+```
+
+</details>
+
+#### When to Use Per-Algorithm Filters
+
+- You need fine-grained control over each algorithm's parameters
+- You want to weight algorithms differently in the orderBy
+- You need different query strings for different algorithms
+- You want to exclude specific algorithms from the search
+
+### Score Directions Cheat Sheet
+
+| Algorithm | Score Field | Best Match | Sort Direction |
+|-----------|------------|------------|----------------|
+| TSVector | `tsvRank` | Higher = better | DESC |
+| BM25 | `bodyBm25Score` | More negative = better | ASC |
+| Trigram | `titleTrgmSimilarity` | Higher = closer (0..1) | DESC |
+| pgvector | `embeddingVectorDistance` | Lower = closer | ASC |
+| Composite | `searchScore` | Higher = more relevant (0..1) | DESC |
+
+---
+
+### Unified fullTextSearch (Simplified)
+
+Uses the `fullTextSearch` composite filter that fans out to all text-compatible algorithms (tsvector, BM25, trgm) automatically with a single string. pgvector still needs its own filter because it requires a vector array, not text.
+
+```typescript
+// Unified: fullTextSearch fans to tsvector + BM25 + trgm automatically
+const result = await db.document.findMany({
+  where: {
+    fullTextSearch: 'machine learning',
+    // pgvector still needs its own filter (vectors aren't text)
+    vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
+  },
+  // searchScore combines all algorithms, vector distance as tiebreaker
+  orderBy: ['SEARCH_SCORE_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
+  select: {
+    rowId: true,
+    title: true,
+    body: true,
+    tsvRank: true,
+    bodyBm25Score: true,
+    titleTrgmSimilarity: true,
+    embeddingVectorDistance: true,
+    searchScore: true,
+  },
+}).execute();
+```
+
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
+
+```graphql
+{
+  allDocuments(
+    where: {
+      fullTextSearch: "machine learning"
+      vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
+    }
+    orderBy: [SEARCH_SCORE_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
+  ) {
+    nodes {
+      rowId
+      title
+      body
+      tsvRank
+      bodyBm25Score
+      titleTrgmSimilarity
+      embeddingVectorDistance
+      searchScore
+    }
+  }
+}
+```
+
+</details>
+
+#### When to Use Unified fullTextSearch
+
+- You want the simplest possible multi-algorithm search
+- The same search string applies to all text-based algorithms
+- You trust the composite `searchScore` normalization for ranking
+- You're building a general-purpose search box
+
+---
+
+### Unified fullTextSearch — Text Only (No Vector)
+
+The simplest multi-algorithm search when pgvector is not available:
+
+```typescript
+const result = await db.article.findMany({
+  where: {
+    fullTextSearch: 'machine learning',
+  },
+  orderBy: 'SEARCH_SCORE_DESC',
+  select: {
+    title: true,
+    tsvRank: true,
+    titleTrgmSimilarity: true,
+    bodyTrgmSimilarity: true,
+    searchScore: true,
+  },
+}).execute();
+
+if (result.ok) {
+  const articles = result.data.articles.nodes;
+  // searchScore is normalized 0..1, higher = more relevant
+  articles.forEach(a => {
+    console.log(`${a.title} (score: ${a.searchScore})`);
+  });
+}
+```
+
+<details>
+<summary>Equivalent GraphQL (verified from test suite)</summary>
+
+```graphql
+{
+  articles(
+    where: { fullTextSearch: "machine learning" }
+    orderBy: SEARCH_SCORE_DESC
+  ) {
+    nodes {
+      title
+      tsvRank
+      titleTrgmSimilarity
+      bodyTrgmSimilarity
+      searchScore
+    }
+  }
+}
+```
+
+</details>
+
+---
+
+## Partial Combinations
+
+You don't have to use all algorithms. Mix and match as needed:
+
+### TSVector + Trigram (no vector)
+
+```typescript
+const result = await db.article.findMany({
+  where: {
+    tsvTsv: 'search',
+    trgmTitle: { value: 'PostgreSQL', threshold: 0.05 },
+  },
+  orderBy: ['TSV_RANK_DESC', 'TITLE_TRGM_SIMILARITY_DESC'],
+  select: {
+    title: true,
+    tsvRank: true,
+    titleTrgmSimilarity: true,
+    searchScore: true,
+  },
+}).execute();
+```
+
+### BM25 + Vector (semantic + keyword)
+
+```typescript
+const result = await db.document.findMany({
+  where: {
+    bm25Body: { query: 'machine learning' },
+    vectorEmbedding: { vector: queryVector, metric: 'COSINE' },
+  },
+  orderBy: ['BODY_BM25_SCORE_ASC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
+  select: {
+    title: true,
+    bodyBm25Score: true,
+    embeddingVectorDistance: true,
+    searchScore: true,
+  },
+}).execute();
+```
+
+### fullTextSearch + Non-Search Filters
+
+```typescript
+const result = await db.article.findMany({
+  where: {
+    fullTextSearch: 'postgres tutorial',
+    isPublished: { equalTo: true },
+    category: { equalTo: 'database' },
+  },
+  orderBy: 'SEARCH_SCORE_DESC',
+  first: 20,
+  select: {
+    title: true,
+    category: true,
+    searchScore: true,
+  },
+}).execute();
+```
 
 ---
 
@@ -194,6 +459,7 @@ When the unified search plugin is active on a table, these are added:
 - `tsvTsv: String` — tsvector text query
 - `bm25Body: Bm25BodyInput` — `{ query: String }`
 - `trgmTitle: TrgmTitleInput` — `{ value: String, threshold: Float }`
+- `trgmBody: TrgmBodyInput` — `{ value: String, threshold: Float }`
 - `vectorEmbedding: VectorEmbeddingInput` — `{ vector: [Float!]!, metric: VectorMetric, distance: Float }`
 - `fullTextSearch: String` — composite filter
 
