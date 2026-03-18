@@ -2,6 +2,8 @@
 
 Export GraphQL schemas to `.graphql` SDL files without generating any code. This is useful for creating portable, version-controllable schema artifacts that can then be used as input for code generation via `schemaFile` or `schemaDir`.
 
+Schema export uses a nested `schema` config object: `schema: { enabled, output, filename }`.
+
 ## When to Use
 
 - You want deterministic, portable builds that don't depend on a live database or endpoint at code generation time
@@ -17,9 +19,7 @@ import { generate } from '@constructive-io/graphql-codegen';
 // Export from database
 await generate({
   db: { schemas: ['public'] },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'public.graphql' },
 });
 
 // Export from PGPM module
@@ -28,16 +28,13 @@ await generate({
     pgpm: { modulePath: './packages/my-module' },
     schemas: ['app_public'],
   },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'app_public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'app_public.graphql' },
 });
 
 // Export from endpoint
 await generate({
   endpoint: 'https://api.example.com/graphql',
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
+  schema: { enabled: true, output: './schemas' },
 });
 
 // Export from PGPM workspace + module name
@@ -49,9 +46,7 @@ await generate({
     },
     schemas: ['app_public'],
   },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'app_public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'app_public.graphql' },
 });
 ```
 
@@ -59,11 +54,11 @@ await generate({
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
-| `schemaOnly` | `boolean` | `false` | Enable schema export mode (no code generation) |
-| `schemaOnlyOutput` | `string` | Same as `output` | Output directory for the exported schema file |
-| `schemaOnlyFilename` | `string` | `'schema.graphql'` | Filename for the exported schema |
+| `schema.enabled` | `boolean` | `false` | Enable schema export mode |
+| `schema.output` | `string` | Same as `output` | Output directory for the exported schema file |
+| `schema.filename` | `string` | `'schema.graphql'` | Filename for the exported schema |
 
-When `schemaOnly: true`, no generators run (`reactQuery`, `orm`, `cli` are all ignored). The function fetches the schema via introspection, converts it to SDL using `printSchema()`, and writes it to disk.
+When `schema.enabled` is `true` and no generators are enabled (`reactQuery`, `orm`, `cli` are all false), the function fetches the schema via introspection, converts it to SDL using `printSchema()`, and writes it to disk. When generators are also enabled, the schema is exported alongside code generation.
 
 ## Recommended Two-Step Workflow
 
@@ -76,16 +71,12 @@ import { generate } from '@constructive-io/graphql-codegen';
 // Export each schema you need
 await generate({
   db: { schemas: ['public'] },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'public.graphql' },
 });
 
 await generate({
   db: { schemas: ['admin'] },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'admin.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'admin.graphql' },
 });
 ```
 
@@ -113,7 +104,7 @@ await generate({
 
 ## Multi-Target Schema Export
 
-When using `generateMulti()` with `schemaOnly: true`, each target's schema is exported with the target name as the filename:
+When using `generateMulti()` with `schema: { enabled: true }`, each target's schema is exported with the target name as the filename:
 
 ```typescript
 import { generateMulti } from '@constructive-io/graphql-codegen';
@@ -129,7 +120,7 @@ await generateMulti({
       output: './schemas',
     },
   },
-  schemaOnly: true,
+  schema: { enabled: true },
 });
 // Produces: schemas/public.graphql, schemas/admin.graphql
 ```
@@ -139,9 +130,7 @@ await generateMulti({
 ```typescript
 const result = await generate({
   db: { schemas: ['public'] },
-  schemaOnly: true,
-  schemaOnlyOutput: './schemas',
-  schemaOnlyFilename: 'public.graphql',
+  schema: { enabled: true, output: './schemas', filename: 'public.graphql' },
 });
 
 if (result.success) {
