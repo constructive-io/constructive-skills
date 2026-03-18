@@ -6,7 +6,22 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for different ai agents for working with Constructive tooling. Skills are packaged instructions and scripts that extend agents' capabilities.
+A collection of skills for AI coding agents working with Constructive tooling. Skills are organized into **10 umbrella skills** that consolidate related functionality:
+
+| Skill | Absorbs | Purpose |
+|-------|---------|---------|
+| **constructive** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
+| **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
+| **constructive-graphql** | graphql-codegen, sdk-search, graphql-query | Codegen, runtime queries, search, pagination |
+| **constructive-starter-kits** | boilerplate-pgpm-init, boilerplate-nextjs-app, boilerplate-authoring | Project scaffolding via `pgpm init` |
+| **constructive-frontend** | constructive-ui, crud-stack, meta-forms | UI components, Stack cards, dynamic forms |
+| **constructive-testing** | pgsql-test, drizzle-orm-test, supabase-test, drizzle-orm, pgsql-parser-testing | All test frameworks |
+| **constructive-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
+| **constructive-tooling** | constructive-pnpm, inquirerer-cli, readme-formatting | Dev tools |
+| **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
+| **fbp** | fbp-types, fbp-spec, fbp-evaluator, fbp-graph-editor | Flow-Based Programming toolkit |
+
+Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
 
 ## Creating a New Skill
 
