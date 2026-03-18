@@ -182,6 +182,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [search-pgvector.md](./references/search-pgvector.md) | pgvector similarity | Creating vector columns, HNSW indexes, distance metrics |
 | [search-postgis.md](./references/search-postgis.md) | PostGIS spatial queries | Geometry columns, spatial filters, proximity |
 | [search-composite.md](./references/search-composite.md) | Unified composite system | `fullTextSearch`, `searchScore`, combined multi-algorithm patterns |
+| [search-rag.md](./references/search-rag.md) | RAG patterns with ORM | Vector search for RAG, multi-table retrieval, hybrid search, embedding ingestion |
 
 ### Runtime Query Generation
 
@@ -193,6 +194,8 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 
 ## Cross-References
 
+- `constructive-ai` — [agentic-kit.md](../constructive-ai/references/agentic-kit.md): Multi-provider LLM abstraction for RAG generation step
+- `constructive-ai` — [rag-pipeline.md](../constructive-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture
 - `graphile-search` — Plugin architecture and adapter internals (team-level, not SDK consumers)
 - `constructive` — Platform core: server config, deployment, CNC CLI
 - `pgpm` — Database migrations and module management

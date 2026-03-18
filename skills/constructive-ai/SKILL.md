@@ -119,11 +119,12 @@ Run Ollama in GitHub Actions for testing RAG pipelines. See [ollama-ci.md](./ref
 | [ollama.md](./references/ollama.md) | Ollama client & models | Generating embeddings, LLM inference, streaming, model selection |
 | [ollama-ci.md](./references/ollama-ci.md) | Ollama GitHub Actions | Running LLM models in CI/CD |
 | [pgvector-sql.md](./references/pgvector-sql.md) | pgvector SQL reference | Raw SQL for vector tables, indexes, similarity functions (SQL-level) |
-| [agentic-kit.md](./references/agentic-kit.md) | Agentic kit RAG patterns | Building AI agents with RAG providers |
+| [agentic-kit.md](./references/agentic-kit.md) | Agentic kit (multi-provider) | Multi-provider LLM abstraction (Ollama, Anthropic, OpenAI), streaming, embeddings, RAG patterns |
 
 ## Cross-References
 
 - `constructive-graphql` — [search-pgvector.md](../constructive-graphql/references/search-pgvector.md): ORM query patterns for vector search (distance filters, metrics, ordering)
+- `constructive-graphql` — [search-rag.md](../constructive-graphql/references/search-rag.md): RAG patterns with codegen'd ORM (single-table, multi-table, hybrid, embedding ingestion)
 - `constructive-graphql` — [search-composite.md](../constructive-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm in unified `searchScore`
 - `graphile-search` — Plugin internals for the unified search system (team-level)
 - `pgpm` — Database migrations for vector-enabled modules

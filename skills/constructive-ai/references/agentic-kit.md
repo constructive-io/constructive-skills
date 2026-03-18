@@ -1,512 +1,383 @@
 ---
-name: agentic-kit-rag
-description: Configure agentic-kit for RAG (Retrieval-Augmented Generation) with pgvector and PGPM. Use when asked to "enable RAG for agentic-kit", "add database context to AI chat", "configure RAG environment", "set up local RAG database", or when building AI applications that need contextual responses from a knowledge base.
-compatibility: Node.js 18+, PostgreSQL with pgvector, Ollama, PGPM CLI
+name: agentic-kit
+description: "Build AI agents with agentic-kit: multi-provider LLM abstraction (Ollama, Anthropic, OpenAI) with streaming, embeddings, and RAG integration via codegen'd ORM. Use when building AI chat, RAG pipelines, multi-provider agents, or embedding generation."
+compatibility: Node.js 18+, agentic-kit ^1.0.3
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
-# Agentic Kit RAG Integration
+# Agentic Kit
 
-Configure the agentic-kit for Retrieval-Augmented Generation (RAG) using pgvector for semantic search and PGPM for database management. This skill enables AI chat applications to provide contextual responses based on a knowledge base stored in PostgreSQL.
+Build AI agents with [agentic-kit](https://github.com/constructive-io/agentic-kit): a unified, streaming-capable interface for multiple LLM providers. Integrates with the Constructive platform via the codegen'd ORM for RAG and vector search.
 
 ## When to Apply
 
 Use this skill when:
-- Adding RAG capabilities to agentic-kit applications
-- Configuring environment variables for RAG-enabled AI chat
-- Setting up a local database for document storage and retrieval
-- Building AI assistants that need access to a knowledge base
-- Integrating pgvector with the sf-rag-utils app
+- Building AI chat or assistant features
+- Integrating LLM providers (Ollama, Anthropic/Claude, OpenAI)
+- Generating embeddings for vector search
+- Building RAG pipelines that combine vector retrieval (via ORM) with LLM generation
+- Implementing multi-provider agent architectures
 
-## Architecture Overview
+## Packages
+
+| Package | Purpose |
+|---------|---------|
+| `agentic-kit` | Core library: `AgentKit` manager, `AgentProvider` interface, factory helpers |
+| `@agentic-kit/ollama` | `OllamaClient` — local inference, embeddings, model management |
+| `@agentic-kit/anthropic` | `AnthropicAdapter` — Claude models via Anthropic API |
+| `@agentic-kit/openai` | `OpenAIAdapter` — GPT models and OpenAI-compatible APIs (LM Studio, vLLM, Together) |
+
+## Quick Start
+
+### Single Provider (Ollama)
+
+```typescript
+import { createOllamaKit } from 'agentic-kit';
+
+const kit = createOllamaKit('http://localhost:11434');
+
+// Single-shot generation
+const answer = await kit.generate({
+  model: 'llama3.2',
+  prompt: 'What is PostgreSQL?',
+});
+
+// Chat with messages
+const chatAnswer = await kit.generate({
+  model: 'llama3.2',
+  system: 'You are a helpful database assistant.',
+  messages: [
+    { role: 'user', content: 'What is a GIN index?' },
+  ],
+});
+```
+
+### Multi-Provider
+
+```typescript
+import { AgentKit, OllamaAdapter, AnthropicAdapter, OpenAIAdapter } from 'agentic-kit';
+
+const kit = new AgentKit();
+
+// Add providers
+kit.addProvider(new OllamaAdapter('http://localhost:11434'));
+
+if (process.env.ANTHROPIC_API_KEY) {
+  kit.addProvider(new AnthropicAdapter({ apiKey: process.env.ANTHROPIC_API_KEY }));
+}
+
+if (process.env.OPENAI_API_KEY) {
+  kit.addProvider(new OpenAIAdapter({ apiKey: process.env.OPENAI_API_KEY }));
+}
+
+// Switch providers at runtime
+kit.setProvider('anthropic');
+const answer = await kit.generate({
+  model: 'claude-3-5-sonnet-latest',
+  prompt: 'Explain vector search.',
+});
+```
+
+### Factory Helpers
+
+```typescript
+import { createOllamaKit, createAnthropicKit, createOpenAIKit, createMultiProviderKit } from 'agentic-kit';
+
+const ollama = createOllamaKit('http://localhost:11434');
+const claude = createAnthropicKit({ apiKey: process.env.ANTHROPIC_API_KEY! });
+const gpt = createOpenAIKit({ apiKey: process.env.OPENAI_API_KEY! });
+const multi = createMultiProviderKit(); // empty kit, add providers manually
+```
+
+## Streaming
+
+```typescript
+const kit = createOllamaKit();
+
+// Stream tokens as they arrive
+await kit.generate(
+  { model: 'llama3.2', prompt: 'Tell me about PostgreSQL' },
+  {
+    onChunk: (chunk) => process.stdout.write(chunk),
+    onComplete: () => console.log('\nDone'),
+    onError: (err) => console.error('Error:', err),
+  }
+);
+```
+
+## Embeddings
+
+Use `OllamaClient` directly for embedding generation:
+
+```typescript
+import OllamaClient from '@agentic-kit/ollama';
+
+const client = new OllamaClient('http://localhost:11434');
+
+// Generate a single embedding (768-dim with nomic-embed-text)
+const embedding = await client.generateEmbedding('PostgreSQL expert', 'nomic-embed-text');
+// => number[] (768 values)
+
+// Batch embeddings
+async function embedBatch(texts: string[]): Promise<number[][]> {
+  return Promise.all(texts.map(t => client.generateEmbedding(t)));
+}
+```
+
+### Embedding Models
+
+| Model | Dimensions | Speed | Use Case |
+|-------|------------|-------|----------|
+| `nomic-embed-text` | 768 | Fast | General-purpose (recommended) |
+| `mxbai-embed-large` | 1024 | Medium | Higher quality |
+| `all-minilm` | 384 | Very Fast | Lightweight/mobile |
+
+## RAG with Codegen'd ORM
+
+The recommended RAG pattern on Constructive: embed with agentic-kit, search with the codegen'd ORM, generate with AgentKit.
+
+### 3-Pass RAG Architecture
 
 ```
-User Query → Agentic Kit → RAG Provider
-                              ↓
-                    [RAG_ENABLED=true?]
-                         ↓         ↓
-                       Yes         No
-                         ↓         ↓
-              Query Embedding   Direct Ollama
-                         ↓
-              pgvector Search
-                         ↓
-              Context Retrieval
-                         ↓
-              Ollama + Context → Response
+Pass 1: Query Router    — LLM decides which tables to search
+Pass 2: Vector Search   — ORM queries selected tables with vectorEmbedding filter
+Pass 3: LLM Synthesis   — LLM generates answer from retrieved context
+```
+
+### Complete RAG Example
+
+```typescript
+import { AgentKit, OllamaAdapter, AnthropicAdapter } from 'agentic-kit';
+import OllamaClient from '@agentic-kit/ollama';
+import { createClient } from '@your-project/sdk';
+import { NodeHttpAdapter } from '@constructive-io/node';
+
+// Setup
+const ollamaClient = new OllamaClient('http://localhost:11434');
+const kit = new AgentKit();
+kit.addProvider(new OllamaAdapter('http://localhost:11434'));
+
+if (process.env.ANTHROPIC_API_KEY) {
+  kit.addProvider(new AnthropicAdapter({ apiKey: process.env.ANTHROPIC_API_KEY }));
+}
+
+// Create authenticated ORM client
+const adapter = new NodeHttpAdapter(graphqlUrl, {
+  Host: appHost,
+  Authorization: `Bearer ${token}`,
+});
+const db = createClient({ adapter });
+
+// ── Pass 1: Query Router ────────────────────────────────────────────
+async function routeQuery(question: string, tables: string[]): Promise<string[]> {
+  const response = await kit.generate({
+    model: 'llama3.2',
+    prompt: `You are a query router. Available tables: ${tables.join(', ')}
+Given the question, reply with a JSON array of table names to search.
+Question: ${question}
+JSON array only:`,
+  }) as string;
+
+  const match = response.match(/\[.*\]/s);
+  return match ? JSON.parse(match[0]).filter((t: string) => tables.includes(t)) : tables;
+}
+
+// ── Pass 2: Vector Search via ORM ───────────────────────────────────
+async function searchTable(queryEmbedding: number[], limit = 5) {
+  return db.document.findMany({
+    where: {
+      vectorEmbedding: {
+        vector: queryEmbedding,
+        metric: 'COSINE',
+        distance: 2.0,
+      },
+    },
+    first: limit,
+    select: {
+      id: true,
+      title: true,
+      content: true,
+      embeddingVectorDistance: true,
+    },
+  }).execute();
+}
+
+// ── Pass 3: Synthesize Answer ───────────────────────────────────────
+async function ask(question: string): Promise<string> {
+  // Embed the question
+  const queryEmbedding = await ollamaClient.generateEmbedding(question);
+
+  // Search via ORM
+  const results = await searchTable(queryEmbedding);
+  const nodes = results.data?.documents?.nodes || [];
+
+  // Format context
+  const context = nodes
+    .map((n, i) => `[Source ${i + 1}] ${n.title}\n${n.content}`)
+    .join('\n\n');
+
+  // Generate answer
+  return kit.generate({
+    model: 'llama3.2',
+    system: 'Answer based on the provided context. If the context lacks info, say so.',
+    messages: [
+      { role: 'user', content: `Context:\n${context}\n\nQuestion: ${question}` },
+    ],
+  }) as Promise<string>;
+}
+```
+
+### Multi-Table Vector Search
+
+Search across multiple entity types using the codegen'd ORM (pattern from agentic-db):
+
+```typescript
+const VECTOR_CONDITION = (queryEmbedding: number[]) => ({
+  vectorEmbedding: { vector: queryEmbedding, metric: 'COSINE' as const, distance: 2.0 },
+});
+
+async function multiTableSearch(query: string) {
+  const queryEmbedding = await ollamaClient.generateEmbedding(query);
+  const where = VECTOR_CONDITION(queryEmbedding);
+
+  const [contacts, documents, notes] = await Promise.all([
+    db.contact.findMany({
+      where, first: 5,
+      select: { id: true, firstName: true, lastName: true, embeddingVectorDistance: true },
+    }).execute(),
+    db.document.findMany({
+      where, first: 5,
+      select: { id: true, title: true, content: true, embeddingVectorDistance: true },
+    }).execute(),
+    db.note.findMany({
+      where, first: 5,
+      select: { id: true, content: true, embeddingVectorDistance: true },
+    }).execute(),
+  ]);
+
+  // Merge and sort by distance (lower = more similar)
+  return [
+    ...(contacts.data?.contacts?.nodes || []).map(n => ({ ...n, table: 'contacts' })),
+    ...(documents.data?.documents?.nodes || []).map(n => ({ ...n, table: 'documents' })),
+    ...(notes.data?.notes?.nodes || []).map(n => ({ ...n, table: 'notes' })),
+  ].sort((a, b) => (a.embeddingVectorDistance ?? 2) - (b.embeddingVectorDistance ?? 2));
+}
+```
+
+### Embedding Ingestion via ORM
+
+Generate embeddings and store them via ORM (not raw SQL):
+
+```typescript
+async function embedAndStore(records: Array<{ id: string; text: string }>) {
+  for (const record of records) {
+    const embedding = await ollamaClient.generateEmbedding(record.text);
+
+    await db.document.update({
+      where: { id: record.id },
+      data: { embedding },
+    }).execute();
+  }
+}
+```
+
+## OllamaClient API Reference
+
+```typescript
+import OllamaClient from '@agentic-kit/ollama';
+
+const client = new OllamaClient('http://localhost:11434');
+
+// Models
+await client.listModels();           // string[]
+await client.pullModel('llama3.2');   // void
+await client.deleteModel('old');      // void
+
+// Generate (single-shot)
+const text = await client.generate({ model: 'llama3.2', prompt: 'Hello' });
+
+// Generate (chat)
+const chat = await client.generate({
+  model: 'llama3.2',
+  system: 'You are helpful.',
+  messages: [{ role: 'user', content: 'Hi' }],
+});
+
+// Generate (streaming)
+await client.generate(
+  { model: 'llama3.2', prompt: 'Hello' },
+  (chunk) => process.stdout.write(chunk)
+);
+
+// Embeddings
+const vec = await client.generateEmbedding('text', 'nomic-embed-text');
+```
+
+### GenerateInput Options
+
+| Option | Type | Description |
+|--------|------|-------------|
+| `model` | `string` | Model name (required) |
+| `prompt` | `string` | Single-shot prompt (routes to `/api/generate`) |
+| `messages` | `ChatMessage[]` | Multi-turn messages (routes to `/api/chat`, takes precedence over prompt) |
+| `system` | `string` | System prompt |
+| `temperature` | `number` | Sampling temperature |
+| `maxTokens` | `number` | Maximum tokens to generate |
+
+## AgentProvider Interface
+
+Implement custom providers by conforming to `AgentProvider`:
+
+```typescript
+import type { AgentProvider, GenerateInput } from 'agentic-kit';
+
+class MyProvider implements AgentProvider {
+  readonly name = 'my-provider';
+
+  async generate(input: GenerateInput): Promise<string> {
+    // Your implementation
+  }
+
+  async generateStreaming(input: GenerateInput, onChunk: (chunk: string) => void): Promise<void> {
+    // Your streaming implementation
+  }
+
+  async listModels(): Promise<string[]> {
+    return ['model-a', 'model-b'];
+  }
+}
+
+const kit = new AgentKit();
+kit.addProvider(new MyProvider());
 ```
 
 ## Environment Variables
 
-Configure RAG behavior through environment variables:
-
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `RAG_ENABLED` | `true` | Enable RAG context retrieval (set to `false` for direct Ollama) |
-| `RAG_DATABASE_URL` | - | PostgreSQL connection string (required when RAG_ENABLED=true) |
-| `OLLAMA_HOST` | `http://localhost:11434` | Ollama server URL |
-| `RAG_EMBEDDING_MODEL` | `nomic-embed-text` | Model for generating embeddings |
-| `RAG_CHAT_MODEL` | `llama3.2` | Model for chat responses |
-| `RAG_SIMILARITY_THRESHOLD` | `0.5` | Minimum similarity score for retrieval |
-| `RAG_CONTEXT_LIMIT` | `5` | Maximum number of chunks to retrieve |
-| `RAG_SCHEMA` | `intelligence` | PostgreSQL schema for RAG tables |
-
-### Example .env File
-
-```bash
-# RAG Configuration
-RAG_ENABLED=true
-RAG_DATABASE_URL=postgres://postgres:postgres@localhost:5432/rag_dev
-
-# Ollama Configuration
-OLLAMA_HOST=http://localhost:11434
-RAG_EMBEDDING_MODEL=nomic-embed-text
-RAG_CHAT_MODEL=llama3.2
-
-# Retrieval Settings
-RAG_SIMILARITY_THRESHOLD=0.5
-RAG_CONTEXT_LIMIT=5
-RAG_SCHEMA=intelligence
-```
-
-### Disabling RAG (Direct Ollama Mode)
-
-To use direct Ollama without RAG context:
-
-```bash
-RAG_ENABLED=false
-OLLAMA_HOST=http://localhost:11434
-RAG_CHAT_MODEL=llama3.2
-```
-
-## Quick Start
-
-### 1. Set Up Local Database with PGPM
-
-Ensure PostgreSQL is running with a pgvector-enabled image (see `pgpm` skill, `references/docker.md`) and PG env vars are loaded (see `pgpm` skill, `references/env.md`).
-
-```bash
-# Run the setup script
-bash /mnt/skills/user/agentic-kit-rag/scripts/setup-rag-database.sh
-```
-
-### 2. Configure Environment
-
-Create a `.env` file in your application:
-
-```bash
-RAG_ENABLED=true
-RAG_DATABASE_URL=postgres://postgres:postgres@localhost:5432/rag_dev
-OLLAMA_HOST=http://localhost:11434
-```
-
-### 3. Pull Required Ollama Models
-
-```bash
-ollama pull nomic-embed-text
-ollama pull llama3.2
-```
-
-## RAG Provider Implementation
-
-Create a RAG-aware provider for agentic-kit:
-
-```typescript
-// src/lib/ai/rag-provider.ts
-import { Pool } from 'pg';
-import type { AgentProvider, GenerateInput, StreamCallbacks, Message } from '@sf-ai/agentic-kit';
-
-interface RAGConfig {
-  databaseUrl: string;
-  ollamaHost?: string;
-  embeddingModel?: string;
-  chatModel?: string;
-  similarityThreshold?: number;
-  contextLimit?: number;
-  schema?: string;
-}
-
-const formatVector = (embedding: number[]): string => `[${embedding.join(',')}]`;
-
-export class RAGProvider implements AgentProvider {
-  readonly name = 'rag';
-  private pool: Pool;
-  private ollamaHost: string;
-  private embeddingModel: string;
-  private chatModel: string;
-  private similarityThreshold: number;
-  private contextLimit: number;
-  private schema: string;
-
-  constructor(config: RAGConfig) {
-    this.pool = new Pool({ connectionString: config.databaseUrl });
-    this.ollamaHost = config.ollamaHost || 'http://localhost:11434';
-    this.embeddingModel = config.embeddingModel || 'nomic-embed-text';
-    this.chatModel = config.chatModel || 'llama3.2';
-    this.similarityThreshold = config.similarityThreshold || 0.5;
-    this.contextLimit = config.contextLimit || 5;
-    this.schema = config.schema || 'intelligence';
-  }
-
-  private async generateEmbedding(text: string): Promise<number[]> {
-    const response = await fetch(`${this.ollamaHost}/api/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: this.embeddingModel, prompt: text }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Failed to generate embedding: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.embedding;
-  }
-
-  private async retrieveContext(query: string): Promise<string> {
-    const embedding = await this.generateEmbedding(query);
-
-    const result = await this.pool.query(
-      `SELECT string_agg(content, E'\n\n') as context
-       FROM ${this.schema}.find_similar_chunks($1::vector, $2, $3)`,
-      [formatVector(embedding), this.contextLimit, this.similarityThreshold]
-    );
-
-    return result.rows[0]?.context || '';
-  }
-
-  async generate(input: GenerateInput): Promise<string> {
-    const context = await this.retrieveContext(input.prompt);
-
-    const response = await fetch(`${this.ollamaHost}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: input.model || this.chatModel,
-        messages: this.buildMessages(input.messages || [], input.prompt, context),
-        stream: false,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`Chat failed: ${response.statusText}`);
-    }
-
-    const data = await response.json();
-    return data.message.content;
-  }
-
-  async generateStream(input: GenerateInput, callbacks: StreamCallbacks): Promise<void> {
-    callbacks.onStateChange?.('thinking');
-
-    const context = await this.retrieveContext(input.prompt);
-
-    const response = await fetch(`${this.ollamaHost}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: input.model || this.chatModel,
-        messages: this.buildMessages(input.messages || [], input.prompt, context),
-        stream: true,
-      }),
-    });
-
-    if (!response.ok) {
-      const error = new Error(`Chat stream failed: ${response.statusText}`);
-      callbacks.onStateChange?.('error');
-      callbacks.onError?.(error);
-      throw error;
-    }
-
-    await this.processStream(response, callbacks);
-  }
-
-  private buildMessages(
-    messages: Message[],
-    prompt: string,
-    context: string
-  ): Array<{ role: string; content: string }> {
-    const systemMessage = messages.find(m => m.role === 'system');
-    const conversationMessages = messages.filter(m => m.role !== 'system');
-
-    const systemContent = systemMessage?.content || 'You are a helpful assistant.';
-    const contextualSystem = context
-      ? `${systemContent}\n\nUse the following context to answer questions. If the context doesn't contain relevant information, say so.\n\nContext:\n${context}`
-      : systemContent;
-
-    return [
-      { role: 'system', content: contextualSystem },
-      ...conversationMessages.map(m => ({ role: m.role, content: m.content })),
-      { role: 'user', content: prompt },
-    ];
-  }
-
-  private async processStream(response: Response, callbacks: StreamCallbacks): Promise<void> {
-    const reader = response.body?.getReader();
-    if (!reader) {
-      throw new Error('Failed to get response reader');
-    }
-
-    callbacks.onStateChange?.('streaming');
-
-    const decoder = new TextDecoder();
-    let fullResponse = '';
-    let done = false;
-
-    while (!done) {
-      const result = await reader.read();
-      done = result.done;
-      if (done) break;
-
-      const chunk = decoder.decode(result.value);
-      const lines = chunk.split('\n').filter(Boolean);
-
-      for (const line of lines) {
-        try {
-          const data = JSON.parse(line);
-          if (data.message?.content) {
-            fullResponse += data.message.content;
-            callbacks.onToken?.(data.message.content);
-          }
-        } catch {
-          // Skip malformed JSON lines
-        }
-      }
-    }
-
-    callbacks.onStateChange?.('complete');
-    callbacks.onComplete?.(fullResponse);
-  }
-
-  async isAvailable(): Promise<boolean> {
-    try {
-      const [ollamaCheck, dbCheck] = await Promise.all([
-        fetch(`${this.ollamaHost}/api/tags`).then(r => r.ok),
-        this.pool.query('SELECT 1').then(() => true).catch(() => false),
-      ]);
-      return ollamaCheck && dbCheck;
-    } catch {
-      return false;
-    }
-  }
-
-  async close(): Promise<void> {
-    await this.pool.end();
-  }
-}
-```
-
-## Creating RAG-Enabled Kit
-
-```typescript
-// src/lib/ai/create-rag-kit.ts
-import { AgentKit, OllamaProvider } from '@sf-ai/agentic-kit';
-import { RAGProvider } from './rag-provider';
-
-interface RAGKitConfig {
-  ragEnabled?: boolean;
-  databaseUrl?: string;
-  ollamaHost?: string;
-  embeddingModel?: string;
-  chatModel?: string;
-  similarityThreshold?: number;
-  contextLimit?: number;
-  schema?: string;
-}
-
-export function createRAGKit(config: RAGKitConfig = {}): AgentKit {
-  const ragEnabled = config.ragEnabled ?? process.env.RAG_ENABLED !== 'false';
-  const databaseUrl = config.databaseUrl || process.env.RAG_DATABASE_URL;
-  const ollamaHost = config.ollamaHost || process.env.OLLAMA_HOST || 'http://localhost:11434';
-
-  const kit = new AgentKit();
-
-  if (ragEnabled && databaseUrl) {
-    kit.addProvider(new RAGProvider({
-      databaseUrl,
-      ollamaHost,
-      embeddingModel: config.embeddingModel || process.env.RAG_EMBEDDING_MODEL,
-      chatModel: config.chatModel || process.env.RAG_CHAT_MODEL,
-      similarityThreshold: config.similarityThreshold || parseFloat(process.env.RAG_SIMILARITY_THRESHOLD || '0.5'),
-      contextLimit: config.contextLimit || parseInt(process.env.RAG_CONTEXT_LIMIT || '5', 10),
-      schema: config.schema || process.env.RAG_SCHEMA,
-    }));
-  } else {
-    kit.addProvider(new OllamaProvider({
-      baseUrl: ollamaHost,
-      defaultModel: config.chatModel || process.env.RAG_CHAT_MODEL || 'llama3.2',
-    }));
-  }
-
-  return kit;
-}
-```
-
-## Updating useAgent Hook
-
-Modify the useAgent hook to support RAG:
-
-```typescript
-// src/lib/ai/use-agent.ts
-'use client';
-
-import { useCallback, useRef, useState } from 'react';
-import type { AgentState, Message, StreamCallbacks } from '@sf-ai/agentic-kit';
-import { createRAGKit } from './create-rag-kit';
-
-export interface UseAgentOptions {
-  baseUrl?: string;
-  model?: string;
-  systemPrompt?: string;
-  ragEnabled?: boolean;
-  databaseUrl?: string;
-}
-
-export function useAgent(options: UseAgentOptions = {}) {
-  const { baseUrl, model, systemPrompt, ragEnabled, databaseUrl } = options;
-
-  const kitRef = useRef(createRAGKit({
-    ragEnabled,
-    databaseUrl,
-    ollamaHost: baseUrl,
-    chatModel: model,
-  }));
-
-  // ... rest of the hook implementation
-}
-```
-
-## Database Schema
-
-The RAG database requires the following schema (created by the setup script):
-
-```sql
--- Schema
-CREATE SCHEMA IF NOT EXISTS intelligence;
-
--- Documents table
-CREATE TABLE intelligence.documents (
-    id SERIAL PRIMARY KEY,
-    title TEXT,
-    content TEXT NOT NULL,
-    metadata JSONB DEFAULT '{}'::jsonb,
-    embedding VECTOR(768),
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- Chunks table
-CREATE TABLE intelligence.chunks (
-    id SERIAL PRIMARY KEY,
-    document_id INTEGER NOT NULL REFERENCES intelligence.documents(id) ON DELETE CASCADE,
-    content TEXT NOT NULL,
-    embedding VECTOR(768),
-    chunk_index INTEGER NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
-CREATE INDEX idx_chunks_document_id ON intelligence.chunks(document_id);
-CREATE INDEX idx_chunks_embedding ON intelligence.chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100);
-
--- Similarity search function
-CREATE FUNCTION intelligence.find_similar_chunks(
-    p_embedding VECTOR(768),
-    p_limit INTEGER DEFAULT 5,
-    p_similarity_threshold FLOAT DEFAULT 0.5
-)
-RETURNS TABLE (
-    id INTEGER,
-    content TEXT,
-    similarity FLOAT
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        c.id,
-        c.content,
-        1 - (c.embedding <=> p_embedding) AS similarity
-    FROM intelligence.chunks c
-    WHERE c.embedding IS NOT NULL
-      AND 1 - (c.embedding <=> p_embedding) > p_similarity_threshold
-    ORDER BY c.embedding <=> p_embedding
-    LIMIT p_limit;
-END;
-$$ LANGUAGE plpgsql;
-```
-
-## Adding Documents to the Knowledge Base
-
-```typescript
-import { Pool } from 'pg';
-
-const pool = new Pool({ connectionString: process.env.RAG_DATABASE_URL });
-
-async function addDocument(title: string, content: string, metadata = {}) {
-  const ollamaHost = process.env.OLLAMA_HOST || 'http://localhost:11434';
-  const embeddingModel = process.env.RAG_EMBEDDING_MODEL || 'nomic-embed-text';
-
-  // Generate embedding
-  const response = await fetch(`${ollamaHost}/api/embeddings`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: embeddingModel, prompt: content }),
-  });
-  const { embedding } = await response.json();
-
-  // Insert document
-  const result = await pool.query(
-    `INSERT INTO intelligence.documents (title, content, metadata, embedding)
-     VALUES ($1, $2, $3, $4::vector)
-     RETURNING id`,
-    [title, content, metadata, `[${embedding.join(',')}]`]
-  );
-
-  const documentId = result.rows[0].id;
-
-  // Create chunks
-  await pool.query('SELECT intelligence.create_document_chunks($1)', [documentId]);
-
-  // Generate embeddings for chunks
-  const chunks = await pool.query(
-    'SELECT id, content FROM intelligence.chunks WHERE document_id = $1',
-    [documentId]
-  );
-
-  for (const chunk of chunks.rows) {
-    const chunkResponse = await fetch(`${ollamaHost}/api/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: embeddingModel, prompt: chunk.content }),
-    });
-    const { embedding: chunkEmbedding } = await chunkResponse.json();
-
-    await pool.query(
-      'UPDATE intelligence.chunks SET embedding = $1::vector WHERE id = $2',
-      [`[${chunkEmbedding.join(',')}]`, chunk.id]
-    );
-  }
-
-  return documentId;
-}
-```
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `EMBEDDING_MODEL` | `nomic-embed-text` | Model for embeddings |
+| `CHAT_MODEL` | `llama3.2` | Model for chat/generation |
+| `ANTHROPIC_API_KEY` | - | Anthropic API key (for Claude) |
+| `OPENAI_API_KEY` | - | OpenAI API key (for GPT) |
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| "RAG_DATABASE_URL not set" | Set the environment variable or pass databaseUrl to createRAGKit |
-| "Connection refused" to database | Ensure PostgreSQL is running (see `pgpm` skill, `references/docker.md`) |
-| "Connection refused" to Ollama | Ensure Ollama is running: `ollama serve` |
-| "type vector does not exist" | Run the setup script to install pgvector extension |
-| No context retrieved | Lower RAG_SIMILARITY_THRESHOLD or add more documents |
-| Slow responses | Reduce RAG_CONTEXT_LIMIT or optimize database indexes |
+| "No provider set" | Call `kit.addProvider()` before `kit.generate()` |
+| "Provider not found" | Check provider name in `kit.setProvider()` matches `provider.name` |
+| Ollama connection refused | Ensure Ollama is running: `ollama serve` |
+| Embedding model not found | Pull model first: `ollama pull nomic-embed-text` |
+| Anthropic 401 | Check `ANTHROPIC_API_KEY` is set |
+| Streaming not working | Pass `onChunk` callback in options (second arg to `kit.generate()`) |
 
-## References
+## Cross-References
 
-- Related skill: `pgvector-setup` for database schema details
-- Related skill: `pgvector-embeddings` for embedding generation
-- Related skill: `pgvector-similarity-search` for retrieval queries
-- Related skill: `rag-pipeline` for complete RAG implementation
-- Related skill: `ollama-integration` for Ollama client details
-- Related skill: `pgpm` (`references/docker.md`) for PostgreSQL container management
+- `constructive-graphql` — [search-pgvector.md](../../constructive-graphql/references/search-pgvector.md): ORM vector query patterns
+- `constructive-graphql` — [search-rag.md](../../constructive-graphql/references/search-rag.md): RAG patterns with codegen'd ORM
+- [ollama.md](./ollama.md): Ollama setup and model management
+- [rag-pipeline.md](./rag-pipeline.md): End-to-end RAG pipeline on Constructive
+- [pgvector-sql.md](./pgvector-sql.md): Raw SQL pgvector reference (SQL-level)
