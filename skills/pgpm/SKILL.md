@@ -302,10 +302,10 @@ Consult these reference files for detailed documentation on specific topics:
 | [references/publishing.md](references/publishing.md) | Publishing modules to npm | Bundling, versioning with lerna, publishing @pgpm/* packages |
 | [references/testing.md](references/testing.md) | PostgreSQL integration tests | Setting up pgsql-test, seed adapters, test patterns |
 | [references/troubleshooting.md](references/troubleshooting.md) | Common issues and solutions | Debugging connection, deployment, testing, or Docker problems |
+| [references/ci-cd.md](references/ci-cd.md) | GitHub Actions CI/CD workflows | Setting up CI for pgpm projects, PostgreSQL service containers, test sharding |
 
 ## Cross-References
 
 Related skills (separate from this skill):
-- `github-workflows-pgpm` — CI/CD GitHub Actions workflows for pgpm projects
-- `constructive-boilerplate-pgpm-init` — Detailed `pgpm init` templates and boilerplate options
-- `pgsql-test-*` skills — Specialized PostgreSQL testing patterns (RLS, seeding, snapshots, JWT context)
+- `constructive-starter-kits` — Detailed `pgpm init` templates and boilerplate options
+- `constructive-testing` — Specialized PostgreSQL testing patterns (RLS, seeding, snapshots, JWT context)
