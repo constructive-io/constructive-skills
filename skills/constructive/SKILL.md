@@ -1,6 +1,6 @@
 ---
 name: constructive
-description: "Constructive platform architecture and core concepts — security model (Safegres authorization protocol), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
+description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
 user-invocable: false
 metadata:
   author: constructive-io
@@ -9,7 +9,24 @@ metadata:
 
 # Constructive Platform
 
-Consolidated reference for the Constructive platform's core architecture: authorization, services, deployment, server configuration, cloud functions, environment configuration, and the CLI execution engine.
+Consolidated reference for the Constructive platform's core architecture: blueprints, authorization, services, deployment, server configuration, cloud functions, environment configuration, and the CLI execution engine.
+
+## Blueprints
+
+- Declarative schema provisioning system — define complete domain schemas as portable JSONB documents
+- Two-layer model: `blueprint_template` (shareable marketplace recipe) and `blueprint` (owned, executable instance scoped to a database)
+- Hybrid A+C definition format: tables with `nodes[]`, `fields[]`, `policies[]` (using `$type` discriminators) and `relations[]`
+- `construct_blueprint()` executes a draft blueprint, provisioning real tables and relations via `secure_table_provision` + `relation_provision`
+- `copy_template_to_blueprint()` copies a template to a new blueprint with visibility checks and copy_count tracking
+- Merkle-style content-addressable hashing: `definition_hash` (Merkle root) and `table_hashes` (per-table UUIDv5 hashes) for deduplication, provenance tracking, and structural comparison
+- Hashes are backend-computed via trigger using `uuid_generate_v5(uuid_ns_url(), jsonb::text)` — same pattern as `object_store.object_hash_uuid()`
+
+**Triggers:** "create a blueprint", "blueprint template", "construct blueprint", "copy template", "blueprint definition", "definition hash", "table hashes", "schema marketplace", "blueprint provisioning"
+
+See [blueprints.md](./references/blueprints.md) for the full system reference.
+
+Sub-references:
+- [blueprint-definition-format.md](./references/blueprint-definition-format.md) — The Hybrid A+C definition format spec with complete examples
 
 ## Security Model (Safegres)
 
