@@ -15,7 +15,7 @@ Consolidated reference for the Constructive platform's core architecture: bluepr
 
 - Declarative schema provisioning system — define complete domain schemas as portable JSONB documents
 - Two-layer model: `blueprint_template` (shareable marketplace recipe) and `blueprint` (owned, executable instance scoped to a database)
-- Hybrid A+C definition format: tables with `nodes[]`, `fields[]`, `policies[]` (using `$type` discriminators) and `relations[]`
+- Definition format: tables with `nodes[]`, `fields[]`, `policies[]` (using `$type` discriminators) and `relations[]`
 - `construct_blueprint()` executes a draft blueprint, provisioning real tables and relations via `secure_table_provision` + `relation_provision`
 - `copy_template_to_blueprint()` copies a template to a new blueprint with visibility checks and copy_count tracking
 - Merkle-style content-addressable hashing: `definition_hash` (Merkle root) and `table_hashes` (per-table UUIDv5 hashes) for deduplication, provenance tracking, and structural comparison
@@ -26,7 +26,7 @@ Consolidated reference for the Constructive platform's core architecture: bluepr
 See [blueprints.md](./references/blueprints.md) for the full system reference.
 
 Sub-references:
-- [blueprint-definition-format.md](./references/blueprint-definition-format.md) — The Hybrid A+C definition format spec with complete examples
+- [blueprint-definition-format.md](./references/blueprint-definition-format.md) — The blueprint definition format spec with complete examples
 
 ## Security Model (Safegres)
 

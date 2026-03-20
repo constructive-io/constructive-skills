@@ -1,6 +1,6 @@
-# Blueprint Definition Format (Hybrid A+C)
+# Blueprint Definition Format
 
-The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses the "Hybrid A+C" format: structured table config with inline `$type` discriminators for nodes, policies, and relations.
+The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses structured table config with inline `$type` discriminators for nodes, policies, and relations.
 
 ## Top-Level Structure
 

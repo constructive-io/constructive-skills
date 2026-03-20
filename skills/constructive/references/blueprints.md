@@ -37,7 +37,7 @@ A shareable, versioned schema recipe for the marketplace.
 | `visibility` | text | `private` (owner-only) or `public` (marketplace-visible) |
 | `categories` | text[] | Domain categories for marketplace browsing |
 | `tags` | text[] | Freeform tags for search and discovery |
-| `definition` | jsonb | The blueprint definition (Hybrid A+C format) |
+| `definition` | jsonb | The blueprint definition (declarative JSONB format) |
 | `definition_schema_version` | text | Definition format version (default `1`) |
 | `source` | text | Provenance: `user`, `system`, or `agent` |
 | `complexity` | text | `simple`, `moderate`, `complex`, or NULL |
@@ -71,7 +71,7 @@ An owned, executable blueprint scoped to a specific database.
 | `name` | text | Machine-readable name (unique per database) |
 | `display_name` | text | Human-readable display name |
 | `description` | text | Optional description |
-| `definition` | jsonb | Mutable blueprint definition (Hybrid A+C format) |
+| `definition` | jsonb | Mutable blueprint definition (declarative JSONB format) |
 | `template_id` | uuid | Source template ID if copied (NULL if built from scratch) |
 | `status` | text | `draft`, `constructed`, or `failed` |
 | `constructed_at` | timestamptz | When construct_blueprint() succeeded |
@@ -205,7 +205,7 @@ No special handling is needed — blueprints compose the existing primitives.
 
 ## Cross-References
 
-- **Definition format:** See [blueprint-definition-format.md](./blueprint-definition-format.md) for the Hybrid A+C definition spec
+- **Definition format:** See [blueprint-definition-format.md](./blueprint-definition-format.md) for the blueprint definition format spec
 - **Safegres policies:** See [constructive-safegres](../constructive-safegres/SKILL.md) for Authz* policy types used in `policies[]`
 - **Codegen:** See [constructive-graphql](../constructive-graphql/SKILL.md) for generating typed SDK from provisioned tables
 - **Server config:** See [server-config.md](./server-config.md) for running introspection and codegen
