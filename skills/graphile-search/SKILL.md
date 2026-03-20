@@ -32,8 +32,10 @@ UnifiedSearchPlugin
   ├── TsvectorAdapter     (keyword search with stemming)
   ├── Bm25Adapter         (relevance-ranked document search)
   ├── TrgmAdapter         (fuzzy matching, typo tolerance)
-  └── PgvectorAdapter     (semantic/embedding similarity)
+  └── PgvectorAdapter     (semantic/embedding similarity + chunk-aware RAG)
 ```
+
+The pgvector adapter also supports **chunk-aware search** via the `@hasChunks` smart tag — transparently querying across parent and chunk embeddings and returning the minimum distance. See `references/pgvector-adapter.md` for details.
 
 Each adapter implements the `SearchAdapter` interface:
 - **`detectColumns()`** — finds searchable columns on a table (e.g. tsvector columns, columns with BM25 indexes)
@@ -219,6 +221,7 @@ After running `cnc codegen`, the generated SDK client exposes search filters, sc
 - **BM25 queries** — `bm25Content`, `bm25ContentScore` (negative, sort ASC)
 - **Trigram queries** — `similarTo`/`wordSimilarTo` via `StringTrgmFilter`, adapter-level `trgmTitle`, ILIKE
 - **pgvector queries** — `vectorEmbedding`, `embeddingDistance`, distance metrics (COSINE/L2/IP)
+- **Chunk-aware search** — `includeChunks` toggle for RAG tables with `@hasChunks`, transparent parent + chunk distance
 - **Multi-strategy patterns** — fuzzy fallback, autocomplete pipeline, semantic + keyword hybrid
 
 ## Score Semantics
@@ -241,6 +244,7 @@ Bounded ranges use linear normalization. Unbounded ranges use sigmoid normalizat
 | No search fields on table | No search infrastructure detected | Add tsvector column, BM25 index, or vector column |
 | trgm operators missing | Table has no intentional search | Add tsvector/BM25, or use `@trgmSearch` smart tag |
 | `searchScore` is null | No search filters active in query | Add a search filter (fullTextSearch, bm25Body, etc.) |
+| `includeChunks` field missing | No `@hasChunks` tables in schema | Add `@hasChunks` smart tag to parent table codec |
 | `Unknown type "FullText"` | TsvectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |
 | `Unknown type "Vector"` | VectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |
 | Duplicate type errors | Multiple search presets | Use only `UnifiedSearchPreset()`, not individual presets |
