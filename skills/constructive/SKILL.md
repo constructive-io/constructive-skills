@@ -13,14 +13,11 @@ Consolidated reference for the Constructive platform's core architecture: author
 
 ## Security Model (Safegres)
 
-- Defines the Safegres authorization protocol: 14 Authz* policy node types expressed as JSON config, compiled to PostgreSQL RLS
-- Covers the critical distinction between unbound (`AuthzMembership`) and bound (`AuthzEntityMembership`) policies
-- Explains permissive vs restrictive policy composition and `AuthzComposite` boolean expression trees
-- Core vocabulary: actors, entities, membership types (App/Org/Group), and the "users are organizations" identity model
+The Safegres authorization protocol is now its own top-level skill: **[`constructive-safegres`](../constructive-safegres/SKILL.md)**.
 
-**Triggers:** "Safegres policy", "authorization protocol", "Authz* node types", "RLS policy composition", "security model"
+It covers: 14 Authz* policy node types, permissive vs restrictive composition, `AuthzComposite` boolean trees, and the "users are organizations" identity model.
 
-See [security-model.md](./references/security-model.md) for details.
+**Triggers:** "Safegres policy", "authorization protocol", "Authz* node types", "RLS policy composition", "security model" → see [`constructive-safegres`](../constructive-safegres/SKILL.md)
 
 ## Services & Schemas
 
