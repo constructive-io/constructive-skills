@@ -82,6 +82,102 @@ enum DocumentsOrderBy {
 
 pgvector is the only primary adapter that sets `isIntentionalSearch: false`. This is because vector embeddings operate on a different domain than text search — a table with only pgvector columns shouldn't get trgm similarity fields on its text columns.
 
+## Chunk-Aware Search (`@hasChunks`)
+
+Tables with long-form content (documents, articles, etc.) often split text into **chunks**, each with its own embedding. The pgvector adapter transparently queries across parent and chunk embeddings when the `@hasChunks` smart tag is present on the table's codec.
+
+### How It Works
+
+1. The parent table has a `vector(N)` column (the document-level embedding)
+2. A separate chunks table stores per-chunk embeddings with a foreign key back to the parent
+3. The `@hasChunks` smart tag tells the adapter where to find the chunks table
+4. At query time, the adapter computes `LEAST(parent_distance, MIN(chunk_distance))` — the best match across all embeddings
+
+### Smart Tag Configuration
+
+Set `@hasChunks` on the parent table codec as a JSON object:
+
+```json
+{
+  "chunksTable": "documents_chunks",
+  "parentFk": "parent_id",
+  "parentPk": "id",
+  "embeddingField": "embedding"
+}
+```
+
+| Field | Default | Description |
+|-------|---------|-------------|
+| `chunksTable` | *(required)* | Name of the chunks table |
+| `chunksSchema` | parent table's schema | Schema of the chunks table |
+| `parentFk` | `parent_id` | Column in chunks table that references the parent |
+| `parentPk` | `id` | Primary key column on the parent table |
+| `embeddingField` | `embedding` | Vector column in the chunks table |
+
+In Constructive, the `DataEmbedding` node type with chunks enabled automatically creates the chunks table and wires up the relationship. The smart tag is applied via a Graphile plugin or smart tags file.
+
+### `includeChunks` Filter Field
+
+When `@hasChunks` is detected, `VectorNearbyInput` gains an `includeChunks` boolean field:
+
+```graphql
+input VectorNearbyInput {
+  vector: [Float!]!
+  metric: VectorMetric
+  distance: Float
+  includeChunks: Boolean   # only present when @hasChunks is on the table
+}
+```
+
+- **`true` (default for `@hasChunks` tables):** Distance = `LEAST(parent_distance, MIN(chunk_distance))`
+- **`false`:** Distance = parent embedding distance only
+
+### Generated SQL
+
+When `includeChunks` is active, the adapter generates:
+
+```sql
+LEAST(
+  COALESCE(parent.embedding <=> $query, 'Infinity'::float),
+  COALESCE(
+    (SELECT MIN(c.embedding <=> $query)
+     FROM documents_chunks AS c
+     WHERE c.parent_id = parent.id),
+    'Infinity'::float
+  )
+)
+```
+
+`COALESCE` handles cases where the parent or chunks may not have embeddings.
+
+### GraphQL Query Examples
+
+```graphql
+# Chunk-aware (default) — returns best distance across parent + all chunks
+query {
+  allDocuments(where: {
+    vectorEmbedding: { vector: [0.1, 0.2, ...], metric: COSINE }
+  }) {
+    nodes {
+      title
+      embeddingVectorDistance   # LEAST(parent, closest chunk)
+    }
+  }
+}
+
+# Parent-only — opt out of chunk search
+query {
+  allDocuments(where: {
+    vectorEmbedding: { vector: [0.1, 0.2, ...], metric: COSINE, includeChunks: false }
+  }) {
+    nodes {
+      title
+      embeddingVectorDistance   # parent distance only
+    }
+  }
+}
+```
+
 ## VectorCodecPlugin
 
 The `VectorCodecPlugin` (included in `UnifiedSearchPreset`) teaches PostGraphile about the `vector` PostgreSQL type:

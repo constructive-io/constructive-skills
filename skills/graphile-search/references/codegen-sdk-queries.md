@@ -401,9 +401,92 @@ const result = await db.document.findMany({
 | `content_vec` | `vectorContentVec` | `contentVecDistance` | `CONTENT_VEC_DISTANCE_ASC/DESC` |
 
 **Pattern:**
-- Filter: `vector` + CamelCase(column) — accepts `{ vector: [Float!]!, metric?: String, distance?: Float }`
+- Filter: `vector` + CamelCase(column) — accepts `{ vector: [Float!]!, metric?: String, distance?: Float, includeChunks?: Boolean }`
 - Distance: camelCase(column) + `Distance` (Float, lower = closer, null when no filter active)
 - OrderBy: SCREAMING_SNAKE(column) + `_DISTANCE_ASC/DESC`
+
+### Chunk-Aware Vector Search
+
+Tables with the `@hasChunks` smart tag automatically get chunk-aware search. The distance returned is `LEAST(parent_distance, MIN(chunk_distance))` — the best match across the document embedding and all chunk embeddings.
+
+Chunk search is **on by default** for `@hasChunks` tables. No extra code is needed:
+
+```typescript
+// Chunk-aware search — ON by default for @hasChunks tables
+// Distance = LEAST(parent embedding distance, closest chunk distance)
+const result = await db.document.findMany({
+  where: {
+    vectorEmbedding: {
+      vector: queryVector,
+      metric: 'COSINE',
+      // includeChunks defaults to true when @hasChunks is present
+    },
+  },
+  orderBy: 'EMBEDDING_DISTANCE_ASC',
+  first: 10,
+  select: {
+    id: true,
+    title: true,
+    embeddingDistance: true,   // best distance across parent + all chunks
+  },
+}).execute();
+
+if (result.ok) {
+  result.data.documents.nodes.forEach(d => {
+    console.log(`${d.title} (distance: ${d.embeddingDistance})`);
+  });
+}
+```
+
+### Opt Out of Chunk Search
+
+Set `includeChunks: false` to only search the parent embedding:
+
+```typescript
+const result = await db.document.findMany({
+  where: {
+    vectorEmbedding: {
+      vector: queryVector,
+      metric: 'COSINE',
+      includeChunks: false,    // only use parent embedding
+    },
+  },
+  orderBy: 'EMBEDDING_DISTANCE_ASC',
+  first: 10,
+  select: {
+    id: true,
+    title: true,
+    embeddingDistance: true,   // parent distance only
+  },
+}).execute();
+```
+
+### Chunk-Aware Search with Distance Threshold
+
+The distance threshold applies to the combined (chunk-aware) distance:
+
+```typescript
+const result = await db.document.findMany({
+  where: {
+    vectorEmbedding: {
+      vector: queryVector,
+      metric: 'COSINE',
+      distance: 0.3,           // threshold applies to LEAST(parent, chunk)
+    },
+    isPublished: { equalTo: true },
+  },
+  orderBy: 'EMBEDDING_DISTANCE_ASC',
+  first: 20,
+  select: {
+    id: true,
+    title: true,
+    embeddingDistance: true,
+    searchScore: true,         // composite 0..1 relevance
+  },
+}).execute();
+```
+
+> **Note:** `includeChunks` only appears on `VectorNearbyInput` when at least one table in the schema has the `@hasChunks` smart tag. For tables without chunks, the field is absent and vector search behaves as standard parent-only search.
 
 ---
 
