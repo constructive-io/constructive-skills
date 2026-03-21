@@ -484,6 +484,68 @@ const authorsWithCounts = authors.map(author => ({
 }));
 ```
 
+### Posts with Comment Count and Latest Comment
+
+```typescript
+const posts = await db.post.findMany({
+  select: {
+    id: true,
+    title: true,
+    comments: {
+      select: { id: true, body: true, createdAt: true },
+      orderBy: { createdAt: 'DESC' },
+    },
+  },
+}).execute().unwrap();
+
+const postsWithStats = posts.map(post => ({
+  id: post.id,
+  title: post.title,
+  commentCount: post.comments.length,
+  latestComment: post.comments[0] ?? null,
+}));
+```
+
+### User Feed with Mixed Content
+
+```typescript
+const user = await db.user.findOne({
+  id: userId,
+  select: {
+    id: true,
+    name: true,
+    // Own posts
+    posts: {
+      select: { id: true, title: true, createdAt: true },
+      orderBy: { createdAt: 'DESC' },
+      first: 10,
+    },
+    // Comments made
+    comments: {
+      select: {
+        id: true,
+        body: true,
+        createdAt: true,
+        post: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: 'DESC' },
+      first: 10,
+    },
+    // Favorites
+    favorites: {
+      select: {
+        post: {
+          select: { id: true, title: true, author: { select: { name: true } } },
+        },
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'DESC' },
+      first: 10,
+    },
+  },
+}).execute().unwrap();
+```
+
 ### Full M:N Lifecycle
 
 ```typescript
