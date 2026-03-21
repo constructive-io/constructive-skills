@@ -311,17 +311,17 @@ const template = await db.blueprintTemplate.create({
 // Copy template to blueprint
 const { blueprintId } = await db.mutation.copyTemplateToBlueprint({
   input: {
-    pTemplateId: template.id,
-    pDatabaseId: dbId,
-    pOwnerId: userId,
+    templateId: template.id,
+    databaseId: dbId,
+    ownerId: userId,
   },
 }).execute();
 
 // Execute the blueprint
 const refMap = await db.mutation.constructBlueprint({
   input: {
-    pBlueprintId: blueprintId,
-    pSchemaId: schemaId,
+    blueprintId: blueprintId,
+    schemaId: schemaId,
   },
 }).execute();
 // refMap = { "categories": "uuid", "products": "uuid", "orders": "uuid" }
@@ -339,14 +339,14 @@ constructive public:blueprint-template create \
 
 # Copy to blueprint
 constructive public:copy-template-to-blueprint \
-  --input.pTemplateId <UUID> \
-  --input.pDatabaseId <UUID> \
-  --input.pOwnerId <UUID>
+  --input.templateId <UUID> \
+  --input.databaseId <UUID> \
+  --input.ownerId <UUID>
 
 # Execute
 constructive public:construct-blueprint \
-  --input.pBlueprintId <UUID> \
-  --input.pSchemaId <UUID>
+  --input.blueprintId <UUID> \
+  --input.schemaId <UUID>
 ```
 
 ### Querying hashes for comparison
