@@ -84,7 +84,7 @@ PostGIS columns are exposed as GeoJSON objects in GraphQL. The `graphile-postgis
 
 ### GeoJSON Output
 
-PostGIS fields return GeoJSON-structured data:
+PostGIS fields return GeoJSON-structured data with type-specific subfields:
 
 ```graphql
 {
@@ -102,6 +102,52 @@ PostGIS fields return GeoJSON-structured data:
   }
 }
 ```
+
+#### Type-Specific Fields
+
+| Geometry Type | Available Fields |
+|---------------|------------------|
+| Point | `x`, `y`, `z` (if 3D), `geojson`, `srid` |
+| LineString | `points` (array of Points), `geojson`, `srid` |
+| Polygon | `exterior` (ring), `interiors` (holes), `geojson`, `srid` |
+| Multi* | `geometries` (array via union type), `geojson`, `srid` |
+| GeometryCollection | `geometries` (array via union type), `geojson`, `srid` |
+
+For geography columns, Point fields use `longitude`/`latitude` instead of `x`/`y`.
+
+#### Measurement Fields
+
+Polygon and LineString types expose computed measurement fields (geodesic, in meters/sq meters):
+
+| Field | Available On | Description |
+|-------|-------------|-------------|
+| `area` | Polygon | Geodesic area in square meters |
+| `length` | LineString | Geodesic length in meters |
+| `perimeter` | Polygon | Geodesic perimeter in meters |
+
+```graphql
+{
+  zones {
+    nodes {
+      boundary {
+        area        # sq meters
+        perimeter   # meters
+        geojson
+      }
+    }
+  }
+}
+```
+
+#### Transformation Fields
+
+All geometry types expose computed transformation fields:
+
+| Field | Returns | Description |
+|-------|---------|-------------|
+| `centroid` | `[x, y]` | Mean of all coordinates |
+| `bbox` | `[minX, minY, maxX, maxY]` | Bounding box |
+| `numPoints` | `Int` | Total coordinate count |
 
 ### Spatial Filter Operators
 
@@ -122,7 +168,33 @@ The connection filter PostGIS plugin exposes these operators on geometry/geograp
 | `overlaps` | geometry | Same dimension, share space, not fully contained |
 | `touches` | geometry | At least one common point, interiors don't intersect |
 | `within` | geometry | A is completely inside B |
+| `orderingEquals` | geometry | Same geometry and same point ordering |
 | `intersects3D` | geometry | Share any portion of space in 3D |
+
+#### Distance Operator
+
+| Operator | Works On | Description |
+|----------|----------|-------------|
+| `withinDistance` | geometry, geography | Within a given distance (ST_DWithin) |
+
+`withinDistance` is a compound input — it takes a `point` (GeoJSON geometry) and a `distance` (Float, meters for geography, SRID units for geometry):
+
+```graphql
+{
+  restaurants(
+    where: {
+      location: {
+        withinDistance: {
+          point: { type: "Point", coordinates: [-73.99, 40.73] }
+          distance: 5000  # 5km for geography columns
+        }
+      }
+    }
+  ) {
+    nodes { id name }
+  }
+}
+```
 
 #### Bounding Box Operators
 
@@ -219,6 +291,26 @@ const result = await db.location.findMany({
 ```
 
 ```typescript
+// Find restaurants within 5km of a point
+const result = await db.restaurant.findMany({
+  where: {
+    location: {
+      withinDistance: {
+        point: { type: 'Point', coordinates: [-73.99, 40.73] },
+        distance: 5000,  // meters for geography columns
+      },
+    },
+    cuisine: { equalTo: 'italian' },
+  },
+  select: {
+    id: true,
+    name: true,
+    location: { x: true, y: true },
+  },
+}).execute();
+```
+
+```typescript
 // Find zones that contain a point
 const result = await db.zone.findMany({
   where: {
@@ -235,6 +327,21 @@ const result = await db.zone.findMany({
   },
 }).execute();
 ```
+
+---
+
+## Aggregate Functions
+
+The PostGIS plugin registers aggregate functions for geometry columns:
+
+| Function | Description |
+|----------|-------------|
+| `ST_Extent` | Bounding box of all geometries |
+| `ST_Union` | Union of all geometries into one |
+| `ST_Collect` | Collect all geometries into a GeometryCollection |
+| `ST_ConvexHull` | Convex hull of all geometries |
+
+These are available through the Graphile aggregates system when enabled.
 
 ---
 
@@ -268,9 +375,17 @@ const result = await db.restaurant.findMany({
 
 ## When to Use PostGIS
 
-- Proximity search ("find restaurants within 5km")
-- Geofencing ("is this point inside this boundary?")
-- Spatial containment ("which zone contains this location?")
+- Proximity search ("find restaurants within 5km") — use `withinDistance`
+- Geofencing ("is this point inside this boundary?") — use `contains` / `coveredBy`
+- Spatial containment ("which zone contains this location?") — use `within`
+- Area/length calculations — use `area`, `length`, `perimeter` fields
+- Bounding box queries — use `bbox` field or `bboxContains` filter
 - Route and path queries
 - Any query involving geographic or geometric relationships
 - Combined with text search for location-aware search experiences
+
+## Cross-References
+
+- For database setup and Docker: See [pgpm skill](../../pgpm/SKILL.md) and [pgpm Docker reference](../../pgpm/references/docker.md)
+- For plugin implementation details: See `graphile/graphile-postgis/` in `constructive-io/constructive`
+- For codegen and ORM patterns: See [codegen-orm-patterns.md](./codegen-orm-patterns.md)
