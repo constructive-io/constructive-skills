@@ -25,14 +25,14 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 
 ### Package a skill for distribution
 ```bash
-cd skills
+cd .agents/skills
 zip -r {skill-name}.zip {skill-name}/
 ```
 
 ## Skill Structure
 
 ```
-skills/
+.agents/skills/
   {skill-name}/
     SKILL.md              # Required: skill definition (keep under 500 lines)
     references/           # Optional: detailed documentation

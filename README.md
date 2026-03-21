@@ -138,6 +138,8 @@ Set up authorization with Safegres
 
 ## Skill Structure
 
+Skills are located at `.agents/skills/` following the [Agent Skills](https://agentskills.io/) standard, making them auto-discoverable by Devin, Claude Code, Cursor, Copilot, and other compatible agents.
+
 Each skill contains:
 - `SKILL.md` - Instructions for the agent following the Agent Skills format
 - `references/` - Supporting documentation loaded on-demand (optional)

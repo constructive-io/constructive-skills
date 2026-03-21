@@ -28,7 +28,7 @@ Each umbrella skill has a `SKILL.md` router and a `references/` directory with d
 ### Directory Structure
 
 ```
-skills/
+.agents/skills/
   {skill-name}/           # kebab-case directory name
     SKILL.md              # Required: skill definition
     scripts/              # Required: executable scripts
@@ -100,7 +100,7 @@ The `references/` directory contains detailed documentation split into focused s
 
 **Structure:**
 ```
-skills/
+.agents/skills/
   {skill-name}/
     SKILL.md
     references/
@@ -139,6 +139,6 @@ This allows agents helping with ORM queries to read only `orm-patterns.md` inste
 After creating or updating a skill:
 
 ```bash
-cd skills
+cd .agents/skills
 zip -r {skill-name}.zip {skill-name}/
 ```
