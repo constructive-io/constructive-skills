@@ -85,7 +85,7 @@ docker-compose -f docker-compose.jobs.yml up -d
 | Image | Use Case |
 |-------|----------|
 | `ghcr.io/constructive-io/docker/postgres-plus:17` | **Recommended** — includes all extensions needed by constructive |
-| `pyramation/postgres:17` | Lightweight alternative with common extensions |
+| `docker.io/constructiveio/postgres-plus:18` | Lightweight alternative with common extensions |
 
 **PostgreSQL 17+ is required** for `security_invoker` views. Older images will fail with "unrecognized parameter security_invoker" errors.
 
@@ -210,7 +210,7 @@ All Docker Compose services share the `constructive-net` network, allowing inter
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | Port 5432 in use | Another Postgres instance running | Stop it or change the port in `docker-compose.yml` |
-| `security_invoker` error | Postgres version < 17 | Use `postgres-plus:17` or `pyramation/postgres:17` image |
+| `security_invoker` error | Postgres version < 17 | Use `postgres-plus:17` or `docker.io/constructiveio/postgres-plus:18` image |
 | `role "authenticated" does not exist` | Missing bootstrap | Run `pgpm admin-users bootstrap --yes` |
 | Container not on network | Network mismatch | Check `docker network ls` for `constructive-net` |
 | Build fails at `pnpm install` | Lockfile mismatch | Run `pnpm install` locally first to update lockfile |

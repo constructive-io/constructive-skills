@@ -192,6 +192,6 @@ cat packages/my-module/my-module.control
 | Issue | Cause | Fix |
 |-------|-------|-----|
 | `extension "pgpm-foo" is not available` | Module not installed in `extensions/` | Run `pgpm install @pgpm/foo` |
-| `extension "uuid-ossp" is not available` | Postgres image missing the extension | Use `pyramation/postgres:17` or `postgres-plus:17` image |
+| `extension "uuid-ossp" is not available` | Postgres image missing the extension | Use `docker.io/constructiveio/postgres-plus:18` or `postgres-plus:17` image |
 | Deploy creates extension twice | You wrote `CREATE EXTENSION` in a deploy script | Remove it — pgpm handles this automatically |
 | Wrong name in requires | Used npm name instead of control name | Use control name (e.g., `pgpm-base32` not `@pgpm/base32`) |

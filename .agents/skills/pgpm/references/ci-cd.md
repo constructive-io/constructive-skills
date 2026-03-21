@@ -50,7 +50,7 @@ For simpler setups without custom extensions:
 ```yaml
 services:
   pg_db:
-    image: pyramation/postgres:17
+    image: docker.io/constructiveio/postgres-plus:18
     env:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password

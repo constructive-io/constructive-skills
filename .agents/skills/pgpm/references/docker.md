@@ -53,7 +53,7 @@ Start a PostgreSQL Docker container.
 | Option | Description | Default |
 |--------|-------------|---------|
 | `--name <name>` | Container name | `postgres` |
-| `--image <image>` | Docker image | `pyramation/postgres:17` |
+| `--image <image>` | Docker image | `docker.io/constructiveio/postgres-plus:18` |
 | `--port <port>` | Host port mapping | `5432` |
 | `--user <user>` | PostgreSQL user | `postgres` |
 | `--password <pass>` | PostgreSQL password | `password` |
@@ -104,7 +104,7 @@ pgpm docker start --name test-db --port 5433
 
 ## PostgreSQL Version
 
-The default image `pyramation/postgres:17` includes PostgreSQL 17 which is required for:
+The default image `docker.io/constructiveio/postgres-plus:18` includes PostgreSQL 17 which is required for:
 - `security_invoker` views
 - Latest PostgreSQL features used by Constructive
 
