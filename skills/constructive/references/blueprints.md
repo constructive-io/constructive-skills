@@ -89,18 +89,18 @@ An owned, executable blueprint scoped to a specific database.
 
 ## Functions
 
-### construct_blueprint(p_blueprint_id, p_schema_id)
+### construct_blueprint(blueprint_id, schema_id)
 
 Executes a draft blueprint, provisioning real database tables and relations.
 
 ```typescript
 // ORM
 const result = await db.mutation.constructBlueprint({
-  input: { pBlueprintId: '<UUID>', pSchemaId: '<UUID>' }
+  input: { blueprintId: '<UUID>', schemaId: '<UUID>' }
 }).execute();
 
 // CLI
-constructive public:construct-blueprint --input.pBlueprintId <UUID> --input.pSchemaId <UUID>
+constructive public:construct-blueprint --input.blueprintId <UUID> --input.schemaId <UUID>
 ```
 
 **Behavior:**
@@ -117,7 +117,7 @@ constructive public:construct-blueprint --input.pBlueprintId <UUID> --input.pSch
 
 **Returns:** `jsonb` ref_map (e.g. `{"products": "uuid", "categories": "uuid"}`) or NULL on failure.
 
-### copy_template_to_blueprint(p_template_id, p_database_id, p_owner_id, p_name_override, p_display_name_override)
+### copy_template_to_blueprint(template_id, database_id, owner_id, name_override, display_name_override)
 
 Creates a new blueprint by copying a template's definition.
 
@@ -125,19 +125,19 @@ Creates a new blueprint by copying a template's definition.
 // ORM
 const result = await db.mutation.copyTemplateToBlueprint({
   input: {
-    pTemplateId: '<UUID>',
-    pDatabaseId: '<UUID>',
-    pOwnerId: '<UUID>',
-    pNameOverride: 'my_store',           // optional
-    pDisplayNameOverride: 'My Store'     // optional
+    templateId: '<UUID>',
+    databaseId: '<UUID>',
+    ownerId: '<UUID>',
+    nameOverride: 'my_store',           // optional
+    displayNameOverride: 'My Store'     // optional
   }
 }).execute();
 
 // CLI
 constructive public:copy-template-to-blueprint \
-  --input.pTemplateId <UUID> \
-  --input.pDatabaseId <UUID> \
-  --input.pOwnerId <UUID>
+  --input.templateId <UUID> \
+  --input.databaseId <UUID> \
+  --input.ownerId <UUID>
 ```
 
 **Behavior:**
