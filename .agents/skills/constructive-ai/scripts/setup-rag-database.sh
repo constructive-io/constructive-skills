@@ -10,7 +10,7 @@ echo "Setting up RAG database..." >&2
 # Configuration with defaults
 RAG_DATABASE="${RAG_DATABASE:-rag_dev}"
 RAG_SCHEMA="${RAG_SCHEMA:-intelligence}"
-PGPM_IMAGE="${PGPM_IMAGE:-pyramation/postgres:17}"
+PGPM_IMAGE="${PGPM_IMAGE:-docker.io/constructiveio/postgres-plus:18}"
 
 # Check if pgpm is available
 if ! command -v pgpm &> /dev/null; then

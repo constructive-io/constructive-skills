@@ -8,7 +8,7 @@ Use this reference when you need raw SQL for pgvector — e.g., custom migration
 
 ## SQL: Enable pgvector Extension
 
-pgvector is pre-enabled in the Constructive database stack (`pyramation/postgres:17`). If using a standalone PostgreSQL instance:
+pgvector is pre-enabled in the Constructive database stack (`docker.io/constructiveio/postgres-plus:18`). If using a standalone PostgreSQL instance:
 
 ```sql
 -- SQL
@@ -324,7 +324,7 @@ my-vectors/
 
 | Issue | Quick Fix |
 |-------|-----------|
-| "type vector does not exist" | pgvector extension not installed; use `pyramation/postgres:17` image |
+| "type vector does not exist" | pgvector extension not installed; use `docker.io/constructiveio/postgres-plus:18` image |
 | Dimension mismatch | Ensure `VECTOR(N)` matches model output dimensions |
 | No results returned | Lower similarity threshold |
 | Slow queries | Add HNSW or IVFFlat index |

@@ -416,7 +416,7 @@ async function getContext(question: string): Promise<string> {
 
 | Issue | Solution |
 |-------|----------|
-| "type vector does not exist" | Use pgvector-enabled image (`pyramation/postgres:17`) |
+| "type vector does not exist" | Use pgvector-enabled image (`docker.io/constructiveio/postgres-plus:18`) |
 | Irrelevant RAG responses | Lower similarity threshold, improve chunking |
 | Hallucinations | Add "only use provided context" to prompt |
 | Slow responses | Use streaming, reduce context chunk count |

@@ -59,7 +59,7 @@ jobs:
 
     services:
       pg_db:
-        image: pyramation/postgres:17
+        image: docker.io/constructiveio/postgres-plus:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
@@ -146,7 +146,7 @@ Use the Constructive PostgreSQL image with pgvector and other extensions:
 ```yaml
 services:
   pg_db:
-    image: pyramation/postgres:17
+    image: docker.io/constructiveio/postgres-plus:18
     env:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
@@ -178,7 +178,7 @@ services:
 ```
 
 Available images:
-- `pyramation/postgres:17` - PostgreSQL 17 with pgvector (recommended)
+- `docker.io/constructiveio/postgres-plus:18` - PostgreSQL 17 with pgvector (recommended)
 - `ghcr.io/constructive-io/docker/postgres-plus:17` - PostgreSQL 17 with pgvector and additional extensions
 
 ### Ollama Service
@@ -339,7 +339,7 @@ jobs:
 
     services:
       postgres:
-        image: pyramation/postgres:17
+        image: docker.io/constructiveio/postgres-plus:18
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: password
