@@ -167,7 +167,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [codegen-hooks-patterns.md](./references/codegen-hooks-patterns.md) | React Query hook patterns | Using generated hooks in React components |
 | [codegen-hooks-output.md](./references/codegen-hooks-output.md) | Hooks generated output structure | Understanding hook file structure |
 | [codegen-error-handling.md](./references/codegen-error-handling.md) | Error handling patterns | `.unwrap()`, `.unwrapOr()`, discriminated unions |
-| [codegen-relations.md](./references/codegen-relations.md) | Relation queries | Nested selects, belongsTo, hasMany, manyToMany |
+| [codegen-relations.md](./references/codegen-relations.md) | Relation queries and M:N mutations | Nested selects, belongsTo, hasMany, manyToMany, composite PKs, `expose_in_api`, add/remove methods |
 | [codegen-query-keys.md](./references/codegen-query-keys.md) | Query key factory | Cache invalidation, `invalidate.*`, `remove.*` |
 | [codegen-node-http-adapter.md](./references/codegen-node-http-adapter.md) | Node.js HTTP adapter | Subdomain routing in Node.js |
 

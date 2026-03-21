@@ -109,6 +109,8 @@ query GetMeta {
           junctionTable { name }
           leftKeyAttributes { name }
           rightKeyAttributes { name }
+          junctionLeftKeyFields { name }
+          junctionRightKeyFields { name }
         }
       }
     }
@@ -149,6 +151,9 @@ interface MetaschemaTable {
     hasMany?: MetaschemaHasManyRelation[];
     hasOne?: MetaschemaHasOneRelation[];
     manyToMany?: MetaschemaManyToManyRelation[];
+    // junctionLeftKeyFields and junctionRightKeyFields provide FK column
+    // names on the junction table, enabling codegen to generate type-safe
+    // add<Relation>()/remove<Relation>() methods with correct PK types.
   };
 }
 
