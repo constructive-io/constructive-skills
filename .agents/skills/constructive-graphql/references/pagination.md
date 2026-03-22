@@ -1,6 +1,6 @@
 # Pagination
 
-Complete reference for pagination in Constructive's GraphQL layer — covering the Connection model, offset vs cursor pagination, forward vs backward paging, and usage across all three query surfaces (ORM, React Query hooks, runtime query builder).
+Complete reference for pagination in Constructive's GraphQL layer — covering the Connection model, offset vs cursor pagination, forward vs backward paging, nested relations, and usage across ORM, React Query hooks, and runtime query builder.
 
 ## The Connection Model
 
@@ -8,26 +8,20 @@ Every list field in PostGraphile returns a **Connection** type, not a raw array.
 
 ```graphql
 type UsersConnection {
-  nodes: [User!]!              # Direct list (PostGraphile enhancement)
-  edges: [UsersEdge!]!         # Relay-standard edge wrappers
-  totalCount: Int!             # Total matching rows (PostGraphile enhancement)
+  nodes: [User!]!              # The records
+  totalCount: Int!             # Total matching rows
   pageInfo: PageInfo!          # Pagination metadata
-}
-
-type UsersEdge {
-  cursor: Cursor!              # Opaque position identifier for this row
-  node: User!                  # The actual record
 }
 
 type PageInfo {
   hasNextPage: Boolean!
   hasPreviousPage: Boolean!
-  startCursor: Cursor          # PostGraphile enhancement
-  endCursor: Cursor            # PostGraphile enhancement
+  startCursor: Cursor          # Cursor of first row in page
+  endCursor: Cursor            # Cursor of last row in page
 }
 ```
 
-**Key point:** `nodes` and `edges` are two views of the same data on the same Connection. You can request either or both. The Constructive stack uses `nodes` exclusively — see the [Nodes vs Edges](#nodes-vs-edges) section for when you'd use `edges`.
+Constructive uses `nodes` exclusively. Cursors for page-level navigation come from `pageInfo.startCursor` / `pageInfo.endCursor`.
 
 ---
 
@@ -181,7 +175,12 @@ const prevPage = await db.user.findMany({
 
 ```typescript
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { execute, queryKeys } from '@/generated/hooks';
+import { createClient } from '@/generated/orm';
+
+const db = createClient({
+  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
+  headers: { Authorization: `Bearer ${getToken()}` },
+});
 
 function InfiniteUserList() {
   const {
@@ -190,26 +189,23 @@ function InfiniteUserList() {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: queryKeys.users.lists(),
+    queryKey: ['users', 'infinite'],
     queryFn: async ({ pageParam }) => {
-      return execute(`
-        query Users($first: Int, $after: Cursor) {
-          users(first: $first, after: $after, orderBy: [CREATED_AT_DESC]) {
-            nodes { id name email }
-            pageInfo { hasNextPage endCursor }
-            totalCount
-          }
-        }
-      `, { first: 20, after: pageParam });
+      return db.user.findMany({
+        select: { id: true, name: true, email: true },
+        first: 20,
+        after: pageParam,
+        orderBy: ['CREATED_AT_DESC'],
+      }).execute().unwrap();
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
-      lastPage.users.pageInfo.hasNextPage
-        ? lastPage.users.pageInfo.endCursor
+      lastPage.pageInfo.hasNextPage
+        ? lastPage.pageInfo.endCursor
         : undefined,
   });
 
-  const allUsers = data?.pages.flatMap((page) => page.users.nodes) ?? [];
+  const allUsers = data?.pages.flatMap((page) => page.nodes) ?? [];
 
   return (
     <>
@@ -299,115 +295,6 @@ const user = await db.user.findOne({
 ```
 
 In the ORM codegen, nested connections use a default `first: 20` limit unless you specify otherwise. The runtime `buildSelect` generator uses `first: 20` for nested hasMany/manyToMany relations.
-
----
-
-## Nodes vs Edges
-
-PostGraphile Connection types expose both `nodes` (flat list) and `edges` (Relay-standard wrappers). They are two views of the same data.
-
-### `nodes` — Default in Constructive
-
-```graphql
-query {
-  users(first: 10) {
-    nodes { id name email }
-    totalCount
-    pageInfo { hasNextPage endCursor }
-  }
-}
-```
-
-- Simpler, less nesting
-- No per-row cursor (use `pageInfo.endCursor` / `pageInfo.startCursor` for page-level cursors)
-- **Used everywhere in Constructive**: ORM codegen, query builders, dashboard, all tests
-
-### `edges` — For Per-Row Cursors and Relationship Metadata
-
-```graphql
-query {
-  users(first: 10) {
-    edges {
-      cursor          # Per-row cursor
-      node { id name email }
-    }
-    totalCount
-    pageInfo { hasNextPage endCursor }
-  }
-}
-```
-
-- Each row gets its own cursor (useful for "jump to this exact row" or "delete everything after this row")
-- Edge types can carry **contextual metadata about the relationship** — data that belongs to the connection, not to the node
-
-### When Edges Matter: M:N Junction Table Fields
-
-The primary architectural use case for `edges` in PostGraphile is M:N relations where the junction table has extra columns:
-
-```sql
-CREATE TABLE post_tags (
-  post_id UUID REFERENCES posts,
-  tag_id UUID REFERENCES tags,
-  created_at TIMESTAMPTZ DEFAULT now(),  -- junction metadata
-  sort_order INT DEFAULT 0,             -- junction metadata
-  PRIMARY KEY (post_id, tag_id)
-);
-```
-
-```graphql
-# With edges — junction table fields appear on the edge
-query {
-  post(id: $id) {
-    tags {
-      edges {
-        createdAt    # From junction table (post_tags.created_at)
-        sortOrder    # From junction table (post_tags.sort_order)
-        node {
-          id name    # From tags table
-        }
-      }
-    }
-  }
-}
-
-# With nodes — junction table fields are NOT available
-query {
-  post(id: $id) {
-    tags {
-      nodes { id name }  # Only tag fields, no created_at or sort_order
-    }
-  }
-}
-```
-
-### Accessing Edges in the Codebase
-
-**Legacy QueryBuilder** (`graphql-query` package) supports `.edges(true)`:
-
-```typescript
-const result = builder
-  .query('User')
-  .getMany()
-  .edges(true)   // switches from nodes { ... } to edges { cursor node { ... } }
-  .select()
-  .print();
-```
-
-This toggles the AST generation in `ast.ts:255-271` — when `_edges` is true, the query wraps field selections in `edges { cursor node { ... } }` instead of `nodes { ... }`.
-
-**ORM codegen** currently only generates `nodes`-based queries. For edge access, use the QueryBuilder or raw GraphQL.
-
-### Decision Guide
-
-| Scenario | Use `nodes` | Use `edges` |
-|----------|-------------|-------------|
-| Simple list / table | Yes | |
-| Infinite scroll | Yes (with `pageInfo`) | |
-| Admin paginated table | Yes | |
-| Need per-row cursor | | Yes |
-| M:N junction table metadata | | Yes |
-| Search relevance score on connection | | Yes |
-| Distance-based sorting (PostGIS) | | Yes |
 
 ---
 
@@ -553,8 +440,8 @@ const result = await db.user.findMany({
 | Component | File | Pagination Behavior |
 |-----------|------|-------------------|
 | **ORM codegen** `findMany` | `codegen/orm/model-generator.ts:290-457` | Generates `first`, `last`, `after`, `before`, `offset` args; always uses `nodes` |
-| **ORM codegen** `ConnectionResult` | `codegen/templates/select-types.ts:11-22` | `{ nodes: T[], totalCount, pageInfo }` — no edges |
+| **ORM codegen** `ConnectionResult` | `codegen/templates/select-types.ts:11-22` | `{ nodes: T[], totalCount, pageInfo }` |
 | **ORM runtime** `buildFindManyDocument` | `codegen/templates/query-builder.ts:204-320` | Builds connection query with `nodes`, `totalCount`, `pageInfo` |
 | **Runtime** `buildSelect` | `query/generators/select.ts:351-526` | `nodes` always; `pageInfo` conditional on cursor args or `includePageInfo` |
-| **Legacy QueryBuilder** `.edges()` | `query/query-builder.ts:187-190` | Toggles `_edges` flag, switches AST output |
-| **Legacy AST** `getMany` | `query/ast.ts:183-302` | Checks `builder._edges` to emit `edges { cursor node }` or `nodes` |
+| **Legacy QueryBuilder** | `query/query-builder.ts` | Pagination via variables at execution time |
+| **Legacy AST** `getMany` | `query/ast.ts:183-302` | Builds `nodes`-based connection queries |

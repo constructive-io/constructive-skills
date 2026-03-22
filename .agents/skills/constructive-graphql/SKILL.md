@@ -103,7 +103,7 @@ const page2 = await db.user.findMany({
 }).execute().unwrap();
 ```
 
-See [pagination.md](./references/pagination.md) for the full pagination reference — offset vs cursor, forward vs backward, nodes vs edges, nested relation paging, and usage across ORM, hooks, and runtime query builder.
+See [pagination.md](./references/pagination.md) for the full pagination reference — offset vs cursor, forward vs backward, nested relation paging, and usage across ORM, hooks, and runtime query builder.
 
 ## Quick Start: React Query Hooks
 
@@ -163,7 +163,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
 | [codegen-orm-patterns.md](./references/codegen-orm-patterns.md) | ORM query patterns | Using `findMany`, `findOne`, `create`, `update`, `delete` |
-| [pagination.md](./references/pagination.md) | Pagination reference | Offset vs cursor, nodes vs edges, forward/backward paging, infinite scroll, nested relation pagination |
+| [pagination.md](./references/pagination.md) | Pagination reference | Offset vs cursor, forward/backward paging, infinite scroll, nested relation pagination |
 | [codegen-orm-output.md](./references/codegen-orm-output.md) | ORM generated output structure | Understanding what codegen produces |
 | [codegen-hooks-patterns.md](./references/codegen-hooks-patterns.md) | React Query hook patterns | Using generated hooks in React components |
 | [codegen-hooks-output.md](./references/codegen-hooks-output.md) | Hooks generated output structure | Understanding hook file structure |
