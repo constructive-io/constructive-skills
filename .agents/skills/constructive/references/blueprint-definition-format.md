@@ -79,6 +79,11 @@ Common node types:
 | `DataOwnershipInEntity` | Adds `owner_id uuid NOT NULL` with FK | Entity-scoped ownership |
 | `DataSearch` | Adds full-text search columns | tsvector + GIN index |
 | `DataSoftDelete` | Adds `deleted_at` timestamp for soft deletes | Filtered in queries |
+| `DataEmbedding` | Adds vector embedding field + HNSW/IVFFlat index | Configurable dimensions, metric, stale tracking, job enqueue |
+| `DataTags` | Adds `citext[]` tags field + GIN index | For array containment/overlap queries |
+| `DataStatusField` | Adds status field + B-tree index + optional CHECK | Configurable allowed values |
+| `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
+| `DataTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
 
 **Processing order matters:** The first node in `nodes[]` creates the table (via `secure_table_provision`). Remaining nodes augment the existing table.
 
@@ -94,6 +99,24 @@ Common node types:
 ```
 
 Standard PostgreSQL types are supported: `text`, `integer`, `numeric`, `boolean`, `timestamptz`, `uuid`, `jsonb`, etc.
+
+Optional field properties:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `is_required` | boolean | Whether the field is NOT NULL (default: `false`) |
+| `default` | string | SQL default expression |
+| `min` | float | Minimum value constraint |
+| `max` | float | Maximum value constraint |
+| `regexp` | string | Regex validation pattern |
+| `index` | string | Access method for automatic index creation: `"btree"`, `"gin"`, `"gist"`, `"brin"`, `"hash"` |
+
+Example with index:
+```json
+{ "name": "email", "type": "citext", "index": "btree" }
+{ "name": "tags", "type": "citext[]", "index": "gin" }
+{ "name": "location", "type": "geometry", "index": "gist" }
+```
 
 ### Grants
 
