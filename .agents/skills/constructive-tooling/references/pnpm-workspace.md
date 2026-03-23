@@ -1,7 +1,7 @@
 ---
 name: pnpm-workspace
 description: Create and manage PNPM workspaces following Constructive standards. Use when asked to "create a monorepo", "set up a workspace", "configure pnpm", or when starting a new TypeScript/JavaScript project with multiple packages.
-compatibility: pnpm, Node.js 18+, lerna
+compatibility: pnpm 10+, Node.js 22+, lerna
 metadata:
   author: constructive-io
   version: "1.0.0"

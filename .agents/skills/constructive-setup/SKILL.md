@@ -18,6 +18,11 @@ Use this skill when:
 - Starting a new development session that needs a running database
 - Troubleshooting a broken local environment
 
+## Prerequisites
+
+- **Node.js 22+** — Required for correct pnpm module resolution with PostGraphile/Graphile packages. Node.js 20 causes duplicate `graphql` module instances and runtime errors ("Cannot use GraphQLObjectType from another module or realm"). Use `nvm install 22` or `volta install node@22` if needed.
+- **pnpm 10+** — Pin to an exact version (e.g., `10.22.0`) in CI to avoid dependency resolution drift.
+
 ## Quick Setup
 
 ```bash
@@ -42,7 +47,22 @@ pnpm test
 
 ## Step-by-Step Details
 
-### 1. Install Dependencies
+### 1. Verify Node.js Version
+
+Constructive requires Node.js 22+. Different Node.js versions cause different pnpm module resolution behavior, which can lead to duplicate `graphql` module instances and cryptic runtime errors.
+
+```bash
+node --version  # Must be v22.x or higher
+```
+
+If you're on an older version, upgrade:
+```bash
+nvm install 22 && nvm use 22
+# or
+volta install node@22
+```
+
+### 2. Install Dependencies
 
 The monorepo uses pnpm workspaces:
 
@@ -50,7 +70,7 @@ The monorepo uses pnpm workspaces:
 pnpm install
 ```
 
-### 2. Start PostgreSQL
+### 3. Start PostgreSQL
 
 Use pgpm's Docker integration to start a local PostgreSQL container. The `postgres-plus:18` image includes all required extensions (PostGIS, pgvector, uuid-ossp, etc.).
 
@@ -65,7 +85,7 @@ For full Docker options (custom ports, names, passwords), see the **pgpm** skill
 
 For environment variable details, see the **pgpm** skill: [references/env.md](../pgpm/references/env.md)
 
-### 3. Bootstrap Database Users
+### 4. Bootstrap Database Users
 
 Create the required PostgreSQL roles for Constructive's security model:
 
@@ -74,7 +94,7 @@ pgpm admin-users bootstrap --yes
 pgpm admin-users add --test --yes
 ```
 
-### 4. Build
+### 5. Build
 
 ```bash
 pnpm build
@@ -82,7 +102,7 @@ pnpm build
 
 This builds all packages in the monorepo. Required before running tests or starting servers.
 
-### 5. Run Tests
+### 6. Run Tests
 
 Tests are run per-package:
 
