@@ -2,6 +2,8 @@
 
 The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses structured table config with inline `$type` discriminators for nodes, policies, and relations.
 
+> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through to the `construct_blueprint()` PL/pgSQL function as-is, which reads snake_case keys directly. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (`SecureTableProvision`, `RelationProvision`), which represent the metaschema row types. When writing blueprint definitions, always use snake_case.
+
 ## Top-Level Structure
 
 ```json

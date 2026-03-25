@@ -41,13 +41,31 @@ export function createClient(options: {
 
 ### types.ts
 
+Barrel that re-exports from `input-types.ts`:
+
+```typescript
+export * from './input-types';
+```
+
+### input-types.ts
+
 All TypeScript types including:
 
-- Entity interfaces
-- Select types with const generics
-- Filter types
-- Input types
+- Entity interfaces (e.g. `User`, `Database`, `Table`, `Field`, `Policy`)
+- Provision types (e.g. `SecureTableProvision`, `RelationProvision`, `Blueprint`)
+- Filter types (e.g. `StringFilter`, `UUIDFilter`, `JSONFilter`)
+- Input types for mutations (e.g. `CreateUserInput`, `UpdateTableInput`)
+- Enum types and custom scalar types
+
+### select-types.ts
+
+Select types with const generics for type-narrowed queries:
+
 - Result types with discriminated unions
+- Const-generic select types (only selected fields appear in return type)
+- Connection/pagination result types
+
+> **Important:** `index.ts` re-exports `select-types` but NOT `types.ts`/`input-types.ts` to avoid name collisions (many types like `Field`, `Table`, `Policy` exist in both files with different shapes). See [Accessing Input Types](#accessing-input-types-deep-imports) below.
 
 ## Client API
 
@@ -436,3 +454,65 @@ const result = await db.login({
   password: 'secret',
 }).execute();
 ```
+
+## Accessing Input Types (Deep Imports)
+
+The ORM `index.ts` re-exports `select-types` but deliberately does **not** re-export `types.ts` / `input-types.ts`. This is because many type names exist in both files with incompatible shapes (e.g. `Field`, `Table`, `Policy`, `Index`, `User` — ~80+ collisions). A blanket `export *` from both would cause TypeScript `TS2308` ambiguity errors.
+
+### Why the collision exists
+
+- **`input-types.ts`** contains the full entity interfaces with all fields (used for create/update inputs and query results)
+- **`select-types.ts`** contains const-generic select types that narrow the return type to only selected fields
+
+Both files define types with the same names (e.g. `Field` in `input-types.ts` is the full entity, `Field` in `select-types.ts` is the select-narrowed version). Re-exporting both through `index.ts` would be ambiguous.
+
+### How to access input types
+
+Use a **deep import** to reach `input-types.ts` directly. This works with standard Node.js module resolution — no `exports` field or special configuration needed:
+
+```typescript
+// Deep import from the SDK package
+import type {
+  SecureTableProvision,
+  RelationProvision,
+  Blueprint,
+  BlueprintTemplate,
+  Field,
+  Table,
+  Policy,
+} from '@constructive-io/sdk/public/orm/input-types';
+```
+
+This pattern follows the same convention as `react/jsx-runtime` or `next/server` — a file at a known path inside the package.
+
+### Per-API type paths
+
+Each API target generates its own ORM with its own type files:
+
+| API | Deep import path |
+|-----|-----------------|
+| `public` | `@constructive-io/sdk/public/orm/input-types` |
+| `admin` | `@constructive-io/sdk/admin/orm/input-types` |
+| `auth` | `@constructive-io/sdk/auth/orm/input-types` |
+| `objects` | `@constructive-io/sdk/objects/orm/input-types` |
+| `migrate` | `@constructive-io/sdk/migrate/orm/input-types` |
+
+### Namespace import (alternative)
+
+If you use the `@constructive-io/node` package (which wraps the SDK), types are available through the namespace:
+
+```typescript
+import { public_ } from '@constructive-io/node';
+
+// Access types through the namespace
+type MyBlueprint = public_.Blueprint;
+type MyTable = public_.SecureTableProvision;
+```
+
+The namespace import pulls from `select-types` (via `index.ts`), so it gives you the select-narrowed versions. For the full entity types (e.g. for constructing mutation inputs), use the deep import path above.
+
+### Important notes
+
+- The deep import path depends on the SDK's internal file layout. If the SDK reorganizes directories in a future version, the path may change.
+- Add `@constructive-io/sdk` as a **direct dependency** (not just devDependency) if your package needs these types at build time — this ensures pnpm creates the symlink for the deep path to resolve.
+- The `types.ts` barrel (`export * from './input-types'`) exists as a convenience re-export within the `orm/` directory but is not chained through `index.ts`.
