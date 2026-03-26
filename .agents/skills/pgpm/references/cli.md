@@ -49,10 +49,21 @@ pgpm deploy --database mydb
 
 # Deploy specific package to a tag
 pgpm deploy --package mypackage --to @v1.0.0
-
-# Fast deployment (no transactions)
-pgpm deploy --fast --no-tx
 ```
+
+> **⚠️ WARNING: `--fast` flag (use with extreme caution)**
+>
+> ```bash
+> pgpm deploy --fast --no-tx
+> ```
+>
+> `--fast` is **NOT idempotent** — it is meant to be run **once only** for
+> quick testing on a fresh database. It skips dependency-tracking checks, so
+> if your package shares dependencies with anything already deployed (e.g.
+> `pgpm-verify`), it will blindly attempt to re-deploy them, causing errors.
+>
+> **Only use `--fast` on a throwaway database that has nothing else deployed.**
+> For all other cases, use the standard `pgpm deploy` command.
 
 **pgpm verify** — Verify database state matches expected migrations
 
