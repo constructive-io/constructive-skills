@@ -320,6 +320,8 @@ Optional keys:
 
 ### 10) `AuthzPublishable`
 
+> **READ-only policy.** `AuthzPublishable` should only be applied to the `select` privilege. It controls who can *read* published content — it should **never** be used for `insert`, `update`, or `delete`. For write operations (authorship, editing, deletion), use an identity-based policy like `AuthzEntityMembership` or `AuthzDirectOwner`. A typical blog pattern is: `AuthzEntityMembership` for all CRUD privileges, plus a second `AuthzPublishable` policy **only for `select`** to open reads to the public.
+
 **Intent:** Draft/published gating.
 
 **Config (default fields):**
@@ -336,8 +338,15 @@ Optional keys:
 
 **Use when:**
 - Public content that is only visible after publishing.
+- **Only for `select`** — never for `insert`, `update`, or `delete`.
 
 > **Combination guidance:** `AuthzPublishable` answers *whether content is published*, not *who* can see it. On its own it means "anyone can see published content." In practice, always combine it with an identity-based policy — either as a **restrictive** top-level policy (ANDed with a permissive identity policy like `AuthzEntityMembership`) or inside an `AuthzComposite` `BoolExpr`. See the "Permissive vs Restrictive policies in RLS" section for examples.
+
+> **Typical pattern (e.g., blog posts):**
+> 1. `AuthzEntityMembership` (permissive) for `select`, `insert`, `update`, `delete` — locks down all CRUD to org/entity members (authors).
+> 2. `AuthzPublishable` (permissive) for `select` only — opens published content for reads to anyone authenticated.
+>
+> This way, authorship is protected by membership, but published content is publicly readable.
 
 > **Overlap with `AuthzTemporal`:** The time component of `AuthzPublishable` (`published_at <= now`) is a subset of what `AuthzTemporal` can express. The key difference is the `is_published` boolean -- a deliberate on/off toggle that `AuthzTemporal` does not provide. If you only need time-window access with no manual toggle, `AuthzTemporal` is sufficient.
 
