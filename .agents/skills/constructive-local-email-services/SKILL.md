@@ -4,12 +4,12 @@ description: Start local email services for testing invite, password reset, and 
 compatibility: macOS, Linux
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Constructive Local Email Services
 
-Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local email testing.
+Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local email testing using Docker Compose.
 
 ## Architecture
 
@@ -17,10 +17,10 @@ Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local 
 ┌─────────────────────────────────────────────────────────────┐
 │                     Local Development                        │
 │                                                              │
-│   Next.js (3011) ──► Public GraphQL (5433)                  │
+│   Next.js (3011) ──► Public GraphQL (3000)                  │
 │                                                              │
 │   ┌─────────────────────────────────────────────────────┐   │
-│   │                  Email Services                      │   │
+│   │              Email Services (Docker)                 │   │
 │   │                                                      │   │
 │   │   Admin GraphQL (3002)                              │   │
 │   │         │                                           │   │
@@ -28,7 +28,7 @@ Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local 
 │   │   send-email-link (8082)                            │   │
 │   │         │                                           │   │
 │   │         ▼                                           │   │
-│   │   Mailpit (1025/8025) ◄── job-service               │   │
+│   │   Mailpit (1025/8025) ◄── job-service (8080)        │   │
 │   │                                                      │   │
 │   └─────────────────────────────────────────────────────┘   │
 │                                                              │
@@ -38,145 +38,99 @@ Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local 
 
 ## Prerequisites
 
-1. PostgreSQL running with constructive database
-2. Database provisioned with `app_jobs` schema
-3. Site domain added to `services_public.sites`
+1. Docker Desktop running
+2. PostgreSQL running with constructive database
+3. Database provisioned with `app_jobs` schema
+4. `constructive` repo on branch `feat/add-local-email-service-docker-compose` (or main after merged)
+5. `constructive:dev` Docker image built
 
-## Step 1: Start Mailpit
+> ⚠️ **分支要求：** `docker-compose.local-email.yml` 在 `feat/add-local-email-service-docker-compose` 分支，合并到 main 之前需先切换：
+> ```bash
+> cd /path/to/constructive
+> git checkout feat/add-local-email-service-docker-compose
+> ```
+
+## Quick Start
+
+### Step 1: Build the Docker Image (first time only)
 
 ```bash
-# Install (first time)
-brew install mailpit
+cd /path/to/constructive
 
-# Start
-screen -dmS mailpit mailpit
+# Switch to required branch (until merged to main)
+git checkout feat/add-local-email-service-docker-compose
 
-# Verify
-curl -s http://localhost:8025 | head -1
-# Should return HTML
+# Create network
+docker network create constructive-net 2>/dev/null || true
+
+# Build image (takes ~3-5 minutes)
+docker build -t constructive:dev .
+```
+
+### Step 2: Start Email Services
+
+```bash
+cd /path/to/constructive
+
+docker-compose -f docker-compose.local-email.yml up -d
+```
+
+### Step 3: Verify
+
+```bash
+# Check status
+docker-compose -f docker-compose.local-email.yml ps
+
+# Health check
+echo "=== Health Check ==="
+curl -s http://localhost:8025 >/dev/null && echo "✅ Mailpit (8025)"
+curl -s http://localhost:3002/graphql -H "X-Meta-Schema: true" -H "Content-Type: application/json" \
+  -d '{"query":"{ __typename }"}' | grep -q __typename && echo "✅ Admin GraphQL (3002)"
+lsof -i:8082 >/dev/null && echo "✅ send-email-link (8082)"
+lsof -i:8080 >/dev/null && echo "✅ job-service (8080)"
 ```
 
 **Mailpit UI:** http://localhost:8025
 
-## Step 2: Start Admin GraphQL Server (port 3002)
-
-> **Important:** Must include `--origin "*"` to avoid interactive prompt that hangs in Agent/CI environments.
+## Managing Services
 
 ```bash
-cd $CONSTRUCTIVE_PATH
+cd /path/to/constructive
 
-screen -dmS admin-server bash -c '
-  eval "$(pgpm env)" && \
-  PGDATABASE=constructive \
-  API_ENABLE_SERVICES=true \
-  API_IS_PUBLIC=false \
-  API_ANON_ROLE=administrator \
-  API_ROLE_NAME=administrator \
-  API_EXPOSED_SCHEMAS=metaschema_public,services_public,constructive_auth_public \
-  API_META_SCHEMAS=metaschema_public,services_public,metaschema_modules_public,constructive_auth_public \
-  constructive server --port 3002 --origin "*"
-'
+# Start
+docker-compose -f docker-compose.local-email.yml up -d
 
-# Verify (use X-Meta-Schema header for internal API routing)
-sleep 10
-curl -s http://localhost:3002/graphql -H "X-Meta-Schema: true" -H "Content-Type: application/json" \
-  -d '{"query":"{ __typename }"}' | grep -q __typename && echo "✅ Admin server running"
+# Stop
+docker-compose -f docker-compose.local-email.yml down
+
+# View logs (all services)
+docker-compose -f docker-compose.local-email.yml logs -f
+
+# View logs (specific service)
+docker logs -f mailpit
+docker logs -f constructive-admin-server
+docker logs -f send-email-link
+docker logs -f knative-job-service
+
+# Restart
+docker-compose -f docker-compose.local-email.yml restart
 ```
 
-## Step 3: Start send-email-link (port 8082)
+## Port Reference
 
-```bash
-cd $CONSTRUCTIVE_PATH
-
-screen -dmS send-email-link bash -c '
-  PORT=8082 \
-  LOG_LEVEL=info \
-  GRAPHQL_URL=http://localhost:3002/graphql \
-  META_GRAPHQL_URL=http://localhost:3002/graphql \
-  GRAPHQL_API_NAME=private \
-  EMAIL_SEND_USE_SMTP=true \
-  SMTP_HOST=localhost \
-  SMTP_PORT=1025 \
-  SMTP_FROM=noreply@localhost \
-  SEND_EMAIL_LINK_DRY_RUN=false \
-  ALLOW_LOCALHOST=true \
-  LOCAL_APP_PORT=3011 \
-  node functions/send-email-link/dist/index.js
-'
-
-# Verify
-sleep 2
-curl -s http://localhost:8082/health && echo " ✅ send-email-link running"
-```
-
-## Step 4: Start job-service
-
-```bash
-cd $CONSTRUCTIVE_PATH
-
-screen -dmS job-service bash -c '
-  eval "$(pgpm env)" && \
-  PGDATABASE=constructive \
-  JOBS_SCHEMA=app_jobs \
-  JOBS_SUPPORT_ANY=true \
-  JOBS_SUPPORTED=send-email-link \
-  HOSTNAME=local-worker \
-  INTERNAL_JOBS_CALLBACK_PORT=8080 \
-  INTERNAL_JOBS_CALLBACK_URL=http://localhost:8080/callback \
-  JOBS_CALLBACK_HOST=localhost \
-  INTERNAL_GATEWAY_URL=http://localhost:8082 \
-  INTERNAL_GATEWAY_DEVELOPMENT_MAP="{\"send-email-link\":\"http://localhost:8082\"}" \
-  node jobs/knative-job-service/dist/run.js
-'
-
-# Verify
-sleep 2
-screen -ls | grep job-service && echo "✅ job-service running"
-```
-
-## Verify All Services
-
-```bash
-echo "=== Service Status ==="
-screen -ls
-
-echo ""
-echo "=== Port Check ==="
-lsof -i:8025 | head -1 && echo "✅ Mailpit (8025)"
-lsof -i:3002 | head -1 && echo "✅ Admin GraphQL (3002)"
-lsof -i:8082 | head -1 && echo "✅ send-email-link (8082)"
-lsof -i:8080 | head -1 && echo "✅ job-service (8080)"
-```
+| Service | Port | URL |
+|---------|------|-----|
+| Mailpit SMTP | 1025 | - |
+| Mailpit Web UI | 8025 | http://localhost:8025 |
+| Admin GraphQL | 3002 | http://localhost:3002/graphql |
+| send-email-link | 8082 | http://localhost:8082 |
+| job-service | 8080 | http://localhost:8080 |
 
 ## Test Email Flow
 
 1. Open Mailpit: http://localhost:8025
-2. Trigger an invite from your app
+2. Trigger an invite/signup from your app (http://localhost:3011)
 3. Check Mailpit for the email
-
-## Managing Services
-
-```bash
-# List all screens
-screen -ls
-
-# Attach to a screen (view logs)
-screen -r mailpit
-screen -r admin-server
-screen -r send-email-link
-screen -r job-service
-
-# Detach from screen: Ctrl+A, then D
-
-# Stop a service
-screen -S mailpit -X quit
-screen -S admin-server -X quit
-screen -S send-email-link -X quit
-screen -S job-service -X quit
-
-# Stop all
-screen -ls | grep -E "mailpit|admin-server|send-email-link|job-service" | cut -d. -f1 | xargs -I{} screen -S {} -X quit
-```
 
 ## Troubleshooting
 
@@ -184,117 +138,31 @@ screen -ls | grep -E "mailpit|admin-server|send-email-link|job-service" | cut -d
 
 ```bash
 # Find and kill process on port
-lsof -i:8082 | awk 'NR>1 {print $2}' | xargs kill -9
+lsof -ti:8082 | xargs kill -9
 ```
 
-### Screen not found
+### Container name conflict
 
 ```bash
-# Install screen
-brew install screen
+# Remove old containers
+docker rm -f mailpit constructive-admin-server send-email-link knative-job-service
+
+# Restart
+docker-compose -f docker-compose.local-email.yml up -d
 ```
 
-### Email not appearing in Mailpit
+### Cannot connect to PostgreSQL
 
-1. Check job-service logs: `screen -r job-service`
-2. Check send-email-link logs: `screen -r send-email-link`
-3. Verify SMTP connection: `curl -v telnet://localhost:1025`
+Check that `PGHOST` in docker-compose uses `host.docker.internal` (not `localhost`):
 
-### Admin server connection refused
-
-```bash
-# Check if running (use X-Meta-Schema header for internal API routing)
-curl http://localhost:3002/graphql -H "X-Meta-Schema: true" -H "Content-Type: application/json" \
-  -d '{"query":"{ __typename }"}'
-
-# If not, restart
-screen -S admin-server -X quit
-# Then run Step 2 again
+```yaml
+PGHOST: host.docker.internal
 ```
 
-### Admin server hangs on startup (Agent/CI environment)
-
-**Problem:** Admin server starts but port 3002 never listens. The process appears to hang.
-
-**Cause:** `constructive server` without `--origin` flag enters interactive mode, waiting for user to input CORS origin. In Agent/CI environments, there's no TTY input, so it hangs indefinitely.
-
-**Solution:** Always include `--origin "*"` (or a specific origin) in the command:
+### View service logs for debugging
 
 ```bash
-constructive server --port 3002 --origin "*"
-```
-
-## Quick Start Script
-
-Create `start-email-services.sh`:
-
-```bash
-#!/bin/bash
-set -e
-
-CONSTRUCTIVE_PATH="${CONSTRUCTIVE_PATH:-/path/to/constructive}"
-cd "$CONSTRUCTIVE_PATH"
-eval "$(pgpm env)"
-
-echo "Starting Mailpit..."
-screen -dmS mailpit mailpit
-
-echo "Starting Admin GraphQL Server (3002)..."
-screen -dmS admin-server bash -c '
-  eval "$(pgpm env)" && \
-  PGDATABASE=constructive \
-  API_ENABLE_SERVICES=true \
-  API_IS_PUBLIC=false \
-  API_ANON_ROLE=administrator \
-  API_ROLE_NAME=administrator \
-  API_EXPOSED_SCHEMAS=metaschema_public,services_public,constructive_auth_public \
-  API_META_SCHEMAS=metaschema_public,services_public,metaschema_modules_public,constructive_auth_public \
-  constructive server --port 3002 --origin "*"
-'
-
-sleep 10
-
-echo "Starting send-email-link (8082)..."
-screen -dmS send-email-link bash -c '
-  PORT=8082 \
-  GRAPHQL_URL=http://localhost:3002/graphql \
-  META_GRAPHQL_URL=http://localhost:3002/graphql \
-  GRAPHQL_API_NAME=private \
-  EMAIL_SEND_USE_SMTP=true \
-  SMTP_HOST=localhost \
-  SMTP_PORT=1025 \
-  SMTP_FROM=noreply@localhost \
-  SEND_EMAIL_LINK_DRY_RUN=false \
-  ALLOW_LOCALHOST=true \
-  LOCAL_APP_PORT=3011 \
-  node functions/send-email-link/dist/index.js
-'
-
-sleep 2
-
-echo "Starting job-service..."
-screen -dmS job-service bash -c '
-  eval "$(pgpm env)" && \
-  PGDATABASE=constructive \
-  JOBS_SCHEMA=app_jobs \
-  JOBS_SUPPORT_ANY=true \
-  JOBS_SUPPORTED=send-email-link \
-  HOSTNAME=local-worker \
-  INTERNAL_JOBS_CALLBACK_PORT=8080 \
-  INTERNAL_JOBS_CALLBACK_URL=http://localhost:8080/callback \
-  JOBS_CALLBACK_HOST=localhost \
-  INTERNAL_GATEWAY_URL=http://localhost:8082 \
-  INTERNAL_GATEWAY_DEVELOPMENT_MAP="{\"send-email-link\":\"http://localhost:8082\"}" \
-  node jobs/knative-job-service/dist/run.js
-'
-
-sleep 2
-
-echo ""
-echo "✅ All services started!"
-echo ""
-echo "Mailpit UI: http://localhost:8025"
-echo "Admin GraphQL: http://localhost:3002/graphql"
-echo ""
-screen -ls
+docker logs constructive-admin-server 2>&1 | tail -30
+docker logs send-email-link 2>&1 | tail -30
+docker logs knative-job-service 2>&1 | tail -30
 ```
