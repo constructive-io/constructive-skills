@@ -53,24 +53,24 @@ const db = createClient({
   headers: { Authorization: `Bearer ${token}` },
 });
 
-// Find many with filters — .unwrap() throws on error, returns typed data
+// Find many with filters
 const users = await db.user.findMany({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
   first: 10,
-}).unwrap();
+}).execute().unwrap();
 
 // Find one
-const user = await db.user.findOne({ id: '123' }).unwrap();
+const user = await db.user.findOne({ id: '123' }).execute().unwrap();
 
 // Create
 const newUser = await db.user.create({
   input: { name: 'John', email: 'john@example.com' },
-}).unwrap();
+}).execute().unwrap();
 ```
 
-> **Error handling:** `.execute()` returns `{ ok, data, errors }` — it does NOT throw.
-> Use `.unwrap()` to get throw-on-error behavior. See [codegen-error-handling.md](./references/codegen-error-handling.md) for full patterns.
+> **Error handling:** `.execute()` returns a discriminated union — it does NOT throw.
+> Chain `.execute().unwrap()` to get throw-on-error behavior. See [codegen-error-handling.md](./references/codegen-error-handling.md) for full patterns.
 
 ## Quick Start: Search
 

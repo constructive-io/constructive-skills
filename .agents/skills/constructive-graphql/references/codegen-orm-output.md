@@ -385,46 +385,56 @@ filter: {
 const result = await db.user.findOne({ id: '123' }).execute();
 
 if (result.ok) {
-  // result.data is typed
-  console.log(result.data.username);
+  // result.value is typed
+  console.log(result.value.username);
 } else {
-  // result.errors is GraphQLError[]
-  console.error(result.errors[0]?.message);
+  // result.error contains error details
+  console.error(result.error.message);
 }
 ```
 
 ### Helper Methods
 
 ```typescript
-// Throw on error — .unwrap() is a QueryBuilder method, call instead of .execute()
+// Throw on error
 const user = await db.user.findOne({ id: '123' })
+  .execute()
   .unwrap();
 
 // Return default on error
 const user = await db.user.findOne({ id: '123' })
+  .execute()
   .unwrapOr({ id: '', username: 'Unknown' });
 
-// Call function on error — callback receives GraphQLError[]
+// Call function on error
 const user = await db.user.findOne({ id: '123' })
-  .unwrapOrElse((errors) => {
-    logger.error(errors[0]?.message);
+  .execute()
+  .unwrapOrElse((error) => {
+    logger.error(error);
     return { id: '', username: 'Fallback' };
   });
 ```
 
-### QueryResult Type
+### Error Types
 
 ```typescript
-// The actual discriminated union returned by .execute()
-type QueryResult<T> =
-  | { ok: true;  data: T;    errors: undefined }
-  | { ok: false; data: null;  errors: GraphQLError[] };
-
 interface GraphQLError {
+  type: 'graphql';
   message: string;
-  locations?: Array<{ line: number; column: number }>;
-  path?: Array<string | number>;
-  extensions?: Record<string, unknown>;
+  locations?: { line: number; column: number }[];
+  path?: string[];
+}
+
+interface NetworkError {
+  type: 'network';
+  message: string;
+  status?: number;
+}
+
+interface ValidationError {
+  type: 'validation';
+  message: string;
+  field?: string;
 }
 ```
 

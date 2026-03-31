@@ -417,8 +417,8 @@ async function getCachedUser(id: string) {
 
   if (result.ok) {
     // Cache for 5 minutes
-    await redis.setex(cacheKey, 300, JSON.stringify(result.data));
-    return result.data;
+    await redis.setex(cacheKey, 300, JSON.stringify(result.value));
+    return result.value;
   }
 
   return null;
@@ -551,8 +551,8 @@ export const userRepository = {
       first: 1,
     }).execute();
 
-    if (result.ok && result.data.length > 0) {
-      return { ok: true, data: result.data[0] } as const;
+    if (result.ok && result.value.length > 0) {
+      return { ok: true, value: result.value[0] } as const;
     }
     return { ok: false, error: { message: 'User not found' } } as const;
   },
@@ -583,6 +583,6 @@ export const userRepository = {
 // Usage
 const user = await userRepository.findById('123');
 if (user.ok) {
-  console.log(user.data.name);
+  console.log(user.value.name);
 }
 ```
