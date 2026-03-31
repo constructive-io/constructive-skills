@@ -208,14 +208,14 @@ const posts = await db.post.findMany({
 const result = await db.user.findOne({ id: '123' }).execute();
 
 if (result.ok) {
-  console.log(result.value.name);
+  console.log(result.data.name);
 } else {
-  console.error(result.error.message);
+  console.error(result.errors[0]?.message);
 }
 
-// Or use helpers
-const user = await db.user.findOne({ id }).execute().unwrap();         // throws on error
-const user = await db.user.findOne({ id }).execute().unwrapOr(default); // fallback value
+// Or use helpers — these are QueryBuilder methods, call instead of .execute()
+const user = await db.user.findOne({ id }).unwrap();              // throws on error
+const user = await db.user.findOne({ id }).unwrapOr(defaultUser); // fallback value
 ```
 
 For advanced ORM patterns (singleton, per-request client, repository pattern, batch operations), see `orm-patterns.md`.

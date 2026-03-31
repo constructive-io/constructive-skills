@@ -53,21 +53,24 @@ const db = createClient({
   headers: { Authorization: `Bearer ${token}` },
 });
 
-// Find many with filters
+// Find many with filters — .unwrap() throws on error, returns typed data
 const users = await db.user.findMany({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
   first: 10,
-}).execute().unwrap();
+}).unwrap();
 
 // Find one
-const user = await db.user.findOne({ id: '123' }).execute().unwrap();
+const user = await db.user.findOne({ id: '123' }).unwrap();
 
 // Create
 const newUser = await db.user.create({
   input: { name: 'John', email: 'john@example.com' },
-}).execute().unwrap();
+}).unwrap();
 ```
+
+> **Error handling:** `.execute()` returns `{ ok, data, errors }` — it does NOT throw.
+> Use `.unwrap()` to get throw-on-error behavior. See [codegen-error-handling.md](./references/codegen-error-handling.md) for full patterns.
 
 ## Quick Start: Search
 
@@ -167,7 +170,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [codegen-orm-output.md](./references/codegen-orm-output.md) | ORM generated output structure | Understanding what codegen produces |
 | [codegen-hooks-patterns.md](./references/codegen-hooks-patterns.md) | React Query hook patterns | Using generated hooks in React components |
 | [codegen-hooks-output.md](./references/codegen-hooks-output.md) | Hooks generated output structure | Understanding hook file structure |
-| [codegen-error-handling.md](./references/codegen-error-handling.md) | Error handling patterns | `.unwrap()`, `.unwrapOr()`, discriminated unions |
+| [codegen-error-handling.md](./references/codegen-error-handling.md) | **Error handling patterns (read first!)** | `.unwrap()` vs `.execute()`, silent error trap, `QueryResult<T>` discriminated union |
 | [codegen-relations.md](./references/codegen-relations.md) | Relation queries and M:N mutations | Nested selects, belongsTo, hasMany, manyToMany, composite PKs, `expose_in_api`, add/remove methods |
 | [codegen-query-keys.md](./references/codegen-query-keys.md) | Query key factory | Cache invalidation, `invalidate.*`, `remove.*` |
 | [codegen-node-http-adapter.md](./references/codegen-node-http-adapter.md) | Node.js HTTP adapter | Subdomain routing in Node.js |
