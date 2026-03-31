@@ -1,10 +1,10 @@
 ---
 name: constructive-setup
 description: "Set up the Constructive monorepo for development — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, and run tests. Use when asked to 'set up constructive', 'get constructive running', 'set up dev environment', 'bootstrap database', or when starting work in the constructive-io/constructive repo."
-triggers: ["user", "model"]
 metadata:
   author: constructive-io
   version: "1.0.0"
+  triggers: "user, model"
 ---
 
 # Constructive Monorepo Setup
