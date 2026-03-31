@@ -2,6 +2,40 @@
 
 Comprehensive guide to handling errors with generated code.
 
+## CRITICAL: `execute()` Does NOT Throw
+
+**The most common mistake** when using the Constructive ORM is wrapping `.execute()` in a bare `try/catch` and assuming errors will be caught. **They will not.**
+
+`.execute()` returns a **discriminated union** — it **never throws an exception** on GraphQL or HTTP errors. Instead, it returns `{ ok: false, ... }`. A `try/catch` around `.execute()` will silently swallow errors because no exception is raised.
+
+```typescript
+// BUG: Silent error swallowing — errors are NEVER caught here
+try {
+  const result = await db.user.findMany({ select: { id: true } }).execute();
+  // result may be { ok: false, error: {...} }
+  // but no exception is thrown, so the catch block is skipped entirely
+  const users = result.value; // users is undefined — silent failure!
+} catch (error) {
+  // This NEVER runs for GraphQL/HTTP errors
+  console.error(error);
+}
+```
+
+**The fix:** Use `.execute().unwrap()` to get throw-on-error behavior, or check `.ok` explicitly:
+
+```typescript
+// Option A — .execute().unwrap() throws on error (recommended):
+const users = await db.user.findMany({ select: { id: true } }).execute().unwrap();
+
+// Option B — check .ok for control flow:
+const result = await db.user.findMany({ select: { id: true } }).execute();
+if (!result.ok) {
+  console.error(result.error.message);
+  return [];
+}
+return result.value;
+```
+
 ## Discriminated Unions
 
 The ORM returns discriminated union results for type-safe error handling:
