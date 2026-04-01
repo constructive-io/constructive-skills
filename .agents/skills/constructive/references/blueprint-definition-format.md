@@ -2,18 +2,21 @@
 
 The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses structured table config with inline `$type` discriminators for nodes, policies, and relations.
 
-> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through to the `construct_blueprint()` PL/pgSQL function as-is, which reads snake_case keys directly. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (`SecureTableProvision`, `RelationProvision`), which represent the metaschema row types. When writing blueprint definitions, always use snake_case.
+> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through as-is. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (e.g. `BlueprintTemplate`, `Blueprint`). When writing blueprint definitions, always use snake_case.
 
 ## Top-Level Structure
 
 ```json
 {
   "tables": [ ... ],
-  "relations": [ ... ]
+  "relations": [ ... ],
+  "indexes": [ ... ],
+  "full_text_search": [ ... ],
+  "unique_constraints": [ ... ]
 }
 ```
 
-Both arrays are required at the top level. `relations` can be empty `[]` if there are no inter-table relationships.
+`tables` is required. `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
 ## Table Entries
 
@@ -21,8 +24,8 @@ Each entry in `tables[]` defines one database table:
 
 ```json
 {
-  "ref": "products",
   "table_name": "products",
+  "schema_name": "app_public",
   "nodes": ["DataId", "DataTimestamps"],
   "fields": [
     { "name": "title", "type": "text" },
@@ -46,14 +49,17 @@ Each entry in `tables[]` defines one database table:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `ref` | string | Yes | Local reference name used in relations (e.g. `"products"`) |
-| `table_name` | string | Yes | Actual database table name |
-| `nodes` | array | No | Data behavior node types to apply (see below) |
+| `table_name` | string | Yes | Database table name — also used as the identifier in relations |
+| `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to the `schemaId` param of `constructBlueprint()` |
+| `nodes` | array | Yes | Data behavior node types to apply. **Must start with `DataId`** unless the table intentionally has no primary key |
 | `fields` | array | No | Custom field definitions |
 | `grant_roles` | string[] | No | Roles to grant access (default: `["authenticated"]`) |
 | `grants` | array | No | Grant privilege tuples (e.g. `["select", "*"]`) |
 | `use_rls` | boolean | No | Enable RLS (default: `true`) |
 | `policies` | array | No | Safegres policy definitions (see below) |
+| `indexes` | array | No | Per-table index definitions (see Indexes section) |
+| `full_text_search` | array | No | Per-table FTS definitions (see Full-Text Search section) |
+| `unique_constraints` | array | No | Per-table unique constraint definitions (see Unique Constraints section) |
 
 ### Nodes
 
@@ -76,7 +82,7 @@ Common node types:
 
 | Node Type | Purpose | Default behavior |
 |-----------|---------|------------------|
-| `DataId` | Adds `id uuid PRIMARY KEY DEFAULT uuidv7()` | Always use as first node |
+| `DataId` | Adds `id uuid PRIMARY KEY DEFAULT uuidv7()` | **Must be explicitly listed** — no longer auto-created |
 | `DataTimestamps` | Adds `created_at` and `updated_at` timestamps | Auto-maintained |
 | `DataOwnershipInEntity` | Adds `owner_id uuid NOT NULL` with FK | Entity-scoped ownership |
 | `DataSearch` | Adds full-text search columns | tsvector + GIN index |
@@ -87,7 +93,9 @@ Common node types:
 | `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
 | `DataTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
 
-**Processing order matters:** The first node in `nodes[]` creates the table (via `secure_table_provision`). Remaining nodes augment the existing table.
+**`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
+
+**Processing:** All nodes are processed together when the table is created. The table and all its Data* fields are provisioned in one step.
 
 ### Fields
 
@@ -164,7 +172,7 @@ Each tuple is `[privilege, columns]` where `"*"` means all columns.
 
 See the [constructive-safegres](../constructive-safegres/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
 
-**Processing order:** The first policy is created with the first node (table creation). Remaining policies are added as additional RLS policies on the existing table.
+**Processing:** All policies are applied after the table is created. Multiple permissive policies on the same privilege are ORed by PostgreSQL. Adding a restrictive policy (`"permissive": false`) creates an AND constraint.
 
 ## Relation Entries
 
@@ -173,8 +181,8 @@ Each entry in `relations[]` defines a relationship between two tables:
 ```json
 {
   "$type": "RelationBelongsTo",
-  "source_ref": "products",
-  "target_ref": "categories",
+  "source_table": "products",
+  "target_table": "categories",
   "field_name": "category_id",
   "delete_action": "SET NULL",
   "is_required": false
@@ -186,8 +194,8 @@ Each entry in `relations[]` defines a relationship between two tables:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `$type` | string | Yes | Relation type (e.g. `RelationBelongsTo`, `RelationManyToMany`) |
-| `source_ref` | string | Yes | Ref name of the source table (must match a `tables[].ref`) |
-| `target_ref` | string | Yes | Ref name of the target table (must match a `tables[].ref`) |
+| `source_table` | string | Yes | Name of the source table (must match a `tables[].table_name`) |
+| `target_table` | string | Yes | Name of the target table (must match a `tables[].table_name`) |
 | `field_name` | string | No | FK column name on the source table |
 | `delete_action` | string | No | FK delete action (e.g. `CASCADE`, `SET NULL`, `RESTRICT`) |
 | `is_required` | boolean | No | Whether the FK is NOT NULL (default: `true`) |
@@ -201,16 +209,75 @@ For `RelationManyToMany`, the `data` object configures the junction table:
 ```json
 {
   "$type": "RelationManyToMany",
-  "source_ref": "posts",
-  "target_ref": "tags",
+  "source_table": "posts",
+  "target_table": "tags",
   "junction_table_name": "post_tags",
   "data": {
-    "node_type": "DataId",
+    "nodes": [{"$type": "DataId", "data": {}}],
     "policy_type": "AuthzAllowAll",
     "policy_data": {},
     "grant_privileges": [["select", "*"], ["insert", "*"], ["delete", "*"]]
   }
 }
+```
+
+The `data.nodes` array uses the same `{"$type": ..., "data": {...}}` object format as the table-level `nodes`.
+
+## Indexes
+
+Index definitions can appear at the top level (`definition.indexes[]`) or inline per-table (`tables[].indexes[]`). `constructBlueprint()` collects from both locations.
+
+```json
+{
+  "table_name": "products",
+  "columns": ["category_id"],
+  "access_method": "btree",
+  "is_unique": false
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `table_name` | string | Yes (top-level only) | Table to create the index on |
+| `columns` | string[] | Yes | Column names to include in the index |
+| `access_method` | string | No | `"btree"` (default), `"gin"`, `"gist"`, `"brin"`, `"hash"` |
+| `is_unique` | boolean | No | Create a unique index (default: `false`) |
+
+## Full-Text Search
+
+FTS definitions can appear at the top level (`definition.full_text_search[]`) or inline per-table (`tables[].full_text_search[]`).
+
+```json
+{
+  "table_name": "documents",
+  "field_names": ["title", "body"],
+  "language": "english"
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `table_name` | string | Yes (top-level only) | Table to add FTS to |
+| `field_names` | string[] | Yes | Fields to include in the tsvector |
+| `language` | string | No | PostgreSQL text search config (default: `"english"`) |
+
+This creates a `tsvector` column with a GIN index and an auto-update trigger.
+
+## Unique Constraints
+
+Unique constraint definitions can appear at the top level (`definition.unique_constraints[]`) or inline per-table (`tables[].unique_constraints[]`).
+
+```json
+{
+  "table_name": "products",
+  "columns": ["slug", "owner_id"]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `table_name` | string | Yes (top-level only) | Table to add the constraint to |
+| `columns` | string[] | Yes | Column names for the unique constraint |
 ```
 
 ## Complete Example: E-Commerce Blueprint
@@ -219,7 +286,6 @@ For `RelationManyToMany`, the `data` object configures the junction table:
 {
   "tables": [
     {
-      "ref": "categories",
       "table_name": "categories",
       "nodes": ["DataId", "DataTimestamps"],
       "fields": [
@@ -239,7 +305,6 @@ For `RelationManyToMany`, the `data` object configures the junction table:
       ]
     },
     {
-      "ref": "products",
       "table_name": "products",
       "nodes": [
         "DataId",
@@ -270,7 +335,6 @@ For `RelationManyToMany`, the `data` object configures the junction table:
       ]
     },
     {
-      "ref": "orders",
       "table_name": "orders",
       "nodes": ["DataId", "DataTimestamps"],
       "fields": [
@@ -292,16 +356,16 @@ For `RelationManyToMany`, the `data` object configures the junction table:
   "relations": [
     {
       "$type": "RelationBelongsTo",
-      "source_ref": "products",
-      "target_ref": "categories",
+      "source_table": "products",
+      "target_table": "categories",
       "field_name": "category_id",
       "delete_action": "SET NULL",
       "is_required": false
     },
     {
       "$type": "RelationBelongsTo",
-      "source_ref": "orders",
-      "target_ref": "products",
+      "source_table": "orders",
+      "target_table": "products",
       "field_name": "product_id",
       "delete_action": "RESTRICT",
       "is_required": true
@@ -349,7 +413,7 @@ const refMap = await db.mutation.constructBlueprint({
     schemaId: schemaId,
   },
 }).execute();
-// refMap = { "categories": "uuid", "products": "uuid", "orders": "uuid" }
+// result = { "categories": "uuid", "products": "uuid", "orders": "uuid" }
 ```
 
 ### CLI
