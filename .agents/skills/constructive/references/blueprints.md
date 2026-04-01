@@ -22,48 +22,17 @@ Two-layer model:
 
 ## Provision System
 
-Blueprints sit on top of a composable provision system. Understanding the layers helps when debugging or customizing:
+Blueprints sit on top of a layered provision system:
 
-| Layer | Functions | Purpose |
-|-------|-----------|---------|
+| Layer | Entry point | Purpose |
+|-------|-------------|---------|
 | **Blueprint** | `construct_blueprint()` | Orchestrates all 5 phases from a JSONB definition |
-| **Provision procedures** | `provision_table()`, `provision_relation()`, `provision_index()`, `provision_full_text_search()`, `provision_unique_constraint()` | Mid-level composable building blocks (in `metaschema_modules_public`, callable via GraphQL) |
-| **Orchestrator table** | `secure_table_provision` | High-level single-INSERT that creates a table with fields + nodes + grants + policies + RLS in one shot |
+| **Orchestrator tables** | `secure_table_provision`, `relation_provision` | Declarative single-INSERT API for creating tables with fields + nodes + grants + policies + RLS |
 | **Internal helpers** | `find_or_create_*`, `ensure_*`, `*_exists()` | Low-level idempotent helpers (in `metaschema` schema, not exposed via API) |
 
-All provision functions use `SECURITY INVOKER` — authorization is handled by RLS policies on `metaschema_public` tables, not by manual checks in the functions.
+All provision functions and triggers use `SECURITY INVOKER` — authorization is enforced by RLS policies on `metaschema_public` tables, not by manual checks.
 
-### Provision procedures (public API)
-
-These are in `metaschema_modules_public` and exposed over GraphQL:
-
-| Function | Purpose |
-|----------|---------|
-| `provision_table(database_id, schema_name, table_name, fields, nodes)` | Creates a table + fields + Data* nodes. No policies/grants/RLS. |
-| `provision_relation(database_id, relation_type, source_table_id, target_table_id, ...)` | Creates FK relations or ManyToMany junction tables |
-| `provision_index(database_id, table_name, columns, access_method, is_unique)` | Creates indexes on existing tables |
-| `provision_full_text_search(database_id, table_name, field_names, language)` | Creates tsvector + GIN index for full-text search |
-| `provision_unique_constraint(database_id, table_name, columns)` | Creates unique constraints |
-
-### Internal helpers (not exposed)
-
-These are in the `metaschema` schema and used internally by the provision procedures:
-
-**`find_or_create_*` (returns the found/created ID):**
-- `find_or_create_schema(database_id, name)` — finds or creates a schema
-- `find_or_create_field(table_id, name, type, ...)` — finds or creates a field
-- `find_or_create_table(database_id, schema_id, name)` — finds or creates a table
-- `find_or_create_fts(table_id, field_ids, language)` — finds or creates a full-text search config
-
-**`ensure_*` (void, fire-and-forget idempotency):**
-- `ensure_fk(source_field_id, target_table_id, delete_action)` — ensures a FK constraint exists
-- `ensure_index(table_id, field_ids, access_method, is_unique)` — ensures an index exists
-- `ensure_uniq(table_id, field_ids)` — ensures a unique constraint exists
-- `ensure_grant(table_id, role, privilege, columns)` — ensures a grant exists
-- `ensure_policy(table_id, policy_type, data, ...)` — ensures a policy set exists
-
-**`*_exists()` predicates (structural checks, not name-based):**
-- `field_exists(table_id, name)`, `fk_exists(field_id, target_table_id)`, `index_exists(table_id, field_ids, access_method)`, `uniq_exists(table_id, field_ids)`, `grant_exists(table_id, role, privilege)`, `policy_exists(table_id, policy_type, data)`, `table_exists(database_id, schema_id, name)`, `schema_exists(database_id, name)`
+**The primary API** for users is `secure_table_provision` (for tables) and `relation_provision` (for relations). Blueprints orchestrate these under the hood. See the `constructive-db-relations-security` and `constructive-db-security-sql` skills for detailed column docs and SQL examples.
 
 ## blueprint_template
 
