@@ -8,31 +8,29 @@ Two-layer model:
 
 | Layer | Table | Purpose |
 |-------|-------|---------|
-| **Template** | `metaschema_modules_public.blueprint_template` | Shareable, versioned recipe. Never executed directly. |
-| **Blueprint** | `metaschema_modules_public.blueprint` | Owned, executable instance scoped to a database. Created by copying a template or built from scratch. |
+| **Template** | `blueprint_template` | Shareable, versioned recipe. Never executed directly. |
+| **Blueprint** | `blueprint` | Owned, executable instance scoped to a database. Created by copying a template or built from scratch. |
 
 **Flow:**
 ```
 1. Create template (or browse marketplace)
-2. Copy template → blueprint (via copy_template_to_blueprint)
+2. Copy template → blueprint (via copyTemplateToBlueprint)
 3. Customize blueprint definition (optional)
-4. Execute blueprint -> provisions tables, relations, indexes, FTS, unique constraints (via construct_blueprint)
+4. Execute blueprint -> provisions tables, relations, indexes, FTS, unique constraints (via constructBlueprint)
 5. Run introspection + codegen -> typed SDK with RLS
 ```
 
-## Provision System
+## How Blueprints Provision
 
-Blueprints sit on top of a layered provision system:
+When you call `constructBlueprint()`, the system handles everything declaratively:
 
-| Layer | Entry point | Purpose |
-|-------|-------------|---------|
-| **Blueprint** | `construct_blueprint()` | Orchestrates all 5 phases from a JSONB definition |
-| **Orchestrator tables** | `secure_table_provision`, `relation_provision` | Declarative single-INSERT API for creating tables with fields + nodes + grants + policies + RLS |
-| **Internal helpers** | `find_or_create_*`, `ensure_*`, `*_exists()` | Low-level idempotent helpers (in `metaschema` schema, not exposed via API) |
+1. **Tables** are created with their fields, nodes, grants, policies, and RLS
+2. **Relations** (BelongsTo, HasOne, HasMany, ManyToMany) are created between tables
+3. **Indexes**, **full-text search**, and **unique constraints** are applied
 
-All provision functions and triggers use `SECURITY INVOKER` — authorization is enforced by RLS policies on `metaschema_public` tables, not by manual checks.
+All operations are **idempotent** — calling `constructBlueprint()` twice with the same definition is safe (the second call is a no-op).
 
-**The primary API** for users is `secure_table_provision` (for tables) and `relation_provision` (for relations). Blueprints orchestrate these under the hood. See the `constructive-db-relations-security` and `constructive-db-security-sql` skills for detailed column docs and SQL examples.
+Authorization is enforced automatically — a user can only provision into databases they own.
 
 ## blueprint_template
 
@@ -88,7 +86,7 @@ An owned, executable blueprint scoped to a specific database.
 | `definition` | jsonb | Mutable blueprint definition (declarative JSONB format) |
 | `template_id` | uuid | Source template ID if copied (NULL if built from scratch) |
 | `status` | text | `draft`, `constructed`, or `failed` |
-| `constructed_at` | timestamptz | When construct_blueprint() succeeded |
+| `constructed_at` | timestamptz | When constructBlueprint() succeeded |
 | `error_details` | text | Error message if status is `failed` |
 | `constructed_definition` | jsonb | Immutable snapshot of definition at construct-time |
 | `definition_hash` | uuid | Merkle root hash of definition (backend-computed) |
@@ -97,7 +95,7 @@ An owned, executable blueprint scoped to a specific database.
 ### Constraints
 
 - `UNIQUE (database_id, name)` — one blueprint per name per database
-- `database_id` → FK to `metaschema_public.database(id)` ON DELETE CASCADE
+- `database_id` → FK to `database(id)` ON DELETE CASCADE
 - `template_id` → FK to `blueprint_template(id)`
 
 ## blueprint_construction
@@ -116,7 +114,7 @@ Tracks the state of each table during blueprint construction. One row per table 
 
 ## Functions
 
-### construct_blueprint(blueprint_id, schema_id)
+### constructBlueprint(blueprintId, schemaId)
 
 Executes a draft blueprint, provisioning real database tables and relations across 5 phases.
 
@@ -134,31 +132,30 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
 1. Validates blueprint exists and status is `draft`
 2. **Phase 1 — Tables:** For each entry in `definition.tables[]`:
    - Resolves `schema_name` (per-table override or falls back to the `schema_id` parameter)
-   - Calls `provision_table(database_id, schema_name, table_name, fields, nodes)` to create the table with all fields and Data* nodes
-   - Creates grants via `ensure_grant()` for each `grant_roles` x `grants` combination
-   - Creates policies via `ensure_policy()` for each entry in `policies[]`
+   - Creates the table with all fields and Data* nodes
+   - Applies grants for each `grant_roles` x `grants` combination
+   - Applies policies for each entry in `policies[]`
    - Enables RLS if `use_rls` is true (default) or if any policies are defined
    - Records table in `blueprint_construction` for state tracking
 3. **Phase 2 — Relations:** For each entry in `definition.relations[]`:
-   - Resolves `source_table` and `target_table` to table IDs by looking up `table_name` in the database
-   - Creates relation via `provision_relation()`
+   - Resolves `source_table` and `target_table` to table IDs
+   - Creates the relation (FK or junction table)
 4. **Phase 3 — Indexes:** For each entry in `definition.indexes[]` (or per-table `indexes[]`):
-   - Resolves table and column names to IDs
-   - Creates index via `provision_index()`
+   - Creates indexes on the resolved table/columns
 5. **Phase 4 — Full-Text Search:** For each entry in `definition.full_text_search[]` (or per-table `full_text_search[]`):
-   - Creates FTS config via `provision_full_text_search()`
+   - Creates tsvector column + GIN index + auto-update trigger
 6. **Phase 5 — Unique Constraints:** For each entry in `definition.unique_constraints[]` (or per-table `unique_constraints[]`):
-   - Creates unique constraint via `provision_unique_constraint()`
+   - Creates unique constraints on the resolved columns
 7. **On success:** Sets `status = 'constructed'`, saves `constructed_definition`
 8. **On failure:** Sets `status = 'failed'`, saves `error_details`. Returns NULL.
 
-**Idempotency:** All phases use `find_or_create_*` and `ensure_*` helpers, so calling `construct_blueprint()` twice with the same definition is safe — the second call is a no-op.
+**Idempotency:** All phases are idempotent — calling `constructBlueprint()` twice with the same definition is safe. The second call is a no-op.
 
 **Returns:** `jsonb` table_name_map (e.g. `{"products": "uuid", "categories": "uuid"}`) or NULL on failure.
 
-### resolve_blueprint_table(database_id, table_name, schema_name)
+### resolveBlueprintTable(databaseId, tableName, schemaName)
 
-Resolves a table name to a table ID within a database. If `schema_name` is provided, looks up in that specific schema. If omitted, resolves unambiguously (throws an error if multiple schemas contain a table with that name).
+Resolves a table name to a table ID within a database. If `schemaName` is provided, looks up in that specific schema. If omitted, resolves unambiguously (throws an error if multiple schemas contain a table with that name).
 
 ```typescript
 // ORM
@@ -167,7 +164,7 @@ const result = await db.mutation.resolveBlueprintTable({
 }).execute();
 ```
 
-### copy_template_to_blueprint(template_id, database_id, owner_id, name_override, display_name_override)
+### copyTemplateToBlueprint(templateId, databaseId, ownerId, nameOverride, displayNameOverride)
 
 Creates a new blueprint by copying a template's definition.
 
@@ -202,29 +199,16 @@ Both `blueprint_template` and `blueprint` have backend-computed hash columns for
 
 ### How it works
 
-Two-level Merkle tree, computed automatically via the `_200_compute_blueprint_hash` trigger on INSERT/UPDATE of `definition`:
+Two-level Merkle tree, computed automatically when the `definition` is saved:
 
-**Level 1 — Table hashes:**
-```
-For each entry in definition.tables[]:
-  table_hash = uuid_generate_v5(uuid_ns_url(), table_entry::text)
-```
+**Level 1 — Table hashes:** Each table entry is hashed individually. Stored in `tableHashes` as `{"products": "uuid-hash", "categories": "uuid-hash"}` (keyed by `table_name`).
 
-Stored in `table_hashes` as `{"products": "uuid-hash", "categories": "uuid-hash"}` (keyed by `table_name`).
-
-**Level 2 — Merkle root:**
-```
-concatenated = table_hash_1 || table_hash_2 || ... || relations_hash
-definition_hash = uuid_generate_v5(uuid_ns_url(), concatenated)
-```
-
-If `definition.relations[]` exists and is non-empty, its hash is appended to the concatenation.
+**Level 2 — Merkle root:** All table hashes are concatenated (plus the relations hash if present) and hashed to produce `definitionHash`.
 
 ### Determinism
 
-- `jsonb::text` provides canonical serialization — PostgreSQL stores JSONB keys in lexically sorted order internally
 - Same definition content always produces the same hash, regardless of insertion order
-- Uses the same `uuid_generate_v5(uuid_ns_url(), ...)` pattern as `object_store.object_hash_uuid()`
+- JSONB keys are canonically sorted, ensuring consistent serialization
 
 ### Use cases
 
@@ -238,23 +222,23 @@ If `definition.relations[]` exists and is non-empty, its hash is appended to the
 ### Important notes
 
 - Hash columns are **nullable** and **backend-computed** — clients should never set them directly
-- The trigger fires `BEFORE INSERT OR UPDATE OF definition` (only when `definition` changes)
-- Updating non-definition columns (e.g. `display_name`) does **not** recompute hashes
+- Hashes are recomputed only when `definition` changes
+- Updating non-definition columns (e.g. `displayName`) does **not** recompute hashes
 - When a template is copied to a blueprint, the hashes are inherited (same definition → same hash)
 
 ## Security Model
 
-All provision functions (`provision_table`, `provision_relation`, etc.) and blueprint functions (`construct_blueprint`, `resolve_blueprint_table`) use explicit `SECURITY INVOKER`. Authorization is enforced by RLS policies on every `metaschema_public` table — each table has a `database_id` ownership check via `constructive_memberships_private.org_memberships_sprt`. This means:
+Authorization is enforced by RLS policies on every metaschema table — each table has a `database_id` ownership check. This means:
 
 - A user can only provision into databases they own
-- Cross-tenant access is blocked at the RLS level — no function-level auth checks needed
-- Trigger functions (`tg_insert_secure_table_provision`, `tg_insert_relation_provision`) also use `SECURITY INVOKER`
+- Cross-tenant access is blocked at the database level automatically
+- No manual auth checks are needed in application code
 
 ## RLS and Introspection
 
 Blueprint-provisioned tables automatically flow through the existing introspection pipeline:
 
-1. `construct_blueprint()` provisions tables via `provision_table()` and other provision procedures
+1. `constructBlueprint()` provisions tables with all configured security
 2. These are standard Constructive tables — they appear in introspection like any other table
 3. Running `cnc codegen` against the database generates typed SDK with full RLS support
 4. The RLS policies specified in `definition.policies[]` are compiled via the Safegres protocol

@@ -2,7 +2,7 @@
 
 The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses structured table config with inline `$type` discriminators for nodes, policies, and relations.
 
-> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through to the `construct_blueprint()` PL/pgSQL function as-is, which reads snake_case keys directly. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (`SecureTableProvision`, `RelationProvision`), which represent the metaschema row types. When writing blueprint definitions, always use snake_case.
+> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through as-is. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (e.g. `BlueprintTemplate`, `Blueprint`). When writing blueprint definitions, always use snake_case.
 
 ## Top-Level Structure
 
@@ -16,7 +16,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 }
 ```
 
-`tables` is required. `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each can also be defined inline per-table (see below). `construct_blueprint()` collects from both locations.
+`tables` is required. `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
 ## Table Entries
 
@@ -50,7 +50,7 @@ Each entry in `tables[]` defines one database table:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `table_name` | string | Yes | Database table name — also used as the identifier in relations |
-| `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to `schema_id` param of `construct_blueprint()` |
+| `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to the `schemaId` param of `constructBlueprint()` |
 | `nodes` | array | Yes | Data behavior node types to apply. **Must start with `DataId`** unless the table intentionally has no primary key |
 | `fields` | array | No | Custom field definitions |
 | `grant_roles` | string[] | No | Roles to grant access (default: `["authenticated"]`) |
@@ -95,7 +95,7 @@ Common node types:
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 
-**Processing:** All nodes are passed to `provision_table()` together. The table and all its Data* fields are created in one call.
+**Processing:** All nodes are processed together when the table is created. The table and all its Data* fields are provisioned in one step.
 
 ### Fields
 
@@ -221,11 +221,11 @@ For `RelationManyToMany`, the `data` object configures the junction table:
 }
 ```
 
-The `data.nodes` array uses the same `{"$type": ..., "data": {...}}` object format as `secure_table_provision.nodes`.
+The `data.nodes` array uses the same `{"$type": ..., "data": {...}}` object format as the table-level `nodes`.
 
 ## Indexes
 
-Index definitions can appear at the top level (`definition.indexes[]`) or inline per-table (`tables[].indexes[]`). `construct_blueprint()` collects from both locations.
+Index definitions can appear at the top level (`definition.indexes[]`) or inline per-table (`tables[].indexes[]`). `constructBlueprint()` collects from both locations.
 
 ```json
 {
