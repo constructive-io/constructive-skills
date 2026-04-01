@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A collection of skills for AI coding agents working with Constructive tooling. Skills are packaged instructions and scripts that extend agent capabilities for GraphQL development workflows, following the [Agent Skills](https://agentskills.io/) format.
 
-## Available Skills (12 Umbrella Skills)
+## Available Skills (13 Umbrella Skills)
 
 | Skill | Description |
 |-------|-------------|
@@ -19,6 +19,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
 | **constructive-ai** | AI capabilities — pgvector RAG pipelines, embeddings, Ollama CI/CD |
+| **constructive-chatbot** | AI chatbot widget — shadcn registry install, page scraping (`data-chat-*`), tool system (server/client), approval flows, embeddings/RAG |
 | **constructive-tooling** | Dev tools — pnpm workspaces, inquirerer CLI framework, README formatting |
 | **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
 | **fbp** | Flow-Based Programming — types, spec, evaluator, graph editor |
