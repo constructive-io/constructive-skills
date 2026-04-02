@@ -157,14 +157,14 @@ const result = await db.article.findMany({
 
 Trigram is most useful as a complement to other search strategies.
 
-### Composite fullTextSearch (Easiest)
+### Composite unifiedSearch (Easiest)
 
-The `fullTextSearch` filter automatically fans a text query to tsvector, BM25, and trgm simultaneously:
+The `unifiedSearch` filter automatically fans a text query to tsvector, BM25, and trgm simultaneously:
 
 ```typescript
 const result = await db.article.findMany({
   where: {
-    fullTextSearch: 'postgres tutorial',
+    unifiedSearch: 'postgres tutorial',
   },
   orderBy: 'SEARCH_SCORE_DESC',
   select: {
@@ -273,4 +273,4 @@ The similarity is a `Float` in 0..1 range — higher = more similar. It is `null
 - Autocomplete / search-as-you-type with similarity scoring
 - "Did you mean?" suggestions
 - As a fuzzy fallback alongside BM25 or TSVector
-- Via `fullTextSearch` composite filter for automatic multi-strategy search
+- Via `unifiedSearch` composite filter for automatic multi-strategy search

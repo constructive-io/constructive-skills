@@ -202,12 +202,12 @@ const result = await db.document.findMany({
 
 ### Hybrid Search: Vector + Text
 
-Combine pgvector with fullTextSearch for both semantic and keyword matching:
+Combine pgvector with unifiedSearch for both semantic and keyword matching:
 
 ```typescript
 const result = await db.document.findMany({
   where: {
-    fullTextSearch: 'machine learning',
+    unifiedSearch: 'machine learning',
     vectorEmbedding: {
       vector: queryEmbedding,
       metric: 'COSINE',

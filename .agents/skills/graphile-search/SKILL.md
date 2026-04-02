@@ -1,6 +1,6 @@
 ---
 name: graphile-search
-description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and fullTextSearch fields. Includes codegen SDK query patterns for all search types. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", "query search via SDK/codegen", or when building search features on a Constructive or PostGraphile v5 stack.
+description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and unifiedSearch fields. Includes codegen SDK query patterns for all search types. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", "query search via SDK/codegen", or when building search features on a Constructive or PostGraphile v5 stack.
 compatibility: PostGraphile v5, graphile-search, graphile-build-pg, graphile-connection-filter
 metadata:
   author: constructive-io
@@ -62,7 +62,7 @@ This single preset includes:
 - All 4 adapter plugins (tsvector, BM25, trgm, pgvector)
 - Codec plugins (TsvectorCodecPlugin, Bm25CodecPlugin, VectorCodecPlugin)
 - Connection filter operator factories (matches, similarTo, wordSimilarTo)
-- Composite `searchScore` and `fullTextSearch` fields
+- Composite `searchScore` and `unifiedSearch` fields
 
 ## Preset Options
 
@@ -76,7 +76,7 @@ UnifiedSearchPreset({
 
   // Composite fields
   enableSearchScore: true,           // expose searchScore (0..1) on search-enabled tables
-  enableFullTextSearch: true,        // expose fullTextSearch composite filter
+  enableUnifiedSearch: true,          // expose unifiedSearch composite filter
 
   // Weights for composite searchScore
   searchScoreWeights: {
@@ -129,13 +129,13 @@ Computed by normalizing all active search signals to 0..1 and averaging them. Re
 
 **Naming pattern:** `{filterPrefix}{CamelCase(column)}`
 
-### fullTextSearch Composite Filter
+### unifiedSearch Composite Filter
 
 Fans out a single text query to all text-compatible adapters (tsvector, BM25, trgm) simultaneously, combining with OR:
 
 ```graphql
 query {
-  allArticles(where: { fullTextSearch: "postgres tutorial" }) {
+  allArticles(where: { unifiedSearch: "postgres tutorial" }) {
     nodes {
       title
       searchScore  # composite relevance across all text search signals
@@ -216,7 +216,7 @@ Each adapter is documented in its own reference file:
 
 After running `cnc codegen`, the generated SDK client exposes search filters, score fields, and orderBy enums. See `references/codegen-sdk-queries.md` for complete query patterns covering:
 
-- **Composite fields** — `fullTextSearch` (multi-strategy filter) and `searchScore` (0..1 relevance)
+- **Composite fields** — `unifiedSearch` (multi-strategy filter) and `searchScore` (0..1 relevance)
 - **TSVector queries** — `fullTextSearchTsv`, `searchTsvRank`, pagination, combined filters
 - **BM25 queries** — `bm25Content`, `bm25ContentScore` (negative, sort ASC)
 - **Trigram queries** — `similarTo`/`wordSimilarTo` via `StringTrgmFilter`, adapter-level `trgmTitle`, ILIKE
@@ -243,7 +243,7 @@ Bounded ranges use linear normalization. Unbounded ranges use sigmoid normalizat
 |---|---|---|
 | No search fields on table | No search infrastructure detected | Add tsvector column, BM25 index, or vector column |
 | trgm operators missing | Table has no intentional search | Add tsvector/BM25, or use `@trgmSearch` smart tag |
-| `searchScore` is null | No search filters active in query | Add a search filter (fullTextSearch, bm25Body, etc.) |
+| `searchScore` is null | No search filters active in query | Add a search filter (unifiedSearch, bm25Body, etc.) |
 | `includeChunks` field missing | No `@hasChunks` tables in schema | Add `@hasChunks` smart tag to parent table codec |
 | `Unknown type "FullText"` | TsvectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |
 | `Unknown type "Vector"` | VectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |

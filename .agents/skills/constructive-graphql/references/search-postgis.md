@@ -353,7 +353,7 @@ PostGIS spatial queries can be combined with text search filters for location-aw
 // Find nearby restaurants matching a text search
 const result = await db.restaurant.findMany({
   where: {
-    fullTextSearch: 'italian pizza',
+    unifiedSearch: 'italian pizza',
     location: {
       coveredBy: {
         type: 'Polygon',

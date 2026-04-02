@@ -1,6 +1,6 @@
 # Combined Multi-Algorithm Search Patterns
 
-Combine multiple search algorithms in a single query using composite fields (`searchScore`, `fullTextSearch`) or per-algorithm filters.
+Combine multiple search algorithms in a single query using composite fields (`searchScore`, `unifiedSearch`) or per-algorithm filters.
 
 ---
 
@@ -10,7 +10,7 @@ A normalized 0..1 field that combines all active search signals into a single re
 
 ```typescript
 const result = await db.article.findMany({
-  where: { fullTextSearch: 'machine learning' },
+  where: { unifiedSearch: 'machine learning' },
   orderBy: 'SEARCH_SCORE_DESC',
   select: {
     title: true,
@@ -28,27 +28,27 @@ const result = await db.article.findMany({
 
 ---
 
-## fullTextSearch — Composite Filter
+## unifiedSearch — Composite Filter
 
 A `String` filter field that fans the same text query to all **text-compatible** algorithms simultaneously, combining with OR logic.
 
-| Algorithm | Participates in fullTextSearch? | Why? |
+| Algorithm | Participates in unifiedSearch? | Why? |
 |---------|-------------------------------|------|
 | TSVector | Yes | Text-based query |
 | BM25 | Yes | Text-based query |
 | Trigram | Yes | Text-based query |
 | pgvector | **No** | Requires vector array, not text |
 
-When you filter with `fullTextSearch: "machine learning"`, all matching rows from ANY text algorithm are included. The `searchScore` then ranks them by a composite of whichever algorithms matched.
+When you filter with `unifiedSearch: "machine learning"`, all matching rows from ANY text algorithm are included. The `searchScore` then ranks them by a composite of whichever algorithms matched.
 
-### Combining fullTextSearch with Per-Algorithm Filters
+### Combining unifiedSearch with Per-Algorithm Filters
 
-`fullTextSearch` can coexist with algorithm-specific filters. The specific filter narrows further:
+`unifiedSearch` can coexist with algorithm-specific filters. The specific filter narrows further:
 
 ```typescript
 const result = await db.document.findMany({
   where: {
-    fullTextSearch: 'learning',
+    unifiedSearch: 'learning',
     tsvTsv: 'machine',
   },
   select: {
@@ -139,14 +139,14 @@ select: {
 
 ---
 
-## Unified fullTextSearch (Simplified)
+## Unified Search (Simplified)
 
-Uses the `fullTextSearch` composite filter that fans out to all text-compatible algorithms (tsvector, BM25, trgm) automatically with a single string. pgvector still needs its own filter because it requires a vector array, not text.
+Uses the `unifiedSearch` composite filter that fans out to all text-compatible algorithms (tsvector, BM25, trgm) automatically with a single string. pgvector still needs its own filter because it requires a vector array, not text.
 
 ```typescript
 const result = await db.document.findMany({
   where: {
-    fullTextSearch: 'machine learning',
+    unifiedSearch: 'machine learning',
     vectorEmbedding: { vector: [1, 0, 0], metric: 'COSINE' },
   },
   orderBy: ['SEARCH_SCORE_DESC', 'EMBEDDING_VECTOR_DISTANCE_ASC'],
@@ -164,7 +164,7 @@ const result = await db.document.findMany({
 {
   documents(
     where: {
-      fullTextSearch: "machine learning"
+      unifiedSearch: "machine learning"
       vectorEmbedding: { vector: [1, 0, 0], metric: COSINE }
     }
     orderBy: [SEARCH_SCORE_DESC, EMBEDDING_VECTOR_DISTANCE_ASC]
@@ -179,7 +179,7 @@ const result = await db.document.findMany({
 
 </details>
 
-#### When to Use Unified fullTextSearch
+#### When to Use unifiedSearch
 
 - You want the simplest possible multi-algorithm search
 - The same search string applies to all text-based algorithms
@@ -187,13 +187,13 @@ const result = await db.document.findMany({
 
 ---
 
-## Unified fullTextSearch — Text Only (No Vector)
+## unifiedSearch — Text Only (No Vector)
 
 The simplest multi-algorithm search when pgvector is not available:
 
 ```typescript
 const result = await db.article.findMany({
-  where: { fullTextSearch: 'machine learning' },
+  where: { unifiedSearch: 'machine learning' },
   orderBy: 'SEARCH_SCORE_DESC',
   select: {
     title: true,
@@ -208,7 +208,7 @@ const result = await db.article.findMany({
 ```graphql
 {
   articles(
-    where: { fullTextSearch: "machine learning" }
+    where: { unifiedSearch: "machine learning" }
     orderBy: SEARCH_SCORE_DESC
   ) {
     nodes {
@@ -253,12 +253,12 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-### fullTextSearch + Non-Search Filters
+### unifiedSearch + Non-Search Filters
 
 ```typescript
 const result = await db.article.findMany({
   where: {
-    fullTextSearch: 'postgres tutorial',
+    unifiedSearch: 'postgres tutorial',
     isPublished: { equalTo: true },
     category: { equalTo: 'database' },
   },
@@ -278,7 +278,7 @@ Score fields are only populated when their corresponding filter is active:
 |-------|---------|---------------|---------------------|----------------------|-------------|
 | No filters active | null | null | null | null | null |
 | `tsvTsv: "foo"` only | number | null | null | null | number |
-| `fullTextSearch: "foo"` | number | number | number | null | number |
+| `unifiedSearch: "foo"` | number | number | number | null | number |
 | All 4 filters active | number | number | number | number | number |
 
 You can safely select all score fields — inactive ones return `null`.

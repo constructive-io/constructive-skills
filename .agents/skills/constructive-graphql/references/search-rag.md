@@ -204,13 +204,13 @@ await embedRecords(
 
 ## Combining Vector Search with Text Search
 
-Use pgvector alongside `fullTextSearch` for hybrid retrieval:
+Use pgvector alongside `unifiedSearch` for hybrid retrieval:
 
 ```typescript
 // Hybrid: vector similarity + keyword matching
 const results = await db.document.findMany({
   where: {
-    fullTextSearch: 'machine learning',
+    unifiedSearch: 'machine learning',
     vectorEmbedding: {
       vector: queryEmbedding,
       metric: 'COSINE',
@@ -273,6 +273,6 @@ JSON array only:`,
 ## Cross-References
 
 - [search-pgvector.md](./search-pgvector.md): Creating vector columns, HNSW indexes, distance metrics
-- [search-composite.md](./search-composite.md): Unified `fullTextSearch` + `searchScore` for hybrid search
+- [search-composite.md](./search-composite.md): Unified `unifiedSearch` + `searchScore` for hybrid search
 - `constructive-ai` — [agentic-kit.md](../../constructive-ai/references/agentic-kit.md): Multi-provider LLM abstraction (Ollama, Anthropic, OpenAI)
 - `constructive-ai` — [rag-pipeline.md](../../constructive-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture

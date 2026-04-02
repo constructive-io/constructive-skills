@@ -125,7 +125,7 @@ Both accept `TrgmSearchInput { value: String!, threshold: Float }`. Default thre
 |------|-------|
 | `isSupplementary` | `true` (when `requireIntentionalSearch` is true) |
 | `isIntentionalSearch` | N/A (supplementary adapters don't set this) |
-| `supportsTextSearch` | `true` (included in fullTextSearch composite filter) |
+| `supportsTextSearch` | `true` (included in unifiedSearch composite filter) |
 
 ## Prerequisites
 

@@ -33,7 +33,7 @@ interface SearchAdapter {
 
   /**
    * Whether this adapter supports plain text queries.
-   * If true, columns are included in the fullTextSearch composite filter.
+   * If true, columns are included in the unifiedSearch composite filter.
    * pgvector sets this to false (requires vector input, not text).
    * @default false
    */
@@ -48,7 +48,7 @@ interface SearchAdapter {
   /** Apply a filter and return the SQL expression + score select index */
   applyFilter(args: FilterApplyArgs): FilterApplyResult | null;
 
-  /** Build a text search input value from a plain text query (for fullTextSearch) */
+  /** Build a text search input value from a plain text query (for unifiedSearch) */
   buildTextSearchInput?(text: string): unknown;
 }
 ```
