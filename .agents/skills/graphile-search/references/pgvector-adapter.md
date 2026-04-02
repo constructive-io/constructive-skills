@@ -114,7 +114,7 @@ Set `@hasChunks` on the parent table codec as a JSON object:
 | `parentPk` | `id` | Primary key column on the parent table |
 | `embeddingField` | `embedding` | Vector column in the chunks table |
 
-In Constructive, the `DataEmbedding` node type with chunks enabled automatically creates the chunks table and wires up the relationship. The smart tag is applied via a Graphile plugin or smart tags file.
+In Constructive, the `SearchVector` node type with chunks enabled automatically creates the chunks table and wires up the relationship. The smart tag is applied via a Graphile plugin or smart tags file.
 
 ### `includeChunks` Filter Field
 
