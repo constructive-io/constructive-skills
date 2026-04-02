@@ -78,7 +78,7 @@ enum DocumentsOrderBy {
 |------|-------|
 | `isSupplementary` | `false` (primary adapter) |
 | `isIntentionalSearch` | `false` (embeddings do NOT trigger trgm) |
-| `supportsTextSearch` | `false` (not included in fullTextSearch composite) |
+| `supportsTextSearch` | `false` (not included in unifiedSearch composite) |
 
 pgvector is the only primary adapter that sets `isIntentionalSearch: false`. This is because vector embeddings operate on a different domain than text search — a table with only pgvector columns shouldn't get trgm similarity fields on its text columns.
 

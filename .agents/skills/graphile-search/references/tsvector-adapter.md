@@ -68,7 +68,7 @@ enum ArticlesOrderBy {
 |------|-------|
 | `isSupplementary` | `false` (primary adapter) |
 | `isIntentionalSearch` | `true` (triggers supplementary adapters like trgm) |
-| `supportsTextSearch` | `true` (included in fullTextSearch composite filter) |
+| `supportsTextSearch` | `true` (included in unifiedSearch composite filter) |
 
 ## Prerequisites
 

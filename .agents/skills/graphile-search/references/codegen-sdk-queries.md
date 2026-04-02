@@ -21,14 +21,14 @@ const db = createClient({
 
 ## Composite Fields (Unified Search)
 
-### fullTextSearch — Multi-Strategy Filter
+### unifiedSearch — Multi-Strategy Filter
 
 A single filter that fans the same text query to all text-compatible adapters (tsvector, BM25, trgm) simultaneously:
 
 ```typescript
 const result = await db.article.findMany({
   where: {
-    fullTextSearch: 'postgres tutorial',
+    unifiedSearch: 'postgres tutorial',
   },
   select: {
     id: true,
@@ -44,7 +44,7 @@ if (result.ok) {
 }
 ```
 
-pgvector is excluded from `fullTextSearch` because it requires a vector array input, not text.
+pgvector is excluded from `unifiedSearch` because it requires a vector array input, not text.
 
 ### searchScore — Composite Relevance
 

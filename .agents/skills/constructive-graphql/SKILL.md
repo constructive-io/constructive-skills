@@ -16,7 +16,7 @@ The complete GraphQL layer for Constructive: design your database → run codege
 Use this skill when:
 - **Code generation**: Generating React Query hooks, ORM client, CLI, or documentation from a GraphQL schema
 - **Querying**: Using the generated ORM or hooks to fetch, mutate, paginate, or search data
-- **Search**: Adding or querying any search strategy (tsvector, BM25, trgm, pgvector, PostGIS) or the unified `fullTextSearch`/`searchScore` system
+- **Search**: Adding or querying any search strategy (tsvector, BM25, trgm, pgvector, PostGIS) or the unified `unifiedSearch`/`searchScore` system
 - **Runtime queries**: Building GraphQL queries dynamically at runtime (browser-safe `graphql-query` package)
 - **Schema export**: Exporting GraphQL SDL from a database or endpoint
 
@@ -74,11 +74,11 @@ const newUser = await db.user.create({
 
 ## Quick Start: Search
 
-The simplest way to search — `fullTextSearch` fans a single string to all text-compatible algorithms automatically:
+The simplest way to search — `unifiedSearch` fans a single string to all text-compatible algorithms automatically:
 
 ```typescript
 const results = await db.article.findMany({
-  where: { fullTextSearch: 'machine learning' },
+  where: { unifiedSearch: 'machine learning' },
   orderBy: 'SEARCH_SCORE_DESC',
   select: { title: true, searchScore: true },
 }).execute();
@@ -143,7 +143,7 @@ See [codegen-hooks-patterns.md](./references/codegen-hooks-patterns.md) for adva
 | **Trigram** | Fuzzy matching, typo tolerance | 0..1, higher = more similar |
 | **pgvector** | Semantic/embedding similarity, RAG | Lower distance = closer (sort ASC) |
 | **PostGIS** | Location queries, geofencing, proximity | Depends on operator |
-| **Unified** | Multi-signal ranking via `fullTextSearch` + `searchScore` | Higher = more relevant (0..1) |
+| **Unified** | Multi-signal ranking via `unifiedSearch` + `searchScore` | Higher = more relevant (0..1) |
 
 See [search.md](./references/search.md) for the decision matrix and combined query patterns.
 
@@ -185,7 +185,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [search-trigram.md](./references/search-trigram.md) | Trigram fuzzy matching | `similarTo`, `wordSimilarTo`, `@trgmSearch` smart tag |
 | [search-pgvector.md](./references/search-pgvector.md) | pgvector similarity | Creating vector columns, HNSW indexes, distance metrics |
 | [search-postgis.md](./references/search-postgis.md) | PostGIS spatial queries | Geometry columns, spatial filters, proximity |
-| [search-composite.md](./references/search-composite.md) | Unified composite system | `fullTextSearch`, `searchScore`, combined multi-algorithm patterns |
+| [search-composite.md](./references/search-composite.md) | Unified composite system | `unifiedSearch`, `searchScore`, combined multi-algorithm patterns |
 | [search-rag.md](./references/search-rag.md) | RAG patterns with ORM | Vector search for RAG, multi-table retrieval, hybrid search, embedding ingestion |
 
 ### Runtime Query Generation
