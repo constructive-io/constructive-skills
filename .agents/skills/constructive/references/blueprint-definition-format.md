@@ -85,13 +85,13 @@ Common node types:
 | `DataId` | Adds `id uuid PRIMARY KEY DEFAULT uuidv7()` | **Must be explicitly listed** — no longer auto-created |
 | `DataTimestamps` | Adds `created_at` and `updated_at` timestamps | Auto-maintained |
 | `DataOwnershipInEntity` | Adds `owner_id uuid NOT NULL` with FK | Entity-scoped ownership |
-| `DataSearch` | Adds full-text search columns | tsvector + GIN index |
+| `SearchUnified` | Adds full-text search columns | tsvector + GIN index |
 | `DataSoftDelete` | Adds `deleted_at` timestamp for soft deletes | Filtered in queries |
-| `DataEmbedding` | Adds vector embedding field + HNSW/IVFFlat index | Configurable dimensions, metric, stale tracking, job enqueue |
+| `SearchVector` | Adds vector embedding field + HNSW/IVFFlat index | Configurable dimensions, metric, stale tracking, job enqueue |
 | `DataTags` | Adds `citext[]` tags field + GIN index | For array containment/overlap queries |
 | `DataStatusField` | Adds status field + B-tree index + optional CHECK | Configurable allowed values |
 | `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
-| `DataTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
+| `SearchTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 
