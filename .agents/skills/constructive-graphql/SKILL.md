@@ -23,7 +23,7 @@ Use this skill when:
 ## The Flow
 
 ```
-1. Design DB  →  Use @constructive-io/sdk to create tables, fields, indexes, search columns
+1. Design DB  →  Use @constructive-io/node to create tables, fields, indexes, search columns
 2. Codegen    →  cnc codegen --orm --react-query (generates typed TS client)
 3. Query      →  Use generated ORM/hooks to fetch, mutate, search, paginate
 ```

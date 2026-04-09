@@ -1,6 +1,6 @@
 # Entity Field Reference
 
-Detailed field reference for all service and schema-related entities in the `@constructive-io/sdk`.
+Detailed field reference for all service and schema-related entities in the `@constructive-io/node` SDK.
 
 ## Api
 
