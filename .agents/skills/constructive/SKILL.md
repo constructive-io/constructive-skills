@@ -38,7 +38,7 @@ It covers: 14 Authz* policy node types, permissive vs restrictive composition, `
 
 ## Services & Schemas
 
-- Create and configure API services, attach database schemas, set up domain/subdomain routing, and manage schema grants via the `@constructive-io/sdk`
+- Create and configure API services, attach database schemas, set up domain/subdomain routing, and manage schema grants via the `@constructive-io/node` SDK
 - Entity hierarchy: Database > Schema > Api > ApiSchema, ApiModule, Domain, Site
 - Full CRUD examples for Api, ApiSchema, ApiModule, Domain, SchemaGrant, and Site entities
 
