@@ -73,8 +73,9 @@ See [server-config.md](./references/server-config.md) for details.
 - Build and deploy Knative-style TypeScript HTTP cloud functions (email, webhooks, background jobs)
 - Function handler pattern: `export default async (params, context) => { ... }` with GraphQL client access
 - Direct database access via `pg-cache`, programmatic PGPM usage, Docker builds, and Kubernetes deployment
+- Local development ingress via port-forwarding (Skaffold automatic, kubectl manual, helper script)
 
-**Triggers:** "create a cloud function", "build serverless function", "Knative function", "deploy function to Kubernetes", "run PGPM in a function"
+**Triggers:** "create a cloud function", "build serverless function", "Knative function", "deploy function to Kubernetes", "run PGPM in a function", "port-forward", "access function locally", "local ingress", "can't connect to function"
 
 See [cloud-functions.md](./references/cloud-functions.md) for details.
 
