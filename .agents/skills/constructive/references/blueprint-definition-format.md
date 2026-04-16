@@ -8,6 +8,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 
 ```json
 {
+  "membership_types": [ ... ],
   "tables": [ ... ],
   "relations": [ ... ],
   "indexes": [ ... ],
@@ -16,7 +17,43 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 }
 ```
 
-`tables` is required. `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
+`tables` is required. `membership_types`, `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
+
+## Membership Types (Phase 0)
+
+`membership_types[]` provisions dynamic entity types **before** tables and relations. Each entry creates a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+
+```json
+{
+  "membership_types": [
+    {
+      "name": "Channel Member",
+      "prefix": "channel",
+      "description": "Membership to a channel.",
+      "parent_entity": "org"
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | **Yes** | — | Human-readable name (e.g. `"Channel Member"`) |
+| `prefix` | string | **Yes** | — | SQL prefix for generated objects (e.g. `"channel"` → `channels` table) |
+| `description` | string | No | `null` | Description of the entity type |
+| `parent_entity` | string | No | `"org"` | Parent type prefix. Must be already provisioned |
+| `table_name` | string | No | `prefix + 's'` | Override entity table name |
+| `is_visible` | boolean | No | `true` | Whether parent members can see children |
+| `has_limits` | boolean | No | `false` | Provision a limits module |
+| `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
+| `has_levels` | boolean | No | `false` | Provision a levels module (gamification) |
+| `skip_entity_policies` | boolean | No | `false` | Skip creating default RLS policies |
+
+**Processing order:** Entries are processed in array order. Parent types must appear before child types.
+
+**Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
+
+See the [`constructive-membership-types`](../constructive-membership-types/SKILL.md) skill for the full membership types reference.
 
 ## Table Entries
 
@@ -171,6 +208,8 @@ Each tuple is `[privilege, columns]` where `"*"` means all columns.
 | `policy_role` | string | No | Role the policy applies to |
 
 See the [constructive-safegres](../constructive-safegres/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
+
+**`entity_type` resolution:** For membership-based policies (`AuthzMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
 
 **Processing:** All policies are applied after the table is created. Multiple permissive policies on the same privilege are ORed by PostgreSQL. Adding a restrictive policy (`"permissive": false`) creates an AND constraint.
 
