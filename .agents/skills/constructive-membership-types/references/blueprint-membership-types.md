@@ -69,7 +69,7 @@ const definition: BlueprintDefinition = {
       policies: [
         {
           $type: 'AuthzEntityMembership',
-          data: { entity_field: 'channel_id', membership_type: 3 },
+          data: { entity_field: 'channel_id', entity_type: 'channel' },
           privileges: ['select', 'insert', 'update', 'delete'],
           permissive: true,
         },
@@ -88,7 +88,9 @@ const definition: BlueprintDefinition = {
 };
 ```
 
-**Key:** `target_table: 'channels'` works because `membership_types` entries are processed in Phase 0 and their entity tables are added to the `table_map` before Phase 1 (tables) and Phase 2 (relations).
+**Key:** Use `entity_type: 'channel'` (the prefix string) instead of a hardcoded `membership_type` integer. `constructBlueprint()` resolves the prefix to the correct `membership_type` number at construction time, since Phase 0 has already provisioned the type. This avoids fragile numeric references that depend on provisioning order.
+
+`target_table: 'channels'` works because `membership_types` entries are processed in Phase 0 and their entity tables are added to the `table_map` before Phase 1 (tables) and Phase 2 (relations).
 
 ## Validation
 
@@ -123,7 +125,7 @@ const template = await db.blueprintTemplate.create({
           policies: [
             {
               $type: 'AuthzEntityMembership',
-              data: { entity_field: 'channel_id', membership_type: 3 },
+              data: { entity_field: 'channel_id', entity_type: 'channel' },
               privileges: ['select', 'insert', 'update', 'delete'],
               permissive: true,
             },
@@ -243,7 +245,7 @@ A common pattern: provision entity types in Phase 0, then create domain tables i
       "policies": [
         {
           "$type": "AuthzEntityMembership",
-          "data": { "entity_field": "channel_id", "membership_type": 3 },
+          "data": { "entity_field": "channel_id", "entity_type": "channel" },
           "privileges": ["select", "insert", "update", "delete"],
           "permissive": true
         }
