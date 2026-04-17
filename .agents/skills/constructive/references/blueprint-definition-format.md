@@ -43,11 +43,12 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 | `description` | string | No | `null` | Description of the entity type |
 | `parent_entity` | string | No | `"org"` | Parent type prefix. Must be already provisioned |
 | `table_name` | string | No | `prefix + 's'` | Override entity table name |
-| `is_visible` | boolean | No | `true` | Whether parent members can see children |
+| `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. No-op when `table_provision` is supplied |
 | `has_limits` | boolean | No | `false` | Provision a limits module |
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
 | `has_levels` | boolean | No | `false` | Provision a levels module (gamification) |
-| `skip_entity_policies` | boolean | No | `false` | Skip creating default RLS policies |
+| `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
+| `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grant_privileges`, `grant_roles`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
 **Processing order:** Entries are processed in array order. Parent types must appear before child types.
 
