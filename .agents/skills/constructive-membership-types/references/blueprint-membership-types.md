@@ -17,7 +17,8 @@ The `membership_types` array is a top-level key in the blueprint definition JSON
       "has_limits": false,
       "has_profiles": false,
       "has_levels": false,
-      "skip_entity_policies": false
+      "skip_entity_policies": false,
+      "table_provision": null
     }
   ],
   "tables": [ ... ],
@@ -34,11 +35,114 @@ The `membership_types` array is a top-level key in the blueprint definition JSON
 | `description` | string | No | `null` | Optional description of the entity type |
 | `parent_entity` | string | No | `"org"` | Parent type prefix. Must be an already-provisioned type |
 | `table_name` | string | No | `prefix + 's'` | Override entity table name (e.g. `"rooms"` instead of default `"channels"`) |
-| `is_visible` | boolean | No | `true` | Whether parent members can see child entities |
+| `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. **No-op when `table_provision` is supplied.** See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
-| `skip_entity_policies` | boolean | No | `false` | Skip creating default RLS policies on the entity table |
+| `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
+| `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
+
+## Entity-Table Policies (`is_visible`, `skip_entity_policies`, `table_provision`)
+
+The entity table itself (e.g. `channels`) needs RLS policies so members can see / create / update / delete their own entities. Three fields interact to decide what ends up on that table:
+
+### Decision matrix
+
+| `skip_entity_policies` | `table_provision` | Result on the entity table |
+|---|---|---|
+| `false` (default) | `null` (default) | **5 defaults** (gated by `is_visible`) |
+| `false` | object | **caller's `policies[]` only**; `is_visible` is a no-op |
+| `true` | `null` | **0 policies** (escape hatch — you add them later) |
+| `true` | object | **caller's `policies[]` only** |
+
+**Mental model:** "defaults **OR** your overlay, never both." The presence of `table_provision` = "I know what I'm doing, give me full control." `is_visible` only matters on the defaults path.
+
+### The 5 default policies
+
+When `table_provision` is `null` and `skip_entity_policies` is `false`, the following policies are applied to the entity table (via `secure_table_provision` fanout):
+
+| Default | Privilege | Summary |
+|---|---|---|
+| `self_member` | `SELECT` | Members of this entity can see it |
+| `parent_member` | `SELECT` | Members of the **parent** entity can see it **— only when `is_visible: true`** |
+| `admin_create` | `INSERT` | Parent members with `create_entity` permission can create one |
+| `admin_update` | `UPDATE` | Entity admins can update |
+| `admin_delete` | `DELETE` | Entity admins can delete |
+
+If `is_visible: false`, the `parent_member` SELECT default is omitted and sibling entities become invisible to parent members (other 4 defaults still apply).
+
+### `table_provision` shape
+
+`table_provision` mirrors the same vocabulary as `tables[]` entries / `secure_table_provision` — so if you already know blueprint tables, you already know this:
+
+```json
+{
+  "use_rls": true,
+  "nodes": [ { "$type": "DataTimestamps" } ],
+  "fields": [
+    { "name": "topic", "type": "text" }
+  ],
+  "grant_privileges": [ ["select", "*"], ["insert", "*"] ],
+  "grant_roles": ["authenticated"],
+  "policies": [
+    {
+      "$type": "AuthzEntityMembership",
+      "data": { "entity_field": "id", "entity_type": "channel" },
+      "privileges": ["select"],
+      "name": "self_member"
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `use_rls` | boolean | No | `true` | Whether to enable RLS on the entity table |
+| `nodes` | array | No | `[]` | Data behavior nodes applied to the entity table (e.g. `DataTimestamps`) |
+| `fields` | array | No | `[]` | Extra columns on the entity table |
+| `grant_privileges` | array | No | inherited | Privilege tuples like `[["select","*"], ["insert","*"]]` |
+| `grant_roles` | string[] | No | `["authenticated"]` | Roles that receive the grants |
+| `policies` | array | No | `[]` | Safegres policy definitions (same `$type` discriminator as `tables[].policies[]`). When present, **fully replaces** the 5 defaults |
+
+### When to use which
+
+| Goal | Config |
+|---|---|
+| "Just give me the standard defaults" | leave all three fields at defaults |
+| "Hide this entity from parent members but keep everything else" | `"is_visible": false` |
+| "Add custom fields/grants on the entity table (no custom policies)" | `table_provision: { nodes, fields, grant_privileges }`. **Heads up:** because `table_provision` is the override flag, this skips the 5 default policies too. If you want custom nodes/fields **and** the default policies, also copy the 5 defaults into `table_provision.policies[]` |
+| "I want a completely different policy model on this entity" | `table_provision: { policies: [...] }` with your own `policies[]` |
+| "I'll add policies later myself" | `"skip_entity_policies": true` |
+
+### Example: custom fields + custom policies
+
+```json
+{
+  "name": "Data Room Member",
+  "prefix": "data_room",
+  "parent_entity": "org",
+  "table_provision": {
+    "nodes": [ { "$type": "DataTimestamps" } ],
+    "fields": [
+      { "name": "topic", "type": "text" }
+    ],
+    "policies": [
+      {
+        "$type": "AuthzEntityMembership",
+        "data": { "entity_field": "id", "entity_type": "data_room" },
+        "privileges": ["select", "update", "delete"],
+        "name": "self_member"
+      },
+      {
+        "$type": "AuthzEntityMembership",
+        "data": { "entity_field": "owner_id", "entity_type": "org" },
+        "privileges": ["insert"],
+        "name": "org_insert"
+      }
+    ]
+  }
+}
+```
 
 ## TypeScript Type
 
