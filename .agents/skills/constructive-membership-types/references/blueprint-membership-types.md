@@ -119,8 +119,9 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
   "fields": [
     { "name": "topic", "type": "text" }
   ],
-  "grant_privileges": [ ["select", "*"], ["insert", "*"] ],
-  "grant_roles": ["authenticated"],
+  "grants": [
+    { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"]] }
+  ],
   "policies": [
     {
       "$type": "AuthzEntityMembership",
@@ -137,8 +138,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
 | `use_rls` | boolean | No | `true` | Whether to enable RLS on the entity table |
 | `nodes` | array | No | `[]` | Data behavior nodes applied to the entity table (e.g. `DataTimestamps`) |
 | `fields` | array | No | `[]` | Extra columns on the entity table |
-| `grant_privileges` | array | No | inherited | Privilege tuples like `[["select","*"], ["insert","*"]]` |
-| `grant_roles` | string[] | No | `["authenticated"]` | Roles that receive the grants |
+| `grants` | array | No | `[]` | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting |
 | `policies` | array | No | `[]` | Safegres policy definitions (same `$type` discriminator as `tables[].policies[]`). When present, **fully replaces** the 5 defaults |
 
 ### When to use which
@@ -147,7 +147,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
 |---|---|
 | "Just give me the standard defaults" | leave all three fields at defaults |
 | "Hide this entity from parent members but keep everything else" | `"is_visible": false` |
-| "Add custom fields/grants on the entity table (no custom policies)" | `table_provision: { nodes, fields, grant_privileges }`. **Heads up:** because `table_provision` is the override flag, this skips the 5 default policies too. If you want custom nodes/fields **and** the default policies, also copy the 5 defaults into `table_provision.policies[]` |
+| "Add custom fields/grants on the entity table (no custom policies)" | `table_provision: { nodes, fields, grants }`. **Heads up:** because `table_provision` is the override flag, this skips the 5 default policies too. If you want custom nodes/fields **and** the default policies, also copy the 5 defaults into `table_provision.policies[]` |
 | "I want a completely different policy model on this entity" | `table_provision: { policies: [...] }` with your own `policies[]` |
 | "I'll add policies later myself" | `"skip_entity_policies": true` |
 

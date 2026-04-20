@@ -102,8 +102,9 @@ const result = await db.entityTypeProvision.create({
       use_rls: true,
       nodes: [{ $type: 'DataTimestamps' }],
       fields: [{ name: 'topic', type: 'text' }],
-      grant_privileges: [['select', '*'], ['insert', '*']],
-      grant_roles: ['authenticated'],
+      grants: [
+        { roles: ['authenticated'], privileges: [['select', '*'], ['insert', '*']] },
+      ],
       policies: [
         {
           $type: 'AuthzEntityMembership',
@@ -129,11 +130,10 @@ const result = await db.entityTypeProvision.create({
 | `use_rls` | boolean | `true` | Enable RLS on the entity table |
 | `nodes` | array | `[]` | Data behavior nodes applied to the entity table (e.g. `DataTimestamps`) |
 | `fields` | array | `[]` | Extra columns on the entity table |
-| `grant_privileges` | array | inherited | Privilege tuples (e.g. `[["select","*"], ["insert","*"]]`) |
-| `grant_roles` | string[] | `["authenticated"]` | Roles that receive the grants |
+| `grants` | array | `[]` | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting |
 | `policies` | array | `[]` | Safegres policy definitions. When present, **fully replaces** the 5 defaults |
 
-> **snake_case inside the object:** `tableProvision` is a JSONB payload, so its inner keys use snake_case (`grant_privileges`, `grant_roles`, `use_rls`) — the same convention as blueprint `tables[]` entries. The outer `tableProvision` key itself is camelCase because it's an ORM column name.
+> **snake_case inside the object:** `tableProvision` is a JSONB payload, so its inner keys use snake_case (`grants`, `use_rls`) — the same convention as blueprint `tables[]` entries. The outer `tableProvision` key itself is camelCase because it's an ORM column name.
 
 ### When to use which
 
@@ -141,7 +141,7 @@ const result = await db.entityTypeProvision.create({
 |---|---|
 | "Standard defaults" | leave all three fields at defaults |
 | "Hide from parent members" | `isVisible: false` |
-| "Custom fields/grants on the entity table (no custom policies)" | `tableProvision: { nodes, fields, grant_privileges }`. **Heads up:** because `tableProvision` is the override flag, this skips the 5 default policies too. If you want custom fields **and** defaults, also copy the 5 defaults into `tableProvision.policies[]` |
+| "Custom fields/grants on the entity table (no custom policies)" | `tableProvision: { nodes, fields, grants }`. **Heads up:** because `tableProvision` is the override flag, this skips the 5 default policies too. If you want custom fields **and** defaults, also copy the 5 defaults into `tableProvision.policies[]` |
 | "Completely different policy model" | `tableProvision: { policies: [...] }` |
 | "I'll add policies later" | `skipEntityPolicies: true` |
 
