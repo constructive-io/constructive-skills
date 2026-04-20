@@ -6,10 +6,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A collection of skills for AI coding agents working with Constructive tooling. Skills are packaged instructions and scripts that extend agent capabilities for GraphQL development workflows, following the [Agent Skills](https://agentskills.io/) format.
 
-## Available Skills (12 Umbrella Skills)
+## Available Skills
 
 | Skill | Description |
 |-------|-------------|
+| **constructive-features** | Feature catalog — one-page router mapping every app capability (auth, authz, multi-tenancy, storage, search, AI, GraphQL, ops) to the authoritative skill |
 | **constructive** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
 | **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
 | **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, and run tests |
