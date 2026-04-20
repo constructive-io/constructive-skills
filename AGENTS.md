@@ -6,10 +6,11 @@ This file provides guidance to AI coding agents (Claude Code, Cursor, Copilot, e
 
 ## Repository Overview
 
-A collection of skills for AI coding agents working with Constructive tooling. Skills are organized into **10 umbrella skills** that consolidate related functionality:
+A collection of skills for AI coding agents working with Constructive tooling. Skills are organized into umbrella skills that consolidate related functionality:
 
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
+| **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
 | **constructive** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
 | **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
 | **constructive-graphql** | graphql-codegen, sdk-search, graphql-query | Codegen, runtime queries, search, pagination |
