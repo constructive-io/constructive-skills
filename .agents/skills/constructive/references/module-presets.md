@@ -40,19 +40,28 @@ interface ModulePreset {
 
 ## Usage
 
+Look up the preset, then pass `preset.modules` straight to `provisionDatabaseWithUser` via the ORM:
+
 ```ts
 import { getModulePreset } from '@constructive-io/node-type-registry';
+import { db } from './orm'; // codegen'd ORM for the public target
 
 const preset = getModulePreset('auth:email');
-// preset.modules → ['users_module', 'sessions_module', ...]
-// preset.includes_notes, preset.omits_notes → rationale for CLI/docs/UI
+// preset.modules → ['users_module', 'sessions_module', 'emails_module', ...]
 
-// Then pass to provisioning:
-// SELECT metaschema_generators.provision_database_modules(
-//   v_database_id := ...,
-//   v_modules := preset.modules
-// );
+const result = await db.mutation.provisionDatabaseWithUser({
+  input: {
+    pDatabaseName: 'my_app',
+    pDomain: 'example.com',
+    pSubdomain: 'app',
+    // pModules is text[] at the SQL layer; serialize the preset as a PG array literal
+    pModules: `{${preset.modules.join(',')}}`,
+    pOptions: {},
+  },
+}).execute();
 ```
+
+`preset.includes_notes` and `preset.omits_notes` carry per-module rationale — use them to render CLI help, scaffolder prompts, or docs.
 
 ## Feature Flags / Toggles (future)
 
