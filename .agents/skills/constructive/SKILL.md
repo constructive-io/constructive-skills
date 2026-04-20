@@ -28,6 +28,17 @@ See [blueprints.md](./references/blueprints.md) for the full system reference.
 Sub-references:
 - [blueprint-definition-format.md](./references/blueprint-definition-format.md) — The blueprint definition format spec with complete examples
 
+## Storage Security Policies
+
+- Configurable per-bucket RLS policies via `storage_config.policies[]` on `entity_type_provision`
+- Compose specific `Authz*` node types per entity type's storage tables (buckets, files, upload_requests)
+- Two layers: `is_public` controls S3 bucket ACL (transport), `policies` controls RLS (data)
+- When `policies` is omitted, defaults apply (membership + AuthzPublishable + AuthzDirectOwner)
+
+**Triggers:** "storage policies", "bucket security", "storage_config", "file access control", "upload permissions", "is_public vs policies"
+
+See [storage-policies.md](./references/storage-policies.md) for typical policy combinations and the full provisioning pipeline.
+
 ## Security Model (Safegres)
 
 The Safegres authorization protocol is now its own top-level skill: **[`constructive-safegres`](../constructive-safegres/SKILL.md)**.
