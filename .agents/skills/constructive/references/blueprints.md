@@ -133,7 +133,7 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
 2. **Phase 1 — Tables:** For each entry in `definition.tables[]`:
    - Resolves `schema_name` (per-table override or falls back to the `schema_id` parameter)
    - Creates the table with all fields and Data* nodes
-   - Applies grants for each `grant_roles` x `grants` combination
+   - Applies grants for each `grants[].roles[]` x `grants[].privileges[]` combination
    - Applies policies for each entry in `policies[]`
    - Enables RLS if `use_rls` is true (default) or if any policies are defined
    - Records table in `blueprint_construction` for state tracking

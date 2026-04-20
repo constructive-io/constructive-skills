@@ -2,7 +2,7 @@
 
 The blueprint `definition` is a JSONB document that declaratively describes a complete domain schema. It uses structured table config with inline `$type` discriminators for nodes, policies, and relations.
 
-> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grant_roles`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through as-is. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (e.g. `BlueprintTemplate`, `Blueprint`). When writing blueprint definitions, always use snake_case.
+> **snake_case convention:** The definition uses **snake_case** keys (`table_name`, `grants`, `delete_action`, etc.) because it is stored as opaque JSONB in PostgreSQL. PostGraphile/GraphQL does not transform keys inside JSONB fields — the JSON is passed through as-is. This is intentional and differs from the camelCase conventions used in the SDK's ORM types (e.g. `BlueprintTemplate`, `Blueprint`). When writing blueprint definitions, always use snake_case.
 
 ## Top-Level Structure
 
@@ -50,7 +50,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets, files, upload_requests tables) |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (string[] of Authz* types). See [storage-policies.md](./storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
-| `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grant_privileges`, `grant_roles`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
+| `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grants`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
 **Processing order:** Entries are processed in array order. Parent types must appear before child types.
 
@@ -71,8 +71,9 @@ Each entry in `tables[]` defines one database table:
     { "name": "title", "type": "text" },
     { "name": "price", "type": "numeric" }
   ],
-  "grant_roles": ["authenticated"],
-  "grants": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]],
+  "grants": [
+    { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
+  ],
   "use_rls": true,
   "policies": [
     {
@@ -93,8 +94,7 @@ Each entry in `tables[]` defines one database table:
 | `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to the `schemaId` param of `constructBlueprint()` |
 | `nodes` | array | Yes | Data behavior node types to apply. **Must start with `DataId`** unless the table intentionally has no primary key |
 | `fields` | array | No | Custom field definitions |
-| `grant_roles` | string[] | No | Roles to grant access (default: `["authenticated"]`) |
-| `grants` | array | No | Grant privilege tuples (e.g. `["select", "*"]`) |
+| `grants` | array | No | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting. Default: `[]` |
 | `use_rls` | boolean | No | Enable RLS (default: `true`) |
 | `policies` | array | No | Safegres policy definitions (see below) |
 | `indexes` | array | No | Per-table index definitions (see Indexes section) |
@@ -170,18 +170,32 @@ Example with index:
 
 ### Grants
 
-`grants[]` is an array of privilege tuples:
+`grants[]` is an array of grant objects, each with `roles` and `privileges`:
 
 ```json
 [
-  ["select", "*"],
-  ["insert", "*"],
-  ["update", "title,price"],
-  ["delete", "*"]
+  {
+    "roles": ["authenticated"],
+    "privileges": [
+      ["select", "*"],
+      ["insert", "*"],
+      ["update", "title,price"],
+      ["delete", "*"]
+    ]
+  }
 ]
 ```
 
-Each tuple is `[privilege, columns]` where `"*"` means all columns.
+Each entry grants every role in `roles[]` the cross-product of all `privileges[]` tuples. Each privilege tuple is `[privilege, columns]` where `"*"` means all columns.
+
+**Per-role targeting:** Use multiple entries to assign different privileges to different roles:
+
+```json
+[
+  { "roles": ["authenticated"], "privileges": [["select", "*"]] },
+  { "roles": ["admin"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
+]
+```
 
 ### Policies
 
@@ -258,7 +272,9 @@ For `RelationManyToMany`, the `data` object configures the junction table:
     "nodes": [{"$type": "DataId", "data": {}}],
     "policy_type": "AuthzAllowAll",
     "policy_data": {},
-    "grant_privileges": [["select", "*"], ["insert", "*"], ["delete", "*"]]
+    "grants": [
+      { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["delete", "*"]] }
+    ]
   }
 }
 ```
@@ -335,8 +351,9 @@ Unique constraint definitions can appear at the top level (`definition.unique_co
         { "name": "slug", "type": "text" },
         { "name": "description", "type": "text" }
       ],
-      "grant_roles": ["authenticated"],
-      "grants": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]],
+      "grants": [
+        { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
+      ],
       "policies": [
         {
           "$type": "AuthzEntityMembership",
@@ -359,8 +376,9 @@ Unique constraint definitions can appear at the top level (`definition.unique_co
         { "name": "description", "type": "text" },
         { "name": "is_published", "type": "boolean" }
       ],
-      "grant_roles": ["authenticated"],
-      "grants": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]],
+      "grants": [
+        { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
+      ],
       "policies": [
         {
           "$type": "AuthzEntityMembership",
@@ -383,8 +401,9 @@ Unique constraint definitions can appear at the top level (`definition.unique_co
         { "name": "total", "type": "numeric" },
         { "name": "status", "type": "text" }
       ],
-      "grant_roles": ["authenticated"],
-      "grants": [["select", "*"], ["insert", "*"], ["update", "*"]],
+      "grants": [
+        { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"]] }
+      ],
       "policies": [
         {
           "$type": "AuthzEntityMembership",
