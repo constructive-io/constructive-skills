@@ -40,7 +40,7 @@ interface ModulePreset {
 
 ## Usage
 
-Look up the preset, then pass `preset.modules` straight to `provisionDatabaseWithUser` via the ORM:
+Look up the preset, then insert a `databaseProvisionModule` row via the ORM. The BEFORE-INSERT trigger creates the database and installs the modules listed in `modules`:
 
 ```ts
 import { getModulePreset } from '@constructive-io/node-type-registry';
@@ -49,15 +49,17 @@ import { db } from './orm'; // codegen'd ORM for the public target
 const preset = getModulePreset('auth:email');
 // preset.modules → ['users_module', 'sessions_module', 'emails_module', ...]
 
-const result = await db.mutation.provisionDatabaseWithUser({
-  input: {
-    pDatabaseName: 'my_app',
-    pDomain: 'example.com',
-    pSubdomain: 'app',
-    // pModules is text[] at the SQL layer; serialize the preset as a PG array literal
-    pModules: `{${preset.modules.join(',')}}`,
-    pOptions: {},
+const row = await db.databaseProvisionModule.create({
+  data: {
+    databaseName: 'my_app',
+    domain: 'example.com',
+    subdomain: 'app',
+    // modules is text[] at the SQL layer; serialize the preset as a PG array literal
+    modules: `{${preset.modules.join(',')}}`,
+    options: {},
+    bootstrapUser: false, // set true if you also want an owner/user seeded
   },
+  select: { id: true, databaseId: true, status: true },
 }).execute();
 ```
 
