@@ -105,6 +105,18 @@ Sub-references:
 - [env-vars.md](./references/env-vars.md) — Source file locations for env vars and types
 - [env-config-file.md](./references/env-config-file.md) — Config file reference (`pgpm.json`)
 
+## Module Presets
+
+- Curated, named bundles of Constructive modules for common app shapes (`minimal`, `auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, `auth:hardened`, `b2b`, `full`)
+- Metadata only — passing `preset.modules` to `metaschema_generators.provision_database_modules(v_modules => ...)` is what installs them
+- Lives in TypeScript: `graphql/node-type-registry/src/module-presets/` — exported as `allModulePresets` and `getModulePreset(name)` from `@constructive-io/node-type-registry`
+- Each preset carries `display_name`, `summary`, narrative `description`, `good_for[]`, `not_for[]`, `modules[]`, and per-module `includes_notes` / `omits_notes` for rationale
+- Narrative reference (what's optional vs load-bearing vs unwired) lives in `constructive-db` at `docs/architecture/module-presets.md`
+
+**Triggers:** "module presets", "what modules should I install", "auth:email preset", "auth:sso preset", "b2b preset", "minimal constructive setup", "which modules are optional"
+
+See [module-presets.md](./references/module-presets.md) for the preset catalog and shape.
+
 ## CNC CLI Execution Engine
 
 - Execute raw GraphQL queries against Constructive APIs using the `cnc` CLI
