@@ -35,7 +35,7 @@ Every entity type gets:
 - A **permissions module** with bitmask-based permissions
 - A **memberships module** for tracking who belongs to what
 - **RLS security policies** on all tables
-- Optional modules: limits, profiles, levels, invites
+- Optional modules: limits, profiles, levels, invites, storage
 
 ### Permission Model
 

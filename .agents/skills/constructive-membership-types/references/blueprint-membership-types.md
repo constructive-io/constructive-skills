@@ -39,8 +39,45 @@ The `membership_types` array is a top-level key in the blueprint definition JSON
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
+| `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets, files, and upload_requests tables |
+| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
+
+## Storage Config (`has_storage`, `storage_config`)
+
+When `has_storage: true`, the system provisions a `storage_module` for the entity type, creating `{prefix}_buckets`, `{prefix}_files`, and `{prefix}_upload_requests` tables with RLS security policies.
+
+The optional `storage_config` object controls bucket behavior:
+
+```json
+{
+  "name": "Data Room Member",
+  "prefix": "data_room",
+  "parent_entity": "org",
+  "has_storage": true,
+  "storage_config": {
+    "policies": ["AuthzEntityMembership", "AuthzPublishable"]
+  }
+}
+```
+
+### `storage_config` fields
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
+| `policies` | string[] | No | `null` | Array of `Authz*` node type names. When provided, replaces the default storage security policies entirely |
+
+### Typical policy combinations
+
+| Combination | Use case |
+|-------------|----------|
+| `policies: ["AuthzEntityMembership"]` | Private entity files (default pattern) |
+| `is_public: true, policies: ["AuthzEntityMembership", "AuthzPublishable"]` | Public assets with member write |
+| `policies: ["AuthzDirectOwner"]` | Owner-only private docs |
+
+See [storage-policies.md](../../constructive/references/storage-policies.md) for the full reference including the provisioning pipeline, privilege matrix, and all available policy types.
 
 ## Entity-Table Policies (`is_visible`, `skip_entity_policies`, `table_provision`)
 

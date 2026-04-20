@@ -47,6 +47,8 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 | `has_limits` | boolean | No | `false` | Provision a limits module |
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
 | `has_levels` | boolean | No | `false` | Provision a levels module (gamification) |
+| `has_storage` | boolean | No | `false` | Provision a storage module (buckets, files, upload_requests tables) |
+| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (string[] of Authz* types). See [storage-policies.md](./storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
 | `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grant_privileges`, `grant_roles`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
