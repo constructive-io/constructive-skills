@@ -95,7 +95,7 @@ Same vocabulary as blueprint `tables[]` entries / `secure_table_provision`:
 const result = await db.entityTypeProvision.create({
   data: {
     databaseId: dbId,
-    name: 'Data Room Member',
+    name: 'Data Room',
     prefix: 'data_room',
     parentEntity: 'org',
     tableProvision: {

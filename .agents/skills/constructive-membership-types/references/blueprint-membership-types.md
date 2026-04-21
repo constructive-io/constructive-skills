@@ -52,7 +52,7 @@ The optional `storage_config` object controls bucket behavior:
 
 ```json
 {
-  "name": "Data Room Member",
+  "name": "Data Room",
   "prefix": "data_room",
   "parent_entity": "org",
   "has_storage": true,
@@ -155,7 +155,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
 
 ```json
 {
-  "name": "Data Room Member",
+  "name": "Data Room",
   "prefix": "data_room",
   "parent_entity": "org",
   "table_provision": {

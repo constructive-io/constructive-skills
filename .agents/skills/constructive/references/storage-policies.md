@@ -30,7 +30,7 @@ In a blueprint `membership_types[]` entry:
 
 ```json
 {
-  "name": "Data Room Member",
+  "name": "Data Room",
   "prefix": "data_room",
   "parent_entity": "org",
   "has_storage": true,
@@ -46,7 +46,7 @@ In a blueprint `membership_types[]` entry:
 await db.entityTypeProvision.create({
   data: {
     databaseId: dbId,
-    name: 'Data Room Member',
+    name: 'Data Room',
     prefix: 'data_room',
     parentEntity: 'org',
     hasStorage: true,
