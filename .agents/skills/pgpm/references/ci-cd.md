@@ -188,7 +188,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies
@@ -423,14 +423,16 @@ steps:
 
 ## Best Practices
 
-1. **Always use health checks** — Ensure PostgreSQL is ready before tests run
-2. **Cache pgpm CLI** — Speeds up workflow execution significantly
-3. **Use concurrency control** — Prevent duplicate runs on rapid pushes
-4. **Configure Git** — Required for tests that use git operations
-5. **Use matrix strategy** — Run tests in parallel across packages
-6. **Bootstrap users before tests** — `pgpm admin-users` creates required roles
-7. **Use fail-fast: false** — Let all tests complete even if some fail
-8. **Pin pgpm version** — Ensure consistent behavior across runs
+1. **Always use Node.js 22** — Required for correct pnpm module resolution with PostGraphile/Graphile packages. Using Node.js 20 or earlier causes duplicate `graphql` module instances and "Cannot use GraphQLObjectType from another module or realm" errors
+2. **Always use health checks** — Ensure PostgreSQL is ready before tests run
+3. **Cache pgpm CLI** — Speeds up workflow execution significantly
+4. **Use concurrency control** — Prevent duplicate runs on rapid pushes
+5. **Configure Git** — Required for tests that use git operations
+6. **Use matrix strategy** — Run tests in parallel across packages
+7. **Bootstrap users before tests** — `pgpm admin-users` creates required roles
+8. **Use fail-fast: false** — Let all tests complete even if some fail
+9. **Pin pgpm version** — Ensure consistent behavior across runs
+10. **Use `--frozen-lockfile`** — Ensure CI uses exact lockfile versions, preventing silent dependency drift
 
 ## References
 

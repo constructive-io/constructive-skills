@@ -73,10 +73,11 @@ Choose the **highest-level framework** that fits your test scenario:
 
 ## Critical Rules
 
-1. **Always include `beforeEach`/`afterEach` hooks** — savepoint-based isolation prevents test state leakage
-2. **Never create `new pg.Pool()` or `new pg.Client()` in tests** — use `getConnections()`
-3. **Never manually create/drop databases** — the framework handles this
-4. **Never skip hooks** — tests will leak state
+1. **Use Node.js 22+** — Required for correct pnpm module resolution with PostGraphile/Graphile packages. Node.js 20 causes duplicate `graphql` module instances and "Cannot use GraphQLObjectType from another module or realm" errors at runtime
+2. **Always include `beforeEach`/`afterEach` hooks** — savepoint-based isolation prevents test state leakage
+3. **Never create `new pg.Pool()` or `new pg.Client()` in tests** — use `getConnections()`
+4. **Never manually create/drop databases** — the framework handles this
+5. **Never skip hooks** — tests will leak state
 
 ## Reference Guide
 
