@@ -28,6 +28,7 @@ Use this skill when:
 | Raw SQL, RLS policies, database functions | `pgsql-test` | [pgsql-test.md](./references/pgsql-test.md) |
 | PostGraphile schema, basic GraphQL queries | `graphile-test` | (part of constructive monorepo) |
 | GraphQL with Constructive plugins (search, pgvector, etc.) | `@constructive-io/graphql-test` | (part of constructive monorepo) |
+| Dynamic codegen + ORM in tests | `@constructive-io/graphql-test` (`runCodegenAndLoad`) | (part of constructive monorepo) |
 | HTTP endpoints, auth headers, middleware | `@constructive-io/graphql-server-test` | (part of constructive monorepo) |
 | Type-safe Drizzle ORM tests | `drizzle-orm-test` | [drizzle-orm-test.md](./references/drizzle-orm-test.md) |
 | Supabase applications, auth.users | `supabase-test` | [supabase-test.md](./references/supabase-test.md) |

@@ -516,3 +516,35 @@ The namespace import pulls from `select-types` (via `index.ts`), so it gives you
 - The deep import path depends on the SDK's internal file layout. If the SDK reorganizes directories in a future version, the path may change.
 - Add `@constructive-io/sdk` as a **direct dependency** (not just devDependency) if your package needs these types at build time — this ensures pnpm creates the symlink for the deep path to resolve.
 - The `types.ts` barrel (`export * from './input-types'`) exists as a convenience re-export within the `orm/` directory but is not chained through `index.ts`.
+
+## Deep Path Imports for Codegen Internals
+
+The `@constructive-io/graphql-codegen` package exposes internal generator functions via deep nested imports (no `exports` field — uses the Constructive dist-folder publishing pattern):
+
+```typescript
+// Deep imports for individual codegen generators
+import { generateOrm } from '@constructive-io/graphql-codegen/core/codegen/orm';
+import { generateCli } from '@constructive-io/graphql-codegen/core/codegen/cli';
+```
+
+These are useful when you need to invoke a specific generator directly (e.g. in tests or custom build scripts) rather than going through the top-level `generate()` function.
+
+### Test Helper: `runCodegenAndLoad`
+
+The `@constructive-io/graphql-test` package provides a consolidated codegen test helper that generates ORM code and dynamically loads it in a single call:
+
+```typescript
+import { runCodegenAndLoad } from '@constructive-io/graphql-test';
+
+const { orm, cleanup } = await runCodegenAndLoad({
+  db: { pgpm: { modulePath: './packages/my-module' }, schemas: ['app_public'] },
+});
+
+// Use the dynamically generated ORM in tests
+const result = await orm.user.findMany({ select: { id: true } }).execute();
+
+// Clean up temp files
+await cleanup();
+```
+
+This helper was consolidated from duplicated local helpers across `graphql/test` and `graphql/server-test` into a single shared function in `@constructive-io/graphql-test`. Use it instead of writing your own codegen-then-load boilerplate in test suites.
