@@ -1,28 +1,22 @@
 ---
 name: constructive-tooling
-description: "Developer tools — pnpm workspace management (monorepo configuration, publishing, dependency management), inquirerer CLI framework (interactive prompts, appStash, yanse colors), and README formatting conventions. Use when configuring pnpm workspaces, building CLIs with inquirerer, or formatting documentation."
+description: "Developer tools — inquirerer CLI framework (interactive prompts, appStash, yanse colors) and README formatting conventions. Use when building CLIs with inquirerer or formatting documentation. For pnpm workspace/publishing/monorepo management, see the constructive-pnpm skill instead."
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Constructive Tooling
 
-Developer tools for Constructive projects: pnpm workspace management, CLI building, and documentation formatting.
+Developer tools for Constructive projects: CLI building with inquirerer and documentation formatting.
 
 ## When to Apply
 
 Use this skill when:
-- Configuring pnpm workspaces and monorepo settings
-- Managing workspace dependencies and publishing
 - Building interactive CLIs with `inquirerer`
 - Formatting README and documentation files
 
-## pnpm Workspace Management
-
-Configure and manage pnpm monorepo workspaces — `pnpm-workspace.yaml`, dependency management, publishing with Lerna.
-
-See [pnpm-workspace.md](./references/pnpm-workspace.md) for workspace configuration.
+**For pnpm workspace management, publishing, and monorepo configuration**, see the `constructive-pnpm` skill.
 
 ## inquirerer CLI Framework
 
@@ -37,14 +31,6 @@ Consistent documentation formatting conventions for Constructive projects.
 See [readme-formatting.md](./references/readme-formatting.md) for formatting rules.
 
 ## Reference Guide
-
-### pnpm
-
-| Reference | Topic | Consult When |
-|-----------|-------|--------------|
-| [pnpm-workspace.md](./references/pnpm-workspace.md) | pnpm workspace overview | Setting up monorepo, workspace configuration |
-| [pnpm-monorepo-management.md](./references/pnpm-monorepo-management.md) | Monorepo management | Cross-package dependencies, workspace protocol |
-| [pnpm-publishing.md](./references/pnpm-publishing.md) | Publishing packages | Lerna versioning, npm publishing |
 
 ### CLI
 
@@ -64,5 +50,6 @@ See [readme-formatting.md](./references/readme-formatting.md) for formatting rul
 
 ## Cross-References
 
+- `constructive-pnpm` — PNPM workspace management, publishing, monorepo configuration
 - `pgpm` — Uses pnpm workspaces for module management
 - `constructive-starter-kits` — Boilerplate templates use these tools

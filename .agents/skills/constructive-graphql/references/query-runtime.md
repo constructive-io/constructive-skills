@@ -242,7 +242,22 @@ import type { QueryOptions } from '@constructive-io/graphql-query/types/query';
 // import { buildSelect } from '@constructive-io/graphql-query';  // pulls in Node.js deps
 ```
 
-Available subpaths: `/generators`, `/client`, `/ast`, `/custom-ast`, `/types/schema`, `/types/query`, `/types/mutation`, `/types/selection`, `/types/core`, `/query-builder`, `/meta-object/convert`, `/meta-object/validate`.
+Available subpaths: `/generators`, `/client`, `/ast`, `/custom-ast`, `/runtime`, `/types/schema`, `/types/query`, `/types/mutation`, `/types/selection`, `/types/core`, `/query-builder`, `/meta-object/convert`, `/meta-object/validate`.
+
+### `/runtime` Subpath
+
+The `/runtime` module re-exports lightweight GraphQL utilities needed by generated ORM code at runtime. Generated ORM clients import from here instead of pulling in heavy dependencies directly:
+
+```ts
+import { parseType, print } from '@constructive-io/graphql-query/runtime';
+import type { GraphQLAdapter, GraphQLError, QueryResult } from '@constructive-io/graphql-query/runtime';
+```
+
+**What it re-exports:**
+- `parseType`, `print` — from `@0no-co/graphql.web` (tiny browser-safe GraphQL parser)
+- `GraphQLAdapter`, `GraphQLError`, `QueryResult` — from `@constructive-io/graphql-types`
+
+This avoids generated code depending directly on `@0no-co/graphql.web` or `@constructive-io/graphql-types` — the runtime module is the single dependency surface for generated ORM clients. This is a **deep nested import** (no `exports` field needed) following the Constructive dist-folder publishing pattern.
 
 ---
 
