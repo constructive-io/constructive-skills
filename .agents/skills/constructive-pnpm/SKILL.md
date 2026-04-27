@@ -21,12 +21,16 @@ Use this skill when:
 
 ## Key Concepts
 
-### Dist-Folder Publishing
+### Dist-Folder Publishing (TypeScript/JS Only)
 
-Constructive publishes from the `dist/` folder, which becomes the package root on npm. This means:
+Constructive publishes **TypeScript/JS packages** from the `dist/` folder, which becomes the package root on npm. This means:
 - `main: "index.js"` points to `dist/index.js` after publish
 - Consumers never see `dist/` in their import paths
 - No `exports` field needed — standard Node.js resolution works
+- Uses `makage build` to compile TypeScript and copy assets to `dist/`
+- `publishConfig.directory: "dist"` in package.json
+
+**This does NOT apply to pgpm SQL modules.** PGPM modules publish from the package root (no `dist/` folder, no makage). They use `pgpm package` to bundle SQL files instead. See the `pgpm` skill ([publishing.md](../pgpm/references/publishing.md)) for the SQL module publishing workflow.
 
 ### Deep Nested Imports (NOT `exports` Map)
 
