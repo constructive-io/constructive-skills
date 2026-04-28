@@ -19,6 +19,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-starter-kits** | Project scaffolding — `pgpm init` templates, Next.js app boilerplate, custom template authoring |
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
+| **constructive-jobs** | Background jobs — DataJobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
 | **constructive-ai** | AI capabilities — pgvector RAG pipelines, embeddings, Ollama CI/CD |
 | **constructive-tooling** | Dev tools — pnpm workspaces, inquirerer CLI framework, README formatting |
 | **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
