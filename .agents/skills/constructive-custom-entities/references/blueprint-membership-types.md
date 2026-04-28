@@ -67,7 +67,53 @@ The optional `storage_config` object controls bucket behavior:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
-| `policies` | string[] | No | `null` | Array of `Authz*` node type names. When provided, replaces the default storage security policies entirely |
+| `policies` | jsonb array | No | `null` | Array of storage policy entries. When provided, replaces the default storage security policies entirely. Supports two formats (can be mixed in the same array) |
+
+### Policy format
+
+Each entry in the `policies` array can be either:
+
+**String shorthand** (backward-compatible) — an Authz* type name. Uses built-in default privilege mappings per table:
+```json
+"AuthzEntityMembership"
+```
+
+**Object format** (explicit) — matches `table_provision.policies[]` shape. Gives full control over privileges:
+```json
+{
+  "$type": "AuthzEntityMembership",
+  "privileges": ["select", "insert", "update", "delete"],
+  "data": { "entity_field": "owner_id", "membership_type": 5 }
+}
+```
+
+| Object field | Type | Required | Default | Description |
+|---|---|---|---|---|
+| `$type` | string | **Yes** | — | Authz* node type name |
+| `privileges` | string[] | No | *(per-type defaults)* | Explicit privileges to apply. Intersected with what each storage table supports |
+| `data` | object | No | *(auto-derived)* | Policy data. When omitted, derived from membership_type and known Authz* conventions |
+
+Both formats can be mixed:
+```json
+"storage_config": {
+  "policies": [
+    "AuthzEntityMembership",
+    { "$type": "AuthzPublishable", "privileges": ["select"] }
+  ]
+}
+```
+
+### Default privilege mapping (string shorthand)
+
+When a string shorthand is used, the function applies these default privileges per storage table:
+
+| Authz* Type | Buckets | Files | Upload Requests |
+|---|---|---|---|
+| `AuthzEntityMembership` / `AuthzMembership` | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE |
+| `AuthzPublishable` | SELECT | SELECT, INSERT | *(skipped)* |
+| `AuthzDirectOwner` | SELECT, INSERT, UPDATE, DELETE | UPDATE, DELETE | *(skipped)* |
+
+`AuthzPublishable` and `AuthzDirectOwner` are never applied to `upload_requests` (the table lacks the required columns).
 
 ### Typical policy combinations
 
@@ -76,6 +122,8 @@ The optional `storage_config` object controls bucket behavior:
 | `policies: ["AuthzEntityMembership"]` | Private entity files (default pattern) |
 | `is_public: true, policies: ["AuthzEntityMembership", "AuthzPublishable"]` | Public assets with member write |
 | `policies: ["AuthzDirectOwner"]` | Owner-only private docs |
+| `policies: [{"$type": "AuthzEntityMembership", "privileges": ["select"]}]` | Read-only entity storage |
+| `policies: ["AuthzEntityMembership", {"$type": "AuthzPublishable", "privileges": ["select"]}]` | Mixed: full CRUD for members (default), read-only public (explicit) |
 
 See [storage-policies.md](../../constructive/references/storage-policies.md) for the full reference including the provisioning pipeline, privilege matrix, and all available policy types.
 
