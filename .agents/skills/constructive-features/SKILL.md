@@ -54,13 +54,13 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| App-scope memberships (single tenant) | `memberships_module:app` | all auth presets | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Org-scope memberships (multi-tenant) | `memberships_module:org` | `b2b`, `full` | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Dynamic entity types (channels, teams, depts) | `entity_type_provision` + `provision_membership_table()` | — (runtime) | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Invites | `invites_module` | `b2b`, `full` | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Limits (quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
-| Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-membership-types`](../constructive-membership-types/SKILL.md) |
+| App-scope memberships (single tenant) | `memberships_module:app` | all auth presets | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Org-scope memberships (multi-tenant) | `memberships_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Dynamic entity types (channels, teams, depts) | `entity_type_provision` + `provision_membership_table()` | — (runtime) | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Invites | `invites_module` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Limits (quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
 
 ## 4. Data Modeling
 
@@ -78,11 +78,16 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| S3 / MinIO buckets per entity type | `storage_module` + `storage_config` on `entity_type_provision` | `full`, any app using uploads | [`constructive`](../constructive/references/storage-policies.md) |
-| Public vs private buckets | `storage_config.is_public` | — | [`constructive`](../constructive/references/storage-policies.md) |
-| Presigned upload URLs | S3 streamer + `requestUploadUrl` mutation | — | [`constructive`](../constructive/references/storage-policies.md) |
-| Per-bucket RLS policies | `storage_config.policies[]` (Authz* nodes) | — | [`constructive`](../constructive/references/storage-policies.md) |
-| Multi-scope bucket resolution | `bucketKey` + `ownerId` | — | [`constructive`](../constructive/references/storage-policies.md) |
+| S3 / MinIO buckets per entity type | `storage_module` + `storage_config` on `entity_type_provision` | `full`, any app using uploads | [`constructive-uploads`](../constructive-uploads/SKILL.md) + [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Public vs private buckets | `storage_config.is_public` | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| Presigned upload URLs | `requestUploadUrl` mutation | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| Per-bucket RLS policies | `storage_config.policies[]` (Authz* nodes) | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) + [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| Multi-scope bucket resolution | `bucketKey` + `ownerId` | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| Entity-scoped storage (buckets per entity) | `has_storage` + `storage_config` | — | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| Bucket provisioning | `provisionBucket` mutation + auto-provision | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| Content-hash deduplication | `requestUploadUrl` (deduplicated field) | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| Download URLs (presigned GET / CDN) | `downloadUrl` computed field | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| MIME type restrictions + file size limits | `allowed_mime_types` + `max_file_size` on bucket | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
 
 ## 6. Search
 
