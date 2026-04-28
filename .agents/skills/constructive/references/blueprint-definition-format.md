@@ -132,6 +132,7 @@ Common node types:
 | `DataStatusField` | Adds status field + B-tree index + optional CHECK | Configurable allowed values |
 | `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
 | `SearchTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
+| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | Configurable payload, events, conditions — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 
