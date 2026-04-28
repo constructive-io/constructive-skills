@@ -149,14 +149,17 @@ When `has_storage: true`, the system provisions a `storage_module` for the entit
       "parent_entity": "org",
       "has_storage": true,
       "storage_config": {
-        "policies": ["AuthzEntityMembership", "AuthzPublishable"]
+        "policies": [
+          { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+          { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
+        ]
       }
     }
   ]
 }
 ```
 
-This creates `data_room_buckets`, `data_room_files`, and `data_room_upload_requests` tables, each secured with `AuthzEntityMembership` + `AuthzPublishable` RLS policies.
+This creates `data_room_buckets`, `data_room_files`, and `data_room_upload_requests` tables, secured with the specified RLS policies. The `"tables"` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not the prefixed physical table names — the function resolves the prefix internally.
 
 ### ORM: Entity with Storage
 
@@ -169,7 +172,10 @@ const result = await db.entityTypeProvision.create({
     parentEntity: 'org',
     hasStorage: true,
     storageConfig: {
-      policies: ['AuthzEntityMembership', 'AuthzPublishable'],
+      policies: [
+        { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
+        { $type: 'AuthzPublishable', privileges: ['select'], tables: ['buckets', 'files'] },
+      ],
     },
   },
   select: {
@@ -241,15 +247,17 @@ The plugin resolves the correct storage module by probing entity tables for the 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `is_public` | boolean | `false` | S3 bucket ACL — `true` = publicly readable, `false` = presigned URLs required |
-| `policies` | string[] | `null` | Array of `Authz*` node type names. Replaces default storage security policies. |
+| `policies` | jsonb[] | `null` | Array of policy objects (`{ "$type", "privileges", "data", "tables" }`). Replaces default storage security policies. Same format as `table_provision.policies[]` |
+
+Each policy object has `$type` (required), `privileges` (required), plus optional `data`, `tables`, and `policy_name`. The `tables` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not prefixed physical table names. Omit `tables` to apply to all three.
 
 ### Typical Policy Combinations
 
 | Combination | Use case |
 |-------------|----------|
-| `["AuthzEntityMembership"]` | Private entity files (default pattern) |
-| `["AuthzEntityMembership", "AuthzPublishable"]` | Public assets with member write |
-| `["AuthzDirectOwner"]` | Owner-only private documents |
+| `[{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Private entity files (default pattern) |
+| Same + `{ "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }` | Public assets with member write |
+| `[{ "$type": "AuthzEntityMembership", "privileges": ["select"] }, { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }]` | Owner-only write, member read |
 
 ---
 

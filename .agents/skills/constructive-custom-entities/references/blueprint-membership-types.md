@@ -57,7 +57,10 @@ The optional `storage_config` object controls bucket behavior:
   "parent_entity": "org",
   "has_storage": true,
   "storage_config": {
-    "policies": ["AuthzEntityMembership", "AuthzPublishable"]
+    "policies": [
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+      { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
+    ]
   }
 }
 ```
