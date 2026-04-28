@@ -41,7 +41,7 @@ const result = await uploadFile({
 | `fileId` | `string` | UUID of the file record — use this to link to domain tables |
 | `key` | `string` | S3 object key (= SHA-256 content hash) |
 | `deduplicated` | `boolean` | `true` if file already existed (no bytes uploaded) |
-| `status` | `string` | `"ready"` for fresh uploads, existing status for dedup |
+| `status` | `string` | `"ready"` for confirmed fresh uploads, `"ready"` or `"processed"` for dedup (from server). `"pending"` during upload (before `confirmUpload`). |
 
 ### `GraphQLExecutor`
 
@@ -85,11 +85,13 @@ The upload client computes a SHA-256 hash of the file content before calling `re
 3. **If yes** (`deduplicated = true`):
    - `uploadUrl = null` — no presigned URL is generated
    - `fileId` = the *existing* file's UUID
+   - `status` = the existing file's status (`'ready'` or `'processed'`) — file is immediately usable
    - The client **skips the PUT entirely** — the bytes are already in S3
-   - No `confirmUpload` needed — the file is already `ready`
+   - No `confirmUpload` needed
 4. **If no** (`deduplicated = false`):
    - `uploadUrl` = a presigned PUT URL (default 15-minute expiry)
    - `fileId` = a *new* UUID (file record created with `status = 'pending'`)
+   - `status = 'pending'` — the file is **not yet usable**
    - Client must PUT the file bytes, then call `confirmUpload` to transition to `ready`
 
 **Why it matters:**
