@@ -1,6 +1,10 @@
 # Storage Security Policies
 
-Constructive storage (buckets, files, upload requests) supports configurable per-bucket security policies via the `policies` array in `storage_config`. This lets blueprint authors compose specific `Authz*` node types per entity type's storage tables, instead of always getting the hardcoded defaults.
+Constructive storage (buckets, files, upload requests) supports configurable security policies via the `policies` array. This lets blueprint authors compose specific `Authz*` node types per storage scope's tables, instead of always getting the sensible defaults.
+
+Storage can be provisioned at two levels:
+- **App-level** — via the top-level `storage` key in the blueprint definition (Phase 0.5)
+- **Entity-scoped** — via `has_storage: true` on an `entity_types[]` entry (Phase 0)
 
 ## Two layers of storage access control
 
@@ -22,44 +26,67 @@ When `has_storage: true`, the system creates three tables per entity type, prefi
 | **upload_requests** | `data_room_upload_requests` | `file_id`, `bucket_id`, `status` | In-flight upload tracking |
 
 **Column availability matters for policy scoping:**
-- **Buckets** has `is_public` and `owner_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
+- **Buckets** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
 - **Files** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
-- **Upload requests** has neither `is_public` nor `actor_id` — only supports membership-based policies
+- **Upload requests** has `actor_id` but not `is_public` — supports `AuthzDirectOwner` and membership-based policies
 
 ## Configuring storage policies
 
-Storage is provisioned via `entity_type_provision` with `has_storage: true`. The optional `storage_config` JSONB column controls bucket behavior:
+Storage policies can be configured at two levels:
+
+### App-level storage (top-level `storage` key)
+
+The blueprint `storage` key provisions app-level storage (Phase 0.5). Bucket seeding, config overrides, and policies are all configured here:
 
 ```json
 {
-  "has_storage": true,
-  "storage_config": {
+  "storage": {
+    "buckets": [
+      { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
+      { "name": "documents", "is_public": false, "max_file_size": 52428800 }
+    ],
     "policies": [
-      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-      { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
-    ]
-  }
+      { "$type": "AuthzMembership", "privileges": ["select", "insert"], "data": {"membership_type": 1} },
+      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "data": {"entity_field": "actor_id"} }
+    ],
+    "upload_url_expiry_seconds": 1800,
+    "download_url_expiry_seconds": 3600,
+    "default_max_file_size": 104857600,
+    "allowed_origins": ["https://app.example.com"]
+  },
+  "entity_types": [ ... ],
+  "tables": [ ... ]
 }
 ```
 
-### Blueprint definition
+When `policies` is omitted, sensible defaults are applied (see [Defaults](#defaults-when-policies-is-omitted) below). When `policies` is provided (non-empty array), **no defaults are applied** — explicit policies fully replace the defaults.
 
-In a blueprint `membership_types[]` entry:
+App-level storage uses `AuthzMembership` (with `membership_type: 1`) as the membership policy type.
+
+### Entity-scoped storage (`entity_types[]` with `has_storage`)
+
+Entity-scoped storage is provisioned via `entity_types[]` (formerly `membership_types[]`) with `has_storage: true`:
 
 ```json
 {
-  "name": "Data Room",
-  "prefix": "data_room",
-  "parent_entity": "org",
-  "has_storage": true,
-  "storage_config": {
-    "policies": [
-      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
-    ]
-  }
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "has_storage": true,
+      "storage_config": {
+        "policies": [
+          { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+          { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
+        ]
+      }
+    }
+  ]
 }
 ```
+
+Entity-scoped storage uses `AuthzEntityMembership` (with `entity_field: 'owner_id'` and the entity's `membership_type`) as the membership policy type.
 
 ### ORM
 
@@ -149,21 +176,60 @@ metaschema.create_policy() per entry per table (buckets, files, upload_requests)
 
 ## Defaults (when `policies` is omitted)
 
-When `policies` is `NULL` or omitted, the system applies sensible defaults:
+When `policies` is `NULL` or omitted, `apply_storage_security` applies **sensible, locked-down defaults** based on the principle of least privilege. The defaults are the same for both app-level and entity-scoped storage — only the membership policy type differs.
 
-| Table | Policies applied |
-|-------|-----------------|
-| Buckets | `AuthzPublishable` (SELECT) + membership policy (full CRUD) |
-| Files | `AuthzPublishable` (SELECT, INSERT) + membership policy (full CRUD) + `AuthzDirectOwner` (UPDATE, DELETE) |
-| Upload Requests | membership policy (SELECT, INSERT, UPDATE) |
+### Default policy matrix
 
-The "membership policy" is `AuthzMembership` for app-level storage (no `membership_type`) or `AuthzEntityMembership` for entity-scoped storage (has `membership_type`).
+| Table | Policy | Privileges | Suffix | Purpose |
+|-------|--------|-----------|--------|---------|
+| **Buckets** | `AuthzPublishable` (`is_public`) | `select` | `pub` | Public buckets readable by any authenticated user |
+| **Buckets** | Membership | `select`, `insert` | `mem` | Members can list and create buckets |
+| **Buckets** | `AuthzDirectOwner` (`actor_id`) | `update`, `delete` | `own` | Only the creator can modify/delete a bucket |
+| **Files** | `AuthzPublishable` (`is_public`) | `select` | `pub` | Public files readable by any authenticated user |
+| **Files** | Membership | `select`, `insert` | `mem` | Members can view and upload files |
+| **Files** | `AuthzDirectOwner` (`actor_id`) | `update`, `delete` | `own` | Only the uploader can modify/delete their own files |
+| **Upload requests** | Membership | `select`, `insert`, `update` | `mem` | Members can create and manage upload requests |
+| **Upload requests** | `AuthzDirectOwner` (`actor_id`) | `select`, `insert`, `update` | `own` | Users primarily manage their own requests |
+
+### Membership policy type (auto-selected)
+
+| Storage scope | Membership policy type | Policy data |
+|---------------|----------------------|-------------|
+| **App-level** (`membership_type IS NULL`) | `AuthzMembership` | `{"membership_type": 1}` |
+| **Entity-scoped** (`membership_type = 3+`) | `AuthzEntityMembership` | `{"entity_field": "owner_id", "membership_type": <N>}` |
+
+The system automatically uses the correct membership policy type based on the storage module's `membership_type` value.
+
+### What this means in practice
+
+- **Any authenticated member** can view and upload files/buckets (via membership SELECT + INSERT)
+- **Only the creator** (matched by `actor_id`) can update or delete their own files/buckets (via AuthzDirectOwner UPDATE + DELETE)
+- **Public content** (rows where `is_public = true`) is readable by any authenticated user (via AuthzPublishable SELECT)
+- **No user can modify another user's files** — cross-user update/delete is blocked
+
+### Full replacement semantics
+
+**Important:** If you provide **any** explicit `policies` array (even with just one entry), **none of the defaults are applied**. Explicit policies fully replace the defaults — there is no merging. This means if you customize policies, you must include all the policies you want (including membership, publishable, and owner policies if desired).
 
 ## Typical policy combinations
 
-### 1. Private entity files (default)
+### 1. Private entity files (locked down — default)
 
-The most common pattern. Entity members can CRUD their storage; no one else can see the files.
+The default when `policies` is omitted. Members can view and upload, but only the creator can modify or delete.
+
+```json
+{
+  "has_storage": true
+}
+```
+
+**Use case:** Internal team documents, project files, private org resources.
+
+**Equivalent to the full default policy matrix** above. If you need slightly different behavior, provide explicit policies.
+
+### 1b. Private entity files (full CRUD for all members)
+
+All entity members get full CRUD — anyone can delete anyone's files. Less secure but simpler for collaborative use cases.
 
 ```json
 {
@@ -176,9 +242,7 @@ The most common pattern. Entity members can CRUD their storage; no one else can 
 }
 ```
 
-**Use case:** Internal team documents, project files, private org resources.
-
-**Equivalent to omitting `policies` entirely** (this is the default behavior for entity-scoped storage), except the default also adds `AuthzPublishable` and `AuthzDirectOwner`. Specifying just `AuthzEntityMembership` gives a tighter policy set.
+**Use case:** Shared workspaces where file ownership doesn't matter.
 
 ### 2. Public assets with member write
 

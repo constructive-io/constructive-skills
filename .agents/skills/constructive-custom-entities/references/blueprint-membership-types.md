@@ -1,12 +1,14 @@
-# Blueprint Membership Types (Phase 0)
+# Blueprint Entity Types (Phase 0)
 
-The `membership_types` array is a top-level key in the blueprint definition JSONB, alongside `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
+The `entity_types` array (formerly `membership_types`) is a top-level key in the blueprint definition JSONB, alongside `storage`, `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
+
+> **Renamed:** `membership_types` was renamed to `entity_types` in #956.
 
 ## Definition Shape
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     {
       "name": "Channel Member",
       "prefix": "channel",
@@ -371,7 +373,7 @@ constructive public:blueprint-template create \
   --displayName "Team Collaboration" \
   --ownerId <UUID> \
   --definition '{
-    "membership_types": [
+    "entity_types": [
       {
         "name": "Channel Member",
         "prefix": "channel",
@@ -401,7 +403,7 @@ To create nested hierarchies (e.g. org → channel → thread), list entries in 
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     {
       "name": "Channel Member",
       "prefix": "channel",
@@ -424,7 +426,7 @@ A common pattern: provision entity types in Phase 0, then create domain tables i
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     { "name": "Channel Member", "prefix": "channel", "parent_entity": "org" }
   ],
   "tables": [

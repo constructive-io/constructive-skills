@@ -8,7 +8,8 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 
 ```json
 {
-  "membership_types": [ ... ],
+  "storage": { ... },
+  "entity_types": [ ... ],
   "tables": [ ... ],
   "relations": [ ... ],
   "indexes": [ ... ],
@@ -17,15 +18,59 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 }
 ```
 
-`tables` is required. `membership_types`, `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level arrays. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
+`tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
-## Membership Types (Phase 0)
+> **Renamed:** `membership_types` was renamed to `entity_types` in #956. The SQL procedure reads `entity_types` from the definition JSONB.
 
-`membership_types[]` provisions dynamic entity types **before** tables and relations. Each entry creates a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+## App-Level Storage (Phase 0.5)
+
+The optional top-level `storage` key provisions app-level storage and seeds initial buckets. It runs after entity types (Phase 0) but before tables (Phase 1).
 
 ```json
 {
-  "membership_types": [
+  "storage": {
+    "buckets": [
+      { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
+      { "name": "documents", "is_public": false, "max_file_size": 52428800 }
+    ],
+    "upload_url_expiry_seconds": 1800,
+    "download_url_expiry_seconds": 3600,
+    "default_max_file_size": 104857600,
+    "allowed_origins": ["https://app.example.com"],
+    "policies": [ ... ]
+  }
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `buckets` | array | No | `[]` | Bucket definitions to seed at deploy time |
+| `policies` | jsonb[] | No | sensible defaults | Policy objects. If provided, fully replaces defaults |
+| `upload_url_expiry_seconds` | integer | No | module default | Override presigned upload URL TTL |
+| `download_url_expiry_seconds` | integer | No | module default | Override presigned download URL TTL |
+| `default_max_file_size` | integer | No | module default | Override default max file size (bytes) |
+| `allowed_origins` | text[] | No | `null` | CORS allowed origins |
+
+Each bucket entry in `buckets[]`:
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | **Yes** | — | Bucket key (e.g. `"avatars"`, `"documents"`) |
+| `description` | string | No | `null` | Human-readable description |
+| `is_public` | boolean | No | `false` | Whether the bucket is publicly accessible |
+| `allowed_mime_types` | text[] | No | `null` | MIME type whitelist (supports wildcards) |
+| `max_file_size` | integer | No | `null` | Max file size in bytes (overrides module default) |
+| `allowed_origins` | text[] | No | `null` | Per-bucket CORS override |
+
+For default storage policies and the full policy format, see [storage-policies.md](./storage-policies.md).
+
+## Entity Types (Phase 0)
+
+`entity_types[]` provisions dynamic entity types **before** tables and relations. Each entry creates a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+
+```json
+{
+  "entity_types": [
     {
       "name": "Channel Member",
       "prefix": "channel",
@@ -56,7 +101,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 
 **Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
 
-See the [`constructive-membership-types`](../constructive-membership-types/SKILL.md) skill for the full membership types reference.
+See the [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) skill for the full entity types reference.
 
 ## Table Entries
 
