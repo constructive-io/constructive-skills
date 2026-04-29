@@ -71,7 +71,7 @@ Nested types must be provisioned **after** their parent type.
 
 ### 1. Blueprint Definition (Recommended)
 
-Add `membership_types` to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
+Add `entity_types` (formerly `membership_types`) to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
 
 See [blueprint-membership-types.md](./references/blueprint-membership-types.md) for the full spec and examples.
 
@@ -142,7 +142,7 @@ When `has_storage: true`, the system provisions a `storage_module` for the entit
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     {
       "name": "Data Room",
       "prefix": "data_room",
@@ -251,11 +251,18 @@ The plugin resolves the correct storage module by probing entity tables for the 
 
 Each policy object has `$type` (required), `privileges` (required), plus optional `data`, `tables`, and `policy_name`. The `tables` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not prefixed physical table names. Omit `tables` to apply to all three.
 
+### Default Storage Policies
+
+When `storage_config.policies` is omitted, the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive/references/storage-policies.md) for the full default policy matrix.
+
+If you provide **any** explicit `policies` array, **none of the defaults are applied** — it's full replacement, not merge.
+
 ### Typical Policy Combinations
 
 | Combination | Use case |
 |-------------|----------|
-| `[{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Private entity files (default pattern) |
+| *(omit policies entirely)* | Locked-down default: members view/upload, only creator can update/delete |
+| `[{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members (any member can delete any file) |
 | Same + `{ "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }` | Public assets with member write |
 | `[{ "$type": "AuthzEntityMembership", "privileges": ["select"] }, { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }]` | Owner-only write, member read |
 
@@ -315,7 +322,7 @@ const modules = await db.membershipTypesModule.findMany({
 ## Cross-References
 
 - **File uploads (full reference):** [`constructive-uploads`](../constructive-uploads/SKILL.md) — presigned URL flow, GraphQL mutations, client library, error codes
-- **Blueprint definition format:** [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) — `membership_types` is a top-level key alongside `tables`, `relations`, etc.
+- **Blueprint definition format:** [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) — `entity_types` is a top-level key alongside `storage`, `tables`, `relations`, etc.
 - **ORM provisioning examples:** [orm-provisioning.md](./references/orm-provisioning.md)
-- **Blueprint membership_types spec:** [blueprint-membership-types.md](./references/blueprint-membership-types.md)
+- **Blueprint entity_types spec:** [blueprint-membership-types.md](./references/blueprint-membership-types.md)
 - **SQL-level detail:** `entity-types-and-provisioning` skill in `constructive-db` repo

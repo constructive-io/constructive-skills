@@ -98,6 +98,23 @@ Files belong to a specific entity instance. Secured by `AuthzEntityMembership`. 
 
 See [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) for provisioning entity types with storage.
 
+## App-Level Bucket Seeding (Blueprint)
+
+App-level buckets can be pre-seeded at deploy time via the blueprint `storage.buckets[]` key:
+
+```json
+{
+  "storage": {
+    "buckets": [
+      { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
+      { "name": "documents", "is_public": false, "max_file_size": 52428800 }
+    ]
+  }
+}
+```
+
+This creates rows in `app_buckets` during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) for the full `storage` key spec.
+
 ---
 
 ## Bucket Configuration
