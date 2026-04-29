@@ -1,8 +1,6 @@
 # Blueprint Entity Types (Phase 0)
 
-The `entity_types` array (formerly `membership_types`) is a top-level key in the blueprint definition JSONB, alongside `storage`, `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
-
-> **Renamed:** `membership_types` was renamed to `entity_types` in #956.
+The `entity_types` array is a top-level key in the blueprint definition JSONB, alongside `storage`, `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
 
 ## Definition Shape
 

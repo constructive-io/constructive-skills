@@ -65,7 +65,7 @@ App-level storage uses `AuthzMembership` (with `membership_type: 1`) as the memb
 
 ### Entity-scoped storage (`entity_types[]` with `has_storage`)
 
-Entity-scoped storage is provisioned via `entity_types[]` (formerly `membership_types[]`) with `has_storage: true`:
+Entity-scoped storage is provisioned via `entity_types[]` with `has_storage: true`:
 
 ```json
 {

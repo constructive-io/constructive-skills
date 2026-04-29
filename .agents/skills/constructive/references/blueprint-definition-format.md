@@ -20,7 +20,6 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 
 `tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
-> **Renamed:** `membership_types` was renamed to `entity_types` in #956. The SQL procedure reads `entity_types` from the definition JSONB.
 
 ## App-Level Storage (Phase 0.5)
 

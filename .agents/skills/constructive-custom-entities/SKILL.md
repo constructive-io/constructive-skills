@@ -71,7 +71,7 @@ Nested types must be provisioned **after** their parent type.
 
 ### 1. Blueprint Definition (Recommended)
 
-Add `entity_types` (formerly `membership_types`) to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
+Add `entity_types` to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
 
 See [blueprint-entity-types.md](./references/blueprint-entity-types.md) for the full spec and examples.
 
