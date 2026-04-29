@@ -48,7 +48,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
 | `has_levels` | boolean | No | `false` | Provision a levels module (gamification) |
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets, files, upload_requests tables) |
-| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (string[] of Authz* types). See [storage-policies.md](./storage-policies.md) |
+| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](./storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
 | `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grants`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
@@ -65,11 +65,12 @@ Each entry in `tables[]` defines one database table:
 ```json
 {
   "table_name": "products",
+  "description": "Product catalog entries available for purchase",
   "schema_name": "app_public",
   "nodes": ["DataId", "DataTimestamps"],
   "fields": [
-    { "name": "title", "type": "text" },
-    { "name": "price", "type": "numeric" }
+    { "name": "title", "type": "text", "description": "Display name of the product" },
+    { "name": "price", "type": "numeric", "description": "Unit price in the default currency" }
   ],
   "grants": [
     { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -91,6 +92,7 @@ Each entry in `tables[]` defines one database table:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `table_name` | string | Yes | Database table name — also used as the identifier in relations |
+| `description` | string | No | Table description. Emitted as `COMMENT ON TABLE` in PostgreSQL. Visible in database tools and introspection. |
 | `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to the `schemaId` param of `constructBlueprint()` |
 | `nodes` | array | Yes | Data behavior node types to apply. **Must start with `DataId`** unless the table intentionally has no primary key |
 | `fields` | array | No | Custom field definitions |
@@ -155,6 +157,7 @@ Optional field properties:
 
 | Property | Type | Description |
 |----------|------|-------------|
+| `description` | string | Field description. Emitted as `COMMENT ON COLUMN` in PostgreSQL. Visible in database tools and introspection. |
 | `is_required` | boolean | Whether the field is NOT NULL (default: `false`) |
 | `default` | string | SQL default expression |
 | `min` | float | Minimum value constraint |

@@ -10,6 +10,7 @@ mutation RequestUploadUrl($input: RequestUploadUrlInput!) {
     key            # S3 object key (= SHA-256 content hash)
     deduplicated   # true if file already exists (skip the PUT)
     expiresAt      # URL expiry ISO timestamp (null if deduplicated)
+    status         # File status: 'pending' (fresh) or 'ready'/'processed' (dedup)
   }
 }
 ```
@@ -34,6 +35,7 @@ mutation RequestUploadUrl($input: RequestUploadUrlInput!) {
 | `key` | `String!` | S3 object key (= content hash). |
 | `deduplicated` | `Boolean!` | `true` = file with same hash already exists. Skip the PUT. |
 | `expiresAt` | `Datetime` | Presigned URL expiry. `null` if deduplicated. |
+| `status` | `String!` | File status: `'pending'` for fresh uploads, `'ready'` or `'processed'` for deduplicated files. Clients can use this to immediately know whether the file is usable without a separate query. |
 
 ### Validation Rules
 
@@ -53,7 +55,7 @@ SELECT id, status FROM files
 WHERE key = $contentHash AND bucket_id = $bucketId
   AND status IN ('ready', 'processed')
 ```
-If found, returns the existing file ID with `deduplicated: true` and `uploadUrl: null`.
+If found, returns the existing file ID with `deduplicated: true`, `uploadUrl: null`, and `status` set to the existing file's status (`'ready'` or `'processed'`). For fresh uploads, `status` is `'pending'` until `confirmUpload` transitions it to `'ready'`.
 
 ---
 
