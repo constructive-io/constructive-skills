@@ -1,12 +1,12 @@
-# Blueprint Membership Types (Phase 0)
+# Blueprint Entity Types (Phase 0)
 
-The `membership_types` array is a top-level key in the blueprint definition JSONB, alongside `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
+The `entity_types` array is a top-level key in the blueprint definition JSONB, alongside `storage`, `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
 
 ## Definition Shape
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     {
       "name": "Channel Member",
       "prefix": "channel",
@@ -255,7 +255,7 @@ const channelType: BlueprintMembershipType = {
 };
 
 const definition: BlueprintDefinition = {
-  membership_types: [channelType],
+  entity_types: [channelType],
   tables: [
     {
       table_name: 'messages',
@@ -287,16 +287,16 @@ const definition: BlueprintDefinition = {
 
 **Key:** Use `entity_type: 'channel'` (the prefix string) instead of a hardcoded `membership_type` integer. `constructBlueprint()` resolves the prefix to the correct `membership_type` number at construction time, since Phase 0 has already provisioned the type. This avoids fragile numeric references that depend on provisioning order.
 
-`target_table: 'channels'` works because `membership_types` entries are processed in Phase 0 and their entity tables are added to the `table_map` before Phase 1 (tables) and Phase 2 (relations).
+`target_table: 'channels'` works because `entity_types` entries are processed in Phase 0 and their entity tables are added to the `table_map` before Phase 1 (tables) and Phase 2 (relations).
 
 ## Validation
 
-The `tg_validate_blueprint_definition` trigger validates `membership_types` entries on INSERT/UPDATE of both `blueprint` and `blueprint_template`. Required keys: `name`, `prefix`. All other keys are optional.
+The `tg_validate_blueprint_definition` trigger validates `entity_types` entries on INSERT/UPDATE of both `blueprint` and `blueprint_template`. Required keys: `name`, `prefix`. All other keys are optional.
 
-## ORM: Create a Blueprint with Membership Types
+## ORM: Create a Blueprint with Entity Types
 
 ```typescript
-// 1. Create a template with membership_types
+// 1. Create a template with entity_types
 const template = await db.blueprintTemplate.create({
   data: {
     name: 'team_collaboration',
@@ -306,7 +306,7 @@ const template = await db.blueprintTemplate.create({
     categories: ['collaboration'],
     tags: ['channels', 'messaging'],
     definition: {
-      membership_types: [
+      entity_types: [
         {
           name: 'Channel Member',
           prefix: 'channel',
@@ -371,7 +371,7 @@ constructive public:blueprint-template create \
   --displayName "Team Collaboration" \
   --ownerId <UUID> \
   --definition '{
-    "membership_types": [
+    "entity_types": [
       {
         "name": "Channel Member",
         "prefix": "channel",
@@ -401,7 +401,7 @@ To create nested hierarchies (e.g. org → channel → thread), list entries in 
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     {
       "name": "Channel Member",
       "prefix": "channel",
@@ -424,7 +424,7 @@ A common pattern: provision entity types in Phase 0, then create domain tables i
 
 ```json
 {
-  "membership_types": [
+  "entity_types": [
     { "name": "Channel Member", "prefix": "channel", "parent_entity": "org" }
   ],
   "tables": [
