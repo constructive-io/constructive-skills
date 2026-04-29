@@ -1,6 +1,6 @@
 ---
 name: constructive-custom-entities
-description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, and memberships via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', or when working with membership_types in blueprints."
+description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, and memberships via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', or when working with entity_types in blueprints."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -73,7 +73,7 @@ Nested types must be provisioned **after** their parent type.
 
 Add `entity_types` (formerly `membership_types`) to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
 
-See [blueprint-membership-types.md](./references/blueprint-membership-types.md) for the full spec and examples.
+See [blueprint-entity-types.md](./references/blueprint-entity-types.md) for the full spec and examples.
 
 ### 2. ORM / GraphQL Mutation
 
@@ -324,5 +324,5 @@ const modules = await db.membershipTypesModule.findMany({
 - **File uploads (full reference):** [`constructive-uploads`](../constructive-uploads/SKILL.md) — presigned URL flow, GraphQL mutations, client library, error codes
 - **Blueprint definition format:** [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) — `entity_types` is a top-level key alongside `storage`, `tables`, `relations`, etc.
 - **ORM provisioning examples:** [orm-provisioning.md](./references/orm-provisioning.md)
-- **Blueprint entity_types spec:** [blueprint-membership-types.md](./references/blueprint-membership-types.md)
+- **Blueprint entity_types spec:** [blueprint-entity-types.md](./references/blueprint-entity-types.md)
 - **SQL-level detail:** `entity-types-and-provisioning` skill in `constructive-db` repo
