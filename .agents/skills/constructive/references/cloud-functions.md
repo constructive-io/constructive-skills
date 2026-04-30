@@ -498,6 +498,112 @@ All other errors return 500.
 8. **Validate input** — Check required fields early and return clear error messages
 9. **Use @pgpmjs/env** — Parse boolean env vars consistently with `parseEnvBoolean()`
 
+## Local Development Ingress (Port-Forwarding)
+
+When running cloud functions in Kubernetes locally, use port-forwarding to access services from your machine.
+
+### Port Map (Standard Conventions)
+
+| Service | Local Port | K8s Service | Service Port |
+|---------|------------|-------------|--------------|
+| PostgreSQL | 5432 | postgres | 5432 |
+| Job Service | 8080 | knative-job-service | 8080 |
+| simple-email | 8081 | simple-email | 80 |
+| send-email-link | 8082 | send-email-link | 80 |
+| GraphQL API | 3002 | constructive-server | 3000 |
+| Dashboard | 3000 | dashboard | 3000 |
+| Mailpit UI | 8025 | mailpit | 8025 |
+
+### Method 1: Skaffold Automatic (Recommended)
+
+Port-forwards start automatically with Skaffold:
+
+```bash
+make skaffold-dev    # Uses local-simple profile
+```
+
+All services are accessible immediately. `Ctrl+C` stops everything.
+
+To add a new function, edit `skaffold.yaml`:
+
+```yaml
+portForward:
+  - resourceType: service
+    resourceName: my-new-function
+    namespace: constructive-functions
+    port: 80
+    localPort: 8083  # Pick next available port
+```
+
+### Method 2: Manual kubectl Port-Forward
+
+For ad-hoc access or debugging:
+
+```bash
+NAMESPACE=constructive-functions
+
+# Database
+kubectl port-forward -n $NAMESPACE svc/postgres 5432:5432
+
+# Job service
+kubectl port-forward -n $NAMESPACE svc/knative-job-service 8080:8080
+
+# Functions (service port is 80, local is 808x)
+kubectl port-forward -n $NAMESPACE svc/simple-email 8081:80
+kubectl port-forward -n $NAMESPACE svc/send-email-link 8082:80
+
+# GraphQL API
+kubectl port-forward -n $NAMESPACE svc/constructive-server 3002:3000
+```
+
+Run in background with `&`:
+
+```bash
+kubectl port-forward -n $NAMESPACE svc/simple-email 8081:80 &
+```
+
+### Method 3: Helper Script
+
+Use `k8s/scripts/port-forward.sh` for common services:
+
+```bash
+NAMESPACE=constructive-functions ./k8s/scripts/port-forward.sh start
+NAMESPACE=constructive-functions ./k8s/scripts/port-forward.sh stop
+```
+
+### Testing Local Access
+
+```bash
+# Test a function
+curl -X POST http://localhost:8082 \
+  -H 'Content-Type: application/json' \
+  -H 'X-Database-Id: constructive' \
+  -d '{"email_type":"invite_email","email":"test@example.com"}'
+
+# Test GraphQL API
+curl http://localhost:3002/graphql \
+  -H 'Content-Type: application/json' \
+  -H 'X-Database-Id: constructive' \
+  -d '{"query":"{ __typename }"}'
+```
+
+### Troubleshooting
+
+**Port already in use:**
+```bash
+lsof -ti:8081 | xargs kill -9
+```
+
+**Connection refused:** Check if pod is running:
+```bash
+kubectl get pods -n constructive-functions
+```
+
+**Function returns errors:** Check logs:
+```bash
+kubectl logs -n constructive-functions -l app=simple-email -f
+```
+
 ## References
 
 - Related skill: `graphql-codegen` for typed GraphQL SDK generation
