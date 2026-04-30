@@ -247,25 +247,24 @@ The plugin resolves the correct storage module by probing entity tables for the 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `is_public` | boolean | `false` | S3 bucket ACL — `true` = publicly readable, `false` = presigned URLs required |
-| `policies` | jsonb[] | `null` | Array of policy objects (`{ "$type", "privileges", "data", "tables" }`). Replaces default storage security policies. Same format as `table_provision.policies[]` |
-| `storage_table_provisions` | object | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, `"upload_requests"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision` |
+| `provisions` | object | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, `"upload_requests"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table |
 
-Each policy object has `$type` (required), `privileges` (required), plus optional `data`, `tables`, and `policy_name`. The `tables` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not prefixed physical table names. Omit `tables` to apply to all three.
+Each policy object (inside `provisions.{table}.policies`) has `$type` (required), `privileges` (required), plus optional `data` and `policy_name`. Missing `data` is auto-populated with storage-specific defaults (e.g., `AuthzPublishable` → `{"is_published_field": "is_public", "require_published_at": false}`).
 
 ### Default Storage Policies
 
-When `storage_config.policies` is omitted, the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive/references/storage-policies.md) for the full default policy matrix.
+When `provisions` is omitted (or a table key has no `policies`), the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive/references/storage-policies.md) for the full default policy matrix.
 
-If you provide **any** explicit `policies` array, **none of the defaults are applied** — it's full replacement, not merge.
+When a table key includes `policies[]`, defaults are skipped **for that table only** — other tables without a `policies` key still get defaults. It's per-table replacement, not all-or-nothing.
 
 ### Typical Policy Combinations
 
 | Combination | Use case |
 |-------------|----------|
-| *(omit policies entirely)* | Locked-down default: members view/upload, only creator can update/delete |
-| `[{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members (any member can delete any file) |
-| Same + `{ "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }` | Public assets with member write |
-| `[{ "$type": "AuthzEntityMembership", "privileges": ["select"] }, { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }]` | Owner-only write, member read |
+| *(omit provisions entirely)* | Locked-down default: members view/upload, only creator can update/delete |
+| `provisions.files.policies: [{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members on files (buckets/upload_requests still get defaults) |
+| Per-table explicit policies on all three keys | Full custom: you control exactly what each storage table gets |
+| `provisions.files.nodes: [{ "$type": "SearchBm25", ... }]` (no policies key) | Add search to files, keep default policies |
 
 ---
 
