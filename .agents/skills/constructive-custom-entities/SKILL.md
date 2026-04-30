@@ -14,8 +14,8 @@ Types 1 (app) and 2 (org) are built-in. Types 3+ are **dynamic** — you define 
 
 Related skills:
 - **File uploads:** [`constructive-uploads`](../constructive-uploads/SKILL.md) — the full presigned URL upload flow, GraphQL mutations, client library, error codes
-- **Blueprints:** `constructive` → [blueprints.md](../constructive/references/blueprints.md) — how `constructBlueprint()` works
-- **Blueprint definition format:** `constructive` → [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) — table/relation/policy JSONB spec
+- **Blueprints:** `constructive-platform` → [blueprints.md](../constructive-platform/references/blueprints.md) — how `constructBlueprint()` works
+- **Blueprint definition format:** `constructive-platform` → [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) — table/relation/policy JSONB spec
 - **Safegres (security):** `constructive-safegres` — Authz* policy types for RLS
 - **SQL-level provisioning:** `entity-types-and-provisioning` skill in `constructive-db`
 
@@ -253,7 +253,7 @@ Each policy object (inside `provisions.{table}.policies`) has `$type` (required)
 
 ### Default Storage Policies
 
-When `provisions` is omitted (or a table key has no `policies`), the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive/references/storage-policies.md) for the full default policy matrix.
+When `provisions` is omitted (or a table key has no `policies`), the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive-platform/references/storage-policies.md) for the full default policy matrix.
 
 When a table key includes `policies[]`, defaults are skipped **for that table only** — other tables without a `policies` key still get defaults. It's per-table replacement, not all-or-nothing.
 
@@ -322,7 +322,7 @@ const modules = await db.membershipTypesModule.findMany({
 ## Cross-References
 
 - **File uploads (full reference):** [`constructive-uploads`](../constructive-uploads/SKILL.md) — presigned URL flow, GraphQL mutations, client library, error codes
-- **Blueprint definition format:** [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) — `entity_types` is a top-level key alongside `storage`, `tables`, `relations`, etc.
+- **Blueprint definition format:** [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) — `entity_types` is a top-level key alongside `storage`, `tables`, `relations`, etc.
 - **ORM provisioning examples:** [orm-provisioning.md](./references/orm-provisioning.md)
 - **Blueprint entity_types spec:** [blueprint-entity-types.md](./references/blueprint-entity-types.md)
 - **SQL-level detail:** `entity-types-and-provisioning` skill in `constructive-db` repo

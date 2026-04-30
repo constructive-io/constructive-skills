@@ -199,5 +199,5 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 - `constructive-ai` — [agentic-kit.md](../constructive-ai/references/agentic-kit.md): Multi-provider LLM abstraction for RAG generation step
 - `constructive-ai` — [rag-pipeline.md](../constructive-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture
 - `graphile-search` — Plugin architecture and adapter internals (team-level, not SDK consumers)
-- `constructive` — Platform core: server config, deployment, CNC CLI
+- `constructive-platform` — Platform core: server config, deployment, CNC CLI
 - `pgpm` — Database migrations and module management

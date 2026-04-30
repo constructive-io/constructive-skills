@@ -152,8 +152,8 @@ The scheduler component in `knative-job-service` evaluates cron expressions and 
 
 ## Related Skills
 
-- **[`constructive`](../constructive/references/cloud-functions.md)** — Cloud functions: building the Knative function that handles a job
+- **[`constructive-platform`](../constructive-platform/references/cloud-functions.md)** — Cloud functions: building the Knative function that handles a job
 - **[`constructive-safegres`](../constructive-safegres/SKILL.md)** — Security policies for tables with job triggers
-- **Blueprint definition format** — [blueprints.md](../constructive/references/blueprint-definition-format.md) for the full node types table
+- **Blueprint definition format** — [blueprints.md](../constructive-platform/references/blueprint-definition-format.md) for the full node types table
 
 For SQL-level internals (generator functions, AST helpers, trigger function source), see the `constructive-job-triggers` skill in `constructive-private-skills`.

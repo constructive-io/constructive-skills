@@ -113,8 +113,8 @@ For full navigation, see the repo's `AGENTS.md`.
   - [references/docker.md](../pgpm/references/docker.md) — Docker container management
   - [references/env.md](../pgpm/references/env.md) — Environment variables and `eval "$(pgpm env)"`
   - [references/cli.md](../pgpm/references/cli.md) — Full CLI command reference
-- **constructive** skill — Platform architecture, blueprints, services, deployment
-  - [references/deployment.md](../constructive/references/deployment.md) — Docker Compose, Makefile targets, production builds
-  - [references/server-config.md](../constructive/references/server-config.md) — Running the GraphQL server
+- **constructive-platform** skill — Platform architecture, blueprints, services, deployment
+  - [references/deployment.md](../constructive-platform/references/deployment.md) — Docker Compose, Makefile targets, production builds
+  - [references/server-config.md](../constructive-platform/references/server-config.md) — Running the GraphQL server
 - **constructive-testing** skill — Test frameworks (pgsql-test, drizzle-orm-test, supabase-test)
 - **constructive-graphql** skill — Codegen, ORM, search, pagination

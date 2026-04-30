@@ -106,4 +106,4 @@ Choose the **highest-level framework** that fits your test scenario:
 ## Cross-References
 
 - `pgpm` — Database migrations (deploy before testing)
-- `constructive` — Platform core, environment configuration
+- `constructive-platform` — Platform core, environment configuration

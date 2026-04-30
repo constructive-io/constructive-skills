@@ -11,7 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Description |
 |-------|-------------|
 | **constructive-features** | Feature catalog — one-page router mapping every app capability (auth, authz, multi-tenancy, storage, search, AI, GraphQL, ops) to the authoritative skill |
-| **constructive** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
+| **constructive-platform** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
 | **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
 | **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, and run tests |
 | **pgpm** | PostgreSQL Package Manager — migrations, CLI, Docker, CI/CD workflows |
@@ -21,7 +21,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
 | **constructive-jobs** | Background jobs — DataJobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
 | **constructive-ai** | AI capabilities — pgvector RAG pipelines, embeddings, Ollama CI/CD |
-| **constructive-tooling** | Dev tools — pnpm workspaces, inquirerer CLI framework, README formatting |
+| **inquirerer-cli** | inquirerer CLI framework — interactive prompts, appStash, yanse colors, README formatting |
 | **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
 | **fbp** | Flow-Based Programming — types, spec, evaluator, graph editor |
 

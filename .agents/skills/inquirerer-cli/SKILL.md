@@ -1,14 +1,14 @@
 ---
-name: constructive-tooling
-description: "Developer tools — inquirerer CLI framework (interactive prompts, appStash, yanse colors) and README formatting conventions. Use when building CLIs with inquirerer or formatting documentation. For pnpm workspace/publishing/monorepo management, see the constructive-pnpm skill instead."
+name: inquirerer-cli
+description: "inquirerer CLI framework — interactive prompts, appStash state persistence, yanse terminal colors, and README formatting conventions. Use when building CLIs with inquirerer or formatting documentation. For pnpm workspace/publishing/monorepo management, see the constructive-pnpm skill instead."
 metadata:
   author: constructive-io
   version: "2.0.0"
 ---
 
-# Constructive Tooling
+# inquirerer CLI
 
-Developer tools for Constructive projects: CLI building with inquirerer and documentation formatting.
+Build interactive CLI tools with the inquirerer framework: prompts, appStash state persistence, yanse terminal colors, and documentation formatting.
 
 ## When to Apply
 
