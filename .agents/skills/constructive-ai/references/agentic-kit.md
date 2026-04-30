@@ -152,7 +152,6 @@ Pass 3: LLM Synthesis   — LLM generates answer from retrieved context
 import { AgentKit, OllamaAdapter, AnthropicAdapter } from 'agentic-kit';
 import OllamaClient from '@agentic-kit/ollama';
 import { createClient } from '@your-project/sdk';
-import { NodeHttpAdapter } from '@constructive-io/node';
 
 // Setup
 const ollamaClient = new OllamaClient('http://localhost:11434');
@@ -164,11 +163,10 @@ if (process.env.ANTHROPIC_API_KEY) {
 }
 
 // Create authenticated ORM client
-const adapter = new NodeHttpAdapter(graphqlUrl, {
-  Host: appHost,
-  Authorization: `Bearer ${token}`,
+const db = createClient({
+  endpoint: graphqlUrl,
+  headers: { Authorization: `Bearer ${token}` },
 });
-const db = createClient({ adapter });
 
 // ── Pass 1: Query Router ────────────────────────────────────────────
 async function routeQuery(question: string, tables: string[]): Promise<string[]> {

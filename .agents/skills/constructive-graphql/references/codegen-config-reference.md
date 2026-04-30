@@ -490,8 +490,6 @@ export default defineConfig({
 });
 ```
 
-When `cli: true`, `nodeHttpAdapter` is auto-enabled (Node.js HTTP adapter for localhost subdomain resolution).
-
 ## Documentation Generation
 
 ```typescript
@@ -509,19 +507,6 @@ export default defineConfig({
   },
 });
 ```
-
-## Node.js HTTP Adapter
-
-```typescript
-export default defineConfig({
-  endpoint: 'http://api.localhost:3000/graphql',
-  output: './generated',
-  orm: true,
-  nodeHttpAdapter: true,  // Generates node-fetch.ts with NodeHttpAdapter
-});
-```
-
-The `NodeHttpAdapter` uses `node:http`/`node:https` for requests, enabling local development with subdomain-based routing (e.g., `auth.localhost:3000`).
 
 ## Multi-Target Configuration
 

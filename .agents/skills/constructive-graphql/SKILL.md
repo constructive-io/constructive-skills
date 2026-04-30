@@ -159,7 +159,6 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [codegen-generate-schemas.md](./references/codegen-generate-schemas.md) | Schema export workflow | Exporting `.graphql` SDL files |
 | [codegen-generate-sdk.md](./references/codegen-generate-sdk.md) | SDK generation workflow | Generating React Query hooks and/or ORM |
 | [codegen-generate-cli.md](./references/codegen-generate-cli.md) | CLI generation workflow | Generating inquirerer-based CLI |
-| [codegen-generate-node.md](./references/codegen-generate-node.md) | Node.js adapter generation | `*.localhost` subdomain routing |
 
 ### Using Generated Code
 
@@ -173,7 +172,6 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 | [codegen-error-handling.md](./references/codegen-error-handling.md) | **Error handling patterns (read first!)** | `.unwrap()` vs `.execute()`, silent error trap, `QueryResult<T>` discriminated union |
 | [codegen-relations.md](./references/codegen-relations.md) | Relation queries and M:N mutations | Nested selects, belongsTo, hasMany, manyToMany, composite PKs, `expose_in_api`, add/remove methods |
 | [codegen-query-keys.md](./references/codegen-query-keys.md) | Query key factory | Cache invalidation, `invalidate.*`, `remove.*` |
-| [codegen-node-http-adapter.md](./references/codegen-node-http-adapter.md) | Node.js HTTP adapter | Subdomain routing in Node.js |
 
 ### Search
 
