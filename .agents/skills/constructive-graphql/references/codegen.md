@@ -236,9 +236,6 @@ interface GenerateOptions {
   // Documentation (generated alongside code)
   docs?: DocsConfig | boolean; // Default: { readme: true, agents: true, mcp: false, skills: false }
 
-  // Node.js HTTP adapter (auto-enabled when cli is true)
-  nodeHttpAdapter?: boolean; // Default: false
-
   // Filtering
   tables?: { include?, exclude?, systemExclude? };
   queries?: { include?, exclude?, systemExclude? };
@@ -326,21 +323,6 @@ import { getSearchFields } from '@constructive-io/graphql-codegen';
 const searchFields = getSearchFields(schema);
 // Returns: { tsvector: [...], bm25: [...], trgm: [...], pgvector: [...] }
 ```
-
-### Node.js HTTP Adapter
-
-For Node.js apps using subdomain-based routing (e.g., `auth.localhost:3000`):
-
-```typescript
-await generate({
-  endpoint: 'http://api.localhost:3000/graphql',
-  output: './generated',
-  orm: true,
-  nodeHttpAdapter: true,  // Generates node-fetch.ts with NodeHttpAdapter
-});
-```
-
-See `references/node-http-adapter.md` for usage details.
 
 ## Using Generated Hooks
 
@@ -465,8 +447,6 @@ await generate({
 });
 ```
 
-When `cli: true`, `nodeHttpAdapter` is auto-enabled.
-
 ### Running the CLI
 
 If `entryPoint: true` is set:
@@ -542,7 +522,6 @@ See `references/query-keys.md` for details.
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match |
 | Auth errors at runtime | Check `configure()` headers are set |
-| Localhost fetch errors (Node.js) | Enable `nodeHttpAdapter: true` |
 | No skill files generated | Set `docs: { skills: true }` |
 | Schema export produces empty file | Verify database/endpoint has tables in the specified schemas |
 | `schemaDir` generates nothing | Ensure directory contains `.graphql` files (not `.gql` or other extensions) |
@@ -559,13 +538,11 @@ Each major codegen workflow has a dedicated reference with full examples and opt
 - **`generate-schemas.md`** -- Export GraphQL schemas to `.graphql` files (schema export workflow)
 - **`generate-sdk.md`** -- Generate React Query hooks and/or ORM client (primary SDK workflow)
 - **`generate-cli.md`** -- Generate inquirerer-based CLI with CRUD commands
-- **`generate-node.md`** -- Generate NodeHttpAdapter for `*.localhost` subdomain routing
 
 ### Deep-Dive References
 
 - **Using generated code**: `hooks-patterns.md`, `hooks-output.md`, `orm-patterns.md`, `orm-output.md`
 - **Error handling and relations**: `error-handling.md`, `relations.md`
 - **Query key factory and cache management**: `query-keys.md`
-- **Node.js HTTP adapter (manual)**: `node-http-adapter.md`
 - **CLI flags**: `cli-reference.md`
 - **Configuration file (`defineConfig`)**: `config-reference.md`

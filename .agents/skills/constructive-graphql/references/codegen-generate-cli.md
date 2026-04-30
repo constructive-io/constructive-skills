@@ -39,7 +39,6 @@ await generate({
 ## Important Behavior
 
 - **ORM is always generated alongside CLI**: The CLI uses the ORM client internally. When `cli: true`, the ORM is auto-generated even if `orm` is not explicitly set.
-- **NodeHttpAdapter is auto-enabled**: When `cli: true`, `nodeHttpAdapter` is automatically set to `true` (unless explicitly set to `false`). This enables `*.localhost` subdomain resolution for local development. See `generate-node.md`.
 - **Default tool name**: If `toolName` is not specified, defaults to `'app'`.
 
 ## CLI Configuration Options
@@ -79,7 +78,6 @@ interface CliConfig {
 ├── index.ts              # Entry point (only if entryPoint: true)
 ├── executor.ts           # CLI executor with command routing
 ├── command-map.ts        # Map of all commands (table + custom + infra)
-├── node-fetch.ts         # NodeHttpAdapter (auto-generated)
 ├── context.ts            # Infrastructure: context management command
 ├── auth.ts               # Infrastructure: auth/credentials command
 ├── utils.ts              # Shared CLI utilities
@@ -214,5 +212,4 @@ await generate({
 | `command not found` after generation | Use `npx ts-node` or compile TypeScript first |
 | Auth errors | Run `{toolName} auth set-token <token>` to set credentials |
 | Wrong endpoint | Run `{toolName} context use <name>` to switch contexts |
-| Localhost fetch errors | NodeHttpAdapter should be auto-enabled; verify `nodeHttpAdapter !== false` |
 | Command name collision with `auth`/`context` | Use `builtinNames` to rename infrastructure commands |
