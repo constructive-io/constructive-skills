@@ -71,73 +71,82 @@ The optional `storage_config` object controls bucket behavior:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
-| `policies` | jsonb array | No | `null` | Array of policy objects. When provided, replaces the default storage security policies entirely. Same format as `table_provision.policies[]` |
-| `storage_table_provisions` | object | No | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, or `"upload_requests"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision` targeting the corresponding storage table |
+| `provisions` | object | No | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, or `"upload_requests"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table; tables without a key still get defaults |
 | `upload_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned upload URL expiry time in seconds |
 | `download_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned download URL expiry time in seconds |
 | `default_max_file_size` | bigint | No | *(module default)* | Default maximum file size in bytes |
 | `allowed_origins` | text[] | No | *(module default)* | CORS allowed origins |
 
-### Policy format
+### Policy format (inside `provisions.{table}.policies`)
 
-Each entry in the `policies` array is a policy object with explicit privileges and optional table scoping:
+Each entry in a table's `policies` array is a policy object:
 
 ```json
 {
   "$type": "AuthzEntityMembership",
   "privileges": ["select", "insert", "update", "delete"],
-  "data": { "entity_field": "owner_id", "membership_type": 5 },
-  "tables": ["buckets", "files", "upload_requests"]
+  "data": { "entity_field": "owner_id", "membership_type": 5 }
 }
 ```
 
 | Field | Type | Required | Default | Description |
 |---|---|---|---|---|
 | `$type` | string | **Yes** | — | Authz* node type name |
-| `privileges` | string[] | **Yes** | — | Privileges to apply. Intersected with what each storage table supports |
-| `data` | object | No | *(auto-derived)* | Policy data. When omitted, derived from membership_type and known Authz* conventions |
-| `tables` | string[] | No | all three | Which storage tables to apply this policy to: `"buckets"`, `"files"`, `"upload_requests"` |
+| `privileges` | string[] | **Yes** | — | Privileges to apply |
+| `data` | object | No | *(auto-derived)* | Policy data. When omitted, auto-populated with storage-specific defaults based on `$type` and membership_type |
 | `policy_name` | string | No | *(auto-derived)* | Custom suffix for the generated policy name |
 
-**Privilege intersection per table:**
-- **Buckets:** select, insert, update, delete
-- **Files:** select, insert, update, delete
-- **Upload requests:** select, insert, update *(no delete)*
-
-### Typical policy combinations
+### Typical provisions combinations
 
 ```json
-// Private entity files — members get full CRUD
-"policies": [
-  { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }
-]
+// Custom policies on files only — buckets and upload_requests get defaults
+"provisions": {
+  "files": {
+    "policies": [
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+      { "$type": "AuthzPublishable", "privileges": ["select"] }
+    ]
+  }
+}
 
-// Public assets with member write
-"policies": [
-  { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-  { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
-]
+// Full custom on all three tables
+"provisions": {
+  "files": {
+    "policies": [
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"] }
+    ]
+  },
+  "buckets": {
+    "policies": [
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }
+    ]
+  },
+  "upload_requests": {
+    "policies": [
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update"] }
+    ]
+  }
+}
 
-// Owner-only files with read-only for members
-"policies": [
-  { "$type": "AuthzEntityMembership", "privileges": ["select"] },
-  { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
-]
-
-// Read-only entity storage
-"policies": [
-  { "$type": "AuthzEntityMembership", "privileges": ["select"] }
-]
+// Add search to files without overriding default policies
+"provisions": {
+  "files": {
+    "nodes": [{ "$type": "SearchBm25", "data": { "language": "english" } }]
+  }
+}
 ```
 
-**Important:** `AuthzPublishable` requires an `is_public` column and `AuthzDirectOwner` requires an `actor_id` column — use `"tables"` to scope them to tables that have these columns (buckets and files have both; upload_requests has neither).
+**Important:** `AuthzPublishable` requires an `is_public` column and `AuthzDirectOwner` requires an `actor_id` column — scope them to tables that have these columns (buckets and files have both; upload_requests has neither).
 
-### Defaults (when `policies` is omitted)
+### Defaults (when `provisions` is omitted)
 
-When `policies` is NULL, these defaults are applied automatically:
+When `provisions` is absent (or a table key has no `policies`), these defaults are applied automatically:
 - `AuthzPublishable` → buckets (SELECT), files (SELECT, INSERT)
 - Membership policy → buckets/files (full CRUD), upload_requests (SELECT, INSERT, UPDATE)
 - `AuthzDirectOwner` → files (UPDATE, DELETE)
+
+When a table key **does** include `policies[]`, defaults are skipped **for that table only** — other tables still get defaults. It's per-table replacement, not all-or-nothing.
 
 See [storage-policies.md](../../constructive/references/storage-policies.md) for the full reference including the provisioning pipeline and all available policy types.
 
