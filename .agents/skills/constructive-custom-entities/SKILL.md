@@ -125,7 +125,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 - `permissions_module:channel`
 - `memberships_module:channel`
 - `limits_module:channel` (if `has_limits`)
-- `invites_module:channel` (auto-provisioned when `emails_module` exists)
+- `invites_module:channel` (if `has_invites`, or auto-provisioned when `emails_module` exists)
 - `storage_module:channel` (if `has_storage`)
 
 ### Optional Modules
@@ -248,6 +248,7 @@ The plugin resolves the correct storage module by probing entity tables for the 
 |-------|------|---------|-------------|
 | `is_public` | boolean | `false` | S3 bucket ACL — `true` = publicly readable, `false` = presigned URLs required |
 | `policies` | jsonb[] | `null` | Array of policy objects (`{ "$type", "privileges", "data", "tables" }`). Replaces default storage security policies. Same format as `table_provision.policies[]` |
+| `storage_table_provisions` | object | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, `"upload_requests"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision` |
 
 Each policy object has `$type` (required), `privileges` (required), plus optional `data`, `tables`, and `policy_name`. The `tables` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not prefixed physical table names. Omit `tables` to apply to all three.
 

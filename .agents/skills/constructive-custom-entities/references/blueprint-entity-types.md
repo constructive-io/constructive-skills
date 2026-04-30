@@ -40,6 +40,7 @@ The `entity_types` array is a top-level key in the blueprint definition JSONB, a
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
 | `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets, files, and upload_requests tables |
+| `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
@@ -71,6 +72,11 @@ The optional `storage_config` object controls bucket behavior:
 |-------|------|----------|---------|-------------|
 | `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
 | `policies` | jsonb array | No | `null` | Array of policy objects. When provided, replaces the default storage security policies entirely. Same format as `table_provision.policies[]` |
+| `storage_table_provisions` | object | No | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, or `"upload_requests"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision` targeting the corresponding storage table |
+| `upload_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned upload URL expiry time in seconds |
+| `download_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned download URL expiry time in seconds |
+| `default_max_file_size` | bigint | No | *(module default)* | Default maximum file size in bytes |
+| `allowed_origins` | text[] | No | *(module default)* | CORS allowed origins |
 
 ### Policy format
 
