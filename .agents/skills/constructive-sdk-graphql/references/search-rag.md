@@ -1,12 +1,12 @@
 # RAG Patterns with Codegen'd ORM
 
-Use the codegen'd ORM to build Retrieval-Augmented Generation (RAG) pipelines. This reference covers vector search via the ORM, context retrieval, and integration with LLM providers via [agentic-kit](../../constructive-ai/references/agentic-kit.md).
+Use the codegen'd ORM to build Retrieval-Augmented Generation (RAG) pipelines. This reference covers vector search via the ORM, context retrieval, and integration with LLM providers via [agentic-kit](../../constructive-sdk-ai/references/agentic-kit.md).
 
 ## Prerequisites
 
-1. **Vector column** provisioned on your table (via `@constructive-io/sdk` — see `constructive-ai` skill)
+1. **Vector column** provisioned on your table (via `@constructive-io/sdk` — see `constructive-sdk-ai` skill)
 2. **HNSW index** created on the embedding column
-3. **Codegen'd SDK** generated via `@constructive-io/graphql-codegen` (see `constructive-graphql` skill — [codegen.md](./codegen.md))
+3. **Codegen'd SDK** generated via `@constructive-io/graphql-codegen` (see `constructive-sdk-graphql` skill — [codegen.md](./codegen.md))
 4. **Ollama** (or another provider) running for embeddings and chat
 
 ## Vector Search via ORM
@@ -274,5 +274,5 @@ JSON array only:`,
 
 - [search-pgvector.md](./search-pgvector.md): Creating vector columns, HNSW indexes, distance metrics
 - [search-composite.md](./search-composite.md): Unified `unifiedSearch` + `searchScore` for hybrid search
-- `constructive-ai` — [agentic-kit.md](../../constructive-ai/references/agentic-kit.md): Multi-provider LLM abstraction (Ollama, Anthropic, OpenAI)
-- `constructive-ai` — [rag-pipeline.md](../../constructive-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture
+- `constructive-sdk-ai` — [agentic-kit.md](../../constructive-sdk-ai/references/agentic-kit.md): Multi-provider LLM abstraction (Ollama, Anthropic, OpenAI)
+- `constructive-sdk-ai` — [rag-pipeline.md](../../constructive-sdk-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture

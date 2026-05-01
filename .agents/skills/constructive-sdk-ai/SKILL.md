@@ -1,5 +1,5 @@
 ---
-name: constructive-ai
+name: constructive-sdk-ai
 description: "AI and vector search on the Constructive platform — provision pgvector columns and indexes via SDK, query embeddings via codegen'd ORM, build RAG pipelines with Ollama, and run LLM models in GitHub Actions CI/CD. Use when building RAG pipelines, working with embeddings, running Ollama in CI, or implementing AI-powered search within a Constructive application."
 metadata:
   author: constructive-io
@@ -30,7 +30,7 @@ Use this skill when:
 6. RAG        →  Retrieve context via ORM → feed to LLM for generation
 ```
 
-> **Important:** For vector *querying* via ORM, see the `constructive-graphql` skill ([search-pgvector.md](../constructive-graphql/references/search-pgvector.md)). This skill covers the AI/RAG layer on top.
+> **Important:** For vector *querying* via ORM, see the `constructive-sdk-graphql` skill ([search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md)). This skill covers the AI/RAG layer on top.
 
 ## Quick Start: Provision + Query
 
@@ -123,8 +123,8 @@ Run Ollama in GitHub Actions for testing RAG pipelines. See [ollama-ci.md](./ref
 
 ## Cross-References
 
-- `constructive-graphql` — [search-pgvector.md](../constructive-graphql/references/search-pgvector.md): ORM query patterns for vector search (distance filters, metrics, ordering)
-- `constructive-graphql` — [search-rag.md](../constructive-graphql/references/search-rag.md): RAG patterns with codegen'd ORM (single-table, multi-table, hybrid, embedding ingestion)
-- `constructive-graphql` — [search-composite.md](../constructive-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm in unified `searchScore`
+- `constructive-sdk-graphql` — [search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md): ORM query patterns for vector search (distance filters, metrics, ordering)
+- `constructive-sdk-graphql` — [search-rag.md](../constructive-sdk-graphql/references/search-rag.md): RAG patterns with codegen'd ORM (single-table, multi-table, hybrid, embedding ingestion)
+- `constructive-sdk-graphql` — [search-composite.md](../constructive-sdk-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm in unified `searchScore`
 - `graphile-search` — Plugin internals for the unified search system (team-level)
 - `pgpm` — Database migrations for vector-enabled modules

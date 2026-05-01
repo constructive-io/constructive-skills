@@ -15,7 +15,7 @@ Query -> Embedding -> ORM Vector Search -> Context Retrieval -> LLM Response
 ### Components
 
 1. **Provision**: SDK creates vector columns + HNSW indexes on your tables
-2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-graphql` skill — [codegen.md](../../constructive-graphql/references/codegen.md))
+2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-sdk-graphql` skill — [codegen.md](../../constructive-sdk-graphql/references/codegen.md))
 3. **Ingestion**: Embed documents with Ollama, store via ORM
 4. **Retrieval**: ORM `vectorEmbedding` filter + distance ordering
 5. **Generation**: Feed retrieved context to LLM for response
@@ -70,7 +70,7 @@ await db.index.create({
 
 ## Step 2: Generate ORM
 
-Use `@constructive-io/graphql-codegen` to generate a typed ORM client with vector search support (ORM and React Query hooks are both available). See the `constructive-graphql` skill ([codegen.md](../../constructive-graphql/references/codegen.md)) for full setup and options.
+Use `@constructive-io/graphql-codegen` to generate a typed ORM client with vector search support (ORM and React Query hooks are both available). See the `constructive-sdk-graphql` skill ([codegen.md](../../constructive-sdk-graphql/references/codegen.md)) for full setup and options.
 
 ---
 
@@ -223,7 +223,7 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-> See `constructive-graphql` ([search-composite.md](../../constructive-graphql/references/search-composite.md)) for full combined search patterns.
+> See `constructive-sdk-graphql` ([search-composite.md](../../constructive-sdk-graphql/references/search-composite.md)) for full combined search patterns.
 
 ---
 
@@ -424,7 +424,7 @@ async function getContext(question: string): Promise<string> {
 
 ## Cross-References
 
-- `constructive-graphql` — [search-pgvector.md](../../constructive-graphql/references/search-pgvector.md): Full ORM query reference for pgvector
-- `constructive-graphql` — [search-composite.md](../../constructive-graphql/references/search-composite.md): Hybrid search (vector + text)
+- `constructive-sdk-graphql` — [search-pgvector.md](../../constructive-sdk-graphql/references/search-pgvector.md): Full ORM query reference for pgvector
+- `constructive-sdk-graphql` — [search-composite.md](../../constructive-sdk-graphql/references/search-composite.md): Hybrid search (vector + text)
 - [ollama.md](./ollama.md): OllamaClient implementation and model selection
 - [pgvector-sql.md](./pgvector-sql.md): Raw SQL reference for pgvector (SQL-level)

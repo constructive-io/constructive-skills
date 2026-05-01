@@ -1,5 +1,5 @@
 ---
-name: constructive-uploads
+name: constructive-sdk-uploads
 description: "File uploads with GraphQL + S3/MinIO — presigned URL flow (requestUploadUrl → PUT → confirmUpload), bucket provisioning, downloadUrl computed field, public/private/entity-scoped buckets, MIME type restrictions, file size limits, deduplication, and the upload-client library. Use when asked to 'upload files', 'add file uploads', 'configure storage', 'set up MinIO', 'presigned URLs', 'download URLs', or when working with graphile-presigned-url-plugin, graphile-bucket-provisioner-plugin, or @constructive-io/upload-client."
 metadata:
   author: constructive-io
@@ -11,7 +11,7 @@ metadata:
 Constructive provides a complete file upload pipeline using presigned S3 URLs — the client uploads directly to S3/MinIO, never routing file bytes through the GraphQL server.
 
 Related skills:
-- **Custom entities (entity-scoped storage):** [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) — provisioning entity types with `has_storage: true`
+- **Custom entities (entity-scoped storage):** [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) — provisioning entity types with `has_storage: true`
 - **Security policies on storage tables:** [`constructive-safegres`](../constructive-safegres/SKILL.md) — `AuthzMembership`, `AuthzEntityMembership`, `AuthzPublishable`
 
 ---
@@ -96,7 +96,7 @@ Files inherit `is_public = false`. `downloadUrl` returns a presigned GET URL (de
 ```
 Files belong to a specific entity instance. Secured by `AuthzEntityMembership`. Supports per-bucket MIME type restrictions and file size limits.
 
-See [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) for provisioning entity types with storage.
+See [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) for provisioning entity types with storage.
 
 ## App-Level Bucket Seeding (Blueprint)
 

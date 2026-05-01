@@ -1,5 +1,5 @@
 ---
-name: constructive-custom-entities
+name: constructive-sdk-entities
 description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, and memberships via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', or when working with entity_types in blueprints."
 metadata:
   author: constructive-io
@@ -13,7 +13,7 @@ Constructive has a hierarchical entity type system. Every scope of membership �
 Types 1 (app) and 2 (org) are built-in. Types 3+ are **dynamic** — you define them at runtime via the ORM, CLI, or blueprint definitions.
 
 Related skills:
-- **File uploads:** [`constructive-uploads`](../constructive-uploads/SKILL.md) — the full presigned URL upload flow, GraphQL mutations, client library, error codes
+- **File uploads:** [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) — the full presigned URL upload flow, GraphQL mutations, client library, error codes
 - **Blueprints:** `constructive-platform` → [blueprints.md](../constructive-platform/references/blueprints.md) — how `constructBlueprint()` works
 - **Blueprint definition format:** `constructive-platform` → [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) — table/relation/policy JSONB spec
 - **Safegres (security):** `constructive-safegres` — Authz* policy types for RLS
@@ -240,7 +240,7 @@ const { data } = await graphqlClient.mutate({
 });
 ```
 
-The plugin resolves the correct storage module by probing entity tables for the `ownerId`, then uses that module's file tables. See [`constructive-uploads`](../constructive-uploads/SKILL.md) for the complete upload flow, deduplication, error codes, and client library.
+The plugin resolves the correct storage module by probing entity tables for the `ownerId`, then uses that module's file tables. See [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) for the complete upload flow, deduplication, error codes, and client library.
 
 ### `storage_config` Fields
 
@@ -321,7 +321,7 @@ const modules = await db.membershipTypesModule.findMany({
 
 ## Cross-References
 
-- **File uploads (full reference):** [`constructive-uploads`](../constructive-uploads/SKILL.md) — presigned URL flow, GraphQL mutations, client library, error codes
+- **File uploads (full reference):** [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) — presigned URL flow, GraphQL mutations, client library, error codes
 - **Blueprint definition format:** [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) — `entity_types` is a top-level key alongside `storage`, `tables`, `relations`, etc.
 - **ORM provisioning examples:** [orm-provisioning.md](./references/orm-provisioning.md)
 - **Blueprint entity_types spec:** [blueprint-entity-types.md](./references/blueprint-entity-types.md)

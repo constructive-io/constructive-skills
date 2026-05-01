@@ -1,6 +1,6 @@
 # pgvector SQL Reference
 
-> **This is a SQL-level reference.** For the recommended Constructive platform approach, use the SDK to provision vector columns/indexes and the codegen'd ORM to query. See the parent [SKILL.md](../SKILL.md) and `constructive-graphql` skill ([search-pgvector.md](../../constructive-graphql/references/search-pgvector.md)) for the SDK/ORM approach.
+> **This is a SQL-level reference.** For the recommended Constructive platform approach, use the SDK to provision vector columns/indexes and the codegen'd ORM to query. See the parent [SKILL.md](../SKILL.md) and `constructive-sdk-graphql` skill ([search-pgvector.md](../../constructive-sdk-graphql/references/search-pgvector.md)) for the SDK/ORM approach.
 
 Use this reference when you need raw SQL for pgvector — e.g., custom migrations, database functions, or direct PostgreSQL access outside the ORM.
 

@@ -1,5 +1,5 @@
 ---
-name: constructive-graphql
+name: constructive-sdk-graphql
 description: "Unified GraphQL skill for Constructive — code generation (React Query hooks, Prisma-like ORM, CLI), runtime query generation, search (tsvector, BM25, trgm, pgvector, PostGIS, unified composite), pagination, and documentation generation. Use when asked to generate hooks, ORM, CLI, query data, add search, paginate results, or work with @constructive-io/graphql-codegen or @constructive-io/graphql-query."
 compatibility: Node.js 22+, PostgreSQL 14+, PostGraphile v5+
 metadata:
@@ -196,8 +196,8 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 
 ## Cross-References
 
-- `constructive-ai` — [agentic-kit.md](../constructive-ai/references/agentic-kit.md): Multi-provider LLM abstraction for RAG generation step
-- `constructive-ai` — [rag-pipeline.md](../constructive-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture
+- `constructive-sdk-ai` — [agentic-kit.md](../constructive-sdk-ai/references/agentic-kit.md): Multi-provider LLM abstraction for RAG generation step
+- `constructive-sdk-ai` — [rag-pipeline.md](../constructive-sdk-ai/references/rag-pipeline.md): End-to-end RAG pipeline architecture
 - `graphile-search` — Plugin architecture and adapter internals (team-level, not SDK consumers)
 - `constructive-platform` — Platform core: server config, deployment, CNC CLI
 - `pgpm` — Database migrations and module management
