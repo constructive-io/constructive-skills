@@ -148,7 +148,7 @@ When `provisions` is absent (or a table key has no `policies`), these defaults a
 
 When a table key **does** include `policies[]`, defaults are skipped **for that table only** — other tables still get defaults. It's per-table replacement, not all-or-nothing.
 
-See [storage-policies.md](../../constructive/references/storage-policies.md) for the full reference including the provisioning pipeline and all available policy types.
+See [storage-policies.md](../../constructive-platform/references/storage-policies.md) for the full reference including the provisioning pipeline and all available policy types.
 
 ## Entity-Table Policies (`is_visible`, `skip_entity_policies`, `table_provision`)
 

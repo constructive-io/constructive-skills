@@ -11,7 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
 | **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
-| **constructive** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
+| **constructive-platform** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
 | **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
 | **constructive-graphql** | graphql-codegen, sdk-search, graphql-query | Codegen, runtime queries, search, pagination |
 | **constructive-starter-kits** | boilerplate-pgpm-init, boilerplate-nextjs-app, boilerplate-authoring | Project scaffolding via `pgpm init` |
@@ -19,7 +19,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-testing** | pgsql-test, drizzle-orm-test, supabase-test, drizzle-orm, pgsql-parser-testing | All test frameworks |
 | **constructive-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
 | **constructive-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
-| **constructive-tooling** | constructive-pnpm, inquirerer-cli, readme-formatting | Dev tools |
+| **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
 | **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
 | **fbp** | fbp-types, fbp-spec, fbp-evaluator, fbp-graph-editor | Flow-Based Programming toolkit |
 

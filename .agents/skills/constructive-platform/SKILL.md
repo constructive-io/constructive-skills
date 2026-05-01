@@ -1,5 +1,5 @@
 ---
-name: constructive
+name: constructive-platform
 description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
 metadata:
   author: constructive-io

@@ -113,7 +113,7 @@ App-level buckets can be pre-seeded at deploy time via the blueprint `storage.bu
 }
 ```
 
-This creates rows in `app_buckets` during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive/references/blueprint-definition-format.md) for the full `storage` key spec.
+This creates rows in `app_buckets` during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) for the full `storage` key spec.
 
 ---
 
