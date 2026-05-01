@@ -19,7 +19,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-testing** | pgsql-test, drizzle-orm-test, supabase-test, drizzle-orm, pgsql-parser-testing | All test frameworks |
 | **constructive-sdk-entities** | *(standalone)* | Entity types, memberships, entity-scoped storage |
 | **constructive-sdk-uploads** | *(standalone)* | File uploads, presigned URLs, buckets, upload-client |
-| **constructive-sdk-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
+| **constructive-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
 | **constructive-sdk-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
 | **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
 | **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |

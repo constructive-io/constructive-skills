@@ -138,8 +138,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| Background jobs (Knative) | `jobs` package | — | [`constructive-sdk-jobs`](../constructive-sdk-jobs/SKILL.md) |
-| Job triggers (DataJobTrigger) | `DataJobTrigger` node | — | [`constructive-sdk-jobs`](../constructive-sdk-jobs/SKILL.md) |
+| Background jobs (Knative) | `jobs` package | — | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
+| Job triggers (DataJobTrigger) | `DataJobTrigger` node | — | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Cloud functions (Knative HTTP) | `functions/*` | — | [`constructive-platform`](../constructive-platform/references/cloud-functions.md) |
 | Deterministic DB migrations | `pgpm deploy / verify / revert` | — | [`pgpm`](../pgpm/SKILL.md) |
 | Module provisioning | `metaschema_generators.provision_database_modules` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
