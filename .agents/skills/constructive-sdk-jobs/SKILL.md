@@ -1,5 +1,5 @@
 ---
-name: constructive-jobs
+name: constructive-sdk-jobs
 description: "Background job system — DataJobTrigger blueprint node for enqueuing jobs on row changes, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', or when working with DataJobTrigger in blueprints."
 metadata:
   author: constructive-io

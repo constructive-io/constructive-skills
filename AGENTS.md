@@ -13,12 +13,14 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
 | **constructive-platform** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
 | **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
-| **constructive-graphql** | graphql-codegen, sdk-search, graphql-query | Codegen, runtime queries, search, pagination |
+| **constructive-sdk-graphql** | graphql-codegen, sdk-search, graphql-query | SDK codegen (ORM, hooks, CLI), runtime queries, search, pagination |
 | **constructive-starter-kits** | boilerplate-pgpm-init, boilerplate-nextjs-app, boilerplate-authoring | Project scaffolding via `pgpm init` |
 | **constructive-frontend** | constructive-ui, crud-stack, meta-forms | UI components, Stack cards, dynamic forms |
 | **constructive-testing** | pgsql-test, drizzle-orm-test, supabase-test, drizzle-orm, pgsql-parser-testing | All test frameworks |
-| **constructive-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
-| **constructive-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
+| **constructive-sdk-entities** | *(standalone)* | Entity types, memberships, entity-scoped storage |
+| **constructive-sdk-uploads** | *(standalone)* | File uploads, presigned URLs, buckets, upload-client |
+| **constructive-sdk-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
+| **constructive-sdk-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
 | **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
 | **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
 | **fbp** | fbp-types, fbp-spec, fbp-evaluator, fbp-graph-editor | Flow-Based Programming toolkit |

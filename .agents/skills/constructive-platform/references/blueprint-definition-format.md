@@ -100,7 +100,7 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 **Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
 
-See the [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) skill for the full entity types reference.
+See the [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) skill for the full entity types reference.
 
 ## Table Entries
 
@@ -178,7 +178,7 @@ Common node types:
 | `DataStatusField` | Adds status field + B-tree index + optional CHECK | Configurable allowed values |
 | `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
 | `SearchTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
-| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | Configurable payload, events, conditions — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | Configurable payload, events, conditions — see [`constructive-sdk-jobs`](../../constructive-sdk-jobs/SKILL.md) |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 

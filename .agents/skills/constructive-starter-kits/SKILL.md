@@ -53,5 +53,5 @@ pgpm init workspace --dir pnpm
 ## Cross-References
 
 - `pgpm` — Database migrations and module management (what you do after scaffolding)
-- `constructive-graphql` — Code generation and SDK usage (used by the Next.js app boilerplate)
+- `constructive-sdk-graphql` — Code generation and SDK usage (used by the Next.js app boilerplate)
 - `constructive-platform` — Platform core, deployment, server configuration

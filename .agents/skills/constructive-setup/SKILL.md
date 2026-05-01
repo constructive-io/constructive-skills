@@ -1,6 +1,6 @@
 ---
 name: constructive-setup
-description: "Set up the Constructive monorepo for development — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, and run tests. Use when asked to 'set up constructive', 'get constructive running', 'set up dev environment', 'bootstrap database', or when starting work in the constructive-io/constructive repo."
+description: "Set up the Constructive monorepo for development — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, run tests, and start local email services. Use when asked to 'set up constructive', 'get constructive running', 'set up dev environment', 'bootstrap database', 'start email services', 'test emails locally', or when starting work in the constructive-io/constructive repo."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -94,6 +94,12 @@ pnpm test:watch          # watch mode
 
 For testing patterns and frameworks, see the **constructive-testing** skill.
 
+## Local Email Services
+
+Start Mailpit, Admin GraphQL, send-email-link, and job-service for local email testing.
+
+See [local-email-services.md](./references/local-email-services.md) for Docker Compose setup, port reference, and troubleshooting.
+
 ## Monorepo Layout
 
 | Directory | Contents |
@@ -117,4 +123,4 @@ For full navigation, see the repo's `AGENTS.md`.
   - [references/deployment.md](../constructive-platform/references/deployment.md) — Docker Compose, Makefile targets, production builds
   - [references/server-config.md](../constructive-platform/references/server-config.md) — Running the GraphQL server
 - **constructive-testing** skill — Test frameworks (pgsql-test, drizzle-orm-test, supabase-test)
-- **constructive-graphql** skill — Codegen, ORM, search, pagination
+- **constructive-sdk-graphql** skill — Codegen, ORM, search, pagination

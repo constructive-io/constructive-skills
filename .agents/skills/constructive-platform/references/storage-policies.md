@@ -338,8 +338,8 @@ See the [`constructive-safegres`](../constructive-safegres/SKILL.md) skill for t
 ## Cross-references
 
 - **Safegres protocol (Authz* types):** [`constructive-safegres`](../constructive-safegres/SKILL.md)
-- **Custom entities & provisioning:** [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md)
+- **Custom entities & provisioning:** [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md)
 - **Blueprint definition format:** [blueprint-definition-format.md](./blueprint-definition-format.md)
-- **Upload flow (GraphQL mutations, client library):** [`constructive-uploads`](../constructive-uploads/SKILL.md)
+- **Upload flow (GraphQL mutations, client library):** [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md)
 - **Multi-scope bucket resolution:** `multi-scope-bucket-resolution` skill in `constructive-db`
 - **SQL-level security details:** `constructive-db-security-sql` skill in `constructive-db`
