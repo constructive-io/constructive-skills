@@ -1,13 +1,4 @@
----
-name: constructive-local-email-services
-description: Start local email services for testing invite, password reset, and verification emails. Use when setting up local development environment for email functionality.
-compatibility: macOS, Linux
-metadata:
-  author: constructive-io
-  version: "2.0.0"
----
-
-# Constructive Local Email Services
+# Local Email Services
 
 Start Mailpit, Admin GraphQL Server, send-email-link, and job-service for local email testing using Docker Compose.
 

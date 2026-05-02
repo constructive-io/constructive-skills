@@ -35,7 +35,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | API keys | `secrets_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Password reset / forgot password | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Email verification | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Local email testing (dev only) | — | — | [`constructive-local-email-services`](../constructive-local-email-services/SKILL.md) |
+| Local email testing (dev only) | — | — | [`constructive-setup`](../constructive-setup/SKILL.md) |
 
 ## 2. Authorization (Safegres)
 
@@ -54,13 +54,13 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| App-scope memberships (single tenant) | `memberships_module:app` | all auth presets | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Org-scope memberships (multi-tenant) | `memberships_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Dynamic entity types (channels, teams, depts) | `entity_type_provision` + `provision_membership_table()` | — (runtime) | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Invites | `invites_module` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Limits (quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
+| App-scope memberships (single tenant) | `memberships_module:app` | all auth presets | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Org-scope memberships (multi-tenant) | `memberships_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Dynamic entity types (channels, teams, depts) | `entity_type_provision` + `provision_membership_table()` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Invites | `invites_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Limits (quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 4. Data Modeling
 
@@ -72,22 +72,22 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Tables + fields | `secure_table_provision` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | `Data*` generators (DataId, DataDirectOwner, DataPublishable, DataTimestamps, …) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
-| Smart tags (GraphQL schema hints) | field-level | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
+| Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
 ## 5. Storage & Uploads
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| S3 / MinIO buckets per entity type | `storage_module` + `storage_config` on `entity_type_provision` | `full`, any app using uploads | [`constructive-uploads`](../constructive-uploads/SKILL.md) + [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Public vs private buckets | `storage_config.is_public` | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| Presigned upload URLs | `requestUploadUrl` mutation | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| Per-bucket RLS policies | `storage_config.policies[]` (Authz* nodes) | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) + [`constructive-safegres`](../constructive-safegres/SKILL.md) |
-| Multi-scope bucket resolution | `bucketKey` + `ownerId` | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| Entity-scoped storage (buckets per entity) | `has_storage` + `storage_config` | — | [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) |
-| Bucket provisioning | `provisionBucket` mutation + auto-provision | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| Content-hash deduplication | `requestUploadUrl` (deduplicated field) | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| Download URLs (presigned GET / CDN) | `downloadUrl` computed field | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
-| MIME type restrictions + file size limits | `allowed_mime_types` + `max_file_size` on bucket | — | [`constructive-uploads`](../constructive-uploads/SKILL.md) |
+| S3 / MinIO buckets per entity type | `storage_module` + `storage_config` on `entity_type_provision` | `full`, any app using uploads | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) + [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Public vs private buckets | `storage_config.is_public` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Presigned upload URLs | `requestUploadUrl` mutation | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Per-bucket RLS policies | `storage_config.policies[]` (Authz* nodes) | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) + [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| Multi-scope bucket resolution | `bucketKey` + `ownerId` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Entity-scoped storage (buckets per entity) | `has_storage` + `storage_config` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Bucket provisioning | `provisionBucket` mutation + auto-provision | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Content-hash deduplication | `requestUploadUrl` (deduplicated field) | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Download URLs (presigned GET / CDN) | `downloadUrl` computed field | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| MIME type restrictions + file size limits | `allowed_mime_types` + `max_file_size` on bucket | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 
 ## 6. Search
 
@@ -96,7 +96,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | tsvector (Postgres full-text) | `provisionFullTextSearch` + tsvector adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
 | BM25 (ParadeDB / pg_search) | BM25 adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
 | Trigram (pg_trgm fuzzy) | trigram adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
-| Vector similarity (pgvector) | pgvector adapter + `provisionIndex` | — | [`constructive-ai`](../constructive-ai/SKILL.md) |
+| Vector similarity (pgvector) | pgvector adapter + `provisionIndex` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | PostGIS spatial search / distance | `provisionSpatialRelation` + spatial adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
 | Unified composite search | `unifiedSearch` field | — | [`graphile-search`](../graphile-search/SKILL.md) |
 
@@ -104,10 +104,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| `pgvector` columns + indexes | `provisionIndex` (SDK) | — | [`constructive-ai`](../constructive-ai/SKILL.md) |
-| Embedding pipelines | app code | — | [`constructive-ai`](../constructive-ai/SKILL.md) |
-| Ollama in CI / GitHub Actions | workflow | — | [`constructive-ai`](../constructive-ai/SKILL.md) |
-| RAG patterns | app code + ORM | — | [`constructive-ai`](../constructive-ai/SKILL.md) |
+| `pgvector` columns + indexes | `provisionIndex` (SDK) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding pipelines | app code | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Ollama in CI / GitHub Actions | workflow | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| RAG patterns | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 
 ## 8. GraphQL & Codegen
 
@@ -115,11 +115,11 @@ When a feature is gated by a module, installing / omitting the module from a pre
 |---|---|---|---|
 | PostGraphile v5 server | `cnc server` | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
 | GraphiQL explorer | `cnc explorer` | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
-| React Query hooks codegen | `--react-query` | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
-| Prisma-like ORM codegen | `--orm` | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
-| CLI codegen (`csdk` / `constructive`) | `--cli` | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
-| Multi-target codegen | config | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
-| Relay-spec pagination | Node Type Registry + PostGraphile | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
+| React Query hooks codegen | `--react-query` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Prisma-like ORM codegen | `--orm` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| CLI codegen (`csdk` / `constructive`) | `--cli` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Multi-target codegen | config | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Relay-spec pagination | Node Type Registry + PostGraphile | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 | `_meta` introspection endpoint | built-in | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 | Dynamic `_meta` forms (zero-config CRUD) | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 | CRUD Stack cards (iOS-style panels) | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
@@ -143,7 +143,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Cloud functions (Knative HTTP) | `functions/*` | — | [`constructive-platform`](../constructive-platform/references/cloud-functions.md) |
 | Deterministic DB migrations | `pgpm deploy / verify / revert` | — | [`pgpm`](../pgpm/SKILL.md) |
 | Module provisioning | `metaschema_generators.provision_database_modules` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
-| DB introspection → SDK | `cnc codegen` | — | [`constructive-graphql`](../constructive-graphql/SKILL.md) |
+| DB introspection → SDK | `cnc codegen` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 | Ephemeral test DBs | `pgsql-test` + friends | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 

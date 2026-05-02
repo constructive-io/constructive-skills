@@ -13,14 +13,16 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-features** | Feature catalog — one-page router mapping every app capability (auth, authz, multi-tenancy, storage, search, AI, GraphQL, ops) to the authoritative skill |
 | **constructive-platform** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
 | **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
-| **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, and run tests |
+| **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, run tests, local email services |
 | **pgpm** | PostgreSQL Package Manager — migrations, CLI, Docker, CI/CD workflows |
-| **constructive-graphql** | Unified GraphQL — codegen (hooks, ORM, CLI), runtime queries, search (all algorithms), pagination |
+| **constructive-sdk-graphql** | SDK GraphQL — codegen (hooks, ORM, CLI), runtime queries, search (all algorithms), pagination |
+| **constructive-sdk-entities** | Entity types — custom entities (channels, teams, data rooms), memberships, entity-scoped storage |
+| **constructive-sdk-uploads** | File uploads — presigned URL flow, bucket provisioning, upload-client, deduplication |
 | **constructive-starter-kits** | Project scaffolding — `pgpm init` templates, Next.js app boilerplate, custom template authoring |
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
 | **constructive-jobs** | Background jobs — DataJobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
-| **constructive-ai** | AI capabilities — pgvector RAG pipelines, embeddings, Ollama CI/CD |
+| **constructive-sdk-ai** | AI capabilities — Search* blueprint nodes (SearchUnified, SearchVector), embedding worker pipeline, agentic-kit LLM client, RAG patterns |
 | **inquirerer-cli** | inquirerer CLI framework — interactive prompts, appStash, yanse colors, README formatting |
 | **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
 | **fbp** | Flow-Based Programming — types, spec, evaluator, graph editor |

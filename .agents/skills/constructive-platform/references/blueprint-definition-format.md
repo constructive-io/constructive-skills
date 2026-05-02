@@ -100,7 +100,7 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 **Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
 
-See the [`constructive-custom-entities`](../constructive-custom-entities/SKILL.md) skill for the full entity types reference.
+See the [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) skill for the full entity types reference.
 
 ## Table Entries
 
