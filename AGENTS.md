@@ -20,7 +20,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-sdk-entities** | *(standalone)* | Entity types, memberships, entity-scoped storage |
 | **constructive-sdk-uploads** | *(standalone)* | File uploads, presigned URLs, buckets, upload-client |
 | **constructive-jobs** | *(standalone)* | Background jobs, DataJobTrigger, Knative worker pipeline |
-| **constructive-sdk-ai** | pgvector-rag, github-workflows-ollama | RAG pipelines, embeddings, Ollama CI |
+| **constructive-sdk-ai** | *(standalone)* | Search* blueprint nodes (SearchUnified, SearchVector), embedding worker, agentic-kit, RAG pipelines |
 | **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
 | **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
 | **fbp** | fbp-types, fbp-spec, fbp-evaluator, fbp-graph-editor | Flow-Based Programming toolkit |

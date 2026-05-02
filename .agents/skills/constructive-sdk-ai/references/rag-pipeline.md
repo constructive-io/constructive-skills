@@ -1,158 +1,106 @@
 # RAG Pipeline on Constructive
 
-Build Retrieval-Augmented Generation pipelines using the Constructive platform: provision vector storage via SDK, query via codegen'd ORM, and generate responses with Ollama.
+Build Retrieval-Augmented Generation pipelines using Search* blueprint nodes, the embedding worker, and agentic-kit for LLM inference.
 
 ---
 
 ## Architecture
 
 ```
-Document -> Chunking -> Embedding (Ollama) -> Store via ORM
-                                                   |
-Query -> Embedding -> ORM Vector Search -> Context Retrieval -> LLM Response
+Blueprint (SearchUnified node)
+  → construct_blueprint() creates vector column, HNSW index, stale triggers, job triggers
+  → Row changes fire stale trigger → embed_record job enqueued
+  → Graphile Worker embeds via @agentic-kit/ollama → writes back via ORM
+  → ORM queries with vectorEmbedding filter → context → LLM generation
 ```
 
 ### Components
 
-1. **Provision**: SDK creates vector columns + HNSW indexes on your tables
+1. **Blueprint**: SearchUnified / SearchVector nodes declare vector columns + indexes + stale tracking
 2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-sdk-graphql` skill — [codegen.md](../../constructive-sdk-graphql/references/codegen.md))
-3. **Ingestion**: Embed documents with Ollama, store via ORM
-4. **Retrieval**: ORM `vectorEmbedding` filter + distance ordering
-5. **Generation**: Feed retrieved context to LLM for response
+3. **Worker**: Graphile Worker `embed_record` task handles embedding generation + chunking
+4. **Query**: ORM `vectorEmbedding` filter + distance ordering
+5. **Generation**: agentic-kit feeds retrieved context to LLM
 
 ---
 
-## Step 1: Provision Vector Storage via SDK
-
-Create tables with vector columns using the Constructive SDK:
+## Step 1: Define Blueprint with SearchUnified
 
 ```typescript
-// Create documents table
-const docsTable = await db.table.create({
-  data: { databaseId, name: 'document', schemaName: 'app_public' },
-  select: { id: true },
-}).execute();
-
-// Add fields
-await db.field.create({
-  data: { databaseId, tableId: docsTable.data.createTable.table.id, name: 'title', type: 'text' },
-  select: { id: true },
-}).execute();
-
-await db.field.create({
-  data: { databaseId, tableId: docsTable.data.createTable.table.id, name: 'content', type: 'text' },
-  select: { id: true },
-}).execute();
-
-const vecField = await db.field.create({
-  data: { databaseId, tableId: docsTable.data.createTable.table.id, name: 'embedding', type: 'vector(768)' },
-  select: { id: true },
-}).execute();
-
-// Create HNSW index for fast similarity search
-await db.index.create({
-  data: {
-    databaseId,
-    tableId: docsTable.data.createTable.table.id,
-    name: 'idx_document_embedding_hnsw',
-    fieldIds: [vecField.data.createField.field.id],
-    accessMethod: 'hnsw',
-    options: { m: 16, ef_construction: 64 },
-    opClasses: ['vector_cosine_ops'],
-  },
-  select: { id: true },
-}).execute();
-```
-
-> For raw SQL table/index creation (e.g., pgpm migrations), see [pgvector-sql.md](./pgvector-sql.md).
-
----
-
-## Step 2: Generate ORM
-
-Use `@constructive-io/graphql-codegen` to generate a typed ORM client with vector search support (ORM and React Query hooks are both available). See the `constructive-sdk-graphql` skill ([codegen.md](../../constructive-sdk-graphql/references/codegen.md)) for full setup and options.
-
----
-
-## Step 3: Ingest Documents
-
-Generate embeddings with Ollama and store via ORM:
-
-```typescript
-import { OllamaClient } from './utils/ollama';
-import { createClient } from '@/generated/orm';
-
-const ollama = new OllamaClient();
-const db = createClient({
-  endpoint: process.env.GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${token}` },
-});
-
-async function ingestDocument(title: string, content: string) {
-  // Generate embedding
-  const embedding = await ollama.generateEmbedding(content);
-
-  // Store via ORM
-  const result = await db.document.create({
-    input: {
-      title,
-      content,
-      embedding: `[${embedding.join(',')}]`,
+const definition: BlueprintDefinition = {
+  tables: [
+    {
+      ref: 'documents',
+      table_name: 'documents',
+      nodes: [
+        'DataId',
+        'DataTimestamps',
+        { $type: 'SearchUnified', data: {
+          embedding: { source_fields: ['title', 'content'], chunks: {} },
+          bm25: { field_name: 'embedding_text' },
+        }},
+      ],
+      fields: [
+        { name: 'title', type: 'text', is_required: true },
+        { name: 'content', type: 'text', is_required: true },
+        { name: 'category', type: 'text' },
+        { name: 'embedding_text', type: 'text' },
+      ],
     },
-  }).execute();
+    chunkTable('documents'),
+  ],
+  relations: [
+    hasManyChunks('documents'),
+  ],
+};
 
-  return result;
-}
+await provisionBlueprint(definition, 'Documents Schema');
 ```
 
-### Chunking Strategy
-
-For large documents, chunk before embedding for better retrieval granularity:
-
-```typescript
-function chunkText(text: string, chunkSize = 800, overlap = 150): string[] {
-  const chunks: string[] = [];
-  let position = 0;
-
-  while (position < text.length) {
-    chunks.push(text.slice(position, position + chunkSize));
-    position += chunkSize - overlap;
-  }
-
-  return chunks;
-}
-
-async function ingestWithChunks(title: string, content: string) {
-  const chunks = chunkText(content);
-
-  for (let i = 0; i < chunks.length; i++) {
-    const embedding = await ollama.generateEmbedding(chunks[i]);
-    await db.document.create({
-      input: {
-        title: `${title} [chunk ${i + 1}/${chunks.length}]`,
-        content: chunks[i],
-        embedding: `[${embedding.join(',')}]`,
-      },
-    }).execute();
-  }
-}
-```
-
-| Document Type | Chunk Size | Overlap |
-|---------------|------------|---------|
-| Technical docs | 500-800 | 100-150 |
-| Conversational | 300-500 | 50-100 |
-| Legal/formal | 800-1200 | 200-300 |
+After provisioning, run codegen to generate the typed ORM.
 
 ---
 
-## Step 4: Retrieve Context via ORM
+## Step 2: Embedding Worker
 
-Use the codegen'd ORM to find similar documents:
+The `embed_record` Graphile Worker task handles embedding automatically when `enqueue_job: true` (the default for SearchUnified/SearchVector):
+
+1. Row INSERT/UPDATE → stale trigger marks `embedding_stale = true`
+2. Job trigger enqueues `embed_record` with `{ schema, table, id }`
+3. Worker fetches record via ORM, concatenates text fields
+4. If text > 6000 chars: splits into ~3200-char overlapping chunks, embeds each into the chunk table
+5. Embeds summary into parent record
+6. Sets `embedding_stale = false`
 
 ```typescript
+// Worker task (simplified from agentic-db/packages/worker)
+import OllamaClient from '@agentic-kit/ollama';
+
+const ollamaClient = new OllamaClient(process.env.OLLAMA_URL || 'http://localhost:11434');
+const embeddingModel = process.env.EMBEDDING_MODEL || 'nomic-embed-text';
+
+// Generate 768-dim embedding
+const embedding = await ollamaClient.generateEmbedding(text, embeddingModel);
+
+// Write back via ORM
+await db.document.update({
+  where: { id },
+  data: { embedding, embeddingText: text },
+  select: { id: true },
+}).execute();
+```
+
+---
+
+## Step 3: Retrieve Context via ORM
+
+```typescript
+import OllamaClient from '@agentic-kit/ollama';
+
+const ollamaClient = new OllamaClient();
+
 async function retrieveContext(question: string, limit = 5): Promise<string> {
-  const queryEmbedding = await ollama.generateEmbedding(question);
+  const queryEmbedding = await ollamaClient.generateEmbedding(question, 'nomic-embed-text');
 
   const result = await db.document.findMany({
     where: {
@@ -202,8 +150,6 @@ const result = await db.document.findMany({
 
 ### Hybrid Search: Vector + Text
 
-Combine pgvector with unifiedSearch for both semantic and keyword matching:
-
 ```typescript
 const result = await db.document.findMany({
   where: {
@@ -227,130 +173,78 @@ const result = await db.document.findMany({
 
 ---
 
-## Step 5: Generate Response with LLM
+## Step 4: Multi-Collection RAG
+
+Search across multiple entity types using the codegen'd ORM:
 
 ```typescript
-async function ragQuery(question: string): Promise<string> {
-  // 1. Retrieve context
-  const context = await retrieveContext(question);
+const VECTOR_CONDITION = (queryEmbedding: number[]) => ({
+  vectorEmbedding: { vector: queryEmbedding, metric: 'COSINE' as const, distance: 2.0 },
+});
 
-  if (!context) {
-    return await ollama.generateResponse(question);
-  }
+async function multiTableSearch(query: string) {
+  const queryEmbedding = await ollamaClient.generateEmbedding(query, 'nomic-embed-text');
+  const where = VECTOR_CONDITION(queryEmbedding);
 
-  // 2. Generate response with context
-  return await ollama.generateResponse(question, context);
-}
-```
+  const [contacts, documents, notes] = await Promise.all([
+    db.contact.findMany({
+      where, first: 5,
+      select: { id: true, firstName: true, lastName: true, embeddingVectorDistance: true },
+    }).execute(),
+    db.document.findMany({
+      where, first: 5,
+      select: { id: true, title: true, content: true, embeddingVectorDistance: true },
+    }).execute(),
+    db.note.findMany({
+      where, first: 5,
+      select: { id: true, content: true, embeddingVectorDistance: true },
+    }).execute(),
+  ]);
 
-### Streaming Variant
-
-```typescript
-async function ragQueryStreaming(
-  question: string,
-  onChunk: (chunk: string) => void
-): Promise<void> {
-  const context = await retrieveContext(question);
-
-  await ollama.generateStreamingResponse(
-    question,
-    onChunk,
-    context
-  );
-}
-```
-
-### Prompt Engineering
-
-Structure prompts for better RAG responses:
-
-```typescript
-function buildRAGPrompt(context: string, question: string): string {
   return [
-    'You are a helpful assistant. Answer the question based only on the provided context.',
-    'If the context does not contain enough information, say so.',
-    '',
-    'Context:',
-    context,
-    '',
-    `Question: ${question}`,
-    '',
-    'Answer:',
-  ].join('\n');
+    ...(contacts.data?.contacts?.nodes || []).map(n => ({ ...n, table: 'contacts' })),
+    ...(documents.data?.documents?.nodes || []).map(n => ({ ...n, table: 'documents' })),
+    ...(notes.data?.notes?.nodes || []).map(n => ({ ...n, table: 'notes' })),
+  ].sort((a, b) => (a.embeddingVectorDistance ?? 2) - (b.embeddingVectorDistance ?? 2));
 }
 ```
 
 ---
 
-## Complete RAG Service
+## Step 5: Generate Response with agentic-kit
 
 ```typescript
-import { OllamaClient } from './utils/ollama';
-import { createClient } from '@/generated/orm';
+import { createOllamaKit } from 'agentic-kit';
 
-export class RAGService {
-  private ollama: OllamaClient;
-  private db: ReturnType<typeof createClient>;
+const kit = createOllamaKit('http://localhost:11434');
 
-  constructor(endpoint: string, token: string, ollamaHost?: string) {
-    this.ollama = new OllamaClient(ollamaHost);
-    this.db = createClient({
-      endpoint,
-      headers: { Authorization: `Bearer ${token}` },
-    });
-  }
+async function ragQuery(question: string): Promise<string> {
+  const context = await retrieveContext(question);
 
-  async ingest(title: string, content: string): Promise<void> {
-    const embedding = await this.ollama.generateEmbedding(content);
-
-    await this.db.document.create({
-      input: {
-        title,
-        content,
-        embedding: `[${embedding.join(',')}]`,
-      },
-    }).execute();
-  }
-
-  async query(question: string, contextLimit = 5): Promise<string> {
-    const queryEmbedding = await this.ollama.generateEmbedding(question);
-
-    const result = await this.db.document.findMany({
-      where: {
-        vectorEmbedding: {
-          vector: queryEmbedding,
-          metric: 'COSINE',
-          distance: 0.5,
-        },
-      },
-      orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
-      first: contextLimit,
-      select: { content: true },
-    }).execute();
-
-    const context = result.ok
-      ? result.data.documents.nodes.map(d => d.content).join('\n\n')
-      : '';
-
-    return await this.ollama.generateResponse(question, context);
-  }
+  return kit.generate({
+    model: 'llama3.2',
+    system: 'Answer based on the provided context. If the context lacks info, say so.',
+    messages: [
+      { role: 'user', content: `Context:\n${context}\n\nQuestion: ${question}` },
+    ],
+  }) as Promise<string>;
 }
 ```
 
-### Usage
+### Streaming
 
 ```typescript
-const rag = new RAGService(
-  process.env.GRAPHQL_URL!,
-  authToken,
+await kit.generate(
+  {
+    model: 'llama3.2',
+    system: 'Answer based on the provided context.',
+    messages: [{ role: 'user', content: `Context:\n${context}\n\nQuestion: ${question}` }],
+  },
+  {
+    onChunk: (chunk) => process.stdout.write(chunk),
+    onComplete: () => console.log('\nDone'),
+  }
 );
-
-// Ingest documents
-await rag.ingest('Company Policies', 'Our company offers 20 days of PTO...');
-
-// Query
-const answer = await rag.query('How many PTO days do employees get?');
-// "Based on the company policies, employees receive 20 days of PTO per year."
 ```
 
 ---
@@ -359,55 +253,33 @@ const answer = await rag.query('How many PTO days do employees get?');
 
 | Model | Dimensions | Speed | Quality | Provider |
 |-------|------------|-------|---------|----------|
-| `nomic-embed-text` | 768 | Fast | Good | Ollama (local) |
+| `nomic-embed-text` | 768 | Fast | Good | Ollama (local, recommended) |
 | `mxbai-embed-large` | 1024 | Medium | Better | Ollama (local) |
 | `all-minilm` | 384 | Very Fast | Acceptable | Ollama (local) |
-| `text-embedding-ada-002` | 1536 | Fast | High | OpenAI |
-
-See [ollama.md](./ollama.md) for Ollama setup and model management.
 
 ---
 
-## Context Window Management
+## Chunking Strategy
 
-Limit context to avoid exceeding the LLM context window:
+The embedding worker uses these defaults (from agentic-db):
 
-```typescript
-const MAX_CONTEXT_CHARS = 4000;
+| Parameter | Value | Notes |
+|-----------|-------|-------|
+| Chunk threshold | 6000 chars | Text below this is embedded directly |
+| Chunk size | 3200 chars | ~800 tokens per chunk |
+| Chunk overlap | 400 chars | ~100 tokens overlap for context continuity |
+| Summary prefix | 4000 chars | First N chars used for parent record embedding |
 
-async function getContext(question: string): Promise<string> {
-  const queryEmbedding = await ollama.generateEmbedding(question);
-
-  const result = await db.document.findMany({
-    where: {
-      vectorEmbedding: { vector: queryEmbedding, metric: 'COSINE' },
-    },
-    orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
-    first: 10,
-    select: { content: true },
-  }).execute();
-
-  if (!result.ok) return '';
-
-  let context = '';
-  for (const doc of result.data.documents.nodes) {
-    if (context.length + doc.content.length > MAX_CONTEXT_CHARS) break;
-    context += doc.content + '\n\n';
-  }
-
-  return context.trim();
-}
-```
+Chunk tables are auto-created via `chunkTable()` in the blueprint definition.
 
 ---
 
 ## Best Practices
 
-- **Generate embeddings in application code**, not in database triggers (HTTP calls in triggers cause transaction timeouts)
-- **Use job queues** for async embedding generation on large document sets
-- **Match VECTOR(N) dimensions** to your chosen embedding model
-- **Add HNSW indexes** for production workloads (create via SDK)
-- **Chunk large documents** (500-1000 chars) with overlap for better retrieval
+- **Use SearchUnified** for tables that need the full search stack (embedding + BM25 + FTS + trigram)
+- **Use SearchVector** for standalone embedding columns or secondary embeddings
+- **Set `enqueue_job: false`** on SearchVector if you handle embedding externally (e.g. image embeddings)
+- **Match dimensions** to your embedding model (768 for nomic-embed-text)
 - **Use `distance` threshold** in ORM queries to filter low-quality matches
 
 ---
@@ -417,14 +289,13 @@ async function getContext(question: string): Promise<string> {
 | Issue | Solution |
 |-------|----------|
 | "type vector does not exist" | Use pgvector-enabled image (`docker.io/constructiveio/postgres-plus:18`) |
-| Irrelevant RAG responses | Lower similarity threshold, improve chunking |
-| Hallucinations | Add "only use provided context" to prompt |
-| Slow responses | Use streaming, reduce context chunk count |
-| Dimension mismatch | Ensure `VECTOR(N)` matches embedding model output |
+| Embeddings not generated | Check worker is running + `enqueue_job: true` in SearchVector config |
+| `embedding_stale` stays true | Worker not processing jobs; check graphile-worker logs |
+| Dimension mismatch | Ensure SearchVector `dimensions` matches embedding model output (768 for nomic-embed-text) |
+| Irrelevant RAG responses | Lower similarity threshold, improve chunking, check source_fields |
 
 ## Cross-References
 
 - `constructive-sdk-graphql` — [search-pgvector.md](../../constructive-sdk-graphql/references/search-pgvector.md): Full ORM query reference for pgvector
 - `constructive-sdk-graphql` — [search-composite.md](../../constructive-sdk-graphql/references/search-composite.md): Hybrid search (vector + text)
-- [ollama.md](./ollama.md): OllamaClient implementation and model selection
-- [pgvector-sql.md](./pgvector-sql.md): Raw SQL reference for pgvector (SQL-level)
+- [agentic-kit.md](./agentic-kit.md): Multi-provider LLM client API reference

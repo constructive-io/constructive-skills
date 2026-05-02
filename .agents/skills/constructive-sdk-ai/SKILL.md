@@ -1,77 +1,194 @@
 ---
 name: constructive-sdk-ai
-description: "AI and vector search on the Constructive platform — provision pgvector columns and indexes via SDK, query embeddings via codegen'd ORM, build RAG pipelines with Ollama, and run LLM models in GitHub Actions CI/CD. Use when building RAG pipelines, working with embeddings, running Ollama in CI, or implementing AI-powered search within a Constructive application."
+description: "AI and vector search on the Constructive platform — Search* blueprint nodes (SearchUnified, SearchVector), embedding worker pipeline, agentic-kit multi-provider LLM client, and RAG patterns with the codegen'd ORM. Use when adding AI search to a table, building RAG pipelines, working with embeddings, or integrating LLM providers (Ollama, Anthropic, OpenAI)."
 metadata:
   author: constructive-io
-  version: "2.0.0"
+  version: "3.0.0"
 ---
 
 # Constructive AI
 
-Build AI-powered features on the Constructive platform: provision vector storage via SDK, query via codegen'd ORM, and integrate Ollama for embeddings and generation.
+Build AI-powered features on Constructive using Search* blueprint nodes, the embedding worker pipeline, and agentic-kit for LLM inference.
 
 ## When to Apply
 
 Use this skill when:
-- Adding pgvector columns and indexes to a Constructive database
-- Querying vector embeddings via the generated TypeScript ORM
+- Adding vector search / embeddings to a Constructive table (SearchUnified, SearchVector nodes)
 - Building RAG (Retrieval-Augmented Generation) pipelines on Constructive
-- Running Ollama LLM models in CI/CD
-- Implementing AI-powered search alongside other search strategies (tsvector, BM25, trgm)
+- Integrating LLM providers (Ollama, Anthropic, OpenAI) via agentic-kit
+- Understanding the embedding worker pipeline (stale detection → job enqueue → embed → store)
 
-## The Constructive AI Flow
+## Architecture
 
 ```
-1. Provision  →  SDK creates vector(N) column + HNSW index on your table
-2. Codegen    →  @constructive-io/graphql-codegen generates typed ORM (see constructive-graphql skill)
-3. Embed      →  Application code generates embeddings (Ollama, OpenAI, etc.)
-4. Store      →  ORM or SDK inserts embeddings into the vector column
-5. Query      →  ORM queries with vectorEmbedding filter + distance ordering
-6. RAG        →  Retrieve context via ORM → feed to LLM for generation
+Blueprint Definition (SearchUnified / SearchVector nodes)
+  │
+  ▼
+construct_blueprint() — creates:
+  • vector(768) column + HNSW index
+  • embedding_text composite field + concat trigger
+  • embedding_stale boolean + stale-marking triggers
+  • enqueue_embedding job trigger
+  • BM25 index, FTS tsvector, trgm tags (SearchUnified only)
+  │
+  ▼
+Row INSERT/UPDATE fires stale trigger → marks embedding_stale = true
+  │
+  ▼
+Job trigger enqueues embed_record task via app_jobs
+  │
+  ▼
+Graphile Worker (embed_record task):
+  • Fetches record via ORM
+  • Generates embedding via @agentic-kit/ollama (nomic-embed-text, 768-dim)
+  • If text > 6000 chars: chunks into chunk table, embeds each chunk
+  • Writes embedding back via ORM, sets embedding_stale = false
+  │
+  ▼
+ORM queries with vectorEmbedding filter + distance ordering
+  │
+  ▼
+RAG: retrieve context via ORM → feed to LLM via agentic-kit
 ```
 
-> **Important:** For vector *querying* via ORM, see the `constructive-sdk-graphql` skill ([search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md)). This skill covers the AI/RAG layer on top.
+## Search* Blueprint Nodes
 
-## Quick Start: Provision + Query
+### SearchUnified (primary — use for most tables)
 
-### 1. Create a vector field via SDK
+The most powerful node. Orchestrates embedding + BM25 + optional FTS + optional trigram in one declaration.
+
+**What it auto-creates:**
+- `embedding_text` composite field + `concat_ws` trigger (from `source_fields`)
+- `embedding vector(768)` column + HNSW index (via SearchVector)
+- `embedding_stale bool` field + stale-marking triggers
+- `enqueue_embedding` job trigger
+- BM25 index on `embedding_text`
+- TSVector field + GIN index + populate trigger (if `full_text_search` configured)
+- `@trgmSearch` smart tags (if `trgm_fields` configured)
+- `@searchConfig` smart tag with unified weights
 
 ```typescript
-const vecField = await db.field.create({
-  data: {
-    databaseId,
-    tableId: documentsTableId,
-    name: 'embedding',
-    type: 'vector(768)',
-  },
-  select: { id: true, name: true },
-}).execute();
+// Blueprint definition — contacts table with full search stack
+{
+  ref: 'contacts',
+  table_name: 'contacts',
+  nodes: [
+    'DataId',
+    'DataTimestamps',
+    { $type: 'SearchUnified', data: {
+      embedding: { source_fields: ['first_name', 'last_name', 'headline', 'bio'], chunks: {} },
+      bm25: { field_name: 'embedding_text' },
+      full_text_search: {
+        field_name: 'search_tsv',
+        source_fields: [
+          { field: 'first_name', weight: 'A' },
+          { field: 'last_name', weight: 'A' },
+          { field: 'headline', weight: 'B' },
+          { field: 'bio', weight: 'C' },
+        ],
+      },
+      trgm_fields: ['first_name', 'last_name'],
+    }},
+  ],
+  fields: [
+    { name: 'first_name', type: 'text', is_required: true },
+    { name: 'last_name', type: 'text' },
+    { name: 'headline', type: 'text' },
+    { name: 'bio', type: 'text' },
+    { name: 'embedding_text', type: 'text' },
+  ],
+}
 ```
 
-### 2. Create an HNSW index
+**Minimal SearchUnified (embedding + BM25 only):**
 
 ```typescript
-await db.index.create({
-  data: {
-    databaseId,
-    tableId: documentsTableId,
-    name: 'idx_documents_embedding_hnsw',
-    fieldIds: [vecField.data.createField.field.id],
-    accessMethod: 'hnsw',
-    options: { m: 16, ef_construction: 64 },
-    opClasses: ['vector_cosine_ops'],
-  },
-  select: { id: true },
-}).execute();
+{ $type: 'SearchUnified', data: {
+  embedding: { source_fields: ['name', 'description'] },
+  bm25: { field_name: 'embedding_text' },
+}}
 ```
 
-### 3. Query via codegen'd ORM
+### SearchVector (standalone vector columns)
+
+Use for tables that need vector embeddings but NOT the full search stack (no BM25/FTS/trigram). Example: images (visual embeddings), or secondary embedding columns.
 
 ```typescript
-const result = await db.document.findMany({
+// Standalone embedding (no BM25, no FTS)
+{
+  ref: 'images',
+  table_name: 'images',
+  nodes: [
+    'DataId',
+    'DataTimestamps',
+    { $type: 'SearchVector', data: { field_name: 'embedding', enqueue_job: false } },
+  ],
+  fields: [
+    { name: 'url', type: 'text', is_required: true },
+    { name: 'meta', type: 'jsonb' },
+  ],
+}
+```
+
+**Secondary embedding on a table that already has SearchUnified:**
+
+```typescript
+// rules table — primary search + secondary trigger_concept embedding
+nodes: [
+  'DataId',
+  'DataTimestamps',
+  { $type: 'SearchUnified', data: {
+    embedding: { source_fields: ['name', 'description', 'trigger_concept'] },
+    bm25: { field_name: 'embedding_text' },
+  }},
+  { $type: 'SearchVector', data: {
+    field_name: 'trigger_concept_embedding',
+    source_fields: ['trigger_concept'],
+    enqueue_job: false,
+  }},
+],
+```
+
+### SearchVector `data` Options
+
+| Key | Default | Description |
+|-----|---------|-------------|
+| `field_name` | `'embedding'` | Name of the vector column |
+| `dimensions` | `768` | Vector dimensionality (768 for nomic-embed-text) |
+| `index_method` | `'hnsw'` | Index method: `hnsw` or `ivfflat` |
+| `metric` | `'cosine'` | Distance: `cosine`, `l2`, `inner_product` |
+| `include_stale_field` | `true` | Create `embedding_stale` boolean |
+| `enqueue_job` | `true` | Create job trigger for auto-embedding |
+| `source_fields` | (optional) | Fields to watch for stale-marking |
+| `stale_strategy` | `'column'` | `column` (bool), `hash` (source hash), or `null` |
+
+## Chunk Tables
+
+Every table with embeddings can have a corresponding chunk table for long text:
+
+```typescript
+tables: [
+  orgTable('contacts', [...], { data_nodes: [dataSearch({ ... })] }),
+  chunkTable('contacts'),  // creates "contact_chunks" with auto SearchUnified
+],
+relations: [
+  hasManyChunks('contacts'),  // contacts -> contact_chunks (CASCADE delete)
+],
+```
+
+The embedding worker handles chunking automatically: text > 6000 chars gets split into ~3200-char overlapping chunks, each embedded separately.
+
+## Querying via ORM
+
+After provisioning and codegen, query embeddings via the typed ORM:
+
+```typescript
+const queryEmbedding = await ollamaClient.generateEmbedding(question);
+
+const result = await db.contact.findMany({
   where: {
     vectorEmbedding: {
-      vector: queryVector,
+      vector: queryEmbedding,
       metric: 'COSINE',
       distance: 0.5,
     },
@@ -80,51 +197,43 @@ const result = await db.document.findMany({
   first: 5,
   select: {
     id: true,
-    title: true,
-    content: true,
+    firstName: true,
+    lastName: true,
     embeddingVectorDistance: true,
   },
 }).execute();
 ```
 
-### 4. Feed to LLM for RAG
+> For full ORM query patterns, see the `constructive-sdk-graphql` skill ([search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md)).
+
+## agentic-kit (LLM Client)
+
+Multi-provider LLM abstraction for embedding generation and inference. See [agentic-kit.md](./references/agentic-kit.md) for the full API reference.
 
 ```typescript
-const context = result.data.documents.nodes
-  .map(d => d.content)
-  .join('\n\n');
+import { createOllamaKit } from 'agentic-kit';
+import OllamaClient from '@agentic-kit/ollama';
 
-const answer = await ollama.generateResponse(question, context);
+// Embeddings
+const client = new OllamaClient('http://localhost:11434');
+const embedding = await client.generateEmbedding('document text', 'nomic-embed-text');
+
+// Generation (single or multi-provider)
+const kit = createOllamaKit('http://localhost:11434');
+const answer = await kit.generate({ model: 'llama3.2', prompt: 'What is pgvector?' });
 ```
-
-## Ollama Integration
-
-Use Ollama for local embedding generation and LLM inference. See [ollama.md](./references/ollama.md) for the full OllamaClient implementation, model selection, and API reference.
-
-```typescript
-const ollama = new OllamaClient();
-const embedding = await ollama.generateEmbedding('document text');
-const response = await ollama.generateResponse(question, context);
-```
-
-## Ollama CI/CD
-
-Run Ollama in GitHub Actions for testing RAG pipelines. See [ollama-ci.md](./references/ollama-ci.md) for workflow templates.
 
 ## Reference Guide
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [rag-pipeline.md](./references/rag-pipeline.md) | RAG pipeline on Constructive | Building end-to-end RAG (embed → store → retrieve → generate) |
-| [ollama.md](./references/ollama.md) | Ollama client & models | Generating embeddings, LLM inference, streaming, model selection |
-| [ollama-ci.md](./references/ollama-ci.md) | Ollama GitHub Actions | Running LLM models in CI/CD |
-| [pgvector-sql.md](./references/pgvector-sql.md) | pgvector SQL reference | Raw SQL for vector tables, indexes, similarity functions (SQL-level) |
-| [agentic-kit.md](./references/agentic-kit.md) | Agentic kit (multi-provider) | Multi-provider LLM abstraction (Ollama, Anthropic, OpenAI), streaming, embeddings, RAG patterns |
+| [rag-pipeline.md](./references/rag-pipeline.md) | RAG pipeline patterns | Building end-to-end RAG (embed → store → retrieve → generate) |
+| [agentic-kit.md](./references/agentic-kit.md) | agentic-kit multi-provider LLM | Embedding generation, LLM inference, streaming, multi-provider setup |
 
 ## Cross-References
 
-- `constructive-sdk-graphql` — [search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md): ORM query patterns for vector search (distance filters, metrics, ordering)
-- `constructive-sdk-graphql` — [search-rag.md](../constructive-sdk-graphql/references/search-rag.md): RAG patterns with codegen'd ORM (single-table, multi-table, hybrid, embedding ingestion)
-- `constructive-sdk-graphql` — [search-composite.md](../constructive-sdk-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm in unified `searchScore`
+- `constructive-sdk-graphql` — [search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md): ORM query patterns for vector search
+- `constructive-sdk-graphql` — [search-rag.md](../constructive-sdk-graphql/references/search-rag.md): RAG patterns with codegen'd ORM
+- `constructive-sdk-graphql` — [search-composite.md](../constructive-sdk-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm
 - `graphile-search` — Plugin internals for the unified search system (team-level)
-- `pgpm` — Database migrations for vector-enabled modules
+- `constructive-db-data-modules` — SQL-level reference for Search* generators

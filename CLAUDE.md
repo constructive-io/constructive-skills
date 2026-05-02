@@ -22,7 +22,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
 | **constructive-jobs** | Background jobs — DataJobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
-| **constructive-sdk-ai** | AI capabilities — pgvector RAG pipelines, embeddings, Ollama CI/CD |
+| **constructive-sdk-ai** | AI capabilities — Search* blueprint nodes (SearchUnified, SearchVector), embedding worker pipeline, agentic-kit LLM client, RAG patterns |
 | **inquirerer-cli** | inquirerer CLI framework — interactive prompts, appStash, yanse colors, README formatting |
 | **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
 | **fbp** | Flow-Based Programming — types, spec, evaluator, graph editor |
