@@ -202,7 +202,8 @@ The runtime consists of three packages:
 Headers sent to the function:
 - `X-Worker-Id` — worker instance identifier
 - `X-Job-Id` — job row ID
-- `X-Database-Id` — database context
+- `X-Database-Id` — database context (nullable)
+- `X-Actor-Id` — user who triggered the job (nullable)
 
 ### Key Environment Variables
 
@@ -218,10 +219,13 @@ Headers sent to the function:
 For recurring jobs, use `app_jobs.add_scheduled_job()` or the `runtime_schedules` table (in agentic-db):
 
 ```sql
+-- database_id and actor_id are read from JWT claims automatically
 SELECT app_jobs.add_scheduled_job(
-  'daily_report',           -- task_identifier
-  '0 9 * * *',             -- cron expression (9 AM daily)
-  '{"report_type": "daily"}'::json  -- payload
+  identifier := 'daily_report',
+  payload := '{"report_type": "daily"}'::json,
+  schedule_info := json_build_object(
+    'rule', '0 9 * * *'  -- 9 AM daily
+  )
 );
 ```
 
