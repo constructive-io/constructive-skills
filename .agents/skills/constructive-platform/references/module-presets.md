@@ -4,7 +4,7 @@ Curated bundles of Constructive modules for common app shapes. Presets are metad
 
 ## Where They Live
 
-- **TS source:** `constructive/graphql/node-type-registry/src/module-presets/` (one file per preset)
+- **TS source:** `constructive/packages/node-type-registry/src/module-presets/` (one file per preset)
 - **Package export:** `@constructive-io/node-type-registry` → `allModulePresets`, `getModulePreset(name)`, `ModulePreset`
 - **Narrative reference (which modules are optional vs load-bearing):** `constructive-db/docs/architecture/module-presets.md`
 
