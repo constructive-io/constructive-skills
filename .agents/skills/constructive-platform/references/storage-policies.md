@@ -1,6 +1,6 @@
 # Storage Security Policies
 
-Constructive storage (buckets, files, upload requests) supports configurable security policies via the `policies` array. This lets blueprint authors compose specific `Authz*` node types per storage scope's tables, instead of always getting the sensible defaults.
+Constructive storage (buckets, files) supports configurable security policies via the `policies` array. This lets blueprint authors compose specific `Authz*` node types per storage scope's tables, instead of always getting the sensible defaults.
 
 Storage can be provisioned at two levels:
 - **App-level** — via the top-level `storage` key in the blueprint definition (Phase 0.5)
@@ -11,24 +11,22 @@ Storage can be provisioned at two levels:
 | Layer | Controlled by | What it does |
 |-------|--------------|--------------|
 | **Transport (S3/MinIO)** | `is_public` | Sets the S3 bucket ACL. `true` = publicly readable URLs, `false` = presigned URLs required |
-| **Data (RLS)** | `policies` | Controls which authenticated users can SELECT/INSERT/UPDATE/DELETE rows in the buckets, files, and upload_requests tables |
+| **Data (RLS)** | `policies` | Controls which authenticated users can SELECT/INSERT/UPDATE/DELETE rows in the buckets and files tables |
 
 These are complementary, not redundant. A bucket can be `is_public: true` (anyone with the URL can download) but still have RLS policies restricting who can upload or delete.
 
-## The three storage tables
+## The two storage tables
 
-When `has_storage: true`, the system creates three tables per entity type, prefixed with the entity's `prefix`:
+When `has_storage: true`, the system creates two tables per entity type, prefixed with the entity's `prefix`:
 
 | Logical name | Physical table (prefix=`data_room`) | Key columns | Notes |
 |---|---|---|---|
 | **buckets** | `data_room_buckets` | `owner_id`, `is_public`, `key`, `type` | Container metadata |
-| **files** | `data_room_files` | `actor_id`, `is_public`, `key`, `mime_type`, `size`, `status` | Individual file records |
-| **upload_requests** | `data_room_upload_requests` | `file_id`, `bucket_id`, `status` | In-flight upload tracking |
+| **files** | `data_room_files` | `actor_id`, `is_public`, `key`, `mime_type`, `size` | Individual file records |
 
 **Column availability matters for policy scoping:**
 - **Buckets** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
 - **Files** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
-- **Upload requests** has `actor_id` but not `is_public` — supports `AuthzDirectOwner` and membership-based policies
 
 ## Configuring storage policies
 
@@ -117,7 +115,7 @@ Each entry in the `policies` array is a policy object with explicit privileges a
   "$type": "AuthzEntityMembership",
   "privileges": ["select", "insert", "update", "delete"],
   "data": { "entity_field": "owner_id", "membership_type": 5 },
-  "tables": ["buckets", "files", "upload_requests"]
+  "tables": ["buckets", "files"]
 }
 ```
 
@@ -126,22 +124,22 @@ Each entry in the `policies` array is a policy object with explicit privileges a
 | `$type` | string | **Yes** | — | Authz* node type name |
 | `privileges` | string[] | **Yes** | — | Privileges to apply. Intersected with what each storage table supports |
 | `data` | object | No | *(auto-derived)* | Policy data. When omitted, derived from membership_type and known Authz* conventions |
-| `tables` | string[] | No | all three | Which storage tables to apply this policy to (see below) |
+| `tables` | string[] | No | both | Which storage tables to apply this policy to (see below) |
 | `policy_name` | string | No | *(auto-derived)* | Custom suffix for the generated policy name |
 
 ### The `tables` key
 
-The `tables` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not the prefixed physical table names. The function already knows the prefix from the storage module context and resolves the full table names internally.
+The `tables` key uses **logical names** (`"buckets"`, `"files"`), not the prefixed physical table names. The function already knows the prefix from the storage module context and resolves the full table names internally.
 
 ```json
-// Applies to data_room_buckets and data_room_files (NOT data_room_upload_requests)
+// Applies to data_room_buckets and data_room_files only
 { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
 ```
 
-- **Omit `tables`** → policy applies to all three storage tables
+- **Omit `tables`** → policy applies to both storage tables
 - **Specify `tables`** → policy applies only to the listed tables
 
-This is how you avoid applying a policy to a table that doesn't have the required columns. For example, `AuthzPublishable` needs `is_public` and `AuthzDirectOwner` needs `actor_id` — neither exists on `upload_requests`.
+This is how you avoid applying a policy to a table that doesn't have the required columns. For example, `AuthzPublishable` needs `is_public` — scope it to tables that have this column.
 
 ### Privilege intersection per table
 
@@ -149,9 +147,7 @@ Requested privileges are intersected with what each table supports:
 
 - **Buckets:** select, insert, update, delete
 - **Files:** select, insert, update, delete
-- **Upload requests:** select, insert, update *(no delete)*
 
-If you request `["select", "insert", "update", "delete"]` on upload_requests, only select/insert/update are applied — delete is silently dropped.
 
 ## How `policies` flows through provisioning
 
@@ -171,7 +167,7 @@ insert_storage_module trigger
 apply_storage_security(v_policies jsonb)
     |
     v
-metaschema.create_policy() per entry per table (buckets, files, upload_requests)
+metaschema.create_policy() per entry per table (buckets, files)
 ```
 
 ## Defaults (when `policies` is omitted)
@@ -265,7 +261,7 @@ Entity members can upload and manage files. Published files are readable by anyo
 
 **Note:** `is_public: true` makes the S3 bucket publicly readable (no presigned URL needed for downloads). `AuthzPublishable` adds a permissive SELECT RLS policy so the database rows are visible. Both layers work together for truly public read access.
 
-**Note:** `AuthzPublishable` is scoped to `["buckets", "files"]` because `upload_requests` lacks the `is_public` column that the policy requires.
+
 
 ### 3. Owner-only private documents
 

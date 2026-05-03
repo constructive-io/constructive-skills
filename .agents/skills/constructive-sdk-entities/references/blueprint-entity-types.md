@@ -39,7 +39,7 @@ The `entity_types` array is a top-level key in the blueprint definition JSONB, a
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
-| `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets, files, and upload_requests tables |
+| `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
@@ -47,7 +47,7 @@ The `entity_types` array is a top-level key in the blueprint definition JSONB, a
 
 ## Storage Config (`has_storage`, `storage_config`)
 
-When `has_storage: true`, the system provisions a `storage_module` for the entity type, creating `{prefix}_buckets`, `{prefix}_files`, and `{prefix}_upload_requests` tables with RLS security policies.
+When `has_storage: true`, the system provisions a `storage_module` for the entity type, creating `{prefix}_buckets` and `{prefix}_files` tables with RLS security policies.
 
 The optional `storage_config` object controls bucket behavior:
 
@@ -71,7 +71,7 @@ The optional `storage_config` object controls bucket behavior:
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
-| `provisions` | object | No | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, or `"upload_requests"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table; tables without a key still get defaults |
+| `provisions` | object | No | `null` | Per-table overrides keyed by `"files"` or `"buckets"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table; tables without a key still get defaults |
 | `upload_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned upload URL expiry time in seconds |
 | `download_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned download URL expiry time in seconds |
 | `default_max_file_size` | bigint | No | *(module default)* | Default maximum file size in bytes |
@@ -99,7 +99,7 @@ Each entry in a table's `policies` array is a policy object:
 ### Typical provisions combinations
 
 ```json
-// Custom policies on files only — buckets and upload_requests get defaults
+// Custom policies on files only — buckets get defaults
 "provisions": {
   "files": {
     "policies": [
@@ -109,7 +109,7 @@ Each entry in a table's `policies` array is a policy object:
   }
 }
 
-// Full custom on all three tables
+// Full custom on both tables
 "provisions": {
   "files": {
     "policies": [
@@ -122,11 +122,6 @@ Each entry in a table's `policies` array is a policy object:
       { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }
     ]
   },
-  "upload_requests": {
-    "policies": [
-      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update"] }
-    ]
-  }
 }
 
 // Add search to files without overriding default policies
@@ -137,13 +132,13 @@ Each entry in a table's `policies` array is a policy object:
 }
 ```
 
-**Important:** `AuthzPublishable` requires an `is_public` column and `AuthzDirectOwner` requires an `actor_id` column — scope them to tables that have these columns (buckets and files have both; upload_requests has neither).
+**Important:** `AuthzPublishable` requires an `is_public` column and `AuthzDirectOwner` requires an `actor_id` column — scope them to tables that have these columns (buckets and files have both).
 
 ### Defaults (when `provisions` is omitted)
 
 When `provisions` is absent (or a table key has no `policies`), these defaults are applied automatically:
 - `AuthzPublishable` → buckets (SELECT), files (SELECT, INSERT)
-- Membership policy → buckets/files (full CRUD), upload_requests (SELECT, INSERT, UPDATE)
+- Membership policy → buckets/files (full CRUD)
 - `AuthzDirectOwner` → files (UPDATE, DELETE)
 
 When a table key **does** include `policies[]`, defaults are skipped **for that table only** — other tables still get defaults. It's per-table replacement, not all-or-nothing.

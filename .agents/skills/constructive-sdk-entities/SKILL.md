@@ -118,8 +118,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 
 ### Storage Tables (if `has_storage`)
 - `channel_buckets` — Bucket configuration (key, type, is_public, allowed_mime_types, max_file_size)
-- `channel_files` — File records (key, mime_type, size, filename, status, is_public, owner_id)
-- `channel_upload_requests` — Upload audit trail (file_id, bucket_id, key, content_type, status)
+- `channel_files` — File records (key, mime_type, size, filename, is_public, owner_id)
 
 ### Modules Registered
 - `permissions_module:channel`
@@ -136,7 +135,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 
 ## Entity-Scoped Storage (Buckets & File Uploads)
 
-When `has_storage: true`, the system provisions a `storage_module` for the entity type. This creates dedicated buckets, files, and upload_requests tables with RLS policies scoped to entity membership.
+When `has_storage: true`, the system provisions a `storage_module` for the entity type. This creates dedicated buckets and files tables with RLS policies scoped to entity membership.
 
 ### Blueprint: Entity with Storage
 
@@ -159,7 +158,7 @@ When `has_storage: true`, the system provisions a `storage_module` for the entit
 }
 ```
 
-This creates `data_room_buckets`, `data_room_files`, and `data_room_upload_requests` tables, secured with the specified RLS policies. The `"tables"` key uses **logical names** (`"buckets"`, `"files"`, `"upload_requests"`), not the prefixed physical table names — the function resolves the prefix internally.
+This creates `data_room_buckets` and `data_room_files` tables, secured with the specified RLS policies. The `"tables"` key uses **logical names** (`"buckets"`, `"files"`), not the prefixed physical table names — the function resolves the prefix internally.
 
 ### ORM: Entity with Storage
 
@@ -247,7 +246,7 @@ The plugin resolves the correct storage module by probing entity tables for the 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `is_public` | boolean | `false` | S3 bucket ACL — `true` = publicly readable, `false` = presigned URLs required |
-| `provisions` | object | `null` | Per-table overrides keyed by `"files"`, `"buckets"`, `"upload_requests"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table |
+| `provisions` | object | `null` | Per-table overrides keyed by `"files"` or `"buckets"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table |
 
 Each policy object (inside `provisions.{table}.policies`) has `$type` (required), `privileges` (required), plus optional `data` and `policy_name`. Missing `data` is auto-populated with storage-specific defaults (e.g., `AuthzPublishable` → `{"is_published_field": "is_public", "require_published_at": false}`).
 
@@ -262,8 +261,8 @@ When a table key includes `policies[]`, defaults are skipped **for that table on
 | Combination | Use case |
 |-------------|----------|
 | *(omit provisions entirely)* | Locked-down default: members view/upload, only creator can update/delete |
-| `provisions.files.policies: [{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members on files (buckets/upload_requests still get defaults) |
-| Per-table explicit policies on all three keys | Full custom: you control exactly what each storage table gets |
+| `provisions.files.policies: [{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members on files (buckets still get defaults) |
+| Per-table explicit policies on both keys | Full custom: you control exactly what each storage table gets |
 | `provisions.files.nodes: [{ "$type": "SearchBm25", ... }]` (no policies key) | Add search to files, keep default policies |
 
 ---
