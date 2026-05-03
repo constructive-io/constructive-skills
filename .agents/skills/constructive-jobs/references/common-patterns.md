@@ -89,6 +89,80 @@ Creates a WHEN clause: `WHEN (NEW.status = 'published')`. The trigger only fires
 
 **Note:** `condition_field` and `watch_fields` cannot both be specified.
 
+## 3b. Compound Conditions (Status Transition)
+
+Fire only when a row transitions from one status to another:
+
+```typescript
+{
+  $type: 'DataJobTrigger',
+  data: {
+    task_identifier: 'process_published',
+    events: ['UPDATE'],
+    payload_strategy: 'custom',
+    payload_custom: { doc_id: 'id', title: 'title' },
+    conditions: [
+      { field: 'status', op: '=', value: 'published' },
+      { field: 'status', op: '=', value: 'draft', row: 'OLD' },
+    ],
+  },
+}
+```
+
+Creates a WHEN clause: `WHEN (NEW.status = 'published' AND OLD.status = 'draft')`. The trigger only fires when `status` changes from `'draft'` to `'published'`.
+
+## 3c. Compound Conditions with OR (MIME Type Filtering)
+
+Fire when status transitions AND the row matches one of several MIME patterns:
+
+```typescript
+{
+  $type: 'DataJobTrigger',
+  data: {
+    task_identifier: 'process_media',
+    events: ['UPDATE'],
+    payload_strategy: 'custom',
+    payload_custom: { file_id: 'id', key: 'key', mime_type: 'mime_type' },
+    include_meta: true,
+    conditions: {
+      AND: [
+        { field: 'status', op: '=', value: 'ready' },
+        { field: 'status', op: '=', value: 'pending', row: 'OLD' },
+        { OR: [
+          { field: 'mime_type', op: 'LIKE', value: 'image/%' },
+          { field: 'mime_type', op: 'LIKE', value: 'video/%' },
+        ]},
+      ]
+    },
+  },
+}
+```
+
+## 3d. DataImageEmbedding (Composition Shorthand)
+
+For the common pattern of embedding image files on status transition, use `DataImageEmbedding` instead of manually wiring SearchVector + DataJobTrigger:
+
+```typescript
+nodes: [
+  ...STORAGE_NODES,
+  { $type: 'DataImageEmbedding' },
+]
+```
+
+Equivalent to manually configuring SearchVector (512-dim, HNSW, cosine) + DataJobTrigger (UPDATE, `status: pending→ready`, `mime_type LIKE 'image/%'`). Override defaults as needed:
+
+```typescript
+{
+  $type: 'DataImageEmbedding',
+  data: {
+    dimensions: 1024,
+    metric: 'l2',
+    mime_patterns: ['image/%', 'video/%'],
+    task_identifier: 'custom_embedding_worker',
+  },
+}
+```
+
 ## 4. Audit Trail on Delete
 
 Capture full row data before deletion:
