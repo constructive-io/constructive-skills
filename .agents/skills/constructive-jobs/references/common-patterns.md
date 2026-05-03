@@ -140,7 +140,7 @@ Fire when status transitions AND the row matches one of several MIME patterns:
 
 ## 3d. DataImageEmbedding (Composition Shorthand)
 
-For the common pattern of embedding image files on status transition, use `DataImageEmbedding` instead of manually wiring SearchVector + DataJobTrigger:
+For the common pattern of embedding image files on insert, use `DataImageEmbedding` instead of manually wiring SearchVector + DataJobTrigger:
 
 ```typescript
 nodes: [
@@ -149,7 +149,7 @@ nodes: [
 ]
 ```
 
-Equivalent to manually configuring SearchVector (512-dim, HNSW, cosine) + DataJobTrigger (UPDATE, `status: pending→ready`, `mime_type LIKE 'image/%'`). Override defaults as needed:
+Equivalent to manually configuring SearchVector (512-dim, HNSW, cosine) + DataJobTrigger (INSERT, `mime_type LIKE 'image/%'`). Override defaults as needed:
 
 ```typescript
 {
