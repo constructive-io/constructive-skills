@@ -210,7 +210,13 @@ All 25 node types from the `node_type_registry`:
 | `DataInheritFromParent` | Copies field values from parent row (via FK) on insert/update | `parent_fk_field` (required — FK field pointing to parent), `fields` (required, array of field names to copy) |
 | `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
 | `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
-| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `watch_fields` (optional array), `events` (default `['INSERT','UPDATE']`), `condition_field`/`condition_value` (optional), `payload_fields` (optional array), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+
+#### Composition
+
+| Node Type | Purpose | `data` options |
+|-----------|---------|----------------|
+| `DataImageEmbedding` | Combines SearchVector + DataJobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `status_field` (default `'status'`), `status_ready_value` (default `'ready'`), `status_pending_value` (default `'pending'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 #### Search & AI
 

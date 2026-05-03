@@ -1,6 +1,6 @@
 ---
 name: constructive-jobs
-description: "Background job system — DataJobTrigger blueprint node for enqueuing jobs on row changes, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', or when working with DataJobTrigger in blueprints."
+description: "Background job system — DataJobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), DataImageEmbedding composition wrapper, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'image embedding trigger', or when working with DataJobTrigger/DataImageEmbedding in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -73,8 +73,9 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 | `payload_custom` | object | — | Key-to-column mapping for `custom` strategy |
 | `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["INSERT", "UPDATE"]` | Which DML events fire the trigger |
 | `watch_fields` | string[] | — | For UPDATE: only fire when these columns change |
-| `condition_field` | string | — | Column for conditional WHEN clause |
-| `condition_value` | string | — | Value to match in WHEN clause |
+| `condition_field` | string | — | Legacy: column for simple equality WHEN clause |
+| `condition_value` | string | — | Legacy: value to match for `condition_field` |
+| `conditions` | object \| array | — | Compound conditions for WHEN clause (see below) |
 | `include_old` | boolean | `false` | Include OLD row in UPDATE payload |
 | `include_meta` | boolean | `false` | Include table/schema metadata in payload |
 | `job_key` | string | — | Static key for upsert semantics (deduplication) |
@@ -83,7 +84,49 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 | `run_at_delay` | string | — | PostgreSQL interval delay (e.g., `'30 seconds'`) |
 | `max_attempts` | integer | `25` | Maximum retry attempts |
 
-**Constraint:** `condition_field` and `watch_fields` cannot both be specified on the same trigger.
+**Constraints:** `conditions`, `condition_field`, and `watch_fields` are mutually exclusive — only one can be specified per trigger.
+
+### Compound Conditions
+
+The `conditions` parameter accepts a structured JSON syntax for complex WHEN clauses. Column types are resolved automatically from the PostgreSQL schema — values in JSON are cast to the correct type at generation time.
+
+**Leaf condition:**
+```typescript
+{ field: 'status', op: '=', value: 'ready', row: 'NEW' }
+```
+
+| Key | Required | Default | Description |
+|-----|----------|---------|-------------|
+| `field` | yes | — | Column name (validated against the table) |
+| `op` | yes | — | `=`, `!=`, `>`, `<`, `>=`, `<=`, `LIKE`, `NOT LIKE`, `IS NULL`, `IS NOT NULL`, `IS DISTINCT FROM` |
+| `value` | conditional | — | Comparison value (omit for `IS NULL`, `IS NOT NULL`, `IS DISTINCT FROM`) |
+| `row` | no | `'NEW'` | Row reference: `'NEW'` or `'OLD'` |
+| `ref` | no | — | Column reference for field-to-field comparison: `{ field: '...', row: '...' }` |
+
+**Array shorthand (implicit AND):**
+```typescript
+conditions: [
+  { field: 'status', op: '=', value: 'ready' },
+  { field: 'status', op: '=', value: 'pending', row: 'OLD' },
+  { field: 'mime_type', op: 'LIKE', value: 'image/%' },
+]
+```
+
+**Nested combinators (AND/OR/NOT):**
+```typescript
+conditions: {
+  AND: [
+    { field: 'status', op: '=', value: 'ready' },
+    { OR: [
+      { field: 'mime_type', op: 'LIKE', value: 'image/%' },
+      { field: 'mime_type', op: 'LIKE', value: 'video/%' },
+    ]},
+    { NOT: { field: 'is_draft', op: '=', value: true } },
+  ]
+}
+```
+
+See [references/common-patterns.md](references/common-patterns.md) for full blueprint examples.
 
 ### Payload Strategies
 
@@ -99,10 +142,44 @@ See [references/payload-strategies.md](references/payload-strategies.md) for det
 ### Common Patterns
 
 See [references/common-patterns.md](references/common-patterns.md) for full blueprint examples of:
-- Conditional triggers (`watch_fields`, `condition_field`)
+- Conditional triggers (`watch_fields`, `condition_field`, `conditions`)
+- Compound conditions (status transitions, MIME type filtering)
 - Delayed/debounced jobs (`run_at_delay` + `job_key`)
 - Multiple triggers per table
 - Email on invite, Stripe sync, audit trail, webhook dispatch
+
+## DataImageEmbedding Blueprint Node
+
+Composition wrapper that combines SearchVector + DataJobTrigger with image-specific defaults. Creates a vector embedding field with HNSW index and a job trigger that fires when image files transition to ready status.
+
+```typescript
+{
+  ref: 'files',
+  table_name: 'files',
+  nodes: [
+    ...STORAGE_NODES,
+    { $type: 'DataImageEmbedding' },
+  ],
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `field_name` | string | `'embedding'` | Vector column name |
+| `dimensions` | integer | `512` | Vector dimensions |
+| `index_method` | `'hnsw'` \| `'ivfflat'` | `'hnsw'` | Index type |
+| `metric` | `'cosine'` \| `'l2'` \| `'ip'` | `'cosine'` | Distance metric |
+| `task_identifier` | string | `'process_image_embedding'` | Job task name |
+| `status_field` | string | `'status'` | Upload lifecycle status column |
+| `status_ready_value` | string | `'ready'` | Value indicating file is ready |
+| `status_pending_value` | string | `'pending'` | Value indicating file is pending |
+| `mime_patterns` | string[] | `['image/%']` | MIME type LIKE patterns (OR'd together) |
+| `payload_custom` | object | `{file_id: 'id', key: 'key', ...}` | Custom job payload mapping |
+
+The generated WHEN clause:
+```sql
+NEW.status = 'ready' AND OLD.status = 'pending' AND NEW.mime_type LIKE 'image/%'
+```
 
 ## Knative Worker Stack
 
@@ -156,4 +233,4 @@ The scheduler component in `knative-job-service` evaluates cron expressions and 
 - **[`constructive-safegres`](../constructive-safegres/SKILL.md)** — Security policies for tables with job triggers
 - **Blueprint definition format** — [blueprints.md](../constructive-platform/references/blueprint-definition-format.md) for the full node types table
 
-For SQL-level internals (generator functions, AST helpers, trigger function source), see the `constructive-job-triggers` skill in `constructive-private-skills`.
+For SQL-level internals (generator functions, AST helpers, trigger function source), see the `constructive-db-compound-conditions` and `constructive-db-data-modules` skills in `constructive-io/constructive-db`.
