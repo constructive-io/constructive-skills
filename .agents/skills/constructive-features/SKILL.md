@@ -33,6 +33,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Device tracking / trusted devices | `devices_module` + `has_device_support` | `full` (not yet fully wired; see `module-presets.md`) | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | API keys | `secrets_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (server-side) | `encrypted_secrets_module` | `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Web3 wallet addresses | `crypto_addresses_module` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Password reset / forgot password | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Email verification | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Local email testing (dev only) | — | — | [`constructive-setup`](../constructive-setup/SKILL.md) |
@@ -71,7 +73,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Merkle definition_hash | backend trigger | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | Tables + fields | `secure_table_provision` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
-| `Data*` generators (DataId, DataDirectOwner, DataPublishable, DataTimestamps, …) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
+| `Data*` generators (25 node types) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataDirectOwner / DataEntityMembership / DataOwnershipInEntity | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataPeoplestamps (created_by / updated_by) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataCompositeField (derived text concatenation) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Behavior triggers (DataSlug, DataInflection, DataForceCurrentUser) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
 ## 5. Storage & Uploads
@@ -93,21 +102,25 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| tsvector (Postgres full-text) | `provisionFullTextSearch` + tsvector adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
-| BM25 (ParadeDB / pg_search) | BM25 adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
-| Trigram (pg_trgm fuzzy) | trigram adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
-| Vector similarity (pgvector) | pgvector adapter + `provisionIndex` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| PostGIS spatial search / distance | `provisionSpatialRelation` + spatial adapter | — | [`graphile-search`](../graphile-search/SKILL.md) |
-| Unified composite search | `unifiedSearch` field | — | [`graphile-search`](../graphile-search/SKILL.md) |
+| SearchUnified (orchestrated multi-algorithm) | `SearchUnified` blueprint node | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) + [`graphile-search`](../graphile-search/SKILL.md) |
+| SearchFullText (tsvector + GIN) | `SearchFullText` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| SearchBm25 (ParadeDB / pg_search) | `SearchBm25` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| SearchTrgm (trigram fuzzy) | `SearchTrgm` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| SearchVector (pgvector embeddings) | `SearchVector` blueprint node | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| SearchSpatial (PostGIS geometry) | `SearchSpatial` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| SearchSpatialAggregate (materialized aggregates) | `SearchSpatialAggregate` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Unified composite search (GraphQL) | `unifiedSearch` field | — | [`graphile-search`](../graphile-search/SKILL.md) |
 
 ## 7. AI
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| `pgvector` columns + indexes | `provisionIndex` (SDK) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| Embedding pipelines | app code | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| Ollama in CI / GitHub Actions | workflow | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| RAG patterns | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| SearchVector (pgvector columns + HNSW/IVFFlat) | `SearchVector` blueprint node | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding stale tracking + job enqueue | `SearchVector` `include_stale_field` + `enqueue_job` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Chunk tables (long text splitting) | `SearchVector` `chunks_config` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding worker pipeline | Graphile Worker + `generate_embedding` task | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 
 ## 8. GraphQL & Codegen
 
@@ -146,6 +159,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | DB introspection → SDK | `cnc codegen` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 | Ephemeral test DBs | `pgsql-test` + friends | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
+| Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 
 ## 11. Project Setup & Scaffolding
 

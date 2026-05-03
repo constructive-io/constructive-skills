@@ -164,23 +164,65 @@ Each entry in `tables[]` defines one database table:
 }
 ```
 
-Common node types:
+All 25 node types from the `node_type_registry`:
 
-| Node Type | Purpose | Default behavior |
-|-----------|---------|------------------|
-| `DataId` | Adds `id uuid PRIMARY KEY DEFAULT uuidv7()` | **Must be explicitly listed** — no longer auto-created |
-| `DataTimestamps` | Adds `created_at` and `updated_at` timestamps | Auto-maintained |
-| `DataOwnershipInEntity` | Adds `owner_id uuid NOT NULL` with FK | Entity-scoped ownership |
-| `SearchUnified` | Adds full-text search columns | tsvector + GIN index |
-| `DataSoftDelete` | Adds `deleted_at` timestamp for soft deletes | Filtered in queries |
-| `SearchVector` | Adds vector embedding field + HNSW/IVFFlat index | Configurable dimensions, metric, stale tracking, job enqueue |
-| `DataTags` | Adds `citext[]` tags field + GIN index | For array containment/overlap queries |
-| `DataStatusField` | Adds status field + B-tree index + optional CHECK | Configurable allowed values |
-| `DataJsonb` | Adds JSONB field + optional GIN index | For containment queries |
-| `SearchTrgm` | Adds GIN trigram indexes on existing fields | For fuzzy/LIKE queries, sets `@trgmSearch` smart tag |
-| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | Configurable payload, events, conditions — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+#### Core Identity & Ownership
+
+| Node Type | Creates | `data` options | Paired Authz* |
+|-----------|---------|----------------|---------------|
+| `DataId` | `id uuid PRIMARY KEY DEFAULT uuidv7()` | `field_name` (default `'id'`) | — |
+| `DataDirectOwner` | `owner_id uuid NOT NULL` + FK to users + index | `owner_field_name` (default `'owner_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzDirectOwner` |
+| `DataEntityMembership` | `entity_id uuid NOT NULL` + FK to users + index | `entity_field_name` (default `'entity_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzEntityMembership` |
+| `DataOwnershipInEntity` | Both `owner_id` and `entity_id` + FKs | `include_user_fk` (default `true`) | `AuthzDirectOwner` + `AuthzEntityMembership` |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
+
+#### Timestamps & Audit
+
+| Node Type | Creates | `data` options |
+|-----------|---------|----------------|
+| `DataTimestamps` | `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()` | (none) |
+| `DataPeoplestamps` | `created_by uuid` (nullable), `updated_by uuid` (nullable) | `include_user_fk` (default `false`) |
+
+#### Publishing & Lifecycle
+
+| Node Type | Creates | `data` options | Paired Authz* |
+|-----------|---------|----------------|---------------|
+| `DataPublishable` | `is_published boolean NOT NULL DEFAULT false`, `published_at timestamptz` | (none) | `AuthzPublishable` |
+| `DataSoftDelete` | `deleted_at timestamptz`, `is_deleted boolean NOT NULL DEFAULT false` | (none) | — |
+| `DataStatusField` | Status `text NOT NULL` field + B-tree index | `field_name` (default `'status'`), `default_value` (default `'draft'`) | — |
+
+#### Data Fields
+
+| Node Type | Creates | `data` options |
+|-----------|---------|----------------|
+| `DataTags` | `text[]` tags field + GIN index | `field_name` (default `'tags'`) |
+| `DataJsonb` | `jsonb` field with default `'{}'` | `field_name` (default `'data'`) |
+| `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger | `field_name` (default `'embedding_text'`), `source_fields` (required, array of `{"field": "name", "weight": "A"\|"B"\|"C"\|"D"}`), `separator` (default `' '`) |
+
+#### Behavior Triggers (trigger-only — attach to existing fields)
+
+| Node Type | Purpose | `data` options |
+|-----------|---------|----------------|
+| `DataSlug` | Auto-generates URL slugs from a source field | `field_name` (default `'slug'` — must already exist), `source_field_name` (defaults to `field_name`) |
+| `DataInflection` | Applies chained text transformations via trigger | `field_name` (required — must already exist), `ops` (required, array of `'slugify'`\|`'lower'`\|`'upper'`\|`'trim'`\|`'unaccent'`) |
+| `DataOwnedFields` | Prevents non-owners from modifying protected fields | `role_key_field_name` (required — identifies row owner), `protected_field_names` (required, array of field names) |
+| `DataInheritFromParent` | Copies field values from parent row (via FK) on insert/update | `parent_fk_field` (required — FK field pointing to parent), `fields` (required, array of field names to copy) |
+| `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
+| `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
+| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `watch_fields` (optional array), `events` (default `['INSERT','UPDATE']`), `condition_field`/`condition_value` (optional), `payload_fields` (optional array), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+
+#### Search & AI
+
+| Node Type | Creates | `data` options |
+|-----------|---------|----------------|
+| `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration | `source_fields` (optional, creates DataCompositeField first), `bm25` (sub-config), `trgm` (sub-config), `fts` (sub-config), `boost_recency` (optional `{"field": "updated_at"}`) |
+| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_stale_field` (default `true`), `enqueue_job` (default `true`), `stale_strategy` (default `'column'`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-sdk-ai`](../../constructive-sdk-ai/SKILL.md) |
+| `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `search_score_weight` (default `1.0`) |
+| `SearchBm25` | BM25 (pg_search/ParadeDB) index on existing text field | `field_name` (required — must already exist), `text_config` (default `'english'`), `search_score_weight` (default `1.0`), `k1` (optional BM25 tuning), `b` (optional BM25 tuning) |
+| `SearchTrgm` | GIN trigram indexes on existing fields | `fields` (required, array of field names — must already exist). Sets `@trgmSearch` smart tag |
+| `SearchSpatial` | PostGIS `geometry`/`geography` column + GiST index | `field_name` (default `'geom'`), `geometry_type` (default `'Point'`), `srid` (default `4326`), `dimension` (default `2`), `use_geography` (default `false`), `index_method` (`'gist'`\|`'spgist'`) |
+| `SearchSpatialAggregate` | Materialized aggregate geometry on parent table + auto-update triggers | `field_name` (default `'geom_aggregate'`), `source_table_id` (required), `source_geom_field` (default `'geom'`), `source_fk_field` (optional), `aggregate_function` (default `'union'` — also `'collect'`, `'convex_hull'`, `'concave_hull'`), `geometry_type` (default `'MultiPolygon'`), `srid`, `dimension`, `use_geography`, `index_method` |
 
 **Processing:** All nodes are processed together when the table is created. The table and all its Data* fields are provisioned in one step.
 

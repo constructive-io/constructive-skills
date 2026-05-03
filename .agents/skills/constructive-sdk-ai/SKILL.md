@@ -156,11 +156,14 @@ nodes: [
 | `field_name` | `'embedding'` | Name of the vector column |
 | `dimensions` | `768` | Vector dimensionality (768 for nomic-embed-text) |
 | `index_method` | `'hnsw'` | Index method: `hnsw` or `ivfflat` |
-| `metric` | `'cosine'` | Distance: `cosine`, `l2`, `inner_product` |
-| `include_stale_field` | `true` | Create `embedding_stale` boolean |
-| `enqueue_job` | `true` | Create job trigger for auto-embedding |
-| `source_fields` | (optional) | Fields to watch for stale-marking |
-| `stale_strategy` | `'column'` | `column` (bool), `hash` (source hash), or `null` |
+| `metric` | `'cosine'` | Distance: `cosine`, `l2`, or `ip` (inner product) |
+| `index_options` | `{}` | HNSW/IVFFlat tuning params (e.g. `{"m": 16, "ef_construction": 64}`) |
+| `include_stale_field` | `true` | Create `embedding_stale` boolean + stale-marking triggers |
+| `enqueue_job` | `true` | Create job trigger to auto-enqueue embedding generation |
+| `job_task_name` | `'generate_embedding'` | Graphile Worker task name for the embedding job |
+| `source_fields` | (optional) | Fields to watch for stale-marking triggers |
+| `stale_strategy` | `'column'` | `'column'` (bool flag) or other strategies |
+| `chunks_config` | (optional) | Enable chunk table for long text. Sub-options: `content_field_name` (default `'content'`), `chunk_size` (default `1000`), `chunk_overlap` (default `200`), `chunk_strategy` (default `'fixed'`), `enqueue_chunking_job` (default `true`), `chunking_task_name` (default `'generate_chunks'`) |
 
 ## Chunk Tables
 
