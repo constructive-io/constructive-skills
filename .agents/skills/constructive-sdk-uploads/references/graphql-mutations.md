@@ -10,7 +10,6 @@ mutation RequestUploadUrl($input: RequestUploadUrlInput!) {
     key            # S3 object key (= SHA-256 content hash)
     deduplicated   # true if file already exists (skip the PUT)
     expiresAt      # URL expiry ISO timestamp (null if deduplicated)
-    status         # File status: 'pending' (fresh) or 'ready'/'processed' (dedup)
   }
 }
 ```
@@ -35,7 +34,6 @@ mutation RequestUploadUrl($input: RequestUploadUrlInput!) {
 | `key` | `String!` | S3 object key (= content hash). |
 | `deduplicated` | `Boolean!` | `true` = file with same hash already exists. Skip the PUT. |
 | `expiresAt` | `Datetime` | Presigned URL expiry. `null` if deduplicated. |
-| `status` | `String!` | File status: `'pending'` for fresh uploads, `'ready'` or `'processed'` for deduplicated files. Clients can use this to immediately know whether the file is usable without a separate query. |
 
 ### Validation Rules
 
@@ -49,42 +47,12 @@ mutation RequestUploadUrl($input: RequestUploadUrlInput!) {
 
 ### Deduplication
 
-Before creating a new file record, the plugin checks:
-```sql
-SELECT id, status FROM files
-WHERE key = $contentHash AND bucket_id = $bucketId
-  AND status IN ('ready', 'processed')
-```
-If found, returns the existing file ID with `deduplicated: true`, `uploadUrl: null`, and `status` set to the existing file's status (`'ready'` or `'processed'`). For fresh uploads, `status` is `'pending'` until `confirmUpload` transitions it to `'ready'`.
+Before creating a new file record, the plugin checks for an existing file with the same key in the same bucket. This is enforced by a `UNIQUE(bucket_id, key)` constraint:
 
----
+- If a file with the same `(bucket_id, key)` already exists: returns `deduplicated: true`, `uploadUrl: null`, and the existing `fileId`
+- If no match: creates a new file record and returns a presigned PUT URL
 
-## `confirmUpload` Mutation
-
-```graphql
-mutation ConfirmUpload($input: ConfirmUploadInput!) {
-  confirmUpload(input: $input) {
-    fileId         # The confirmed file ID
-    status         # "ready" on success
-    success        # boolean
-  }
-}
-```
-
-### Behavior
-
-1. Resolves the storage module by probing all file tables for the given `fileId`
-2. If file status is already `ready` or `processed`, returns idempotent success
-3. Issues a `HEAD` request to S3 to verify the object exists
-4. Verifies Content-Type matches what was declared in `requestUploadUrl`
-5. Transitions file status from `pending` → `ready`
-6. Updates the `upload_requests` record to `confirmed`
-
-### Error cases
-
-- `FILE_NOT_FOUND`: no file record with this UUID
-- `FILE_NOT_IN_S3`: S3 HEAD returned 404
-- `CONTENT_TYPE_MISMATCH`: S3 object has a different Content-Type than declared
+No separate database tracking or status fields — dedup is purely an API-level optimization.
 
 ---
 
@@ -139,7 +107,7 @@ query {
 | Public (`is_public = true`) | `{publicUrlPrefix}/{key}` — direct CDN URL |
 | Private (`is_public = false`) | Presigned GET URL with `X-Amz-Signature` (default 1h expiry) |
 
-Only returns a URL for files with `status = 'ready'` or `status = 'processed'`. Returns `null` for pending/rejected files.
+Returns a URL for any file that has a `key` value. Returns `null` if the file has no key.
 
 ---
 
@@ -151,7 +119,7 @@ Only returns a URL for files with `status = 'ready'` or `status = 'processed'`. 
 SELECT ... FROM storage_module WHERE database_id = $1 AND membership_type IS NULL
 ```
 
-Uses the app-level storage module. Buckets table, files table, and upload_requests table are all resolved from this single module.
+Uses the app-level storage module. Buckets table and files table are resolved from this single module.
 
 ### Entity-scoped (with `ownerId`)
 
@@ -192,15 +160,5 @@ interface RequestUploadUrlPayload {
   key: string;
   deduplicated: boolean;
   expiresAt: string | null;
-}
-
-interface ConfirmUploadInput {
-  fileId: string;
-}
-
-interface ConfirmUploadPayload {
-  fileId: string;
-  status: string;
-  success: boolean;
 }
 ```

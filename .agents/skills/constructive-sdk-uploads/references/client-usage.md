@@ -2,7 +2,7 @@
 
 ## `@constructive-io/upload-client`
 
-The upload client wraps the entire presigned URL flow into a single function call: **hash → requestUploadUrl → PUT → confirmUpload**.
+The upload client wraps the entire presigned URL flow into a single function call: **hash → requestUploadUrl → PUT**.
 
 ```bash
 pnpm add @constructive-io/upload-client
@@ -21,7 +21,7 @@ const result = await uploadFile({
   signal: abortController.signal, // optional cancellation
 });
 
-// result: { fileId, key, deduplicated, status }
+// result: { fileId, key, deduplicated }
 ```
 
 ### Options
@@ -41,7 +41,6 @@ const result = await uploadFile({
 | `fileId` | `string` | UUID of the file record — use this to link to domain tables |
 | `key` | `string` | S3 object key (= SHA-256 content hash) |
 | `deduplicated` | `boolean` | `true` if file already existed (no bytes uploaded) |
-| `status` | `string` | `"ready"` for confirmed fresh uploads, `"ready"` or `"processed"` for dedup (from server). `"pending"` during upload (before `confirmUpload`). |
 
 ### `GraphQLExecutor`
 
@@ -85,20 +84,18 @@ The upload client computes a SHA-256 hash of the file content before calling `re
 3. **If yes** (`deduplicated = true`):
    - `uploadUrl = null` — no presigned URL is generated
    - `fileId` = the *existing* file's UUID
-   - `status` = the existing file's status (`'ready'` or `'processed'`) — file is immediately usable
    - The client **skips the PUT entirely** — the bytes are already in S3
-   - No `confirmUpload` needed
 4. **If no** (`deduplicated = false`):
    - `uploadUrl` = a presigned PUT URL (default 15-minute expiry)
-   - `fileId` = a *new* UUID (file record created with `status = 'pending'`)
-   - `status = 'pending'` — the file is **not yet usable**
-   - Client must PUT the file bytes, then call `confirmUpload` to transition to `ready`
+   - `fileId` = a *new* UUID (file record created)
+   - Client must PUT the file bytes to the presigned URL
 
 **Why it matters:**
 - Saves bandwidth — identical files are never uploaded twice to the same bucket
 - Saves storage — S3 stores one copy per unique content hash
 - Two users uploading the same file get the same S3 key (content-addressed)
 - The `uploadFile()` function handles this automatically — it checks `deduplicated` and skips the PUT if true
+- No database tracking fields — enforced by `UNIQUE(bucket_id, key)` constraint
 
 ---
 
@@ -164,7 +161,6 @@ try {
       case 'GRAPHQL_ERROR':   // GraphQL mutation returned errors
       case 'REQUEST_UPLOAD_URL_FAILED': // requestUploadUrl failed
       case 'PUT_UPLOAD_FAILED':         // S3 PUT failed
-      case 'CONFIRM_UPLOAD_FAILED':     // confirmUpload failed
       case 'ABORTED':         // Upload cancelled via AbortSignal
     }
   }
@@ -177,7 +173,7 @@ try {
 
 If you prefer to manage the flow yourself:
 
-### GraphQL Mutations
+### GraphQL Mutation
 
 ```typescript
 const REQUEST_UPLOAD_URL = `
@@ -188,16 +184,6 @@ const REQUEST_UPLOAD_URL = `
       key
       deduplicated
       expiresAt
-    }
-  }
-`;
-
-const CONFIRM_UPLOAD = `
-  mutation ConfirmUpload($input: ConfirmUploadInput!) {
-    confirmUpload(input: $input) {
-      fileId
-      status
-      success
     }
   }
 `;
@@ -240,12 +226,6 @@ if (!deduplicated) {
       'Content-Length': file.size.toString(),
     },
     body: file,
-  });
-
-  // 4. Confirm upload
-  await graphqlClient.mutate({
-    mutation: CONFIRM_UPLOAD,
-    variables: { input: { fileId } },
   });
 }
 

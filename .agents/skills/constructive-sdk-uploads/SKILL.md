@@ -1,9 +1,9 @@
 ---
 name: constructive-sdk-uploads
-description: "File uploads with GraphQL + S3/MinIO — presigned URL flow (requestUploadUrl → PUT → confirmUpload), bucket provisioning, downloadUrl computed field, public/private/entity-scoped buckets, MIME type restrictions, file size limits, deduplication, and the upload-client library. Use when asked to 'upload files', 'add file uploads', 'configure storage', 'set up MinIO', 'presigned URLs', 'download URLs', or when working with graphile-presigned-url-plugin, graphile-bucket-provisioner-plugin, or @constructive-io/upload-client."
+description: "File uploads with GraphQL + S3/MinIO — presigned URL flow (requestUploadUrl → PUT → downloadUrl), bucket provisioning, downloadUrl computed field, public/private/entity-scoped buckets, MIME type restrictions, file size limits, deduplication, and the upload-client library. Use when asked to 'upload files', 'add file uploads', 'configure storage', 'set up MinIO', 'presigned URLs', 'download URLs', or when working with graphile-presigned-url-plugin, graphile-bucket-provisioner-plugin, or @constructive-io/upload-client."
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # File Uploads (Presigned URL Flow)
@@ -20,10 +20,10 @@ Related skills:
 
 | Package | Purpose |
 |---------|---------|
-| `graphile-presigned-url-plugin` | PostGraphile v5 plugin: `requestUploadUrl` + `confirmUpload` mutations, `downloadUrl` computed field |
+| `graphile-presigned-url-plugin` | PostGraphile v5 plugin: `requestUploadUrl` mutation, `downloadUrl` computed field |
 | `graphile-bucket-provisioner-plugin` | PostGraphile v5 plugin: auto-provisions S3 buckets on row creation, explicit `provisionBucket` mutation |
 | `graphile-upload-plugin` | PostGraphile v5 plugin: GraphQL `Upload` scalar for stream-based uploads |
-| `@constructive-io/upload-client` | Client-side orchestrator: hash → requestUploadUrl → PUT → confirmUpload in one call |
+| `@constructive-io/upload-client` | Client-side orchestrator: hash → requestUploadUrl → PUT in one call |
 | `@constructive-io/bucket-provisioner` | Low-level S3 bucket provisioner (create, CORS, policies, lifecycle) |
 
 ---
@@ -34,18 +34,18 @@ Related skills:
 Client                          GraphQL Server              S3 / MinIO
   │                                  │                          │
   ├── requestUploadUrl ─────────────►│  validate + create file  │
-  │◄──── { uploadUrl, fileId } ──────│  (status='pending')      │
+  │◄──── { uploadUrl, fileId } ──────│                          │
   │                                  │                          │
   ├── PUT uploadUrl ────────────────────────────────────────────►│
   │◄──── 200 OK ────────────────────────────────────────────────│
   │                                  │                          │
-  ├── confirmUpload(fileId) ────────►│  HEAD object ───────────►│
-  │◄──── { status: 'ready' } ───────│  → 'ready'               │
+  │  Done. File is ready.            │                          │
 ```
 
 Key properties:
 - **Content-addressed:** S3 key = SHA-256 hash of file content
-- **Deduplication:** same hash in same bucket → `deduplicated: true`, skip the PUT
+- **Deduplication:** same hash in same bucket → `deduplicated: true`, skip the PUT (no extra DB state — enforced by `UNIQUE(bucket_id, key)` constraint)
+- **No confirm step:** files are usable immediately after the PUT succeeds
 - **RLS-protected:** all DB operations run through RLS policies
 - **Lazy provisioning:** S3 buckets are created on first upload (or via `provisionBucket`)
 
@@ -140,8 +140,6 @@ This creates rows in `app_buckets` during `construct_blueprint()` Phase 0.5. The
 | `FILE_TOO_LARGE` | Exceeds bucket's `max_file_size` |
 | `STORAGE_MODULE_NOT_PROVISIONED` | No storage module for this database |
 | `STORAGE_MODULE_NOT_FOUND_FOR_OWNER` | No entity-scoped storage for this `ownerId` |
-| `FILE_NOT_IN_S3` | S3 HEAD returns 404 during `confirmUpload` |
-| `CONTENT_TYPE_MISMATCH` | S3 object Content-Type doesn't match declared type |
 
 ---
 

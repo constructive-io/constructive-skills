@@ -32,7 +32,7 @@ Sub-references:
 
 - Configurable per-bucket RLS policies via `storage_config.policies[]` on `entity_type_provision`
 - Each policy is an explicit object: `{ "$type", "privileges", "data", "tables" }` — same vocabulary as `table_provision.policies[]`
-- `tables` key scopes a policy to specific storage tables using logical names (`"buckets"`, `"files"`, `"upload_requests"`) — not the prefixed physical table names
+- `tables` key scopes a policy to specific storage tables using logical names (`"buckets"`, `"files"`) — not the prefixed physical table names
 - Two layers: `is_public` controls S3 bucket ACL (transport), `policies` controls RLS (data)
 - When `policies` is omitted, defaults apply (membership + AuthzPublishable + AuthzDirectOwner)
 

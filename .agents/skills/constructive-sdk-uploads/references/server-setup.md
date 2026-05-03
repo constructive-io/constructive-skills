@@ -2,7 +2,7 @@
 
 ## PostGraphile Preset — Presigned URL Plugin
 
-The presigned URL plugin adds `requestUploadUrl`, `confirmUpload`, and the `downloadUrl` computed field.
+The presigned URL plugin adds `requestUploadUrl` and the `downloadUrl` computed field.
 
 ```typescript
 import { PresignedUrlPreset } from 'graphile-presigned-url-plugin';
