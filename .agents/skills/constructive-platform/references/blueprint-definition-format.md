@@ -100,7 +100,7 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 **Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
 
-See the [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) skill for the full entity types reference.
+See the [`constructive-sdk-entities`](../../constructive-sdk-entities/SKILL.md) skill for the full entity types reference.
 
 ## Table Entries
 
@@ -314,7 +314,7 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 | `policy_name` | string | No | Custom policy name |
 | `policy_role` | string | No | Role the policy applies to |
 
-See the [constructive-safegres](../constructive-safegres/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
+See the [constructive-safegres](../../constructive-safegres/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
 
 **`entity_type` resolution:** For membership-based policies (`AuthzMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
 

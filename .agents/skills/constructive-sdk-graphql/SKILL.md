@@ -84,7 +84,7 @@ const results = await db.article.findMany({
 }).execute();
 ```
 
-`searchScore` is computed server-side — no need to select individual score fields. See [search.md](./references/search.md) for all strategies and combined patterns.
+`searchScore` is computed server-side — no need to select individual score fields. See [search-composite.md](./references/search-composite.md) for all strategies and combined patterns.
 
 ## Quick Start: Pagination
 
@@ -145,7 +145,7 @@ See [codegen-hooks-patterns.md](./references/codegen-hooks-patterns.md) for adva
 | **PostGIS** | Location queries, geofencing, proximity | Depends on operator |
 | **Unified** | Multi-signal ranking via `unifiedSearch` + `searchScore` | Higher = more relevant (0..1) |
 
-See [search.md](./references/search.md) for the decision matrix and combined query patterns.
+See [search-composite.md](./references/search-composite.md) for the decision matrix and combined query patterns.
 
 ## Reference Guide
 
@@ -177,7 +177,7 @@ See [search.md](./references/search.md) for the decision matrix and combined que
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [search.md](./references/search.md) | Search overview, decision matrix, combined patterns | Choosing a strategy, combining algorithms, score fields |
+| [search-composite.md](./references/search-composite.md) | Search overview, decision matrix, combined patterns | Choosing a strategy, combining algorithms, score fields |
 | [search-tsvector.md](./references/search-tsvector.md) | TSVector full-text search | Creating tsvector columns, GIN indexes, querying |
 | [search-bm25.md](./references/search-bm25.md) | BM25 ranked search | Creating BM25 indexes, querying with negative scores |
 | [search-trigram.md](./references/search-trigram.md) | Trigram fuzzy matching | `similarTo`, `wordSimilarTo`, `@trgmSearch` smart tag |

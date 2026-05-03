@@ -15,6 +15,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
 | **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, run tests, local email services |
 | **pgpm** | PostgreSQL Package Manager — migrations, CLI, Docker, CI/CD workflows |
+| **constructive-pnpm** | PNPM workspace management — monorepo config, dist-folder publishing with makage/lerna, dependency management |
 | **constructive-sdk-graphql** | SDK GraphQL — codegen (hooks, ORM, CLI), runtime queries, search (all algorithms), pagination |
 | **constructive-sdk-entities** | Entity types — custom entities (channels, teams, data rooms), memberships, entity-scoped storage |
 | **constructive-sdk-uploads** | File uploads — presigned URL flow, bucket provisioning, upload-client, deduplication |
