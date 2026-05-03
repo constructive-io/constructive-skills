@@ -333,13 +333,13 @@ Any `Authz*` node type from the registry can be used. The most relevant ones for
 | `AuthzAllowAll` | No restrictions (use sparingly) | — | All three |
 | `AuthzDenyAll` | Lock down completely (admin override only) | — | All three |
 
-See the [`constructive-safegres`](../constructive-safegres/SKILL.md) skill for the full list of 14 Authz* types and their config shapes.
+See the [`constructive-safegres`](../../constructive-safegres/SKILL.md) skill for the full list of 14 Authz* types and their config shapes.
 
 ## Cross-references
 
-- **Safegres protocol (Authz* types):** [`constructive-safegres`](../constructive-safegres/SKILL.md)
-- **Custom entities & provisioning:** [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md)
+- **Safegres protocol (Authz* types):** [`constructive-safegres`](../../constructive-safegres/SKILL.md)
+- **Custom entities & provisioning:** [`constructive-sdk-entities`](../../constructive-sdk-entities/SKILL.md)
 - **Blueprint definition format:** [blueprint-definition-format.md](./blueprint-definition-format.md)
-- **Upload flow (GraphQL mutations, client library):** [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md)
+- **Upload flow (GraphQL mutations, client library):** [`constructive-sdk-uploads`](../../constructive-sdk-uploads/SKILL.md)
 - **Multi-scope bucket resolution:** `multi-scope-bucket-resolution` skill in `constructive-db`
 - **SQL-level security details:** `constructive-db-security-sql` skill in `constructive-db`

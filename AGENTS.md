@@ -13,6 +13,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
 | **constructive-platform** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
 | **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
+| **constructive-pnpm** | *(standalone)* | PNPM workspace management, dist-folder publishing, dependency management |
 | **constructive-sdk-graphql** | graphql-codegen, sdk-search, graphql-query | SDK codegen (ORM, hooks, CLI), runtime queries, search, pagination |
 | **constructive-starter-kits** | boilerplate-pgpm-init, boilerplate-nextjs-app, boilerplate-authoring | Project scaffolding via `pgpm init` |
 | **constructive-frontend** | constructive-ui, crud-stack, meta-forms | UI components, Stack cards, dynamic forms |
