@@ -47,7 +47,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | 14 `Authz*` policy node types | Node Type Registry | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
-| Bitmask permissions | `permissions_module` | `b2b`, `full` | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Permission levels | `levels_module` | `b2b`, `full` | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | "Users are organizations" identity | `membership_types_module` | all auth presets | [`constructive-safegres`](../constructive-safegres/SKILL.md) |

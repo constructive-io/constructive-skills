@@ -34,7 +34,7 @@ Related skills:
 
 Every entity type gets:
 - An **entity table** (e.g. `channels`, `departments`)
-- A **permissions module** with bitmask-based permissions
+- A **permissions module** with granular per-member permissions
 - A **memberships module** for tracking who belongs to what
 - **RLS security policies** on all tables
 - Optional modules: limits, profiles, levels, invites, **storage**
@@ -107,7 +107,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 
 ### Tables
 - `channels` — Entity table (with `id`, `name`, `owner_id`, `created_at`, `updated_at`)
-- `channel_permissions` — Permission bitmasks per member
+- `channel_permissions` — Per-member permission grants
 - `channel_permission_defaults` — Default permission values
 - `channel_limits` — Rate limits per member (if `has_limits`)
 - `channel_limit_defaults` — Default limit values (if `has_limits`)

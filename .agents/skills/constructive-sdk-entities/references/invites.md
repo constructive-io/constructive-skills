@@ -147,7 +147,7 @@ The check happens at **invite creation time** (BEFORE INSERT trigger on invites 
 
 **Strict mode** (both checks):
 1. `assign_profiles` permission check on the sender
-2. Bitstring comparison: `(profile.permissions & ~inviter.permissions) = 0` — ensures the profile doesn't grant any permission the inviter lacks
+2. Subset check: the profile's permissions must be a subset of the inviter's permissions — the profile cannot grant any permission the inviter lacks
 
 **Permission only** (check 1 only):
 - Anyone with `assign_profiles` can assign any profile, regardless of their own permission level
