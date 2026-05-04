@@ -216,7 +216,7 @@ All 25 node types from the `node_type_registry`:
 
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
-| `DataImageEmbedding` | Combines SearchVector + DataJobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `status_field` (default `'status'`), `status_ready_value` (default `'ready'`), `status_pending_value` (default `'pending'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `DataImageEmbedding` | Combines SearchVector + DataJobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 #### Search & AI
 

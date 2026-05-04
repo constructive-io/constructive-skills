@@ -150,7 +150,7 @@ See [references/common-patterns.md](references/common-patterns.md) for full blue
 
 ## DataImageEmbedding Blueprint Node
 
-Composition wrapper that combines SearchVector + DataJobTrigger with image-specific defaults. Creates a vector embedding field with HNSW index and a job trigger that fires when image files transition to ready status.
+Composition wrapper that combines SearchVector + DataJobTrigger with image-specific defaults. Creates a vector embedding field with HNSW index and a job trigger that fires on INSERT for image files matching mime_type patterns.
 
 ```typescript
 {
@@ -170,15 +170,12 @@ Composition wrapper that combines SearchVector + DataJobTrigger with image-speci
 | `index_method` | `'hnsw'` \| `'ivfflat'` | `'hnsw'` | Index type |
 | `metric` | `'cosine'` \| `'l2'` \| `'ip'` | `'cosine'` | Distance metric |
 | `task_identifier` | string | `'process_image_embedding'` | Job task name |
-| `status_field` | string | `'status'` | Upload lifecycle status column |
-| `status_ready_value` | string | `'ready'` | Value indicating file is ready |
-| `status_pending_value` | string | `'pending'` | Value indicating file is pending |
 | `mime_patterns` | string[] | `['image/%']` | MIME type LIKE patterns (OR'd together) |
 | `payload_custom` | object | `{file_id: 'id', key: 'key', ...}` | Custom job payload mapping |
 
 The generated WHEN clause:
 ```sql
-NEW.status = 'ready' AND OLD.status = 'pending' AND NEW.mime_type LIKE 'image/%'
+NEW.mime_type LIKE 'image/%'
 ```
 
 ## Knative Worker Stack
