@@ -204,6 +204,38 @@ When `has_invites: true` is set on an entity type with prefix `{prefix}`:
 
 ---
 
+## Admin/Owner Elevation
+
+Profile assignment on invites covers **profiles** (named permission bundles), but does NOT grant **administrator** or **owner** status. These are separate grant levels with system-wide elevated access.
+
+**Admin elevation is post-membership only.** The recommended workflow:
+
+1. Invite the user with an appropriate profile (e.g., a high-permission profile)
+2. User claims the invite and joins as a regular member
+3. An existing admin promotes them to administrator after they've joined
+
+This is by design — admin grants are high-trust and should only be assigned to known, verified members. Allowing admin elevation via invite codes would be a security risk if the code were leaked or forwarded.
+
+To promote an existing member to admin:
+
+```typescript
+// ORM — update membership to admin
+await db.orgMembership.update({
+  where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
+  data: { isAdmin: true },
+}).execute();
+```
+
+```bash
+# CLI
+constructive public:org-membership update \
+  --where.actorId $USER_ID \
+  --where.entityId $ORG_ID \
+  --data.isAdmin true
+```
+
+---
+
 ## Without Profiles Module
 
 When `has_profiles: false` (or profiles module not installed), the invite system operates without any profile logic:
