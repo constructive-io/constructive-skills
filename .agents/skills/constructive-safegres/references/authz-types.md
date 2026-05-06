@@ -45,34 +45,36 @@ Each policy is described as:
 
 ---
 
-## 3) `AuthzMembership`
+## 3) `AuthzAppMembership`
 
-**Intent:** **Unbound** membership gate (app/org/group), optionally permissioned.
+**Intent:** App-level membership gate (hardcoded to `membership_type=1`).
 
 **Config (minimal):**
 ```json
-{ "membership_type": 1 }
+{}
 ```
 
 **Config (permissioned):**
 ```json
-{ "membership_type": 1, "permission": "admin_permissions" }
+{ "permission": "admin_permissions" }
 ```
 
-Optional keys (depending on policy needs):
+Optional keys:
 - `permission` (string)
 - `permissions` (string[])
 - `is_admin` (boolean)
 - `is_owner` (boolean)
 
-**Semantics:** "The actor has at least one membership record in the given scope, optionally matching permission/admin flags."
+> **Note:** `membership_type` is not configurable — it is always `1` (app-level). For entity-scoped membership checks, use `AuthzEntityMembership`.
+
+**Semantics:** "The actor has app-level membership, optionally matching permission/admin flags."
 
 **Use when:**
 - App-level admin checks.
 - Global feature gating.
 
 **Avoid when:**
-- Entity-scoped resources (anything that should be constrained by a row's field).
+- Entity-scoped resources (anything that should be constrained by a row's field). Use `AuthzEntityMembership` instead.
 
 ---
 
@@ -385,8 +387,7 @@ The `data` for an `AuthzComposite` is itself an AST node that the system recursi
         }
       },
       {
-        "AuthzMembership": {
-          "membership_type": "App Member",
+        "AuthzAppMembership": {
           "permission": "create_invites"
         }
       }
