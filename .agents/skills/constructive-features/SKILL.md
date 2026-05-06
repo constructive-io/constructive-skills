@@ -62,7 +62,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Invites (email, blank, multiple) | `invites_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Profile assignment on email invites | `invites_module` + `profiles_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Email auto-verification on invite claim | `invites_module` + `emails_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Limits (quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Limits (metered quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Cap tables (static config values) | `limits_module` → `limit_caps_defaults` + `limit_caps` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Feature flags (cap-based gating) | `DataFeatureFlag` node + `limit_caps_defaults(max=0\|1)` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Credits (append-only ledger) | `limits_module` → `limit_credits` + `credit_codes` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
@@ -75,12 +78,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Merkle definition_hash | backend trigger | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | Tables + fields | `secure_table_provision` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
-| `Data*` generators (25 node types) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| `Data*` generators (27 node types) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataDirectOwner / DataEntityMembership / DataOwnershipInEntity | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPeoplestamps (created_by / updated_by) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataCompositeField (derived text concatenation) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Behavior triggers (DataSlug, DataInflection, DataForceCurrentUser) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataLimitCounter (metered usage tracking) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataFeatureFlag (cap-based feature gating) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |

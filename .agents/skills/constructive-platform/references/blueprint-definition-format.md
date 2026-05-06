@@ -164,7 +164,7 @@ Each entry in `tables[]` defines one database table:
 }
 ```
 
-All 25 node types from the `node_type_registry`:
+All 27 node types from the `node_type_registry`:
 
 #### Core Identity & Ownership
 
@@ -211,6 +211,41 @@ All 25 node types from the `node_type_registry`:
 | `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
 | `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
 | `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+
+#### Limits & Feature Flags (trigger-only — requires `limits_module`)
+
+| Node Type | Purpose | `data` options |
+|-----------|---------|----------------|
+| `DataLimitCounter` | Attaches increment/decrement triggers to track metered usage against configurable maximums. On INSERT the named limit is incremented; on DELETE it is decremented. | `limit_name` (required — must match a `limit_defaults` entry, e.g. `'projects'`, `'members'`), `scope` (default `'app'` — `'app'` for membership_type=1 or `'org'` for membership_type=2), `actor_field` (default `'owner_id'` — column-ref, field on target table holding the actor/entity ID), `events` (default `['INSERT','DELETE']` — which DML events to attach triggers for) |
+| `DataFeatureFlag` | Gates a table behind a feature flag backed by cap tables. Attaches a BEFORE INSERT trigger that checks `resolve_cap(feature_name) > 0`. Features are modeled as caps with `max=0` (disabled) or `max=1` (enabled) in `limit_caps_defaults`. | `feature_name` (required — cap name, must match a `limit_caps_defaults` entry), `scope` (default `'app'` — `'app'` or `'org'`), `entity_field` (default `'entity_id'` — column-ref, used for org-scope only to resolve per-entity cap overrides) |
+
+**Prerequisites:** Both require `limits_module` to be provisioned for the target scope. Enable via `modules:['all']` or the `b2b`/`full` presets, or via `has_limits: true` on entity types.
+
+**Example — limit projects per org:**
+```json
+{
+  "table_name": "projects",
+  "nodes": [
+    "DataId", "DataTimestamps",
+    { "$type": "DataEntityMembership", "data": { "entity_field_name": "org_id" } },
+    { "$type": "DataLimitCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "org_id" } }
+  ],
+  "fields": [ { "name": "title", "type": "text" } ]
+}
+```
+
+**Example — gate a table behind a feature flag:**
+```json
+{
+  "table_name": "advanced_reports",
+  "nodes": [
+    "DataId", "DataTimestamps", "DataDirectOwner",
+    { "$type": "DataFeatureFlag", "data": { "feature_name": "advanced_reporting" } }
+  ],
+  "fields": [ { "name": "title", "type": "text" } ]
+}
+```
+Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enable, or `max: 0` to disable. Per-entity overrides go in `limit_caps`.
 
 #### Composition
 
