@@ -60,32 +60,36 @@ This matters because an org-level membership check against a field like `owner_i
 
 ---
 
-## The critical distinction: `AuthzMembership` vs `AuthzEntityMembership`
+## The critical distinction: `AuthzAppMembership` vs `AuthzEntityMembership`
 
-### `AuthzMembership` (UNBOUND)
-**Meaning:** "Is the actor a valid member of *some scope* (app/org/group), optionally with a permission/admin flag?"
+### `AuthzAppMembership` (APP-LEVEL, HARDCODED type=1)
+**Meaning:** "Is the actor a member of the app, optionally with a permission/admin flag?"
 
-- It does **not** bind to any field on the row being accessed.
-- Therefore it is primarily an **app-level gate**.
+- Hardcoded to `membership_type=1` — do **not** pass `membership_type`.
+- Does **not** bind to any field on the row being accessed.
+- Checks the app-level SPRT table only.
 
-Typical correct uses:
-- "Is this request coming from any authenticated/approved user?"
+Correct uses:
 - "Is the actor a super app admin?"
 - "Can the actor access a global administrative table that is not entity-scoped?"
-
-Typical incorrect uses:
-- Using `AuthzMembership(membership_type=2)` on an entity-scoped table and expecting it to mean "member of *this row's org*".
-  - It does not.
-  - It means "member of *any org*" (or, more precisely, "has at least one org membership row"), which is almost always too broad.
+- App-wide feature gating.
 
 ### `AuthzEntityMembership` (BOUND)
 **Meaning:** "Does the actor have membership in the specific entity referenced by *this row's field*?"
 
-- It binds membership evaluation to an `entity_field` on the protected row.
-- It is the default choice for entity-scoped resources.
+- Binds membership evaluation to an `entity_field` on the protected row.
+- `membership_type` specifies which SPRT table to check (2=org, 3=group, etc.).
+- The default choice for entity-scoped resources.
 
 Rule of thumb:
-- If your row has an `entity_id`, `organization_id`, or `owner_id` that should scope access: you almost always want **EntityMembership**, not Membership.
+- If your row has an `entity_id`, `organization_id`, or `owner_id` that should scope access, use `AuthzEntityMembership`.
+- If you need an app-level gate with no entity binding, use `AuthzAppMembership`.
+
+| | `AuthzAppMembership` | `AuthzEntityMembership` |
+|---|---|---|
+| **Scope** | App-level only (hardcoded `membership_type=1`) | Any scope (app/org/group/custom) |
+| **Row binding** | None — checks global app membership | Bound to `entity_field` on the row |
+| **`membership_type`** | Not configurable (always 1) | Required — specifies which SPRT table |
 
 ---
 
@@ -97,7 +101,7 @@ There are **14 leaf policy node types** plus `AuthzComposite` (a meta-node for b
 |---|------|--------|------------|
 | 1 | `AuthzDirectOwner` | Direct personal ownership | `entity_field` |
 | 2 | `AuthzDirectOwnerAny` | Multi-owner OR logic | `entity_fields` (array) |
-| 3 | `AuthzMembership` | Unbound membership gate | `membership_type`, optional `permission`/`is_admin` |
+| 3 | `AuthzAppMembership` | App-level membership (hardcoded type=1) | optional `permission`/`is_admin` |
 | 4 | `AuthzEntityMembership` | Bound membership-to-row | `entity_field`, `membership_type` |
 | 5 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
 | 6 | `AuthzPeerOwnership` | Peer visibility (direct) | `owner_field`, `membership_type` |

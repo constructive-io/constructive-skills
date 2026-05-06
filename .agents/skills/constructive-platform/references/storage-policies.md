@@ -44,7 +44,7 @@ The blueprint `storage` key provisions app-level storage (Phase 0.5). Bucket see
       { "name": "documents", "is_public": false, "max_file_size": 52428800 }
     ],
     "policies": [
-      { "$type": "AuthzMembership", "privileges": ["select", "insert"], "data": {"membership_type": 1} },
+      { "$type": "AuthzAppMembership", "privileges": ["select", "insert"] },
       { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "data": {"entity_field": "actor_id"} }
     ],
     "upload_url_expiry_seconds": 1800,
@@ -59,7 +59,7 @@ The blueprint `storage` key provisions app-level storage (Phase 0.5). Bucket see
 
 When `policies` is omitted, sensible defaults are applied (see [Defaults](#defaults-when-policies-is-omitted) below). When `policies` is provided (non-empty array), **no defaults are applied** — explicit policies fully replace the defaults.
 
-App-level storage uses `AuthzMembership` (with `membership_type: 1`) as the membership policy type.
+App-level storage uses `AuthzAppMembership` (hardcoded to `membership_type=1`) as the membership policy type.
 
 ### Entity-scoped storage (`entity_types[]` with `has_storage`)
 
@@ -191,7 +191,7 @@ When `policies` is `NULL` or omitted, `apply_storage_security` applies **sensibl
 
 | Storage scope | Membership policy type | Policy data |
 |---------------|----------------------|-------------|
-| **App-level** (`membership_type IS NULL`) | `AuthzMembership` | `{"membership_type": 1}` |
+| **App-level** (`membership_type IS NULL`) | `AuthzAppMembership` | `{}` |
 | **Entity-scoped** (`membership_type = 3+`) | `AuthzEntityMembership` | `{"entity_field": "owner_id", "membership_type": <N>}` |
 
 The system automatically uses the correct membership policy type based on the storage module's `membership_type` value.
@@ -325,7 +325,7 @@ Any `Authz*` node type from the registry can be used. The most relevant ones for
 | `AuthzEntityMembership` | Members of the entity can access (most common) | `owner_id` | All three |
 | `AuthzDirectOwner` | Only the uploader/owner can access | `actor_id` (files), `owner_id` (buckets) | `["files"]` or `["buckets", "files"]` |
 | `AuthzPublishable` | Published files are publicly readable (SELECT only) | `is_public` | `["buckets", "files"]` |
-| `AuthzMembership` | App-level membership gate (any authenticated member) | — | All three |
+| `AuthzAppMembership` | App-level membership gate (hardcoded type=1) | — | All three |
 | `AuthzAllowAll` | No restrictions (use sparingly) | — | All three |
 | `AuthzDenyAll` | Lock down completely (admin override only) | — | All three |
 
