@@ -13,7 +13,7 @@ The billing system provides metered usage tracking, credit management, and quota
 | `billing_provider_module` | External provider bridge (Stripe, Paddle), webhook dedup |
 
 Related skills:
-- **`constructive-db-billing`** (private): SQL-level internals, AST code generation pipeline, locking patterns
+- **`constructive-db-billing`**: SQL-level internals, AST code generation pipeline, locking patterns
 - **`constructive-safegres`**: Authorization policy types used by billing RLS
 - **`constructive-sdk-security`**: How to provision RLS and grants via SDK
 - **`constructive-platform`**: Blueprint provisioning overview
