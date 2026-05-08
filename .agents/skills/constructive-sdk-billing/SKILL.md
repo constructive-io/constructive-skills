@@ -26,24 +26,26 @@ Related skills:
 
 A meter defines **what** you track. Each meter is a billable dimension (API calls, storage, seats, etc.).
 
-Key fields:
-- `slug`: unique identifier (`api_requests`, `storage_gb`, `universal`)
-- `credit_cost`: universal credits consumed per unit (NULL = no fallback)
-- `period_interval`: reset cadence (`'1 month'`, `'1 year'`, NULL = never)
-- `rollover_cap`: max unused units carried forward on reset (NULL = unlimited)
+Key properties:
+- **slug**: unique identifier (`api_requests`, `storage_gb`, `universal`)
+- **credit_cost**: universal credits consumed per unit (NULL = no fallback to universal pool)
+- **period_interval**: reset cadence (`'1 month'`, `'1 year'`, NULL = never resets)
+- **rollover_cap**: max unused units carried forward on reset (NULL = unlimited rollover)
 
 ### Balances
 
 One row per (entity, meter). Tracks current state without needing to aggregate the ledger. Updated atomically by `record_usage` under row-level locks.
 
+Key fields: `current_usage`, `effective_limit`, `purchased_credits`, `period_start`, `period_credits`, `rollover_credits`, `next_expires_at`.
+
 ### Credits
 
-Credits are granted via `meter_credits` (append-only). An AFTER INSERT trigger automatically updates the balance and writes a ledger entry. Three credit types control reset behavior:
+Credits are granted via the `meter_credits` table (append-only). An AFTER INSERT trigger automatically updates the balance and writes a ledger entry. Three credit types control reset behavior:
 
 | Type | On period reset | Example |
 |---|---|---|
-| `permanent` | Survives | One-time purchase, promo code |
-| `period` | Zeroed | "1000 API calls/month included with Pro" |
+| `permanent` | Survives indefinitely | One-time purchase, promo code |
+| `period` | Zeroed completely | "1000 API calls/month included with Pro" |
 | `rollover` | Unused portion carries forward (capped) | "Unused credits roll over, max 500" |
 
 Credits can also have an `expires_at` timestamp. Expired credits are automatically removed on next access (lazy enforcement).
@@ -51,6 +53,8 @@ Credits can also have an `expires_at` timestamp. Expired credits are automatical
 ### Universal Credits
 
 A fallback credit pool shared across meters. A meter opts in by setting `credit_cost > 0`. When a meter's own quota is exceeded, the system automatically deducts `credit_cost * quantity` from the `universal` meter's balance.
+
+The universal meter is just a regular meter with slug `'universal'` — it has its own balance, credits, and period settings.
 
 ---
 
@@ -65,13 +69,13 @@ modules: ['billing_module']
 ```
 
 This creates:
-- `meters` table (public schema)
-- `balances` table (private schema)
-- `ledger` table (public schema)
-- `meter_credits` table (public schema)
-- `record_usage()` function (private, SECURITY DEFINER)
-- `check_billing_quota()` function (private, SECURITY DEFINER, STABLE)
-- `meter_credits_trigger` (AFTER INSERT on meter_credits)
+- `meters` table (public schema) — meter definitions
+- `balances` table (private schema) — per-entity usage state
+- `ledger` table (public schema) — append-only audit trail
+- `meter_credits` table (public schema) — credit grants
+- `record_usage()` function (private, SECURITY DEFINER) — usage recording + enforcement
+- `check_billing_quota()` function (private, SECURITY DEFINER, STABLE) — read-only capacity check
+- `meter_credits_trigger` (AFTER INSERT on meter_credits) — auto-updates balances on credit grant
 
 ### billing_provider_module
 
@@ -82,138 +86,200 @@ modules: ['billing_module', 'billing_provider_module']
 ```
 
 This adds:
-- `billing_customers` (maps entities to Stripe/Paddle customer IDs)
-- `billing_products` (maps internal products to external product IDs)
-- `billing_subscriptions` (subscription lifecycle)
-- `billing_events` (webhook dedup via idempotency key)
-- `process_billing_event()` function (dedup gate)
+- `billing_customers` — maps entities to Stripe/Paddle customer IDs
+- `billing_products` — maps internal products to external product IDs
+- `billing_subscriptions` — subscription lifecycle tracking
+- `billing_events` — webhook dedup via idempotency key
+- `process_billing_event()` function — idempotent dedup gate
 
 ---
 
-## Setting Up Meters
+## Setting Up Meters (via ORM)
 
-After provisioning, configure meters by inserting rows:
+After provisioning, configure meters by creating rows via the ORM:
 
-```sql
--- Monthly API quota
-INSERT INTO app_public.meters (slug, display_name, meter_type, period_interval)
-VALUES ('api_calls', 'API Calls', 'quota', '1 month');
+```ts
+// Monthly API quota
+await db.meter.create({
+  data: {
+    slug: 'api_calls',
+    displayName: 'API Calls',
+    meterType: 'quota',
+    periodInterval: '1 month',
+  },
+});
 
--- Storage (never resets)
-INSERT INTO app_public.meters (slug, display_name, meter_type)
-VALUES ('storage_gb', 'Storage (GB)', 'quota');
+// Storage (never resets)
+await db.meter.create({
+  data: {
+    slug: 'storage_gb',
+    displayName: 'Storage (GB)',
+    meterType: 'quota',
+  },
+});
 
--- Universal credit pool (monthly reset)
-INSERT INTO app_public.meters (slug, display_name, meter_type, period_interval)
-VALUES ('universal', 'Universal Credits', 'credit_pool', '1 month');
+// Universal credit pool (monthly reset)
+await db.meter.create({
+  data: {
+    slug: 'universal',
+    displayName: 'Universal Credits',
+    meterType: 'credit_pool',
+    periodInterval: '1 month',
+  },
+});
 
--- API calls fall back to universal credits (2 credits per call)
-UPDATE app_public.meters SET credit_cost = 2 WHERE slug = 'api_calls';
+// API calls fall back to universal credits (2 credits per call)
+await db.meter.update({
+  where: { slug: 'api_calls' },
+  data: { creditCost: 2 },
+});
 
--- Monthly tokens with rollover (max 500 carry forward)
-INSERT INTO app_public.meters (slug, display_name, meter_type, period_interval, rollover_cap)
-VALUES ('tokens', 'Tokens', 'quota', '1 month', 500);
+// Monthly tokens with rollover (max 500 carry forward)
+await db.meter.create({
+  data: {
+    slug: 'tokens',
+    displayName: 'Tokens',
+    meterType: 'quota',
+    periodInterval: '1 month',
+    rolloverCap: 500,
+  },
+});
 ```
 
 ---
 
-## Granting Credits
+## Granting Credits (via ORM)
 
-Credits are granted by inserting into `meter_credits`. The trigger handles everything else.
+Credits are granted by inserting into `meter_credits`. The trigger handles balance updates and ledger entries automatically.
 
-```sql
--- Monthly plan grant (resets each period)
-INSERT INTO app_public.meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<meter-uuid>', '<entity-uuid>', 1000, 'period');
+```ts
+// Monthly plan grant (resets each period)
+await db.meterCredit.create({
+  data: {
+    meterId: meterId,
+    entityId: entityId,
+    amount: 1000,
+    creditType: 'period',
+    reason: 'plan:pro_monthly',
+  },
+});
 
--- One-time permanent purchase
-INSERT INTO app_public.meter_credits (meter_id, entity_id, amount, credit_type, reason)
-VALUES ('<meter-uuid>', '<entity-uuid>', 500, 'permanent', 'purchase:invoice_123');
+// One-time permanent purchase
+await db.meterCredit.create({
+  data: {
+    meterId: meterId,
+    entityId: entityId,
+    amount: 500,
+    creditType: 'permanent',
+    reason: 'purchase:invoice_123',
+  },
+});
 
--- Rollover bonus credits
-INSERT INTO app_public.meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<meter-uuid>', '<entity-uuid>', 200, 'rollover');
+// Rollover bonus credits
+await db.meterCredit.create({
+  data: {
+    meterId: meterId,
+    entityId: entityId,
+    amount: 200,
+    creditType: 'rollover',
+  },
+});
 
--- Promo credits that expire at year end
-INSERT INTO app_public.meter_credits (meter_id, entity_id, amount, credit_type, expires_at, reason)
-VALUES ('<meter-uuid>', '<entity-uuid>', 500, 'permanent', '2026-12-31', 'promo:WELCOME2026');
+// Promo credits that expire at year end
+await db.meterCredit.create({
+  data: {
+    meterId: meterId,
+    entityId: entityId,
+    amount: 500,
+    creditType: 'permanent',
+    expiresAt: '2026-12-31T00:00:00Z',
+    reason: 'promo:WELCOME2026',
+  },
+});
 ```
 
-### What happens on INSERT:
-1. Trigger looks up meter slug
+### What happens on credit grant:
+1. Trigger looks up the meter slug
 2. Upserts balance row (creates if not exists)
 3. Adds amount to `purchased_credits` and `effective_limit`
 4. If `period` type: also increments `period_credits`
 5. If `rollover` type: also increments `rollover_credits`
 6. If `expires_at` set: updates `next_expires_at` (MIN tracking)
-7. Writes `credit_purchase` ledger entry
+7. Writes a `credit_purchase` ledger entry
 
 ---
 
 ## Recording Usage
 
-Call the generated `record_usage` function to record consumption:
+`record_usage` is a SECURITY DEFINER function on the private schema. Call it from cloud functions (Knative workers) or custom GraphQL mutations with service-role access:
 
-```sql
--- Record 10 API calls for an entity
-SELECT app_private.record_usage('api_calls', '<entity-uuid>', 10);
--- Returns: true (success) or false (over quota / meter not found)
-
--- Record with metadata
-SELECT app_private.record_usage('api_calls', '<entity-uuid>', 1, '{"request_id": "abc123"}');
+```ts
+// In a Knative cloud function with service-role credentials:
+const result = await client.recordUsage({
+  slug: 'api_calls',
+  entityId: entityId,
+  quantity: 10,
+  metadata: { requestId: 'abc123' },
+});
+// Returns: boolean (true = allowed, false = over quota or meter not found)
 ```
 
 ### What happens internally:
-1. Locks the balance row (FOR UPDATE)
-2. Lazy-inits balance if needed
-3. Removes expired credits (if any have `expires_at <= now()`)
-4. Resets period (if `period_start + period_interval <= now()`)
+1. Locks the balance row (prevents concurrent races)
+2. Lazy-inits balance if this is the first access
+3. Removes expired credits (if any have passed their `expires_at`)
+4. Resets period if elapsed (zeroes usage, handles rollover math)
 5. Checks quota; if over limit, tries universal credits waterfall
 6. Updates balance and writes ledger entry
 
-### Quantity default
+### Quantity
 `quantity` defaults to 0 — callers must specify explicitly.
 
 ---
 
 ## Checking Quotas
 
-Call `check_billing_quota` for a read-only capacity check:
+`check_billing_quota` is a **read-only** capacity check (STABLE function):
 
-```sql
--- Can this entity do 10 more API calls?
-SELECT app_private.check_billing_quota('api_calls', '<entity-uuid>', 10);
--- Returns: true (has capacity) or false (would exceed quota)
+```ts
+const hasCapacity = await client.checkBillingQuota({
+  slug: 'api_calls',
+  entityId: entityId,
+  quantity: 10,
+});
+// Returns: boolean (true = has capacity, false = would exceed quota)
 ```
 
-This is a **read-only hint** — no locks, no writes. Safe for use in RLS policies (STABLE function). The actual enforcement happens in `record_usage`.
+This is a **hint, not a guarantee** — no locks, no writes. Safe for use in RLS policies. The actual enforcement happens in `record_usage`.
 
 ### Using as an RLS policy gate
-`check_billing_quota` is STABLE, so PostgreSQL can use it in RLS policy expressions without per-row side effects.
+`check_billing_quota` is STABLE, so PostgreSQL can use it in RLS policy expressions without per-row side effects. This enables automatic quota enforcement at the database level.
 
 ---
 
 ## Lazy Behaviors (No Cron Needed)
 
-The billing system handles three operations lazily on access:
+The billing system handles three operations lazily on access — no external scheduler or cron job required:
 
 ### 1. Period Reset
 When `period_interval` is set and the period has elapsed, `record_usage` automatically:
 - Zeros `current_usage`
-- Removes `period` credits
+- Removes `period` credits from the balance
 - Carries forward unused `rollover` credits (capped by `rollover_cap`)
 - Writes `reset` and `rollover` ledger entries
+- Advances `period_start` to the new period boundary
 
 ### 2. Credit Expiration
 When credits have `expires_at` in the past, `record_usage` automatically:
-- Aggregates and deletes expired credit rows
-- Subtracts expired amounts from the balance
+- Aggregates expired credit amounts by type
+- Removes expired amounts from the balance counters
 - Writes an `expired` ledger entry
+- Updates `next_expires_at` to the next soonest expiration (or NULL)
 
-Expiration runs **before** period reset to prevent expired credits from inflating rollover.
+Expiration runs **before** period reset to prevent expired credits from inflating rollover calculations.
 
 ### 3. Balance Lazy-Init
-On first usage, `record_usage` creates the balance row if it doesn't exist (INSERT ON CONFLICT DO NOTHING).
+On first usage for a given entity+meter pair, `record_usage` creates the balance row automatically. No explicit initialization step is needed.
 
 ---
 
@@ -221,17 +287,14 @@ On first usage, `record_usage` creates the balance row if it doesn't exist (INSE
 
 When a meter's quota is exceeded and `credit_cost` is set:
 
-```
-1. Check: is entity over the meter's own limit?
-2. If yes and credit_cost > 0:
-   a. Lock the universal balance
-   b. Compute cost = credit_cost * quantity
-   c. If universal has capacity: deduct and allow
-   d. If universal exhausted: reject
-3. If no credit_cost: reject
-```
+1. Meter's own limit is exceeded
+2. System checks if `credit_cost > 0` (meter opts into universal fallback)
+3. Locks the universal meter's balance
+4. Computes cost = `credit_cost * quantity`
+5. If universal pool has capacity: deducts and allows the operation
+6. If universal pool is exhausted: rejects the operation
 
-The universal meter is just a regular meter with slug `'universal'`. It has its own balance, credits, and period settings.
+The universal meter is just a regular meter with slug `'universal'`. It has its own balance, credits, period settings, and can even have rollover and expiration — everything composes.
 
 ---
 
@@ -241,33 +304,38 @@ The `billing_provider_module` maps external payment events to internal billing o
 
 ### Webhook Processing
 
-```sql
--- Dedup a webhook event (returns true if new, false if already processed)
-SELECT app_private.process_billing_event(
-  '<provider>',           -- 'stripe', 'paddle'
-  '<idempotency-key>',   -- Stripe event ID, etc.
-  '{"type": "invoice.paid", ...}'  -- raw webhook payload
-);
+The `process_billing_event` function provides idempotent webhook dedup:
+
+```ts
+const isNewEvent = await client.processBillingEvent({
+  provider: 'stripe',
+  idempotencyKey: stripeEvent.id,
+  payload: stripeEvent,
+});
+
+if (isNewEvent) {
+  // Process the event: grant credits, update subscriptions, etc.
+}
 ```
 
-The function does `INSERT ... ON CONFLICT DO NOTHING` on `billing_events` to ensure idempotency. If the event is new, it returns true and your cloud function can proceed with the business logic (granting credits, updating subscriptions, etc.).
+The function uses an idempotency key to ensure each webhook is processed exactly once, even if the provider retries delivery.
 
-### Tables
+### Provider Tables
 
 | Table | Purpose |
 |---|---|
-| `billing_customers` | Maps `(provider, entity_id)` ↔ `external_customer_id` |
-| `billing_products` | Maps `(provider, resource_id)` ↔ `external_product_id` |
-| `billing_subscriptions` | Subscription lifecycle (status, period_start/end, metadata) |
-| `billing_events` | Webhook dedup via `(provider, idempotency_key)` UNIQUE |
+| `billing_customers` | Maps `(provider, entity_id)` to external customer IDs |
+| `billing_products` | Maps `(provider, resource_id)` to external product IDs |
+| `billing_subscriptions` | Subscription lifecycle (status, period boundaries, metadata) |
+| `billing_events` | Webhook dedup via `(provider, idempotency_key)` uniqueness |
 
 ---
 
 ## Ledger Entry Types
 
-All state changes are recorded in the append-only `ledger` table:
+All state changes are recorded in the append-only `ledger` table for full audit trail:
 
-| `entry_type` | When | `delta` |
+| Entry Type | When | Delta |
 |---|---|---|
 | `increment` | `record_usage` records consumption | +quantity |
 | `credit_purchase` | Credit inserted via `meter_credits` | +amount |
@@ -279,14 +347,13 @@ All state changes are recorded in the append-only `ledger` table:
 
 ---
 
-## SDK Usage (ORM/GraphQL)
+## SDK Usage Patterns
 
-> **Note:** Full SDK types require codegen regeneration after provisioning the billing module. The ORM method signatures below show the expected patterns based on the table structure.
+> **Note:** Full SDK types require codegen regeneration after provisioning the billing module. The ORM patterns below show the expected shape based on the table structure.
 
-### Reading balances (via ORM)
+### Reading balances
 
 ```ts
-// Get current balance for an entity + meter
 const balance = await db.balance.findFirst({
   where: {
     entityId: entityId,
@@ -304,37 +371,9 @@ const balance = await db.balance.findFirst({
 });
 ```
 
-### Granting credits (via ORM)
+### Reading ledger history
 
 ```ts
-// Grant monthly period credits
-await db.meterCredit.create({
-  data: {
-    meterId: meterId,
-    entityId: entityId,
-    amount: 1000,
-    creditType: 'period',
-    reason: 'plan:pro_monthly',
-  },
-});
-
-// Grant permanent credits with expiration
-await db.meterCredit.create({
-  data: {
-    meterId: meterId,
-    entityId: entityId,
-    amount: 500,
-    creditType: 'permanent',
-    expiresAt: '2026-12-31T00:00:00Z',
-    reason: 'promo:WELCOME2026',
-  },
-});
-```
-
-### Reading ledger (via ORM)
-
-```ts
-// Get recent billing events for an entity
 const entries = await db.ledger.findMany({
   where: { entityId: entityId, meterSlug: 'api_calls' },
   orderBy: { createdAt: 'DESC' },
@@ -350,67 +389,38 @@ const entries = await db.ledger.findMany({
 });
 ```
 
-### Calling record_usage and check_billing_quota
-
-These are SECURITY DEFINER functions on the private schema. They must be called via custom GraphQL mutations or from cloud functions (Knative workers) that have service-role access:
-
-```ts
-// In a Knative cloud function with service-role credentials:
-const result = await pool.query(
-  'SELECT app_private.record_usage($1, $2, $3, $4)',
-  ['api_calls', entityId, quantity, JSON.stringify(metadata)]
-);
-const allowed = result.rows[0].record_usage; // boolean
-```
-
 ---
 
 ## Common Patterns
 
 ### Monthly SaaS with overage billing
-```sql
--- Base meter with monthly reset
-INSERT INTO meters (slug, period_interval, credit_cost)
-VALUES ('api_calls', '1 month', 1);
-
--- Universal credit pool for overages
-INSERT INTO meters (slug, period_interval)
-VALUES ('universal', '1 month');
-
--- Monthly allowance (period credits)
-INSERT INTO meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<api_calls_meter>', '<entity>', 10000, 'period');
-
--- Universal credits for overages
-INSERT INTO meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<universal_meter>', '<entity>', 500, 'period');
-```
+1. Create an `api_calls` meter with `periodInterval: '1 month'` and `creditCost: 1`
+2. Create a `universal` meter with `periodInterval: '1 month'`
+3. Grant `period` credits on the API calls meter (monthly plan allowance)
+4. Grant `period` credits on the universal meter (overage budget)
+5. When the monthly allowance is used up, overages automatically draw from universal credits
 
 ### Promotional credits with expiration
-```sql
--- Time-limited promo
-INSERT INTO meter_credits (meter_id, entity_id, amount, credit_type, expires_at, reason)
-VALUES ('<meter>', '<entity>', 1000, 'permanent', '2026-06-30', 'promo:SUMMER2026');
-```
+- Grant `permanent` credits with an `expiresAt` date and a `reason` (e.g. `'promo:SUMMER2026'`)
+- Credits are usable immediately and auto-removed after expiration on next access
+- No cron needed — lazy enforcement handles cleanup
 
 ### Rollover credits (use it or carry it)
-```sql
--- Meter with rollover cap
-INSERT INTO meters (slug, period_interval, rollover_cap)
-VALUES ('tokens', '1 month', 500);
-
--- Rollover credits (unused carries forward, capped at 500)
-INSERT INTO meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<meter>', '<entity>', 1000, 'rollover');
-```
+1. Create a meter with `periodInterval: '1 month'` and `rolloverCap: 500`
+2. Grant `rollover` credits on that meter
+3. Each month, unused credits carry forward up to the cap
+4. Rollover credits that themselves go unused in the next period are re-evaluated against the cap
 
 ### Feature gating via quota check
-```sql
--- Boolean-style: meter with limit of 1
-INSERT INTO meters (slug) VALUES ('premium_export');
-INSERT INTO meter_credits (meter_id, entity_id, amount, credit_type)
-VALUES ('<meter>', '<entity>', 1, 'permanent');
+1. Create a meter with no period (permanent capacity)
+2. Grant 1 `permanent` credit to enable the feature
+3. Use `check_billing_quota` in RLS policies or application code as a boolean gate
+4. The STABLE function property ensures safe use in RLS without per-row side effects
 
--- Check in RLS or application code:
-SELECT app_private.check_billing_quota('premium_export', '<entity>', 1);
-```
+### Per-entity credit configuration
+A single meter can have all three credit types simultaneously:
+- **period** credits: monthly plan allowance (zeroed on reset)
+- **permanent** credits: one-time purchases that never expire
+- **rollover** credits: bonus credits where unused portion carries forward
+
+The admin chooses the credit type when granting — the system handles the rest.
