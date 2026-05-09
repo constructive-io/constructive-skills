@@ -1,238 +1,244 @@
 ---
 name: constructive-sdk-limits
-description: SDK-level guide to the Constructive limits system — blueprint nodes (DataLimitCounter, DataAggregateLimitCounter, DataFeatureFlag), module provisioning, ORM operations for managing limits/caps/plans/credits, and the generated enforcement functions. Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'resolve cap', 'apply plan', 'transfer quota', 'limit credits', 'DataLimitCounter', 'DataAggregateLimitCounter', 'DataFeatureFlag', or when working with limits in blueprints or the ORM.
+description: SDK-level guide to the Constructive limits system — blueprint nodes (DataLimitCounter, DataAggregateLimitCounter, DataFeatureFlag), ORM operations for managing limits/caps/plans/credits. Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'apply plan', 'transfer quota', 'limit credits', 'DataLimitCounter', 'DataAggregateLimitCounter', 'DataFeatureFlag', or when working with limits in blueprints or the ORM.
 ---
 
-# Constructive Limits (SDK-Level Guide)
+# Constructive Limits (SDK Guide)
 
-The limits system provides usage metering, feature gating, and quota enforcement — all configurable through **blueprints** and the **ORM**. No SQL required from end users.
+The limits system provides usage metering, feature gating, and quota enforcement. Everything is configured through **blueprints** (Data* nodes) and managed via the **ORM**.
 
-Three Data* nodes cover all limit types:
-- **`DataLimitCounter`** — per-user metered limits
-- **`DataAggregateLimitCounter`** — per-entity (org/database) aggregate limits
-- **`DataFeatureFlag`** — boolean feature gates via cap tables
+Three blueprint nodes cover all limit enforcement:
+- **`DataLimitCounter`** — per-user metered limits (e.g. "each user can create 10 projects")
+- **`DataAggregateLimitCounter`** — per-entity aggregate limits (e.g. "this org can have 50 seats total")
+- **`DataFeatureFlag`** — boolean feature gates (e.g. "analytics is enabled for this org")
 
 Related skills:
-- **`constructive-sdk-billing`**: Billing meters, ledger, universal credits, billing provider bridge
+- **`constructive-sdk-billing`**: Billing meters, universal credits, billing provider bridge
 - **`constructive-platform`**: Blueprint provisioning overview
+- **`entity-types-and-provisioning`**: Entity types and `membership_types` in blueprints
 - **`constructive-db-limits`**: SQL-level architecture reference (internal implementation)
 
 ---
 
-## Quick Start: Blueprint Setup
+## Prerequisites
 
-### 1. Enable the limits module
+The limits module must be provisioned on the database before Data* nodes can be used. This happens automatically when the database is created with `limits_module` in its modules list.
 
-Add `limits_module` to your blueprint's modules list:
+Limits are provisioned per-scope via `membership_types` in a blueprint:
 
-```ts
+```json
 {
-  modules: ['limits_module'],
-  // ... rest of blueprint
+  "membership_types": [
+    {
+      "name": "Organization Member",
+      "prefix": "org",
+      "parent_entity": "app",
+      "has_limits": true
+    }
+  ]
 }
 ```
 
-This generates all limits tables, functions, and triggers for your database. It provisions per-scope:
-- **App-level** (`membership_type = 1`): per-user limits, caps, credit codes
-- **Org-level** (`membership_type = 2`): per-user limits + aggregate entity limits, caps, hierarchy checks
+Setting `has_limits: true` provisions the limits module for that entity scope (creates the limits tables, aggregate tables, caps tables, and all enforcement functions).
 
-### 2. Attach per-user limit tracking (DataLimitCounter)
-
-Add `DataLimitCounter` to any table's nodes to track per-user usage:
-
-```ts
-{
-  tables: [{
-    name: 'projects',
-    fields: [
-      { name: 'id', type: 'uuid' },
-      { name: 'name', type: 'text' },
-      { name: 'owner_id', type: 'uuid' }
-    ],
-    nodes: [
-      'DataId',
-      'DataTimestamps',
-      {
-        $type: 'DataLimitCounter',
-        data: {
-          limit_name: 'projects',       // matches a limit_defaults entry
-          scope: 'app',                 // 'app' or 'org'
-          actor_field: 'owner_id',      // field holding the user ID
-          events: ['INSERT', 'DELETE']  // default: increment on insert, decrement on delete
-        }
-      }
-    ]
-  }]
-}
-```
-
-**What this does:** When a row is inserted into `projects`, the `projects` limit counter for the `owner_id` user is automatically incremented. When deleted, it's decremented. If the user has hit their max, the INSERT is rejected.
-
-### 3. Attach aggregate entity-level tracking (DataAggregateLimitCounter)
-
-Add `DataAggregateLimitCounter` to track total usage across an entire entity (org, database, team):
-
-```ts
-{
-  tables: [{
-    name: 'seats',
-    fields: [
-      { name: 'id', type: 'uuid' },
-      { name: 'user_id', type: 'uuid' },
-      { name: 'entity_id', type: 'uuid' }  // the org/database being limited
-    ],
-    nodes: [
-      'DataId',
-      'DataTimestamps',
-      {
-        $type: 'DataAggregateLimitCounter',
-        data: {
-          limit_name: 'seats',           // matches aggregate limit_defaults
-          entity_field: 'entity_id',     // field holding entity ID (default: 'entity_id')
-          events: ['INSERT', 'DELETE']   // default: increment on insert, decrement on delete
-        }
-      }
-    ]
-  }]
-}
-```
-
-**What this does:** When a seat is added, the `seats` aggregate counter for the `entity_id` org is incremented. If the org has hit its max seats, the INSERT is rejected. No per-user tracking — this counts total rows per entity.
-
-### 4. Gate tables behind feature flags (DataFeatureFlag)
-
-Add `DataFeatureFlag` to gate an entire table behind a boolean cap:
-
-```ts
-{
-  tables: [{
-    name: 'analytics_reports',
-    fields: [
-      { name: 'id', type: 'uuid' },
-      { name: 'entity_id', type: 'uuid' },
-      { name: 'report_data', type: 'jsonb' }
-    ],
-    nodes: [
-      'DataId',
-      'DataTimestamps',
-      {
-        $type: 'DataFeatureFlag',
-        data: {
-          feature_name: 'enable_analytics',  // cap name in caps_defaults
-          scope: 'org',                      // 'app' or 'org'
-          entity_field: 'entity_id'          // field holding entity ID (org scope only)
-        }
-      }
-    ]
-  }]
-}
-```
-
-**What this does:** Before any INSERT into `analytics_reports`, the system checks `resolve_cap('enable_analytics', NEW.entity_id)`. If the cap is `0` (disabled), the insert is rejected with `FEATURE_DISABLED`. No application code needed.
+The built-in `app` (type 1) and `org` (type 2) scopes get limits automatically when the database is provisioned with the `limits_module:app` and `limits_module:org` modules.
 
 ---
 
-## Data* Node Reference
+## Blueprint Nodes
 
-### DataLimitCounter
+### 1. Per-user limit tracking (DataLimitCounter)
 
-Declaratively attaches limit increment/decrement triggers to a table.
+Add `DataLimitCounter` to a table's `nodes` array to enforce per-user usage limits:
+
+```json
+{
+  "tables": [{
+    "table_name": "projects",
+    "fields": [
+      { "name": "title", "type": "text" },
+      { "name": "owner_id", "type": "uuid" }
+    ],
+    "nodes": [
+      "DataId",
+      "DataTimestamps",
+      {
+        "$type": "DataLimitCounter",
+        "data": {
+          "limit_name": "projects",
+          "scope": "app",
+          "actor_field": "owner_id",
+          "events": ["INSERT", "DELETE"]
+        }
+      }
+    ]
+  }]
+}
+```
+
+**What this does:** On INSERT, checks if the `owner_id` user has hit their `projects` limit. If under max, increments the counter. If over, rejects the insert. On DELETE, decrements automatically.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limit_name` | text | *(required)* | Name of the limit to track (must match a `limit_defaults` entry) |
-| `scope` | text | `'app'` | `'app'` (user-level) or `'org'` (entity-level) |
-| `actor_field` | text | `'owner_id'` | Field on target table holding the actor/entity ID |
-| `events` | text[] | `['INSERT', 'DELETE']` | DML events to track: `INSERT`, `DELETE`, `UPDATE` |
+| `limit_name` | text | *(required)* | Name of the limit (must match a `limitDefault` entry) |
+| `scope` | text | `'app'` | `'app'` (user-level) or `'org'` (user-within-entity) |
+| `actor_field` | text | `'owner_id'` | Field on the table holding the user ID |
+| `events` | text[] | `['INSERT', 'DELETE']` | DML events: `INSERT`, `DELETE`, `UPDATE` |
 
 **Behavior per event:**
-- `INSERT` → BEFORE trigger: checks limit, increments counter. Rejects if over max.
-- `DELETE` → AFTER trigger: decrements counter.
-- `UPDATE` → BEFORE trigger: adjusts if the tracked field changes (old actor decremented, new actor incremented).
+- `INSERT` — BEFORE trigger: checks limit, increments counter. Rejects if over max.
+- `DELETE` — AFTER trigger: decrements counter.
+- `UPDATE` — BEFORE trigger: if `actor_field` changes, decrements old actor and increments new.
 
-### DataAggregateLimitCounter
+---
 
-Declaratively attaches aggregate (entity-level) limit triggers to a table. Unlike `DataLimitCounter` which tracks per-user usage, this tracks **total usage across an entire entity**.
+### 2. Aggregate entity-level tracking (DataAggregateLimitCounter)
+
+Add `DataAggregateLimitCounter` to enforce total usage across an entire entity (org, database, team):
+
+```json
+{
+  "tables": [{
+    "table_name": "seats",
+    "fields": [
+      { "name": "user_id", "type": "uuid" },
+      { "name": "entity_id", "type": "uuid" }
+    ],
+    "nodes": [
+      "DataId",
+      "DataTimestamps",
+      {
+        "$type": "DataAggregateLimitCounter",
+        "data": {
+          "limit_name": "seats",
+          "entity_field": "entity_id",
+          "events": ["INSERT", "DELETE"]
+        }
+      }
+    ]
+  }]
+}
+```
+
+**What this does:** On INSERT, checks if the org (identified by `entity_id`) has hit its total `seats` quota. If under max, increments the aggregate counter. If over, rejects. On DELETE, decrements. No per-user tracking — this counts total rows per entity.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limit_name` | text | *(required)* | Name of the aggregate limit to track |
-| `entity_field` | text | `'entity_id'` | Field on target table holding the entity ID |
-| `events` | text[] | `['INSERT', 'DELETE']` | DML events to track: `INSERT`, `DELETE`, `UPDATE` |
+| `limit_name` | text | *(required)* | Name of the aggregate limit |
+| `entity_field` | text | `'entity_id'` | Field on the table holding the entity ID |
+| `events` | text[] | `['INSERT', 'DELETE']` | DML events: `INSERT`, `DELETE`, `UPDATE` |
 
 **Behavior per event:**
-- `INSERT` → BEFORE trigger: checks aggregate limit, increments counter. Rejects if entity is over max.
-- `DELETE` → AFTER trigger: decrements aggregate counter.
-- `UPDATE` → BEFORE trigger: adjusts if entity_field changes (old entity decremented, new entity incremented).
-
-**Requires:** The database must have `limits_module` provisioned at org scope (`membership_type = 2`).
+- `INSERT` — BEFORE trigger: checks aggregate limit, increments. Rejects if entity is over max.
+- `DELETE` — AFTER trigger: decrements aggregate counter.
+- `UPDATE` — BEFORE trigger: if `entity_field` changes, decrements old entity, increments new.
 
 **Key difference from DataLimitCounter:**
-- `DataLimitCounter` → "Can user Y do this?" (keyed on `actor_id + entity_id`)
-- `DataAggregateLimitCounter` → "Has entity Z exceeded its total quota?" (keyed on `entity_id` only)
+- `DataLimitCounter` — "Can user Y do this?" (keyed on user + entity)
+- `DataAggregateLimitCounter` — "Has entity Z hit its quota?" (keyed on entity only)
 
-### DataFeatureFlag
+---
 
-Gates a table behind a boolean feature flag backed by cap tables.
+### 3. Feature flag gates (DataFeatureFlag)
+
+Add `DataFeatureFlag` to gate an entire table behind a boolean feature toggle:
+
+```json
+{
+  "tables": [{
+    "table_name": "analytics_reports",
+    "fields": [
+      { "name": "entity_id", "type": "uuid" },
+      { "name": "report_data", "type": "jsonb" }
+    ],
+    "nodes": [
+      "DataId",
+      "DataTimestamps",
+      {
+        "$type": "DataFeatureFlag",
+        "data": {
+          "feature_name": "enable_analytics",
+          "scope": "org",
+          "entity_field": "entity_id"
+        }
+      }
+    ]
+  }]
+}
+```
+
+**What this does:** Before any INSERT, resolves the cap value for `enable_analytics` for the given `entity_id`. If disabled (0), rejects with `FEATURE_DISABLED`. No counters — purely boolean on/off.
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `feature_name` | text | *(required)* | Cap name (must exist in `caps_defaults`) |
+| `feature_name` | text | *(required)* | Cap name (must exist in caps defaults) |
 | `scope` | text | `'app'` | `'app'` (global check) or `'org'` (per-entity check) |
-| `entity_field` | text | `'entity_id'` | Field on target table holding entity ID (org scope only) |
+| `entity_field` | text | `'entity_id'` | Field on table holding entity ID (org scope only) |
 
-**Resolution:** `COALESCE(per-entity cap override, scope default, 0)` — if the result is ≤ 0, raises `FEATURE_DISABLED`.
+**Resolution:** `COALESCE(per-entity override, scope default, 0)` — if result is 0 or less, raises `FEATURE_DISABLED`.
 
 ---
 
 ## Managing Limits via ORM
 
-Once the limits module is provisioned, all limits tables are exposed via the generated ORM/GraphQL API. Users manage limits through standard CRUD operations.
+All limits tables are exposed via the generated ORM. Prefix is `app` for app-scope or `org` for org-scope.
 
-### Setting Up Limit Defaults (what users are allowed)
+### Setting Default Maximums
 
-```ts
-// Set default max for a named limit
-await client.orgLimitDefaults.create({
-  name: 'projects',
-  max: 10,           // users can create up to 10 projects
-  soft_max: 8        // warning at 8
-});
+Every named limit needs a default max. When a user first hits a limit, the system lazy-initializes their row from this default.
 
-// Unlimited
-await client.orgLimitDefaults.create({
-  name: 'messages',
-  max: -1            // negative = unlimited
-});
+```typescript
+// Set default: users can create up to 10 projects
+await db.appLimitDefault.create({
+  data: { name: 'projects', max: '10', softMax: '8' },
+  select: { id: true }
+}).execute();
 
-// Time-windowed limit (resets daily)
-await client.orgLimitDefaults.create({
-  name: 'api_calls',
-  max: 1000,
-  window_duration: '1 day'
-});
+// Org-scope default: each user within an org can create 5 reports
+await db.orgLimitDefault.create({
+  data: { name: 'reports', max: '5' },
+  select: { id: true }
+}).execute();
+
+// Unlimited (negative max = no limit)
+await db.appLimitDefault.create({
+  data: { name: 'messages', max: '-1' },
+  select: { id: true }
+}).execute();
 ```
 
-### Setting Up Feature Flags (caps)
+### Setting Aggregate Defaults
 
-```ts
-// Scope-level defaults (all entities start with this)
-await client.orgCapsDefaults.create({
-  name: 'enable_aggregates',
-  max: 0                          // disabled by default
-});
+For `DataAggregateLimitCounter`, set the entity-level ceiling:
 
-await client.orgCapsDefaults.create({
-  name: 'max_file_upload_size',
-  max: 10485760                   // 10MB default
-});
+```typescript
+// Each org can have up to 50 seats total
+await db.orgLimitAggregate.create({
+  data: { name: 'seats', entityId: orgId, max: '50', num: '0' },
+  select: { id: true }
+}).execute();
+```
 
-// Per-entity override (enable for a specific database/org)
-await client.orgLimitCaps.create({
-  name: 'enable_aggregates',
-  entity_id: databaseId,
-  max: 1                          // enabled for this entity
-});
+### Setting Up Feature Flags (Caps)
+
+```typescript
+// Scope-level default: analytics disabled for all entities
+await db.orgLimitCapsDefault.create({
+  data: { name: 'enable_analytics', max: '0' },
+  select: { id: true }
+}).execute();
+
+// Enable for a specific entity (org/database)
+await db.orgLimitCap.create({
+  data: { name: 'enable_analytics', entityId: orgId, max: '1' },
+  select: { id: true }
+}).execute();
+
+// App-level cap (no entity dimension)
+await db.appLimitCapsDefault.create({
+  data: { name: 'max_file_upload_size', max: '10485760' },
+  select: { id: true }
+}).execute();
 ```
 
 ### Cap Value Convention
@@ -241,155 +247,153 @@ await client.orgLimitCaps.create({
 |---|---|
 | `0` | Feature disabled |
 | `1` | Feature enabled (boolean flag) |
-| `N > 1` | Numeric cap (max file size in bytes, max bulk items, etc.) |
-| `< 0` | Unlimited |
-
-### Applying Plans
-
-Plans set `max` for multiple limits at once:
-
-```ts
-// Define a plan with quotas
-await client.orgPlans.create({
-  name: 'pro',
-  quotas: {
-    seats: 50,
-    api_calls: 100000,
-    storage_gb: 100
-  }
-});
-
-// Apply plan to an entity (sets all maxes at once)
-await client.orgLimitAggregates.applyPlan({
-  plan_name: 'pro',
-  entity_id: databaseId
-});
-```
+| `N > 1` | Numeric cap (max file size in bytes, max items, etc.) |
+| `< 0` | Unlimited / always enabled |
 
 ### Granting Credits
 
-Credits bump the effective ceiling for a limit:
+Credits increase the effective ceiling for a limit without changing the base max:
 
-```ts
-// Grant permanent credits (survive window resets)
-await client.orgLimitCredits.create({
-  default_limit_id: seatsLimitDefId,
-  entity_id: orgId,
-  amount: 10,
-  credit_type: 'permanent',
-  reason: 'purchase:invoice_123'
-});
+```typescript
+// Grant 10 permanent extra seats to an org
+await db.orgLimitCredit.create({
+  data: {
+    defaultLimitId: seatsLimitDefaultId,
+    entityId: orgId,
+    amount: '10',
+    creditType: 'permanent',
+    reason: 'purchase:invoice_123'
+  },
+  select: { id: true }
+}).execute();
 
-// Grant period credits (reset on window expiry)
-await client.orgLimitCredits.create({
-  default_limit_id: apiCallsLimitDefId,
-  actor_id: userId,
-  amount: 500,
-  credit_type: 'period',
-  reason: 'promo:WELCOME'
-});
+// Grant 500 period credits to a user (resets on window expiry)
+await db.appLimitCredit.create({
+  data: {
+    defaultLimitId: apiCallsDefaultId,
+    actorId: userId,
+    amount: '500',
+    creditType: 'period',
+    reason: 'promo:WELCOME'
+  },
+  select: { id: true }
+}).execute();
 ```
 
-### Credit Codes (self-service redemption)
+### Credit Codes (Self-Service Redemption)
 
-```ts
+```typescript
 // Admin creates a redeemable code
-const code = await client.appLimitCreditCodes.create({
-  code: 'WELCOME2026',
-  max_redemptions: 1000,
-  expires_at: '2026-12-31'
-});
+const code = await db.appLimitCreditCode.create({
+  data: { code: 'WELCOME2026', maxRedemptions: '1000', expiresAt: '2026-12-31' },
+  select: { id: true }
+}).execute();
 
 // Define what the code grants
-await client.appLimitCreditCodeItems.create({
-  credit_code_id: code.id,
-  default_limit_id: seatsLimitDefId,
-  amount: 5,
-  credit_type: 'permanent'
-});
+await db.appLimitCreditCodeItem.create({
+  data: {
+    creditCodeId: code.id,
+    defaultLimitId: seatsLimitDefaultId,
+    amount: '5',
+    creditType: 'permanent'
+  },
+  select: { id: true }
+}).execute();
 
 // User redeems (trigger validates + cascades to limit_credits)
-await client.appLimitCreditRedemptions.create({
-  credit_code_id: code.id,
-  entity_id: userOrgId
-});
+await db.appLimitCreditRedemption.create({
+  data: { creditCodeId: code.id, entityId: userOrgId },
+  select: { id: true }
+}).execute();
+```
+
+### Reading Current Usage
+
+```typescript
+// Check a user's current usage
+const limit = await db.appLimit.findMany({
+  where: { name: { equalTo: 'projects' }, actorId: { equalTo: userId } },
+  select: { name: true, num: true, max: true, softMax: true }
+}).execute();
+// limit[0].num = current usage, limit[0].max = ceiling
+
+// Check an org's aggregate usage
+const agg = await db.orgLimitAggregate.findMany({
+  where: { name: { equalTo: 'seats' }, entityId: { equalTo: orgId } },
+  select: { name: true, num: true, max: true }
+}).execute();
+// agg[0].num = total seats used, agg[0].max = ceiling
+
+// Check a cap value
+const cap = await db.orgLimitCap.findMany({
+  where: { name: { equalTo: 'enable_analytics' }, entityId: { equalTo: orgId } },
+  select: { name: true, max: true }
+}).execute();
+// cap[0].max > 0 means enabled
+
+// View audit trail
+const events = await db.orgLimitEvent.findMany({
+  where: { name: { equalTo: 'seats' }, entityId: { equalTo: orgId } },
+  select: { eventType: true, delta: true, numBefore: true, numAfter: true }
+}).execute();
+```
+
+### Updating Limits (Admin Override)
+
+```typescript
+// Manually adjust an entity's aggregate max (admin upgrade)
+await db.orgLimitAggregate.update({
+  where: { id: aggregateRowId },
+  data: { max: '200' },
+  select: { id: true }
+}).execute();
+
+// Override a user's individual limit
+await db.appLimit.update({
+  where: { id: limitRowId },
+  data: { max: '100' },
+  select: { id: true }
+}).execute();
 ```
 
 ---
 
-## Three Enforcement Layers
+## Decision Table
 
-The limits module generates three distinct layers. Understanding which to use is key:
-
-| Use Case | Layer | Blueprint Node |
-|----------|-------|----------------|
-| "Can user Y create another project?" | Per-user limits | `DataLimitCounter` (scope: `'app'`) |
-| "Can this org add another seat?" | Aggregate entity limits | `DataAggregateLimitCounter` |
-| "Is feature X enabled for this entity?" | Cap tables | `DataFeatureFlag` |
-| "What's the max file upload size?" | Cap tables | Read via ORM: `orgCapsDefaults` / `orgLimitCaps` |
-| "Apply Pro plan to this entity" | Plans | `applyPlan()` via ORM |
-| "Move 50 seats from team A to team B" | Transfer | `transferQuota()` via ORM |
-| "Check limits up the org hierarchy" | Cascade | `cascadeCheck()` via ORM |
-
-### Per-User Limits
-
-Keyed on `(name, actor_id, entity_id)`. Tracks what individual users can do.
-
-- Enforced automatically by `DataLimitCounter` triggers
-- Defaults to `current_user_id()` from JWT context
-- Configure via ORM: `orgLimitDefaults.create({ name, max, soft_max, window_duration })`
-
-### Aggregate Entity Limits
-
-Keyed on `(name, entity_id)`. Tracks what an entity (org/database) can do as a whole.
-
-- Enforced automatically by `DataLimitCounter` with `scope: 'org'`
-- Supports hierarchy-aware cascade checks (walks `owner_id` chain)
-- Supports quota transfer between entities
-- Configure via ORM: `orgLimitDefaults.create(...)` + plan application
-
-### Cap Tables (Feature Flags)
-
-Keyed on `(name, entity_id)`. Boolean feature toggles and static config values. No counters.
-
-- Enforced automatically by `DataFeatureFlag` trigger on table inserts
-- Manage via ORM: `orgCapsDefaults` (scope defaults) + `orgLimitCaps` (per-entity overrides)
+| Use Case | Blueprint Node | ORM Model |
+|----------|----------------|-----------|
+| "Each user can create N items" | `DataLimitCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
+| "Each user within an org can do N things" | `DataLimitCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
+| "This org can have N total seats" | `DataAggregateLimitCounter` | `db.orgLimitAggregate` |
+| "Is feature X enabled for this entity?" | `DataFeatureFlag` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
+| "Bump a user's ceiling by 10" | *(none — ORM only)* | `db.appLimitCredit.create(...)` |
+| "Apply Pro plan to an entity" | *(none — ORM only)* | `db.orgLimitAggregate.update(...)` per limit |
+| "Read current usage" | *(none — ORM only)* | `db.appLimit.findMany(...)` / `db.orgLimitAggregate.findMany(...)` |
 
 ---
 
 ## Using database_id as entity_id
 
-For platform-level gating where databases are owned by orgs, model `database_id` as the `entity_id`:
+For platform-level gating where databases are the billable unit:
 
 | Need | Approach |
 |------|----------|
 | Meter API calls per database | `DataAggregateLimitCounter` with `entity_field: 'database_id'` |
 | Gate features per database | `DataFeatureFlag` with `scope: 'org'`, `entity_field: 'database_id'` |
-| Apply a plan to a database | `client.orgLimitAggregates.applyPlan({ plan_name: 'pro', entity_id: databaseId })` |
-| Check hierarchy (db → org → app) | Cascade check walks `owner_id` automatically |
-| Move quota between databases | `client.orgLimitAggregates.transferQuota({ ... })` |
+| Set a database's aggregate ceiling | `db.orgLimitAggregate.create({ data: { name, entityId: databaseId, max } })` |
+| Override a feature for a database | `db.orgLimitCap.create({ data: { name, entityId: databaseId, max: '1' } })` |
 
-The `entity_id` column accepts any UUID — it doesn't care whether it represents an org, database, team, or any other entity.
+The `entity_id` column accepts any UUID — it works for orgs, databases, teams, or any other entity.
 
 ---
 
 ## Time Windows
 
-Limits support automatic periodic resets:
-
-```ts
-await client.orgLimitDefaults.create({
-  name: 'api_calls',
-  max: 1000,
-  window_duration: '1 day'   // resets daily
-});
-```
-
-On the next check/increment after the window expires:
+Limits support periodic resets. When a limit has a `windowDuration` set, on the next enforcement check after the window expires:
 1. `num` resets to 0
-2. `period_credits` resets to 0
-3. `max` recalculates as `plan_max + purchased_credits`
-4. `window_start` updates to `now()`
+2. Period credits reset to 0
+3. `max` recalculates from base plan + purchased credits
+4. Window start updates to now
 
 ---
 
@@ -400,52 +404,54 @@ Controls how sub-entities share parent capacity:
 | Mode | Behavior |
 |---|---|
 | `pooled` (default) | All sub-entities share the parent's aggregate limit freely |
-| `budgeted` | Each sub-entity gets an explicit allocation; `transfer_quota` enabled |
+| `budgeted` | Each sub-entity gets an explicit allocation; transfer between entities enabled |
 
 ---
 
 ## Complete Blueprint Example
 
-```ts
+```json
 {
-  modules: ['limits_module'],
-  tables: [
+  "membership_types": [
     {
-      name: 'documents',
-      fields: [
-        { name: 'id', type: 'uuid' },
-        { name: 'title', type: 'text' },
-        { name: 'owner_id', type: 'uuid' },
-        { name: 'entity_id', type: 'uuid' }
+      "name": "Organization Member",
+      "prefix": "org",
+      "parent_entity": "app",
+      "has_limits": true
+    }
+  ],
+  "tables": [
+    {
+      "table_name": "documents",
+      "fields": [
+        { "name": "title", "type": "text" },
+        { "name": "owner_id", "type": "uuid" },
+        { "name": "entity_id", "type": "uuid" }
       ],
-      nodes: [
-        'DataId',
-        'DataTimestamps',
-        // Track per-user document creation
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
         {
-          $type: 'DataLimitCounter',
-          data: {
-            limit_name: 'documents_per_user',
-            scope: 'app',
-            actor_field: 'owner_id'
+          "$type": "DataLimitCounter",
+          "data": {
+            "limit_name": "documents_per_user",
+            "scope": "app",
+            "actor_field": "owner_id"
           }
         },
-        // Track org-wide document count (aggregate entity limit)
         {
-          $type: 'DataAggregateLimitCounter',
-          data: {
-            limit_name: 'documents_total',
-            entity_field: 'entity_id',
-            events: ['INSERT', 'DELETE']
+          "$type": "DataAggregateLimitCounter",
+          "data": {
+            "limit_name": "documents_total",
+            "entity_field": "entity_id"
           }
         },
-        // Gate behind premium feature flag
         {
-          $type: 'DataFeatureFlag',
-          data: {
-            feature_name: 'enable_documents',
-            scope: 'org',
-            entity_field: 'entity_id'
+          "$type": "DataFeatureFlag",
+          "data": {
+            "feature_name": "enable_documents",
+            "scope": "org",
+            "entity_field": "entity_id"
           }
         }
       ]
@@ -454,17 +460,60 @@ Controls how sub-entities share parent capacity:
 }
 ```
 
-This single blueprint definition:
-- Limits each user to N documents (per-user, `DataLimitCounter`)
-- Limits the org as a whole to M documents (aggregate, `DataAggregateLimitCounter`)
-- Gates the entire table behind a feature flag (`DataFeatureFlag`)
-- All without writing any SQL
+Then via ORM, set up the limits and caps:
+
+```typescript
+// Set per-user limit: each user can create 50 documents
+await db.appLimitDefault.create({
+  data: { name: 'documents_per_user', max: '50' },
+  select: { id: true }
+}).execute();
+
+// Set aggregate limit: each org can have 10000 documents total
+await db.orgLimitAggregate.create({
+  data: { name: 'documents_total', entityId: orgId, max: '10000', num: '0' },
+  select: { id: true }
+}).execute();
+
+// Enable the feature flag for this org
+await db.orgLimitCapsDefault.create({
+  data: { name: 'enable_documents', max: '0' },
+  select: { id: true }
+}).execute();
+await db.orgLimitCap.create({
+  data: { name: 'enable_documents', entityId: orgId, max: '1' },
+  select: { id: true }
+}).execute();
+```
+
+**Result:** The `documents` table now enforces:
+- Each user can create up to 50 docs (`DataLimitCounter`)
+- The org as a whole can have up to 10,000 docs (`DataAggregateLimitCounter`)
+- The entire table is gated behind the `enable_documents` feature flag (`DataFeatureFlag`)
+
+All enforcement happens automatically via database triggers. No application code needed beyond the initial ORM setup.
 
 ---
 
-## Reference Files
+## ORM Models Reference
 
-For SQL-level implementation details:
+All limits ORM models support standard CRUD: `findMany`, `findOne`, `create`, `update`, `delete`.
 
-- `references/function-signatures.md` — All 25+ generated SQL functions with exact signatures
-- `references/tables-and-fields.md` — Full schema reference for all generated tables
+| Model | Scope | Purpose |
+|-------|-------|---------|
+| `db.appLimitDefault` | app | Default max values for app-level limits |
+| `db.orgLimitDefault` | org | Default max values for org-level limits |
+| `db.appLimit` | app | Per-user usage tracking rows |
+| `db.orgLimit` | org | Per-user-within-entity usage tracking rows |
+| `db.orgLimitAggregate` | org | Entity-level aggregate counters |
+| `db.appLimitCapsDefault` | app | App-level cap defaults (feature flags) |
+| `db.orgLimitCapsDefault` | org | Org-level cap defaults (feature flags) |
+| `db.appLimitCap` | app | Per-entity app cap overrides |
+| `db.orgLimitCap` | org | Per-entity org cap overrides |
+| `db.appLimitCredit` | app | Credit ledger (app-level) |
+| `db.orgLimitCredit` | org | Credit ledger (org-level) |
+| `db.appLimitCreditCode` | app | Redeemable credit codes |
+| `db.appLimitCreditCodeItem` | app | What each code grants |
+| `db.appLimitCreditRedemption` | app | Redemption records |
+| `db.appLimitEvent` | app | Audit trail (app-level) |
+| `db.orgLimitEvent` | org | Audit trail (org-level) |
