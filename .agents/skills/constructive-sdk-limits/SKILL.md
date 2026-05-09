@@ -97,7 +97,7 @@ Add `DataAggregateLimitCounter` to track total usage across an entire entity (or
 }
 ```
 
-**What this does:** When a seat is added, the `seats` aggregate counter for the `entity_id` org is incremented. If the org has hit its max seats, the INSERT is rejected. No per-user tracking — this counts total rows per entity.d.
+**What this does:** When a seat is added, the `seats` aggregate counter for the `entity_id` org is incremented. If the org has hit its max seats, the INSERT is rejected. No per-user tracking — this counts total rows per entity.
 
 ### 4. Gate tables behind feature flags (DataFeatureFlag)
 
