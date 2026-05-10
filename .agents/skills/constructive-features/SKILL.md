@@ -158,12 +158,12 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| Per-table subscriber tables | `DataRealtime` node + `realtime_module` | — | `constructive-db-data-modules` |
-| RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | `constructive-db-data-modules` |
-| Change log (partitioned event stream) | `realtime_module` | — | `constructive-db-data-modules` |
-| Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | `constructive-db-data-modules` |
-| Policy-driven field generation | `column-ref` in `parameter_schema` | — | `constructive-db-node-type-registry` |
-| Partition table support | `metaschema_public.partition` + `maintain_partitions()` | — | `constructive-db-data-modules` |
+| Per-table subscriber tables | `DataRealtime` node + `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| Change log (partitioned event stream) | `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+| Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Partition table support | `metaschema_public.partition` + `maintain_partitions()` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
 
 ## 11. Background Work & Operations
 
