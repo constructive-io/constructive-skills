@@ -154,7 +154,18 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Public vs admin API routing | `api.routing_mode` | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
 | Schema grants per API | `schema_grant` | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 
-## 10. Background Work & Operations
+## 10. Realtime Subscriptions
+
+| Feature | Gate | In preset | Skill |
+|---|---|---|---|
+| Per-table subscriber tables | `DataRealtime` node + `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| Change log (partitioned event stream) | `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+| Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Partition table support | `metaschema_public.partition` + `maintain_partitions()` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+
+## 11. Background Work & Operations
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -168,7 +179,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 
-## 11. Project Setup & Scaffolding
+## 12. Project Setup & Scaffolding
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -179,7 +190,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | pnpm workspace / publishing | — | — | [`inquirerer-cli`](../inquirerer-cli/SKILL.md) |
 | Interactive CLIs (`inquirerer`) | `inquirerer` package | — | [`inquirerer-cli`](../inquirerer-cli/SKILL.md) |
 
-## 12. Module Presets (starting points, not features)
+## 13. Module Presets (starting points, not features)
 
 | Preset | Shape |
 |---|---|
