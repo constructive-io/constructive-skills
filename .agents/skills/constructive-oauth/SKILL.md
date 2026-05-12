@@ -137,6 +137,26 @@ fetch('http://api.localhost:3000/graphql', {
 });
 ```
 
+## Server Configuration
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `OAUTH_SECRET` | **Yes** | Secret for signing OAuth state (CSRF protection) |
+
+**Required in all environments.** Server throws error if not configured.
+
+```bash
+# Generate a secure secret
+openssl rand -base64 32
+
+# Set in environment
+export OAUTH_SECRET="your-generated-secret"
+```
+
+---
+
 ## Configure Identity Provider
 
 ### 1. Create OAuth App
