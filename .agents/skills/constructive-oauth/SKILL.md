@@ -28,7 +28,45 @@ OAuth identity sign-in with cross-origin token exchange for Constructive platfor
 └─────────────┘     └──────────────────┘
 ```
 
-## Quick Start
+## Same-Origin vs Cross-Origin
+
+OAuth flow supports two credential modes depending on your deployment:
+
+| Mode | When to Use | Credential |
+|------|-------------|------------|
+| **Cross-Origin** | Frontend and auth server on different domains | Bearer token (Authorization header) |
+| **Same-Origin** | Frontend and auth server on same domain | Cookie (HttpOnly session) |
+
+### Cross-Origin (Bearer Token)
+
+Use when frontend (`app.example.com`) and auth server (`auth.example.com`) are on different origins:
+
+1. OAuth callback returns a one-time `token` in URL
+2. Frontend exchanges token via `signInCrossOrigin` mutation
+3. Response contains `accessToken` for Bearer authentication
+4. Store token in localStorage/sessionStorage
+5. Include `Authorization: Bearer <token>` header on all API requests
+
+**Pros:** Works across any origin, no CSRF concerns
+**Cons:** Token management, must handle expiry/refresh
+
+### Same-Origin (Cookie)
+
+Use when frontend and auth server share the same origin or are on subdomains with shared cookies:
+
+1. OAuth callback sets session cookie directly (HttpOnly)
+2. No token exchange needed
+3. Cookies sent automatically with `credentials: 'include'`
+4. CSRF protection required (see `constructive-cookie-csrf`)
+
+**Pros:** Simpler flow, automatic credential handling
+**Cons:** Requires CSRF protection, same-origin constraints
+
+**Note:** Cookie auth is partially implemented (see issue #749). Use cross-origin Bearer token flow for now.
+
+---
+
+## Quick Start (Cross-Origin)
 
 ### 1. Redirect to OAuth
 
