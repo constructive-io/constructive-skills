@@ -208,3 +208,4 @@ it('switches between users', async () => {
 3. Use `clearContext()` when switching between unrelated scenarios
 4. Test both positive cases (user can access) and negative cases (user cannot access)
 5. Test anonymous/unauthenticated access explicitly
+6. **In `beforeAll()`, wrap context-dependent `db` operations in explicit `db.begin()`/`db.commit()`** — `set_config(..., true)` is transaction-local, so without an active transaction the context is lost between queries. See [pgsql-test-transactions.md](./pgsql-test-transactions.md) for details.
