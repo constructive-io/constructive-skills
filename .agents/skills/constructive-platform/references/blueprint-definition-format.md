@@ -164,7 +164,7 @@ Each entry in `tables[]` defines one database table:
 }
 ```
 
-All 27 node types from the `node_type_registry`:
+All 28 node types from the `node_type_registry`:
 
 #### Core Identity & Ownership
 
@@ -252,6 +252,37 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
 | `DataImageEmbedding` | Combines SearchVector + DataJobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+
+#### Realtime
+
+| Node Type | Purpose | `data` options |
+|-----------|---------|----------------|
+| `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. | `operations` (default `['INSERT', 'UPDATE', 'DELETE']` — which DML operations to track), `subscriber_table_name` (default `'{source_table}_subscriber'`) |
+
+**Prerequisites:** Requires `realtime_module` to be provisioned. Enable via `modules:['all']` or the `full` preset, or add `'realtime_module'` to your module list.
+
+**Example — enable realtime on a messages table:**
+```json
+{
+  "table_name": "messages",
+  "nodes": [
+    "DataId", "DataTimestamps",
+    { "$type": "DataEntityMembership", "data": { "entity_field_name": "channel_id" } },
+    "DataRealtime"
+  ],
+  "fields": [ { "name": "body", "type": "text" } ]
+}
+```
+
+**Example — track inserts only:**
+```json
+{
+  "$type": "DataRealtime",
+  "data": { "operations": ["INSERT"] }
+}
+```
+
+See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide on subscription security, change delivery, and partitions.
 
 #### Search & AI
 
