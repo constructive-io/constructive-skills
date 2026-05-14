@@ -65,6 +65,24 @@ const row = await db.databaseProvisionModule.create({
 
 `preset.includes_notes` and `preset.omits_notes` carry per-module rationale — use them to render CLI help, scaffolder prompts, or docs.
 
+## Notable Standalone Modules
+
+Some modules can be added individually to any preset. These are not bundled into a specific preset but provide opt-in capabilities:
+
+### `realtime_module`
+
+Provisions shared infrastructure for realtime subscriptions:
+
+- **`subscriptions_public` schema** — houses per-table subscriber tables created by the `DataRealtime` node type
+- **Partitioned `change_log` table** — durable, time-partitioned event stream for change tracking. Uses PostgreSQL native range partitioning with automatic partition lifecycle management (creation, rotation, cleanup)
+- **`emit_change()` trigger function** — called by statement-level triggers on source tables to record changes and emit NOTIFY signals
+
+**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'realtime_module'` to your module list to enable.
+
+**Runtime toggle:** `database_settings.enable_realtime` and `api_settings.enable_realtime` control whether the server activates realtime processing. API setting takes precedence over database setting.
+
+See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full SDK guide on using `DataRealtime` in blueprints.
+
 ## Feature Flags / Toggles (future)
 
 The shape reserves room for a `settings?` field to carry toggles like `app_settings_auth.allow_password_sign_up = false` or a read-only mode. Not implemented yet — presets today are module-list only.

@@ -158,12 +158,12 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| Per-table subscriber tables | `DataRealtime` node + `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
-| Change log (partitioned event stream) | `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
-| Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Per-table subscriber tables | `DataRealtime` node + `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Change log (partitioned event stream) | `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| Partition table support | `metaschema_public.partition` + `maintain_partitions()` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+| Partition table support | Declarative `partitioned` flag + automatic lifecycle | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 
 ## 11. Background Work & Operations
 
