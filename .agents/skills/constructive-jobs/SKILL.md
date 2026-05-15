@@ -1,6 +1,6 @@
 ---
 name: constructive-jobs
-description: "Background job system — DataJobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), DataFileEmbedding/DataImageEmbedding/DataChunks composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with DataJobTrigger/DataFileEmbedding/DataImageEmbedding/DataChunks in blueprints."
+description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks in blueprints."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -23,7 +23,7 @@ Background job infrastructure for the Constructive platform. Declaratively attac
 
 ```
 Table row change (INSERT/UPDATE/DELETE)
-  --> PostgreSQL AFTER trigger (created by DataJobTrigger node)
+  --> PostgreSQL AFTER trigger (created by JobTrigger node)
     --> app_jobs.add_job(task_identifier, payload)
       --> knative-job-worker polls app_jobs.jobs
         --> POST ${KNATIVE_SERVICE_URL}/${task_identifier}
@@ -36,9 +36,9 @@ The database extension `pgpm-database-jobs` provides:
 - `app_jobs.add_job()` — enqueue a one-off job
 - `app_jobs.add_scheduled_job()` — register a recurring job
 
-The `DataJobTrigger` blueprint node automatically creates the PostgreSQL triggers that call `app_jobs.add_job()`.
+The `JobTrigger` blueprint node automatically creates the PostgreSQL triggers that call `app_jobs.add_job()`.
 
-## DataJobTrigger Blueprint Node
+## JobTrigger Blueprint Node
 
 Add to a table's `nodes[]` in a blueprint definition to auto-create triggers:
 
@@ -49,7 +49,7 @@ Add to a table's `nodes[]` in a blueprint definition to auto-create triggers:
   nodes: [
     ...ORG_NODES,
     {
-      $type: 'DataJobTrigger',
+      $type: 'JobTrigger',
       data: {
         task_identifier: 'process_invoice',
       }
@@ -149,9 +149,9 @@ See [references/common-patterns.md](references/common-patterns.md) for full blue
 - Multiple triggers per table
 - Email on invite, Stripe sync, audit trail, webhook dispatch
 
-## DataFileEmbedding Blueprint Node
+## ProcessFileEmbedding Blueprint Node
 
-Generic, MIME-scoped embedding node for file/storage tables. Composes SearchVector + DataJobTrigger + DataChunks internally. Supports two modes:
+Generic, MIME-scoped embedding node for file/storage tables. Composes SearchVector + JobTrigger + ProcessChunks internally. Supports two modes:
 
 - **Direct mode** (default): whole-file to single vector (e.g., CLIP for images). No `extraction` config.
 - **Extract mode**: file to text to chunks to per-chunk vectors. Enabled by providing `extraction` config.
@@ -167,7 +167,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
   table_name: 'files',
   nodes: [
     ...STORAGE_NODES,
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['image/%'],
       dimensions: 512,
       task_identifier: 'process_image_embedding',
@@ -185,14 +185,13 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
   table_name: 'files',
   nodes: [
     ...STORAGE_NODES,
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
       task_identifier: 'process_document_extraction',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
-        status_field: 'extraction_status',
       },
       // chunks are enabled by default in extract mode
       chunks: {
@@ -216,7 +215,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     ...STORAGE_NODES,
 
     // Pipeline 1: CLIP visual embeddings for images
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       field_name: 'image_embedding',
       mime_patterns: ['image/%'],
       dimensions: 512,
@@ -224,7 +223,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     }},
 
     // Pipeline 2: Text extraction + chunked embeddings for documents
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       field_name: 'document_embedding',
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
@@ -232,12 +231,11 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
-        status_field: 'extraction_status',
       },
     }},
 
     // Pipeline 3: Audio/video transcription + chunked embeddings
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       field_name: 'media_embedding',
       mime_patterns: ['audio/%', 'video/%'],
       dimensions: 768,
@@ -245,7 +243,6 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       extraction: {
         text_field: 'transcription_text',
         metadata_field: 'transcription_metadata',
-        status_field: 'transcription_status',
       },
     }},
   ],
@@ -266,15 +263,14 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
 | `events` | string[] | `['INSERT']` | Trigger events |
 | `payload_custom` | object | `{file_id: 'id', key: 'key', mime_type: 'mime_type', bucket_id: 'bucket_id'}` | Payload mapping |
 | `trigger_conditions` | object \| array | — | Additional compound conditions (AND'd with MIME filter) |
-| `extraction` | object | — | Enables extract mode. Sub-keys: `text_field`, `metadata_field`, `status_field` |
-| `include_chunks` | boolean | `true` in extract mode, `false` in direct | Whether to create a chunks table via DataChunks |
+| `extraction` | object | — | Enables extract mode. Sub-keys: `text_field`, `metadata_field` |
+| `include_chunks` | boolean | `true` in extract mode, `false` in direct | Whether to create a chunks table via ProcessChunks |
 | `chunks` | object | — | Chunking config: `chunk_size`, `chunk_overlap`, `chunk_strategy`, `metadata_fields`, etc. |
-| `stale_strategy` | `'column'` \| `'null'` \| `'hash'` | `'column'` | Staleness tracking strategy (extract mode) |
-| `include_stale_field` | boolean | `true` | Include `embedding_stale` boolean (extract mode) |
 
-## DataImageEmbedding Blueprint Node
 
-Image-specific preset of DataFileEmbedding. Delegates entirely to DataFileEmbedding with image-oriented defaults. Existing blueprints that use `DataImageEmbedding` continue to work unchanged.
+## ProcessImageEmbedding Blueprint Node
+
+Image-specific preset of ProcessFileEmbedding. Delegates entirely to ProcessFileEmbedding with image-oriented defaults.
 
 ```typescript
 // Minimal — uses all defaults (512d CLIP, image/%, process_image_embedding)
@@ -283,24 +279,24 @@ Image-specific preset of DataFileEmbedding. Delegates entirely to DataFileEmbedd
   table_name: 'files',
   nodes: [
     ...STORAGE_NODES,
-    { $type: 'DataImageEmbedding' },
+    { $type: 'ProcessImageEmbedding' },
   ],
 }
 ```
 
-**Default overrides vs DataFileEmbedding:**
+**Default overrides vs ProcessFileEmbedding:**
 
-| Parameter | DataImageEmbedding default | DataFileEmbedding default |
+| Parameter | ProcessImageEmbedding default | ProcessFileEmbedding default |
 |-----------|---------------------------|---------------------------|
 | `dimensions` | `512` | `768` |
 | `task_identifier` | `'process_image_embedding'` | `'process_file_embedding'` |
 | `mime_patterns` | `['image/%']` | `['image/%']` |
 
-All DataFileEmbedding parameters are accepted and forwarded through. You can use DataImageEmbedding with `extraction` to enable OCR-based text extraction from images.
+All ProcessFileEmbedding parameters are accepted and forwarded through. You can use ProcessImageEmbedding with `extraction` to enable OCR-based text extraction from images.
 
-## DataChunks Blueprint Node
+## ProcessChunks Blueprint Node
 
-Standalone chunking node that creates a child chunks table for any parent table. Composed internally by DataFileEmbedding (enabled by default in extract mode), but can also be used standalone.
+Standalone chunking node that creates a child chunks table for any parent table. Composed internally by ProcessFileEmbedding (enabled by default in extract mode), but can also be used standalone.
 
 The chunks table gets:
 - FK to parent (CASCADE delete)
@@ -321,7 +317,7 @@ The chunks table gets:
   nodes: [
     'DataId',
     'DataTimestamps',
-    { $type: 'DataChunks', data: {
+    { $type: 'ProcessChunks', data: {
       chunk_size: 1000,
       chunk_overlap: 200,
       chunk_strategy: 'paragraph',

@@ -65,12 +65,12 @@ After provisioning, run codegen to generate the typed ORM.
 
 The `embed_record` Graphile Worker task handles embedding automatically when `enqueue_job: true` (the default for SearchUnified/SearchVector):
 
-1. Row INSERT/UPDATE → stale trigger marks `embedding_stale = true`
+1. Row INSERT/UPDATE → stale trigger sets `{field_name}_updated_at = NULL`
 2. Job trigger enqueues `embed_record` with `{ schema, table, id }`
 3. Worker fetches record via ORM, concatenates text fields
 4. If text > 6000 chars: splits into ~3200-char overlapping chunks, embeds each into the chunk table
 5. Embeds summary into parent record
-6. Sets `embedding_stale = false`
+6. Sets `{field_name}_updated_at = NOW()`
 
 ```typescript
 // Worker task (simplified from agentic-db/packages/worker)
@@ -290,7 +290,7 @@ Chunk tables are auto-created via `chunkTable()` in the blueprint definition.
 |-------|----------|
 | "type vector does not exist" | Use pgvector-enabled image (`docker.io/constructiveio/postgres-plus:18`) |
 | Embeddings not generated | Check worker is running + `enqueue_job: true` in SearchVector config |
-| `embedding_stale` stays true | Worker not processing jobs; check graphile-worker logs |
+| `{field}_updated_at` stays NULL | Worker not processing jobs; check graphile-worker logs |
 | Dimension mismatch | Ensure SearchVector `dimensions` matches embedding model output (768 for nomic-embed-text) |
 | Irrelevant RAG responses | Lower similarity threshold, improve chunking, check source_fields |
 

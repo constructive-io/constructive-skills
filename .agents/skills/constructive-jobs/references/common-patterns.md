@@ -13,7 +13,7 @@ Send an email when a new invite is inserted:
   nodes: [
     ...ORG_NODES,
     {
-      $type: 'DataJobTrigger',
+      $type: 'JobTrigger',
       data: {
         task_identifier: 'send_invite_email',
         payload_strategy: 'fields',
@@ -46,7 +46,7 @@ Sync data whenever specific fields change:
   nodes: [
     ...ORG_NODES,
     {
-      $type: 'DataJobTrigger',
+      $type: 'JobTrigger',
       data: {
         task_identifier: 'sync_to_stripe',
         payload_strategy: 'fields',
@@ -75,7 +75,7 @@ Only fire when a specific field has a specific value:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'publish_to_cdn',
     events: ['UPDATE'],
@@ -95,7 +95,7 @@ Fire only when a row transitions from one status to another:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'process_published',
     events: ['UPDATE'],
@@ -117,7 +117,7 @@ Fire when status transitions AND the row matches one of several MIME patterns:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'process_media',
     events: ['UPDATE'],
@@ -138,22 +138,22 @@ Fire when status transitions AND the row matches one of several MIME patterns:
 }
 ```
 
-## 3d. DataImageEmbedding (Composition Shorthand)
+## 3d. ProcessImageEmbedding (Composition Shorthand)
 
-For the common pattern of embedding image files on insert, use `DataImageEmbedding` instead of manually wiring SearchVector + DataJobTrigger:
+For the common pattern of embedding image files on insert, use `ProcessImageEmbedding` instead of manually wiring SearchVector + JobTrigger:
 
 ```typescript
 nodes: [
   ...STORAGE_NODES,
-  { $type: 'DataImageEmbedding' },
+  { $type: 'ProcessImageEmbedding' },
 ]
 ```
 
-Equivalent to manually configuring SearchVector (512-dim, HNSW, cosine) + DataJobTrigger (INSERT, `mime_type LIKE 'image/%'`). Override defaults as needed:
+Equivalent to manually configuring SearchVector (512-dim, HNSW, cosine) + JobTrigger (INSERT, `mime_type LIKE 'image/%'`). Override defaults as needed:
 
 ```typescript
 {
-  $type: 'DataImageEmbedding',
+  $type: 'ProcessImageEmbedding',
   data: {
     dimensions: 1024,
     metric: 'l2',
@@ -169,7 +169,7 @@ Capture full row data before deletion:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'audit_document_delete',
     payload_strategy: 'row',
@@ -185,7 +185,7 @@ Use `job_key` + `run_at_delay` to debounce rapid changes into a single job:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'aggregate_analytics',
     events: ['INSERT'],
@@ -205,7 +205,7 @@ Reshape column names for an external webhook:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'dispatch_webhook',
     payload_strategy: 'custom',
@@ -223,13 +223,13 @@ Reshape column names for an external webhook:
 
 ## 7. Multiple Triggers on One Table
 
-A single table can have several `DataJobTrigger` nodes for independent workflows:
+A single table can have several `JobTrigger` nodes for independent workflows:
 
 ```typescript
 nodes: [
   ...ORG_NODES,
   {
-    $type: 'DataJobTrigger',
+    $type: 'JobTrigger',
     data: {
       task_identifier: 'sync_to_hubspot',
       events: ['INSERT', 'UPDATE'],
@@ -238,14 +238,14 @@ nodes: [
     },
   },
   {
-    $type: 'DataJobTrigger',
+    $type: 'JobTrigger',
     data: {
       task_identifier: 'send_welcome_email',
       events: ['INSERT'],
     },
   },
   {
-    $type: 'DataJobTrigger',
+    $type: 'JobTrigger',
     data: {
       task_identifier: 'audit_contact_delete',
       payload_strategy: 'row',
@@ -257,7 +257,7 @@ nodes: [
 
 ## 8. Embedding Generation Note
 
-`SearchVector` and `SearchUnified` nodes already auto-create embedding job triggers when `enqueue_job: true` (the default). Use `DataJobTrigger` only for custom processing beyond embedding generation:
+`SearchVector` and `SearchUnified` nodes already auto-create embedding job triggers when `enqueue_job: true` (the default). Use `JobTrigger` only for custom processing beyond embedding generation:
 
 ```typescript
 nodes: [
@@ -267,7 +267,7 @@ nodes: [
     bm25: { field_name: 'embedding_text' },
   }},
   // Separate trigger for a different pipeline
-  { $type: 'DataJobTrigger', data: {
+  { $type: 'JobTrigger', data: {
     task_identifier: 'classify_document',
     events: ['INSERT'],
     payload_strategy: 'fields',

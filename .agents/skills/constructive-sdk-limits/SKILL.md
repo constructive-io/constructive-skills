@@ -1,16 +1,16 @@
 ---
 name: constructive-sdk-limits
-description: SDK-level guide to the Constructive limits system — blueprint nodes (DataLimitCounter, DataAggregateLimitCounter, DataFeatureFlag), ORM operations for managing limits/caps/plans/credits. Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'apply plan', 'transfer quota', 'limit credits', 'DataLimitCounter', 'DataAggregateLimitCounter', 'DataFeatureFlag', or when working with limits in blueprints or the ORM.
+description: SDK-level guide to the Constructive limits system — blueprint nodes (LimitCounter, LimitAggregate, LimitFeatureFlag), ORM operations for managing limits/caps/plans/credits. Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'apply plan', 'transfer quota', 'limit credits', 'LimitCounter', 'LimitAggregate', 'LimitFeatureFlag', or when working with limits in blueprints or the ORM.
 ---
 
 # Constructive Limits (SDK Guide)
 
-The limits system provides usage metering, feature gating, and quota enforcement. Everything is configured through **blueprints** (Data* nodes) and managed via the **ORM**.
+The limits system provides usage metering, feature gating, and quota enforcement. Everything is configured through **blueprints** (Limit* nodes) and managed via the **ORM**.
 
 Three blueprint nodes cover all limit enforcement:
-- **`DataLimitCounter`** — per-user metered limits (e.g. "each user can create 10 projects")
-- **`DataAggregateLimitCounter`** — per-entity aggregate limits (e.g. "this org can have 50 seats total")
-- **`DataFeatureFlag`** — boolean feature gates (e.g. "analytics is enabled for this org")
+- **`LimitCounter`** — per-user metered limits (e.g. "each user can create 10 projects")
+- **`LimitAggregate`** — per-entity aggregate limits (e.g. "this org can have 50 seats total")
+- **`LimitFeatureFlag`** — boolean feature gates (e.g. "analytics is enabled for this org")
 
 Related skills:
 - **`constructive-sdk-billing`**: Billing meters, universal credits, billing provider bridge
@@ -47,9 +47,9 @@ The built-in `app` (type 1) and `org` (type 2) scopes get limits automatically w
 
 ## Blueprint Nodes
 
-### 1. Per-user limit tracking (DataLimitCounter)
+### 1. Per-user limit tracking (LimitCounter)
 
-Add `DataLimitCounter` to a table's `nodes` array to enforce per-user usage limits:
+Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
 
 ```json
 {
@@ -63,7 +63,7 @@ Add `DataLimitCounter` to a table's `nodes` array to enforce per-user usage limi
       "DataId",
       "DataTimestamps",
       {
-        "$type": "DataLimitCounter",
+        "$type": "LimitCounter",
         "data": {
           "limit_name": "projects",
           "scope": "app",
@@ -92,9 +92,9 @@ Add `DataLimitCounter` to a table's `nodes` array to enforce per-user usage limi
 
 ---
 
-### 2. Aggregate entity-level tracking (DataAggregateLimitCounter)
+### 2. Aggregate entity-level tracking (LimitAggregate)
 
-Add `DataAggregateLimitCounter` to enforce total usage across an entire entity (org, database, team):
+Add `LimitAggregate` to enforce total usage across an entire entity (org, database, team):
 
 ```json
 {
@@ -108,7 +108,7 @@ Add `DataAggregateLimitCounter` to enforce total usage across an entire entity (
       "DataId",
       "DataTimestamps",
       {
-        "$type": "DataAggregateLimitCounter",
+        "$type": "LimitAggregate",
         "data": {
           "limit_name": "seats",
           "entity_field": "entity_id",
@@ -133,15 +133,15 @@ Add `DataAggregateLimitCounter` to enforce total usage across an entire entity (
 - `DELETE` — AFTER trigger: decrements aggregate counter.
 - `UPDATE` — BEFORE trigger: if `entity_field` changes, decrements old entity, increments new.
 
-**Key difference from DataLimitCounter:**
-- `DataLimitCounter` — "Can user Y do this?" (keyed on user + entity)
-- `DataAggregateLimitCounter` — "Has entity Z hit its quota?" (keyed on entity only)
+**Key difference from LimitCounter:**
+- `LimitCounter` — "Can user Y do this?" (keyed on user + entity)
+- `LimitAggregate` — "Has entity Z hit its quota?" (keyed on entity only)
 
 ---
 
-### 3. Feature flag gates (DataFeatureFlag)
+### 3. Feature flag gates (LimitFeatureFlag)
 
-Add `DataFeatureFlag` to gate an entire table behind a boolean feature toggle:
+Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
 
 ```json
 {
@@ -155,7 +155,7 @@ Add `DataFeatureFlag` to gate an entire table behind a boolean feature toggle:
       "DataId",
       "DataTimestamps",
       {
-        "$type": "DataFeatureFlag",
+        "$type": "LimitFeatureFlag",
         "data": {
           "feature_name": "enable_analytics",
           "scope": "org",
@@ -209,7 +209,7 @@ await db.appLimitDefault.create({
 
 ### Setting Aggregate Defaults
 
-For `DataAggregateLimitCounter`, set the entity-level ceiling:
+For `LimitAggregate`, set the entity-level ceiling:
 
 ```typescript
 // Each org can have up to 50 seats total
@@ -362,10 +362,10 @@ await db.appLimit.update({
 
 | Use Case | Blueprint Node | ORM Model |
 |----------|----------------|-----------|
-| "Each user can create N items" | `DataLimitCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
-| "Each user within an org can do N things" | `DataLimitCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
-| "This org can have N total seats" | `DataAggregateLimitCounter` | `db.orgLimitAggregate` |
-| "Is feature X enabled for this entity?" | `DataFeatureFlag` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
+| "Each user can create N items" | `LimitCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
+| "Each user within an org can do N things" | `LimitCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
+| "This org can have N total seats" | `LimitAggregate` | `db.orgLimitAggregate` |
+| "Is feature X enabled for this entity?" | `LimitFeatureFlag` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
 | "Bump a user's ceiling by 10" | *(none — ORM only)* | `db.appLimitCredit.create(...)` |
 | "Apply Pro plan to an entity" | *(none — ORM only)* | `db.orgLimitAggregate.update(...)` per limit |
 | "Read current usage" | *(none — ORM only)* | `db.appLimit.findMany(...)` / `db.orgLimitAggregate.findMany(...)` |
@@ -378,8 +378,8 @@ For platform-level gating where databases are the billable unit:
 
 | Need | Approach |
 |------|----------|
-| Meter API calls per database | `DataAggregateLimitCounter` with `entity_field: 'database_id'` |
-| Gate features per database | `DataFeatureFlag` with `scope: 'org'`, `entity_field: 'database_id'` |
+| Meter API calls per database | `LimitAggregate` with `entity_field: 'database_id'` |
+| Gate features per database | `LimitFeatureFlag` with `scope: 'org'`, `entity_field: 'database_id'` |
 | Set a database's aggregate ceiling | `db.orgLimitAggregate.create({ data: { name, entityId: databaseId, max } })` |
 | Override a feature for a database | `db.orgLimitCap.create({ data: { name, entityId: databaseId, max: '1' } })` |
 
@@ -432,7 +432,7 @@ Controls how sub-entities share parent capacity:
         "DataId",
         "DataTimestamps",
         {
-          "$type": "DataLimitCounter",
+          "$type": "LimitCounter",
           "data": {
             "limit_name": "documents_per_user",
             "scope": "app",
@@ -440,14 +440,14 @@ Controls how sub-entities share parent capacity:
           }
         },
         {
-          "$type": "DataAggregateLimitCounter",
+          "$type": "LimitAggregate",
           "data": {
             "limit_name": "documents_total",
             "entity_field": "entity_id"
           }
         },
         {
-          "$type": "DataFeatureFlag",
+          "$type": "LimitFeatureFlag",
           "data": {
             "feature_name": "enable_documents",
             "scope": "org",
@@ -487,9 +487,9 @@ await db.orgLimitCap.create({
 ```
 
 **Result:** The `documents` table now enforces:
-- Each user can create up to 50 docs (`DataLimitCounter`)
-- The org as a whole can have up to 10,000 docs (`DataAggregateLimitCounter`)
-- The entire table is gated behind the `enable_documents` feature flag (`DataFeatureFlag`)
+- Each user can create up to 50 docs (`LimitCounter`)
+- The org as a whole can have up to 10,000 docs (`LimitAggregate`)
+- The entire table is gated behind the `enable_documents` feature flag (`LimitFeatureFlag`)
 
 All enforcement happens automatically via database triggers. No application code needed beyond the initial ORM setup.
 

@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-ai
-description: "AI and vector search on the Constructive platform — Search* blueprint nodes (SearchUnified, SearchVector), DataFileEmbedding/DataChunks for file tables, embedding worker pipeline, agentic-kit multi-provider LLM client, and RAG patterns with the codegen'd ORM. Use when adding AI search to a table, building RAG pipelines, working with embeddings, adding file/image embeddings, multi-modal embedding, chunking, or integrating LLM providers (Ollama, Anthropic, OpenAI)."
+description: "AI and vector search on the Constructive platform — Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessChunks for file tables, embedding worker pipeline, agentic-kit multi-provider LLM client, and RAG patterns with the codegen'd ORM. Use when adding AI search to a table, building RAG pipelines, working with embeddings, adding file/image embeddings, multi-modal embedding, chunking, or integrating LLM providers (Ollama, Anthropic, OpenAI)."
 metadata:
   author: constructive-io
   version: "4.0.0"
@@ -8,14 +8,14 @@ metadata:
 
 # Constructive AI
 
-Build AI-powered features on Constructive using Search* blueprint nodes, DataFileEmbedding for file tables, the embedding worker pipeline, and agentic-kit for LLM inference.
+Build AI-powered features on Constructive using Search* blueprint nodes, ProcessFileEmbedding for file tables, the embedding worker pipeline, and agentic-kit for LLM inference.
 
 ## When to Apply
 
 Use this skill when:
 - Adding vector search / embeddings to a Constructive table (SearchUnified, SearchVector nodes)
-- Adding file/image embeddings to a storage table (DataFileEmbedding, DataImageEmbedding nodes)
-- Adding standalone chunking to any table (DataChunks node)
+- Adding file/image embeddings to a storage table (ProcessFileEmbedding, ProcessImageEmbedding nodes)
+- Adding standalone chunking to any table (ProcessChunks node)
 - Building RAG (Retrieval-Augmented Generation) pipelines on Constructive
 - Integrating LLM providers (Ollama, Anthropic, OpenAI) via agentic-kit
 - Understanding the embedding worker pipeline (stale detection -> job enqueue -> embed -> store)
@@ -23,17 +23,17 @@ Use this skill when:
 ## Architecture
 
 ```
-Blueprint Definition (SearchUnified / SearchVector / DataFileEmbedding / DataChunks nodes)
+Blueprint Definition (SearchUnified / SearchVector / ProcessFileEmbedding / ProcessChunks nodes)
   |
   v
 construct_blueprint() -- creates:
   * vector(N) column + HNSW index
   * embedding_text composite field + concat trigger (SearchUnified)
-  * embedding_stale boolean + stale-marking triggers
+  * {field_name}_updated_at timestamp + stale-marking triggers
   * enqueue_embedding job trigger
   * BM25 index, FTS tsvector, trgm tags (SearchUnified only)
-  * extraction fields + MIME-scoped job trigger (DataFileEmbedding)
-  * chunks table with per-chunk embeddings (DataChunks / DataFileEmbedding extract mode)
+  * extraction fields + MIME-scoped job trigger (ProcessFileEmbedding)
+  * chunks table with per-chunk embeddings (ProcessChunks / ProcessFileEmbedding extract mode)
   |
   v
 Row INSERT/UPDATE fires stale trigger / job trigger
@@ -63,7 +63,7 @@ The most powerful node. Orchestrates embedding + BM25 + optional FTS + optional 
 **What it auto-creates:**
 - `embedding_text` composite field + `concat_ws` trigger (from `source_fields`)
 - `embedding vector(768)` column + HNSW index (via SearchVector)
-- `embedding_stale bool` field + stale-marking triggers
+- `{field_name}_updated_at timestamp` + stale-marking triggers
 - `enqueue_embedding` job trigger
 - BM25 index on `embedding_text`
 - TSVector field + GIN index + populate trigger (if `full_text_search` configured)
@@ -161,18 +161,17 @@ nodes: [
 | `index_method` | `'hnsw'` | Index method: `hnsw` or `ivfflat` |
 | `metric` | `'cosine'` | Distance: `cosine`, `l2`, or `ip` (inner product) |
 | `index_options` | `{}` | HNSW/IVFFlat tuning params (e.g. `{"m": 16, "ef_construction": 64}`) |
-| `include_stale_field` | `true` | Create `embedding_stale` boolean + stale-marking triggers |
+| `include_updated_at` | `true` | Create `{field_name}_updated_at` timestamp + stale-marking triggers |
 | `enqueue_job` | `true` | Create job trigger to auto-enqueue embedding generation |
 | `job_task_name` | `'generate_embedding'` | Graphile Worker task name for the embedding job |
 | `source_fields` | (optional) | Fields to watch for stale-marking triggers |
-| `stale_strategy` | `'column'` | `'column'` (bool flag) or other strategies |
 | `chunks_config` | (optional) | Enable chunk table for long text. Sub-options: `content_field_name` (default `'content'`), `chunk_size` (default `1000`), `chunk_overlap` (default `200`), `chunk_strategy` (default `'fixed'`), `enqueue_chunking_job` (default `true`), `chunking_task_name` (default `'generate_chunks'`) |
 
 ## File Embedding Nodes
 
-### DataFileEmbedding (generic, MIME-scoped)
+### ProcessFileEmbedding (generic, MIME-scoped)
 
-The primary node for adding embeddings to file/storage tables. Composes SearchVector + DataJobTrigger + DataChunks internally. Two modes:
+The primary node for adding embeddings to file/storage tables. Composes SearchVector + JobTrigger + ProcessChunks internally. Two modes:
 
 - **Direct mode** (default): whole-file to single vector (e.g., CLIP for images). Omit `extraction`.
 - **Extract mode**: file to text to chunks to per-chunk vectors. Provide `extraction` config.
@@ -187,7 +186,7 @@ Multiple instances coexist on the same table with different MIME scopes.
   table_name: 'files',
   nodes: [
     ...STORAGE_NODES,
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['image/%'],
       dimensions: 512,
       task_identifier: 'process_image_embedding',
@@ -204,14 +203,13 @@ Multiple instances coexist on the same table with different MIME scopes.
   table_name: 'files',
   nodes: [
     ...STORAGE_NODES,
-    { $type: 'DataFileEmbedding', data: {
+    { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
       task_identifier: 'process_document_extraction',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
-        status_field: 'extraction_status',
       },
       chunks: {
         chunk_size: 1000,
@@ -231,14 +229,14 @@ Chunks are enabled by default in extract mode (`include_chunks: true`). Set `inc
 nodes: [
   ...STORAGE_NODES,
   // CLIP visual embeddings for images
-  { $type: 'DataFileEmbedding', data: {
+  { $type: 'ProcessFileEmbedding', data: {
     field_name: 'image_embedding',
     mime_patterns: ['image/%'],
     dimensions: 512,
     task_identifier: 'process_image_embedding',
   }},
   // Text extraction + chunked embeddings for documents
-  { $type: 'DataFileEmbedding', data: {
+  { $type: 'ProcessFileEmbedding', data: {
     field_name: 'document_embedding',
     mime_patterns: ['application/pdf', 'text/%'],
     dimensions: 768,
@@ -246,7 +244,7 @@ nodes: [
     extraction: {},
   }},
   // Transcription + chunked embeddings for audio/video
-  { $type: 'DataFileEmbedding', data: {
+  { $type: 'ProcessFileEmbedding', data: {
     field_name: 'media_embedding',
     mime_patterns: ['audio/%', 'video/%'],
     dimensions: 768,
@@ -258,18 +256,18 @@ nodes: [
 
 For the full parameter reference, see the `constructive-jobs` skill.
 
-### DataImageEmbedding (image preset)
+### ProcessImageEmbedding (image preset)
 
-Thin preset of DataFileEmbedding with image-oriented defaults (`dimensions: 512`, `mime_patterns: ['image/%']`, `task_identifier: 'process_image_embedding'`). All DataFileEmbedding parameters are accepted.
+Thin preset of ProcessFileEmbedding with image-oriented defaults (`dimensions: 512`, `mime_patterns: ['image/%']`, `task_identifier: 'process_image_embedding'`). All ProcessFileEmbedding parameters are accepted.
 
 ```typescript
-// Equivalent to DataFileEmbedding with image defaults
-{ $type: 'DataImageEmbedding' }
+// Equivalent to ProcessFileEmbedding with image defaults
+{ $type: 'ProcessImageEmbedding' }
 ```
 
-### DataChunks (standalone chunking)
+### ProcessChunks (standalone chunking)
 
-Standalone node that creates a child chunks table for any parent table. Each chunk gets its own embedding vector. Composed automatically by DataFileEmbedding in extract mode, but can be used independently.
+Standalone node that creates a child chunks table for any parent table. Each chunk gets its own embedding vector. Composed automatically by ProcessFileEmbedding in extract mode, but can be used independently.
 
 ```typescript
 // Add chunking to a table with text content
@@ -279,7 +277,7 @@ Standalone node that creates a child chunks table for any parent table. Each chu
   nodes: [
     'DataId',
     'DataTimestamps',
-    { $type: 'DataChunks', data: {
+    { $type: 'ProcessChunks', data: {
       chunk_size: 1000,
       chunk_overlap: 200,
       chunk_strategy: 'paragraph',
@@ -324,7 +322,7 @@ relations: [
 
 The embedding worker handles chunking automatically: text > 6000 chars gets split into ~3200-char overlapping chunks, each embedded separately.
 
-With DataChunks (standalone or via DataFileEmbedding extract mode), the chunks table is created automatically -- no need for manual `chunkTable()` / `hasManyChunks()` wiring.
+With ProcessChunks (standalone or via ProcessFileEmbedding extract mode), the chunks table is created automatically -- no need for manual `chunkTable()` / `hasManyChunks()` wiring.
 
 ## Querying via ORM
 
@@ -380,7 +378,7 @@ const answer = await kit.generate({ model: 'llama3.2', prompt: 'What is pgvector
 
 ## Cross-References
 
-- `constructive-jobs` — DataFileEmbedding/DataChunks full parameter reference, DataJobTrigger, Knative worker pipeline
+- `constructive-jobs` — ProcessFileEmbedding/ProcessChunks full parameter reference, JobTrigger, Knative worker pipeline
 - `constructive-sdk-graphql` — [search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md): ORM query patterns for vector search
 - `constructive-sdk-graphql` — [search-rag.md](../constructive-sdk-graphql/references/search-rag.md): RAG patterns with codegen'd ORM
 - `constructive-sdk-graphql` — [search-composite.md](../constructive-sdk-graphql/references/search-composite.md): Combining pgvector with tsvector/BM25/trgm

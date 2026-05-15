@@ -210,14 +210,14 @@ All 28 node types from the `node_type_registry`:
 | `DataInheritFromParent` | Copies field values from parent row (via FK) on insert/update | `parent_fk_field` (required — FK field pointing to parent), `fields` (required, array of field names to copy) |
 | `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
 | `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
-| `DataJobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 #### Limits & Feature Flags (trigger-only — requires `limits_module`)
 
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
-| `DataLimitCounter` | Attaches increment/decrement triggers to track metered usage against configurable maximums. On INSERT the named limit is incremented; on DELETE it is decremented. | `limit_name` (required — must match a `limit_defaults` entry, e.g. `'projects'`, `'members'`), `scope` (default `'app'` — `'app'` for membership_type=1 or `'org'` for membership_type=2), `actor_field` (default `'owner_id'` — column-ref, field on target table holding the actor/entity ID), `events` (default `['INSERT','DELETE']` — which DML events to attach triggers for) |
-| `DataFeatureFlag` | Gates a table behind a feature flag backed by cap tables. Attaches a BEFORE INSERT trigger that checks `resolve_cap(feature_name) > 0`. Features are modeled as caps with `max=0` (disabled) or `max=1` (enabled) in `limit_caps_defaults`. | `feature_name` (required — cap name, must match a `limit_caps_defaults` entry), `scope` (default `'app'` — `'app'` or `'org'`), `entity_field` (default `'entity_id'` — column-ref, used for org-scope only to resolve per-entity cap overrides) |
+| `LimitCounter` | Attaches increment/decrement triggers to track metered usage against configurable maximums. On INSERT the named limit is incremented; on DELETE it is decremented. | `limit_name` (required — must match a `limit_defaults` entry, e.g. `'projects'`, `'members'`), `scope` (default `'app'` — `'app'` for membership_type=1 or `'org'` for membership_type=2), `actor_field` (default `'owner_id'` — column-ref, field on target table holding the actor/entity ID), `events` (default `['INSERT','DELETE']` — which DML events to attach triggers for) |
+| `LimitFeatureFlag` | Gates a table behind a feature flag backed by cap tables. Attaches a BEFORE INSERT trigger that checks `resolve_cap(feature_name) > 0`. Features are modeled as caps with `max=0` (disabled) or `max=1` (enabled) in `limit_caps_defaults`. | `feature_name` (required — cap name, must match a `limit_caps_defaults` entry), `scope` (default `'app'` — `'app'` or `'org'`), `entity_field` (default `'entity_id'` — column-ref, used for org-scope only to resolve per-entity cap overrides) |
 
 **Prerequisites:** Both require `limits_module` to be provisioned for the target scope. Enable via `modules:['all']` or the `b2b`/`full` presets, or via `has_limits: true` on entity types.
 
@@ -228,7 +228,7 @@ All 28 node types from the `node_type_registry`:
   "nodes": [
     "DataId", "DataTimestamps",
     { "$type": "DataEntityMembership", "data": { "entity_field_name": "org_id" } },
-    { "$type": "DataLimitCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "org_id" } }
+    { "$type": "LimitCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "org_id" } }
   ],
   "fields": [ { "name": "title", "type": "text" } ]
 }
@@ -240,7 +240,7 @@ All 28 node types from the `node_type_registry`:
   "table_name": "advanced_reports",
   "nodes": [
     "DataId", "DataTimestamps", "DataDirectOwner",
-    { "$type": "DataFeatureFlag", "data": { "feature_name": "advanced_reporting" } }
+    { "$type": "LimitFeatureFlag", "data": { "feature_name": "advanced_reporting" } }
   ],
   "fields": [ { "name": "title", "type": "text" } ]
 }
@@ -251,7 +251,7 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
-| `DataImageEmbedding` | Combines SearchVector + DataJobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 #### Realtime
 
@@ -289,14 +289,14 @@ See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide 
 | Node Type | Creates | `data` options |
 |-----------|---------|----------------|
 | `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration | `source_fields` (optional, creates DataCompositeField first), `bm25` (sub-config), `trgm` (sub-config), `fts` (sub-config), `boost_recency` (optional `{"field": "updated_at"}`) |
-| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_stale_field` (default `true`), `enqueue_job` (default `true`), `stale_strategy` (default `'column'`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-sdk-ai`](../../constructive-sdk-ai/SKILL.md) |
+| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_updated_at` (default `true`), `enqueue_job` (default `true`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-sdk-ai`](../../constructive-sdk-ai/SKILL.md) |
 | `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `search_score_weight` (default `1.0`) |
 | `SearchBm25` | BM25 (pg_search/ParadeDB) index on existing text field | `field_name` (required — must already exist), `text_config` (default `'english'`), `search_score_weight` (default `1.0`), `k1` (optional BM25 tuning), `b` (optional BM25 tuning) |
 | `SearchTrgm` | GIN trigram indexes on existing fields | `fields` (required, array of field names — must already exist). Sets `@trgmSearch` smart tag |
 | `SearchSpatial` | PostGIS `geometry`/`geography` column + GiST index | `field_name` (default `'geom'`), `geometry_type` (default `'Point'`), `srid` (default `4326`), `dimension` (default `2`), `use_geography` (default `false`), `index_method` (`'gist'`\|`'spgist'`) |
 | `SearchSpatialAggregate` | Materialized aggregate geometry on parent table + auto-update triggers | `field_name` (default `'geom_aggregate'`), `source_table_id` (required), `source_geom_field` (default `'geom'`), `source_fk_field` (optional), `aggregate_function` (default `'union'` — also `'collect'`, `'convex_hull'`, `'concave_hull'`), `geometry_type` (default `'MultiPolygon'`), `srid`, `dimension`, `use_geography`, `index_method` |
 
-**Processing:** All nodes are processed together when the table is created. The table and all its Data* fields are provisioned in one step.
+**Processing:** All nodes are processed together when the table is created. The table and all its fields are provisioned in one step.
 
 ### Fields
 

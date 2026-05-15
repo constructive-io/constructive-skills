@@ -1,6 +1,6 @@
 # Payload Strategies
 
-Detailed examples of each `DataJobTrigger` payload strategy.
+Detailed examples of each `JobTrigger` payload strategy.
 
 ## `row_id` (default) — Just the Row ID
 
@@ -8,7 +8,7 @@ The lightest payload. The function fetches full data via GraphQL as needed.
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: { task_identifier: 'process_invoice' }
 }
 // payload: { "id": "abc-123" }
@@ -22,7 +22,7 @@ Sends the entire `NEW` (or `OLD` for DELETE) row.
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'audit_change',
     payload_strategy: 'row',
@@ -36,7 +36,7 @@ Sends the entire `NEW` (or `OLD` for DELETE) row.
 Add `include_old: true` to also get the previous row on UPDATE:
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'diff_audit',
     payload_strategy: 'row',
@@ -55,7 +55,7 @@ Sends only the columns you specify. Reduces payload size.
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'sync_to_stripe',
     payload_strategy: 'fields',
@@ -74,7 +74,7 @@ Renames columns in the payload. Useful when the external system expects differen
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'webhook_fire',
     payload_strategy: 'custom',
@@ -97,7 +97,7 @@ Any strategy can include table/schema metadata with `include_meta: true`:
 
 ```typescript
 {
-  $type: 'DataJobTrigger',
+  $type: 'JobTrigger',
   data: {
     task_identifier: 'generic_audit',
     payload_strategy: 'row_id',
