@@ -11,6 +11,9 @@ OAuth identity sign-in with cross-origin token exchange for Constructive platfor
 | Apple OAuth | ✅ Ready |
 | Cross-origin token exchange | ✅ Ready |
 | Multi-tenant support | ✅ Ready |
+| Device tracking | ✅ Ready |
+| Rate limiting | ✅ Ready |
+| Remember me | ✅ Ready |
 
 ## Architecture
 
@@ -232,7 +235,112 @@ WHERE dom.subdomain LIKE 'auth-%';
 | `graphql/server/src/middleware/auth.ts` | Authentication middleware |
 | `packages/oauth/src/index.ts` | OAuth provider configuration |
 
+---
+
+## Device Tracking
+
+OAuth sign-in automatically tracks user devices when `devices_module` is provisioned.
+
+### How It Works
+
+1. First login → new device record created, `device_token` returned
+2. Subsequent logins with `device_token` → existing device reused, `last_seen_at` updated
+3. Invalid/missing `device_token` → new device created
+
+### Cross-Origin Device Token
+
+For cross-origin flows, device token is passed via OAuth state (not cookies):
+
+```typescript
+// Include device_token in OAuth initiate URL
+const deviceToken = localStorage.getItem('device_token');
+let oauthUrl = `${authEndpoint}/auth/${provider}?redirect_uri=${callbackUrl}`;
+if (deviceToken) {
+  oauthUrl += `&device_token=${encodeURIComponent(deviceToken)}`;
+}
+
+// Save device_token from callback
+const params = new URLSearchParams(window.location.search);
+const newDeviceToken = params.get('device_token');
+if (newDeviceToken) {
+  localStorage.setItem('device_token', newDeviceToken);
+}
+```
+
+### Database Tables
+
+| Table | Purpose |
+|-------|---------|
+| `auth_user_devices` | Device records per user |
+| `app_settings_device` | Device tracking settings |
+
+### Settings
+
+```sql
+SELECT * FROM "{schema}_auth_private".app_settings_device;
+-- enable_device_tracking: true
+-- max_devices_per_user: 50
+-- device_trust_duration: 30 days
+-- require_mfa_new_device: false
+```
+
+---
+
+## Rate Limiting
+
+OAuth endpoints have two layers of rate limiting:
+
+### Layer 1: Express Middleware
+
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| `/:provider` (initiate) | 10 requests | 1 minute |
+| `/:provider/callback` | 30 requests | 1 minute |
+
+Skipped in development/test environments (`NODE_ENV`).
+
+### Layer 2: Database (sign_in_identity)
+
+| Type | Limit | Window | Lockout |
+|------|-------|--------|---------|
+| IP only | 250 attempts | 15 min | 30 min |
+| IP + User-Agent | 50 attempts | 15 min | 15 min |
+| User/account | 10 attempts | 15 min | 15 min |
+| Login | 5 failures | - | 15 min |
+
+### Why Two Layers?
+
+```
+Express rate limit → Protects OAuth providers (GitHub/Google API limits)
+Database rate limit → Protects sign_in_identity (brute force prevention)
+```
+
+Express layer blocks requests before hitting OAuth provider APIs.
+
+---
+
+## Remember Me
+
+OAuth sign-in uses `remember_me=true` by default, extending session duration.
+
+### Duration Settings
+
+```sql
+SELECT remember_me_duration, default_session_duration
+FROM "{schema}_auth_private".app_settings_auth;
+-- remember_me_duration: 30 days
+-- default_session_duration: 14 days
+```
+
+### Cookie and Session Sync
+
+Both cookie `Max-Age` and database session `expires_at` use `remember_me_duration` when enabled, ensuring they stay synchronized.
+
+---
+
 ## Related
 
 - Issue #735 - Server-Side Auth Implementation Plan
 - `constructive-cookie-csrf` - Cookie auth and CSRF (partial)
+- PR #1141 - OAuth identity sign-in implementation
+- PR #1163 (constructive-db) - Device tracking unit tests
