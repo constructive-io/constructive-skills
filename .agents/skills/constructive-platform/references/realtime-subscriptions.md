@@ -124,6 +124,163 @@ Tables in Constructive can also be declared as partitioned at the blueprint leve
 
 This is used internally by `realtime_module` for the change log, but the partition infrastructure is general-purpose and available for any table that benefits from partitioning (e.g., time-series data, large append-only tables, multi-tenant data separation).
 
+### Step 3: Enable realtime on the server
+
+Set `enable_realtime` in your database settings (or per-API settings). The server includes the realtime subscription plugin only when this is `true`.
+
+```ts
+// Via ORM
+await db.databaseSetting.update({
+  where: { id: settingId },
+  data: { enableRealtime: true },
+  select: { id: true },
+}).execute();
+
+// Or via CLI
+cnc database-setting update --enable-realtime true
+```
+
+## GraphQL Subscription API
+
+For each table with `DataRealtime`, the server generates a GraphQL subscription field. The field name follows the pattern `on{TypeName}Changed`.
+
+### Generated Schema
+
+```graphql
+extend type Subscription {
+  """Subscribe to changes. Pass ids to watch specific rows, or no args for all."""
+  onDocumentsChanged(ids: [UUID!]): DocumentsSubscriptionPayload
+}
+
+type DocumentsSubscriptionPayload {
+  """The DML operation: INSERT, UPDATE, DELETE, or INVALIDATE."""
+  event: String!
+  """The current row state (null for DELETE, INVALIDATE, or if RLS denies access)."""
+  documents: Documents
+  """The changed row ID (null for INVALIDATE, or masked when RLS denies access)."""
+  rowId: UUID
+  """True when too many changes occurred and the client should refetch."""
+  overflow: Boolean!
+}
+```
+
+### Subscription Modes
+
+| Mode | Arguments | Behavior |
+|------|-----------|----------|
+| Specific rows | `ids: [UUID!]` | Only delivers events for the listed row IDs |
+| Full collection | _(none)_ | Delivers all events for the table (subject to RLS) |
+
+### Payload Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `event` | `String!` | `INSERT`, `UPDATE`, `DELETE`, or `INVALIDATE` |
+| `{tableName}` | `TableType` | Current row data (null for DELETE, INVALIDATE, or RLS-denied) |
+| `rowId` | `UUID` | Changed row ID (null for INVALIDATE, masked when RLS denies access) |
+| `overflow` | `Boolean!` | `true` when too many changes occurred — client should refetch |
+
+### Raw GraphQL Usage
+
+```graphql
+# Watch specific rows
+subscription {
+  onDocumentsChanged(ids: ["uuid-a", "uuid-b"]) {
+    event
+    rowId
+    documents { id title content updatedAt }
+    overflow
+  }
+}
+
+# Watch all changes on a table
+subscription {
+  onMessagesChanged {
+    event
+    rowId
+    messages { id body authorId createdAt }
+    overflow
+  }
+}
+```
+
+### Overflow Handling
+
+When a single SQL statement affects more than 50 rows, the event is `INVALIDATE` with `overflow: true` instead of individual row events. The client should respond by refetching the relevant query. The server also applies per-subscriber rate limiting (50 events/second/table) — if exceeded, a synthetic `INVALIDATE` is sent.
+
+## Client-Side Usage
+
+### ORM Client (TypeScript)
+
+The generated ORM client includes a `subscribe()` method when realtime is configured. Pass a `graphql-ws` client instance via the `realtime` config:
+
+```ts
+import { createClient as createWsClient } from 'graphql-ws';
+import { createClient } from './orm';
+
+const db = createClient({
+  endpoint: 'https://api.example.com/graphql',
+  headers: { Authorization: 'Bearer <token>' },
+  realtime: {
+    client: createWsClient({ url: 'wss://api.example.com/graphql' }),
+  },
+});
+
+// Subscribe to changes on a table
+const unsubscribe = db.subscribe(
+  { fieldName: 'onDocumentsChanged', tableName: 'documents', dataFieldName: 'documents' },
+  'subscription { onDocumentsChanged { event documents { id title } overflow } }',
+  {},
+  {
+    onEvent: (event) => {
+      console.log(event.operation, event.data);
+    },
+    onError: (err) => console.error(err),
+  },
+);
+
+// Later: cancel the subscription
+unsubscribe();
+```
+
+### React Hooks (Codegen)
+
+For tables with `DataRealtime`, `cnc codegen` generates per-table subscription hooks in the `hooks/subscriptions/` directory. These hooks automatically invalidate React Query cache on events.
+
+```tsx
+import { useDocumentsSubscription } from './hooks/subscriptions/useDocumentsSubscription';
+import { useConnectionState } from './hooks/subscriptions/useConnectionState';
+
+function DocumentList() {
+  // Subscribe to realtime changes — auto-invalidates queries
+  useDocumentsSubscription({
+    onEvent: (event) => {
+      console.log(event.operation, event.data);
+      // event.operation: 'INSERT' | 'UPDATE' | 'DELETE'
+      // event.data: the row, or null for DELETE
+    },
+    onError: (err) => console.error(err),
+    enabled: true,            // default true, set false to pause
+    invalidateQueries: true,  // default true, auto-invalidates React Query cache
+  });
+
+  // Monitor WebSocket connection state
+  const state = useConnectionState();
+  // state: 'disconnected' | 'connecting' | 'connected' | 'reconnecting'
+
+  return <div>Connection: {state}</div>;
+}
+```
+
+### Generated Hook Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `onEvent` | `(event) => void` | _(required)_ | Called when a subscription event is received |
+| `onError` | `(error) => void` | — | Called on subscription errors |
+| `enabled` | `boolean` | `true` | Set `false` to pause the subscription |
+| `invalidateQueries` | `boolean` | `true` | Auto-invalidate React Query cache on events |
+
 ## Runtime Toggle
 
 Realtime can be enabled or disabled per-database and per-API via the `enable_realtime` setting:
