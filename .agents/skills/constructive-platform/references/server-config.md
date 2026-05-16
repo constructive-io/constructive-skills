@@ -319,6 +319,21 @@ API_IS_PUBLIC=true \
     done
 ```
 
+## Feature Toggles (Database Settings)
+
+The server resolves per-database and per-API feature toggles from `database_settings` and `api_settings`. API settings override database settings via `COALESCE(api_setting, database_setting, default)`.
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `enable_realtime` | `false` | Enable GraphQL subscription fields for `@realtime`-tagged tables. See [`realtime-subscriptions.md`](./realtime-subscriptions.md) |
+| `enable_aggregates` | `false` | Enable aggregate query fields (sum, avg, count, etc.) |
+| `enable_bulk` | `false` | Enable bulk mutation operations |
+| `enable_connection_filter` | `true` | Enable connection-level filtering |
+| `enable_ltree` | `true` | Enable ltree (hierarchical path) support |
+| `enable_llm` | `false` | Reserved for LLM integration |
+
+These settings can be changed at runtime via the ORM or CLI without restarting the server — the cache auto-flushes on `schema:update` notifications.
+
 ## Server Architecture
 
 The `cnc server` command:

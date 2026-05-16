@@ -162,6 +162,13 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | RLS-derived subscription security | `secure_table_provision.policies` SELECT policies | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | Change log (partitioned event stream) | `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | Statement-level emit triggers | `DataRealtime` → `emit_change()` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| GraphQL subscription fields (`onXxxChanged`) | `@realtime` smart tag + `enable_realtime` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Sparse-set row filtering (`ids: [UUID!]`) | `onXxxChanged(ids: [...])` argument | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Overflow detection (INVALIDATE) | >50 rows/statement or >50 events/sec/table | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Codegen subscription hooks (`useXxxSubscription`) | `cnc codegen` + `DataRealtime` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Connection state hook (`useConnectionState`) | `cnc codegen` + realtime config | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| ORM realtime (`client.subscribe()`) | `realtime` config on `createClient` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
+| Runtime toggle (`enable_realtime`) | `database_settings` / `api_settings` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Partition table support | Declarative `partitioned` flag + automatic lifecycle | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 
