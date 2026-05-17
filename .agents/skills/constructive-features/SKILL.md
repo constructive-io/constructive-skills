@@ -78,7 +78,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Merkle definition_hash | backend trigger | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | Tables + fields | `secure_table_provision` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
-| Node type generators (10 categories: Data*, Search*, Authz*, Check*, Limit*, Billing*, Job*, Process*, Relation*, View*) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Node type generators (11 categories: Data*, Search*, Authz*, Check*, Limit*, Billing*, Job*, Process*, Relation*, View*, Event*) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataDirectOwner / DataEntityMembership / DataOwnershipInEntity | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPeoplestamps (created_by / updated_by) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
@@ -90,7 +90,20 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
-## 5. Storage & Uploads
+## 5. Events & Achievements
+
+| Feature | Gate | In preset | Skill |
+|---|---|---|---|
+| EventTracker (record events on row changes) | `EventTracker` node + `events_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Blueprint achievements (levels + requirements) | `achievements[]` section + `has_levels` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Achievement reward credit grants | `tg_achievement_reward` + `limits_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Invite-based achievements (simple tier) | `has_invite_achievements` + `has_invites` + `has_levels` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Invitee achievement virality chain (meta tier) | `tg_invitee_achievement` + `invites_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Compound conditions (shared with JobTrigger) | `build_condition_ast()` + `conditions` param | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) + [`constructive-jobs`](../constructive-jobs/SKILL.md) |
+| Partitioned event log (time-based retention) | `events_module` + `pg_partman` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Event aggregates (running counts per user) | `events_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+
+## 6. Storage & Uploads
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -105,7 +118,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Download URLs (presigned GET / CDN) | `downloadUrl` computed field | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 | MIME type restrictions + file size limits | `allowed_mime_types` + `max_file_size` on bucket | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 
-## 6. Search
+## 7. Search
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -118,7 +131,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | SearchSpatialAggregate (materialized aggregates) | `SearchSpatialAggregate` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Unified composite search (GraphQL) | `unifiedSearch` field | — | [`graphile-search`](../graphile-search/SKILL.md) |
 
-## 7. AI
+## 8. AI
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -129,7 +142,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 
-## 8. GraphQL & Codegen
+## 9. GraphQL & Codegen
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -145,7 +158,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | CRUD Stack cards (iOS-style panels) | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 | 50+ UI components | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 
-## 9. Services & Routing
+## 10. Services & Routing
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -154,7 +167,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Public vs admin API routing | `api.routing_mode` | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
 | Schema grants per API | `schema_grant` | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 
-## 10. Realtime Subscriptions
+## 11. Realtime Subscriptions
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -172,7 +185,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Partition table support | Declarative `partitioned` flag + automatic lifecycle | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 
-## 11. Background Work & Operations
+## 12. Background Work & Operations
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -186,7 +199,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 
-## 12. Project Setup & Scaffolding
+## 13. Project Setup & Scaffolding
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
@@ -197,7 +210,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | pnpm workspace / publishing | — | — | [`inquirerer-cli`](../inquirerer-cli/SKILL.md) |
 | Interactive CLIs (`inquirerer`) | `inquirerer` package | — | [`inquirerer-cli`](../inquirerer-cli/SKILL.md) |
 
-## 13. Module Presets (starting points, not features)
+## 14. Module Presets (starting points, not features)
 
 | Preset | Shape |
 |---|---|

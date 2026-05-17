@@ -130,7 +130,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 
 ### Optional Modules
 - `profiles_module:channel` (if `has_profiles`) — Named permission roles
-- `levels_module:channel` (if `has_levels`) — Gamification/achievements
+- `events_module:channel` (if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
 
 ---
 

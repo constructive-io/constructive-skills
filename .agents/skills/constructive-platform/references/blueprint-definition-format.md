@@ -14,11 +14,12 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
   "relations": [ ... ],
   "indexes": [ ... ],
   "full_text_search": [ ... ],
-  "unique_constraints": [ ... ]
+  "unique_constraints": [ ... ],
+  "achievements": [ ... ]
 }
 ```
 
-`tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, and `unique_constraints` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
+`tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, `unique_constraints`, and `achievements` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
 
 ## App-Level Storage (Phase 0.5)
@@ -90,7 +91,9 @@ For default storage policies and the full policy format, see [storage-policies.m
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. No-op when `table_provision` is supplied |
 | `has_limits` | boolean | No | `false` | Provision a limits module |
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
-| `has_levels` | boolean | No | `false` | Provision a levels module (gamification) |
+| `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, gamification). See [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
+| `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) |
+| `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets and files tables) |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](./storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
@@ -211,6 +214,7 @@ All 28 node types from the `node_type_registry`:
 | `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
 | `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
 | `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. | `event_name` (required), `events` (default `['INSERT']`), `count` (default `1`), `toggle` (default `false`), `actor_field` (default `'owner_id'`, column-ref), `entity_field` (optional column-ref for entity-scoped events), `auto_register_type` (default `true`), `watch_fields` (optional array), `conditions` (compound WHEN clause — same syntax as JobTrigger), `condition_field`/`condition_value` (legacy) — see [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
 
 #### Limits & Feature Flags (trigger-only — requires `limits_module`)
 
@@ -499,6 +503,60 @@ Unique constraint definitions can appear at the top level (`definition.unique_co
 | `table_name` | string | Yes (top-level only) | Table to add the constraint to |
 | `columns` | string[] | Yes | Column names for the unique constraint |
 ```
+
+## Achievements (Phase 7)
+
+The optional top-level `achievements[]` section defines gamification levels with requirements and optional credit rewards. Processed in **Phase 7** of `constructBlueprint()` — after all tables, relations, and other provisioning.
+
+Requires `events_module` to be provisioned on the target entity scope (e.g., via `entity_types[].has_levels = true`). For credit rewards, also requires `limits_module` (e.g., `has_limits = true`).
+
+```json
+{
+  "achievements": [
+    {
+      "name": "getting_started",
+      "description": "Complete your profile",
+      "priority": 10,
+      "entity_prefix": "app",
+      "requirements": [
+        { "event_name": "avatar_uploaded", "count": 1 },
+        { "event_name": "profile_completed", "count": 1 }
+      ],
+      "rewards": [
+        { "reward_type": "limit_credit", "target_name": "projects", "amount": 5 }
+      ]
+    }
+  ]
+}
+```
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `name` | string | **Yes** | — | Unique level name (citext) |
+| `description` | string | No | `null` | Human-readable description |
+| `priority` | integer | No | `100` | Display ordering; lower = first |
+| `entity_prefix` | string | No | `"app"` | Entity scope to resolve the correct events_module |
+| `requirements` | array | **Yes** | — | Event requirements (see below) |
+| `rewards` | array | No | `[]` | Credit rewards (see below) |
+
+Each `requirements[]` entry:
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `event_name` | string | **Yes** | Event type name (must match an EventTracker `event_name` or auto-generated event like `invite_claimed`) |
+| `count` | integer | **Yes** | Number of events needed |
+| `description` | string | No | Human-readable description |
+
+Each `rewards[]` entry:
+
+| Field | Type | Required | Default | Description |
+|-------|------|----------|---------|-------------|
+| `reward_type` | `"limit_credit"` \| `"meter_credit"` | **Yes** | — | Credit system to grant to |
+| `target_name` | string | **Yes** | — | Limit name or meter slug |
+| `amount` | integer | **Yes** | — | Credits to grant |
+| `credit_type` | string | No | `"permanent"` | `"permanent"`, `"expiring"`, etc. |
+
+For full examples including invite virality and cross-table achievements, see [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md).
 
 ## Complete Example: E-Commerce Blueprint
 
