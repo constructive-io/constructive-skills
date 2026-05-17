@@ -89,7 +89,7 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 
 ### Compound Conditions
 
-The `conditions` parameter accepts a structured JSON syntax for complex WHEN clauses. Column types are resolved automatically from the PostgreSQL schema — values in JSON are cast to the correct type at generation time.
+The `conditions` parameter accepts a structured JSON syntax for complex WHEN clauses. Column types are resolved automatically from the PostgreSQL schema — values in JSON are cast to the correct type at generation time. This system is shared with `EventTracker` (see [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)) — both use the same `build_condition_ast()` function and `conditionProperties` schema.
 
 **Leaf condition:**
 ```typescript
@@ -401,6 +401,7 @@ The scheduler component in `knative-job-service` evaluates cron expressions and 
 - **[`constructive-platform`](../constructive-platform/references/cloud-functions.md)** — Cloud functions: building the Knative function that handles a job
 - **[`constructive-safegres`](../constructive-safegres/SKILL.md)** — Security policies for tables with job triggers
 - **[`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md)** — AI search nodes (SearchUnified, SearchVector), RAG patterns, and agentic-kit LLM client
+- **[`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)** — EventTracker node (shares compound conditions), achievements, invite virality, credit rewards
 - **Blueprint definition format** — [blueprints.md](../constructive-platform/references/blueprint-definition-format.md) for the full node types table
 
 For SQL-level internals (generator functions, AST helpers, trigger function source), see the `constructive-db-compound-conditions` and `constructive-db-data-modules` skills in `constructive-io/constructive-db`.

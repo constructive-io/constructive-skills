@@ -14,6 +14,7 @@ Three blueprint nodes cover all limit enforcement:
 
 Related skills:
 - **`constructive-sdk-billing`**: Billing meters, universal credits, billing provider bridge
+- **`constructive-sdk-events`**: Achievement rewards grant `limit_credits` when levels are achieved
 - **`constructive-platform`**: Blueprint provisioning overview
 - **`entity-types-and-provisioning`**: Entity types and `membership_types` in blueprints
 - **`constructive-db-limits`**: SQL-level architecture reference (internal implementation)
@@ -279,6 +280,8 @@ await db.appLimitCredit.create({
   select: { id: true }
 }).execute();
 ```
+
+**Achievement-based credits:** When using the events module (`has_levels: true`), credits can be granted automatically when achievements are earned. The `tg_achievement_reward` trigger INSERTs into `limit_credits` with `reason: 'achievement:{level_name}'`. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) for configuring achievement rewards.
 
 ### Credit Codes (Self-Service Redemption)
 
