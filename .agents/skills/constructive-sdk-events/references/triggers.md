@@ -6,16 +6,16 @@ This reference describes the SECURITY DEFINER triggers that power the events + a
 
 ```
 EventTracker trigger (per table)
-  → record_event() / record_event_entity()
-    → app_events INSERT
+  → record_event()
+    → app_events log entry
     → upsert_achievement()
-      → event_aggregates UPSERT
-        → tg_check_achievements (AFTER INSERT|UPDATE on event_aggregates)
+      → event_aggregates updated
+        → tg_check_achievements fires
           → level_achieved()
-            → grant_achievement() → level_grants INSERT
-              → tg_achievement_reward (AFTER INSERT on level_grants)
-                → limit_credits INSERT (credit grant)
-              → tg_invitee_achievement (AFTER INSERT on level_grants)
+            → grant_achievement() → level_grants created
+              → tg_achievement_reward fires
+                → limit_credits or meter_credits granted
+              → tg_invitee_achievement fires
                 → record_event('invitee_achieved_*', inviter_id)
 ```
 
@@ -35,14 +35,10 @@ Compound conditions are compiled into the trigger's WHEN clause at generation ti
 **Fires:** AFTER INSERT or UPDATE on `{prefix}_event_aggregates`
 **Security:** SECURITY DEFINER
 **Body:**
-1. FOR loop over `SELECT DISTINCT lr.level FROM level_requirements WHERE lr.name = NEW.name`
-2. For each level, calls `level_achieved(v_level_name, NEW.actor_id)` (or `level_achieved(v_level_name, NEW.entity_id, NEW.actor_id)`)
-3. If achieved, INSERTs into `level_grants` with:
-   - `actor_id = NEW.actor_id`
-   - `level_name = v_level_name`
-   - `period_start = COALESCE(NEW.period_start, '-infinity'::timestamptz)`
-   - `entity_id = NEW.entity_id` (entity variant only)
-4. `ON CONFLICT DO NOTHING` — unique constraint on `(actor_id, level_name, period_start)` prevents re-grants within the same period. For non-periodic events (`period_start = NULL`), COALESCE produces `-infinity` which is constant, preserving earn-once semantics.
+1. Loops over all distinct levels whose requirements reference the updated event name
+2. For each level, calls `level_achieved()` to check whether all requirements are met for the actor (and entity, if entity-scoped)
+3. If achieved, inserts into `level_grants` with the actor, level name, and the aggregate's `period_start` (defaulting to a sentinel value for non-periodic events)
+4. On conflict (duplicate grant for the same actor + level + period), does nothing — this prevents re-grants within the same period while allowing new grants in new periods
 
 ## tg_achievement_reward
 
@@ -51,31 +47,22 @@ Compound conditions are compiled into the trigger's WHEN clause at generation ti
 **Security:** SECURITY DEFINER
 **Condition:** Only generated when at least one of `limits_module` or `billing_module` exists for the same entity scope.
 **Body:**
-1. FOR loop over `achievement_rewards WHERE level_name = NEW.level_name`
-2. For each reward row, branches on `reward_type`:
+1. Loops over all `achievement_rewards` matching the granted level name
+2. For each reward, branches on `reward_type`:
 
 **`limit_credit` branch** (requires `limits_module`):
-   - Resolves `default_limit_id` from `default_limits WHERE name = reward.target_name`
-   - If found, INSERTs into `limit_credits`:
-     - `actor_id = NEW.actor_id`
-     - `default_limit_id = resolved id`
-     - `amount = reward.amount`
-     - `credit_type = reward.credit_type`
-     - `entity_id = NEW.entity_id` (entity variant only)
+   - Looks up the default limit by `target_name`
+   - Grants credits to the actor's `limit_credits` (amount, credit_type from the reward definition)
 
 **`meter_credit` branch** (requires `billing_module`):
-   - Resolves `meter_id` from `meters WHERE slug = reward.target_name`
-   - If found, INSERTs into `meter_credits`:
-     - `meter_id = resolved id`
-     - `entity_id = NEW.actor_id` (user variant) or `NEW.entity_id` (entity variant)
-     - `amount = reward.amount`
-     - `credit_type = reward.credit_type`
-     - `expires_at = CASE WHEN reward.expires_interval IS NOT NULL THEN now() + reward.expires_interval ELSE NULL END`
-     - `reason = 'achievement:' || NEW.level_name`
+   - Looks up the meter by `target_name` (slug)
+   - Grants credits to the entity's `meter_credits` with the configured amount and credit_type
+   - If `expires_interval` is set on the reward, computes an expiration timestamp (`now() + expires_interval`)
+   - Sets a reason tag like `"achievement:level_name"` for audit
 
 The trigger is generated with the correct branches based on which modules are provisioned (limits-only, billing-only, or both).
 
-**Why SECURITY DEFINER:** Users don't have INSERT permission on `limit_credits`, `meter_credits`, or related tables. The trigger runs as the database owner to bypass RLS.
+**Why SECURITY DEFINER:** Users don't have direct write access to `limit_credits`, `meter_credits`, or related tables. The trigger runs as the database owner to bypass RLS.
 
 ## tg_invitee_achievement
 
@@ -84,12 +71,10 @@ The trigger is generated with the correct branches based on which modules are pr
 **Security:** SECURITY DEFINER
 **Condition:** Only generated when both `events_module` and `invites_module` exist for the entity type.
 **Body:**
-1. `SELECT sender_id INTO v_sender_id FROM {prefix}_claimed_invites WHERE receiver_id = NEW.actor_id LIMIT 1`
-2. `IF v_sender_id IS NOT NULL THEN`
-3. `PERFORM record_event(step := 'invitee_achieved_' || NEW.level_name, actor_id := v_sender_id)`
-   (entity variant includes `entity_id := NEW.entity_id`)
-4. `END IF`
-5. `RETURN NEW`
+1. Looks up who invited the actor by querying `claimed_invites` for the actor's `receiver_id`
+2. If an inviter (sender) is found, records an event named `invitee_achieved_{level_name}` attributed to the inviter
+   (entity variant also passes the entity_id)
+3. If no inviter exists (user wasn't invited), does nothing
 
 **Event naming:** The event name is dynamically constructed as `invitee_achieved_` + the level name from the newly inserted `level_grants` row. For example, if `NEW.level_name = 'getting_started'`, the event recorded is `invitee_achieved_getting_started`.
 
@@ -102,21 +87,20 @@ The trigger is generated with the correct branches based on which modules are pr
 - Entity variant: `record_event(step text, actor_id uuid, entity_id uuid)`
 
 **Body:**
-1. INSERTs into `{prefix}_events` (the partitioned event log)
+1. Writes to `{prefix}_events` (the partitioned event log)
 2. Calls `upsert_achievement(step, actor_id)` to update aggregates
 
 ## upsert_aggregate (period-aware)
 
 **Created by:** `events_module` provisioning
 **Type:** Function (called by `record_event()`)
-**Body:** Performs an `INSERT ... ON CONFLICT` on `event_aggregates`. When the event type has a `period_interval`:
-1. Fetches `aggregation`, `feeds_levels`, and `period_interval` from `event_types`
-2. On INSERT: sets `period_start = CASE WHEN v_period_interval IS NOT NULL THEN now() ELSE NULL END`
-3. On CONFLICT (existing row):
-   - Checks `period_expired_cond`: `v_period_interval IS NOT NULL AND period_start IS NOT NULL AND period_start + v_period_interval <= now()`
-   - If expired: resets `count` to incoming value (instead of accumulating) and refreshes `period_start = now()`
-   - If not expired: accumulates `count` normally, keeps existing `period_start`
-   - If `period_start IS NULL` but `v_period_interval IS NOT NULL`: initializes `period_start = now()`
+**Body:** Upserts into `event_aggregates`. When the event type has a `period_interval`:
+1. Fetches the event type's aggregation mode, whether it feeds achievements, and its `period_interval`
+2. On first event: initializes `period_start` to now (if periodic) or leaves it null (if lifetime)
+3. On subsequent events (existing aggregate row):
+   - If the period has elapsed (`period_start + period_interval ≤ now`): resets count to the incoming value and refreshes `period_start`
+   - If the period is still active: accumulates count normally
+   - If `period_start` was null but the event type now has a `period_interval`: initializes `period_start`
 
 This is the same lazy reset pattern used by the billing module's period-based credits.
 
@@ -129,7 +113,7 @@ This is the same lazy reset pattern used by the billing module's period-based cr
 - Entity variant: `grant_achievement(level_name citext, actor_id uuid, entity_id uuid)`
 
 **Body:**
-1. `INSERT INTO level_grants (level_name, actor_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`
+1. Inserts a `level_grants` row for the given level and actor. If the grant already exists (duplicate key), does nothing.
 2. Returns void — idempotent by design
 
 This function can be called directly (outside of the trigger chain) for manual achievement grants (e.g., from admin tooling or migration scripts).

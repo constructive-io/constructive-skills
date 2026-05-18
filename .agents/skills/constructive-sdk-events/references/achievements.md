@@ -32,15 +32,15 @@ EventTracker nodes record events → `record_event()` calls `upsert_achievement(
 
 ### 2. Achievement Checking
 
-`tg_check_achievements` fires AFTER INSERT or UPDATE on `event_aggregates`. It calls `level_achieved()` which checks all requirements for all levels. When all requirements are met, it INSERTs into `level_grants` (with a unique constraint to prevent re-grants).
+`tg_check_achievements` fires after `event_aggregates` is updated. It calls `level_achieved()` which checks all requirements for all levels. When all requirements are met, it creates a `level_grants` row (with a unique constraint to prevent re-grants).
 
 ### 3. Reward Granting
 
-`tg_achievement_reward` fires AFTER INSERT on `level_grants`. It loops over `achievement_rewards` by `level_name` and INSERTs into `limit_credits` for each matching reward. This trigger is SECURITY DEFINER — users don't need credits INSERT permission.
+`tg_achievement_reward` fires when a new `level_grants` row is created. It loops over `achievement_rewards` by `level_name` and grants credits (`limit_credits` or `meter_credits`) for each matching reward. This trigger is SECURITY DEFINER — users don't need direct write access to credits tables.
 
 ### 4. Idempotency
 
-`grant_achievement` is a callable function that grants an achievement idempotently. The unique constraint on `level_grants(actor_id, level_name, period_start)` (or `level_grants(actor_id, entity_id, level_name, period_start)`) prevents double-granting within the same period. For non-periodic events, `period_start` defaults to `-infinity`, preserving earn-once semantics. For periodic events, a new `period_start` each period allows re-granting. The reward trigger fires on each INSERT (once per period).
+`grant_achievement` is a callable function that grants an achievement idempotently. The unique constraint on `level_grants(actor_id, level_name, period_start)` (or `+ entity_id` for entity variant) prevents double-granting within the same period. For non-periodic events, `period_start` defaults to a constant sentinel value, preserving earn-once semantics. For periodic events, a new `period_start` each period allows re-granting. The reward trigger fires once per grant.
 
 ## Achievement Fields
 
@@ -69,7 +69,7 @@ EventTracker nodes record events → `record_event()` calls `upsert_achievement(
 | `target_name` | string | **Yes** | — | Limit name (for `limit_credit`) or meter slug (for `meter_credit`). Must match a provisioned limit or meter. |
 | `amount` | integer | **Yes** | — | Number of credits to grant. |
 | `credit_type` | string | No | `"permanent"` | Credit type: `"permanent"`, `"expiring"`, `"period"`, etc. |
-| `expires_interval` | interval string | No | `null` | If set, the granted credits expire after this duration (e.g., `"30 days"`). Computes `expires_at = now() + expires_interval` at grant time. Only applies to `meter_credit` rewards. |
+| `expires_interval` | interval string | No | `null` | If set, granted credits expire after this duration (e.g., `"30 days"`). Only applies to `meter_credit` rewards. |
 
 ### Reward Types
 
@@ -77,7 +77,7 @@ EventTracker nodes record events → `record_event()` calls `upsert_achievement(
 
 **`meter_credit`** — Grants credits to the billing module's `meter_credits` table. The `target_name` must match a meter slug from a provisioned `billing_module`. Requires both `events_module` and `billing_module` to be provisioned for the same database. These credits provide quota that is consumed by `record_usage()` calls.
 
-**`expires_interval` (meter_credit only):** When set, the trigger computes `expires_at = now() + expires_interval` and passes it to the `meter_credits` INSERT. The billing module's lazy expiration system handles the rest — expired credits are skipped during usage checks. Useful for time-limited referral rewards.
+**`expires_interval` (meter_credit only):** When set, the reward trigger computes an expiration timestamp at grant time (current time + the interval). The billing module's lazy expiration system handles the rest — expired credits are automatically skipped during usage checks. Useful for time-limited referral rewards.
 
 ```json
 {
@@ -215,13 +215,26 @@ This is the same lazy reset pattern used by the billing module's period-based cr
 
 ### Registering Periodic Event Types
 
-Via SQL:
-```sql
-INSERT INTO events_public.app_event_types (name, period_interval)
-VALUES ('billing.subscription_active', '1 month');
+Event types with a `period_interval` are registered during provisioning. Use the ORM or CLI to create them:
+
+```ts
+// ORM
+await client.eventTypes.create({
+  data: {
+    name: 'billing.subscription_active',
+    periodInterval: '1 month'
+  }
+});
 ```
 
-Non-periodic event types (the default) have `period_interval = NULL` and `period_start = NULL` — they count events across the user's entire lifetime, unchanged from previous behavior.
+```bash
+# CLI
+csdk event-types create \
+  --name billing.subscription_active \
+  --period-interval '1 month'
+```
+
+Non-periodic event types (the default) omit `periodInterval` — they count events across the user's entire lifetime, unchanged from previous behavior.
 
 ## Re-Triggerable Achievements
 
@@ -233,41 +246,61 @@ When an event type has a `period_interval`, its aggregate count resets each peri
 - **User variant:** `UNIQUE(actor_id, level_name, period_start)`
 - **Entity variant:** `UNIQUE(actor_id, entity_id, level_name, period_start)`
 
-When `tg_check_achievements` fires, it passes `COALESCE(NEW.period_start, '-infinity'::timestamptz)` as the `period_start` for the `level_grants` INSERT:
-- **Non-periodic aggregates** (`period_start = NULL`) → `COALESCE` produces `-infinity` → earn-once semantics preserved (same `-infinity` every time = same UNIQUE key = ON CONFLICT DO NOTHING)
+When `tg_check_achievements` fires, it uses the aggregate's `period_start` (or a sentinel value for non-periodic events) when creating the `level_grants` row:
+- **Non-periodic aggregates** (`period_start = NULL`) → sentinel value is constant → earn-once semantics preserved (same UNIQUE key every time = duplicate is ignored)
 - **Periodic aggregates** → `period_start` changes each period → new UNIQUE key → new `level_grants` row → reward trigger fires again
 
 ### Example: Recurring Referral Credits
 
-```sql
--- Periodic event type (resets monthly)
-INSERT INTO events_public.app_event_types (name, period_interval)
-VALUES ('billing.subscription_active', '1 month');
+Define the periodic event type and a re-triggerable achievement in the blueprint:
 
--- Achievement: 1 subscription_active event per period
-INSERT INTO events_public.app_levels (name) VALUES ('active_referral');
-INSERT INTO events_public.app_level_requirements (name, level, required_count)
-VALUES ('billing.subscription_active', 'active_referral', 1);
+```json
+{
+  "achievements": [
+    {
+      "name": "active_referral",
+      "entity_prefix": "app",
+      "requirements": [
+        { "event_name": "billing.subscription_active", "count": 1 }
+      ],
+      "rewards": [
+        {
+          "reward_type": "meter_credit",
+          "target_name": "api_calls",
+          "amount": 50,
+          "credit_type": "permanent",
+          "expires_interval": "30 days"
+        }
+      ]
+    }
+  ]
+}
+```
 
--- Reward: 50 meter credits, expiring after 30 days
-INSERT INTO events_public.app_achievement_rewards
-  (level_name, reward_type, target_name, amount, credit_type, expires_interval)
-VALUES ('active_referral', 'meter_credit', 'api_calls', 50, 'permanent', '30 days');
+Then register the event type as periodic via the ORM:
+
+```ts
+await client.eventTypes.create({
+  data: {
+    name: 'billing.subscription_active',
+    periodInterval: '1 month'
+  }
+});
 ```
 
 Each billing period:
 1. Stripe `invoice.paid` webhook → webhook handler calls `record_event('billing.subscription_active', referrer_id)`
 2. Aggregate count resets to 1 (lazy reset), new `period_start`
 3. Achievement re-qualifies → new `level_grants` row with new `period_start`
-4. Reward trigger fires → new `meter_credits` row with `expires_at = now() + 30 days`
+4. Reward trigger fires → new meter credit granted with 30-day expiration
 5. If referral churns → no webhook → no event → no new credit → old credit expires naturally
 
 ## Provisioning Order
 
 `constructBlueprint()` processes achievements in Phase 7:
-1. Resolves `events_module` by `entity_prefix` + `membership_type`
-2. INSERTs into `levels` (the level definition)
-3. INSERTs into `level_requirements` (one per requirement)
-4. INSERTs into `achievement_rewards` (one per reward)
+1. Resolves the `events_module` for the given `entity_prefix` + `membership_type`
+2. Creates the level definition (name, description, priority)
+3. Creates one `level_requirement` per requirement entry (event_name + count)
+4. Creates one `achievement_reward` per reward entry (reward_type, target, amount)
 
 The events_module must already exist (Phase 0 entity types with `has_levels: true`), and limits must be provisioned (Phase 0 entity types with `has_limits: true`) for `limit_credit` reward grants to work. For `meter_credit` rewards, a `billing_module` must be provisioned for the same database.

@@ -89,8 +89,8 @@ The meta tier rewards inviters when their invitees earn achievements. This is th
 
 When `has_invite_achievements: true`, a SECURITY DEFINER trigger (`tg_invitee_achievement`) fires AFTER INSERT on `level_grants`. It:
 
-1. Looks up the inviter: `SELECT sender_id FROM claimed_invites WHERE receiver_id = NEW.actor_id LIMIT 1`
-2. If the achiever was invited by someone, records: `record_event('invitee_achieved_{level_name}', inviter_id)`
+1. Looks up who invited the achiever via the `claimed_invites` table
+2. If the achiever was invited by someone, records an event: `invitee_achieved_{level_name}` attributed to the inviter
 
 The event name is auto-generated: `invitee_achieved_` + the level name that was just earned.
 

@@ -29,18 +29,18 @@ Related skills:
 ## Architecture Overview
 
 ```
-Table row change (INSERT/UPDATE/DELETE)
+Table row change
   → EventTracker trigger fires (compound conditions evaluated)
-    → record_event(event_name, actor_id) / record_event(event_name, actor_id, entity_id)
-      → app_events INSERT (partitioned, time-based retention)
-      → upsert_achievement() → event_aggregates UPSERT (with lazy period reset)
+    → record_event(event_name, actor_id)
+      → app_events log entry (partitioned, time-based retention)
+      → upsert_achievement() → event_aggregates updated (with lazy period reset)
         → tg_check_achievements fires
-          → level_achieved() = true → level_grants INSERT (period-scoped)
-            → tg_achievement_reward → limit_credits or meter_credits INSERT
+          → level_achieved() = true → level_grants created (period-scoped)
+            → tg_achievement_reward → limit_credits or meter_credits granted
             → tg_invitee_achievement → record_event('invitee_achieved_*', inviter_id)
 ```
 
-All triggers are SECURITY DEFINER — users don't need direct INSERT permission on events or credits tables.
+All triggers are SECURITY DEFINER — users don't need direct write access to events or credits tables.
 
 ---
 
