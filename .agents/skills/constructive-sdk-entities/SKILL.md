@@ -136,9 +136,11 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 
 ## Entity-Scoped Storage (Buckets & File Uploads)
 
-When `has_storage: true`, the system provisions a `storage_module` for the entity type. This creates dedicated buckets and files tables with RLS policies scoped to entity membership.
+When `has_storage: true`, the system provisions one or more `storage_module` entries for the entity type. This creates dedicated buckets and files tables with RLS policies scoped to entity membership.
 
 ### Blueprint: Entity with Storage
+
+The `storage` field is a **JSON array** of storage module definitions (object form is no longer supported):
 
 ```json
 {
@@ -148,18 +150,49 @@ When `has_storage: true`, the system provisions a `storage_module` for the entit
       "prefix": "data_room",
       "parent_entity": "org",
       "has_storage": true,
-      "storage_config": {
-        "policies": [
-          { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-          { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
-        ]
-      }
+      "storage": [
+        {
+          "has_path_shares": true,
+          "provisions": {
+            "files": {
+              "policies": [
+                { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
+                { "$type": "AuthzPublishable", "privileges": ["select"] }
+              ]
+            },
+            "buckets": {
+              "policies": [
+                { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }
+              ]
+            }
+          },
+          "buckets": [{ "name": "documents" }, { "name": "public-assets", "is_public": true }]
+        }
+      ]
     }
   ]
 }
 ```
 
-This creates `data_room_buckets` and `data_room_files` tables, secured with the specified RLS policies. The `"tables"` key uses **logical names** (`"buckets"`, `"files"`), not the prefixed physical table names — the function resolves the prefix internally.
+This creates `data_room_buckets` and `data_room_files` tables, secured with the specified RLS policies.
+
+### Multi-module entity storage
+
+An entity type can have multiple storage modules with different feature flags:
+
+```json
+{
+  "has_storage": true,
+  "storage": [
+    { "has_path_shares": true, "has_confirm_upload": true, "buckets": [{ "name": "documents" }] },
+    { "storage_key": "fn", "has_custom_keys": true, "has_confirm_upload": false, "buckets": [{ "name": "functions" }] }
+  ]
+}
+```
+
+This creates two table pairs: `data_room_buckets`/`data_room_files` (default) and `data_room_fn_buckets`/`data_room_fn_files` (functions). Each gets its own RLS, GraphQL mutations (`uploadDataRoomFile`, `uploadDataRoomFnFile`), and feature flags.
+
+The `storage_key` must be max 16 chars, lowercase snake_case, and cannot be reserved words.
 
 ### ORM: Entity with Storage
 
@@ -171,12 +204,24 @@ const result = await db.entityTypeProvision.create({
     prefix: 'data_room',
     parentEntity: 'org',
     hasStorage: true,
-    storageConfig: {
-      policies: [
-        { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
-        { $type: 'AuthzPublishable', privileges: ['select'], tables: ['buckets', 'files'] },
-      ],
-    },
+    storageConfig: [
+      {
+        has_path_shares: true,
+        provisions: {
+          files: {
+            policies: [
+              { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
+              { $type: 'AuthzPublishable', privileges: ['select'] },
+            ],
+          },
+          buckets: {
+            policies: [
+              { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
+            ],
+          },
+        },
+      },
+    ],
   },
   select: {
     outMembershipType: true,
@@ -242,11 +287,25 @@ const { data } = await graphqlClient.mutate({
 
 The plugin resolves the correct storage module by probing entity tables for the `ownerId`, then uses that module's file tables. See [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) for the complete upload flow, deduplication, error codes, and client library.
 
-### `storage_config` Fields
+### `storage[]` Entry Fields
+
+Each element in the `storage` array is a storage module definition:
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
-| `is_public` | boolean | `false` | S3 bucket ACL — `true` = publicly readable, `false` = presigned URLs required |
+| `storage_key` | string | `'default'` | Unique key for this module. Becomes infix in table names (omitted for 'default'). Max 16 chars, lowercase snake_case. |
+| `has_path_shares` | boolean | `false` | Enable ltree path column + file_path_shares table |
+| `has_versioning` | boolean | `false` | Enable file version history (previous_version_id, is_latest) |
+| `has_content_hash` | boolean | `false` | Enable content-hash addressing |
+| `has_custom_keys` | boolean | `false` | Allow clients to specify S3 keys |
+| `has_audit_log` | boolean | `false` | Create file_events audit table |
+| `has_confirm_upload` | boolean | `false` | Enable HeadObject upload confirmation flow |
+| `restrict_reads` | boolean | `false` | Add read_files permission requirement for SELECT |
+| `upload_url_expiry_seconds` | number | plugin default | Override presigned URL expiry |
+| `download_url_expiry_seconds` | number | plugin default | Override download URL expiry |
+| `default_max_file_size` | number | `null` | Module-level max file size in bytes |
+| `allowed_origins` | string[] | `null` | Module-level CORS origins |
+| `buckets` | array | `[]` | Auto-seed bucket rows per entity instance |
 | `provisions` | object | `null` | Per-table overrides keyed by `"files"` or `"buckets"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table |
 
 Each policy object (inside `provisions.{table}.policies`) has `$type` (required), `privileges` (required), plus optional `data` and `policy_name`. Missing `data` is auto-populated with storage-specific defaults (e.g., `AuthzPublishable` → `{"is_published_field": "is_public", "require_published_at": false}`).

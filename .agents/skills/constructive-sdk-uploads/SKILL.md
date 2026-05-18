@@ -100,20 +100,39 @@ See [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) for pro
 
 ## App-Level Bucket Seeding (Blueprint)
 
-App-level buckets can be pre-seeded at deploy time via the blueprint `storage.buckets[]` key:
+App-level buckets can be pre-seeded at deploy time via the blueprint `storage` key. The `storage` field is a **JSON array** of storage module definitions (object form is no longer supported):
 
 ```json
 {
-  "storage": {
-    "buckets": [
-      { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
-      { "name": "documents", "is_public": false, "max_file_size": 52428800 }
-    ]
-  }
+  "storage": [
+    {
+      "buckets": [
+        { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
+        { "name": "documents", "is_public": false, "max_file_size": 52428800 }
+      ]
+    }
+  ]
 }
 ```
 
-This creates rows in `app_buckets` during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) for the full `storage` key spec.
+### Multi-module storage (separate tables per use case)
+
+You can provision multiple storage modules with different feature flags by providing multiple array entries with distinct `storage_key` values:
+
+```json
+{
+  "storage": [
+    { "has_path_shares": true, "has_confirm_upload": true, "buckets": [{ "name": "documents" }] },
+    { "storage_key": "fn", "has_custom_keys": true, "has_confirm_upload": false, "buckets": [{ "name": "functions" }] }
+  ]
+}
+```
+
+Each module gets its own table pair (`app_buckets`/`app_files` for default, `app_fn_buckets`/`app_fn_files` for `storage_key: "fn"`) and its own GraphQL mutations (`uploadAppFile`, `uploadAppFnFile`).
+
+The `storage_key` must be max 16 chars, lowercase snake_case, and cannot be `'buckets'`/`'files'`/`'bucket'`/`'file'`.
+
+This creates rows in the appropriate buckets table during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) for the full `storage` key spec.
 
 ---
 
