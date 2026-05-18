@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-events
-description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards, invite-based achievements (has_invite_achievements), and the full virality chain. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', or when working with events_module in blueprints."
+description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards (limit_credit + meter_credit with expires_interval), invite-based achievements (has_invite_achievements), period-aware event_aggregates (lazy count reset), re-triggerable achievements (per-period re-qualification), EventReferral for attributing events to inviters, and the full virality chain. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', 'meter_credit', 'expires_interval', 'period_interval', 'recurring credits', 'referral credits', 'EventReferral', or when working with events_module in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -12,8 +12,10 @@ The events system provides event tracking, gamification, and achievement-based c
 
 Three capabilities compose together:
 - **`EventTracker`** — table-level node. Attach to any table to declaratively record events when rows change. Same compound condition system as JobTrigger.
-- **`achievements[]`** — top-level blueprint section. Define levels with requirements (event counts) and optional rewards (credit grants).
+- **`achievements[]`** — top-level blueprint section. Define levels with requirements (event counts) and optional rewards (`limit_credit` or `meter_credit` grants, with optional `expires_interval`).
 - **`has_invite_achievements`** — entity type flag. Auto-attaches EventTracker to `claimed_invites` and wires the invitee achievement virality chain.
+- **`EventReferral`** — entity type node. Wires referral attribution so that when an invitee's event is recorded, the inviter also gets an attributed event.
+- **Period-aware counting** — event types with `period_interval` auto-reset aggregate counts each period (lazy reset). Enables re-triggerable achievements for recurring credit grants.
 
 Related skills:
 - **`constructive-sdk-limits`**: Limits module, credit grants, cap tables
@@ -27,18 +29,18 @@ Related skills:
 ## Architecture Overview
 
 ```
-Table row change (INSERT/UPDATE/DELETE)
+Table row change
   → EventTracker trigger fires (compound conditions evaluated)
-    → record_event(event_name, actor_id) / record_event(event_name, actor_id, entity_id)
-      → app_events INSERT (partitioned, time-based retention)
-      → upsert_achievement() → event_aggregates UPDATE
+    → record_event(event_name, actor_id)
+      → app_events log entry (partitioned, time-based retention)
+      → upsert_achievement() → event_aggregates updated (with lazy period reset)
         → tg_check_achievements fires
-          → level_achieved() = true → level_grants INSERT
-            → tg_achievement_reward → limit_credits INSERT (credit grant)
+          → level_achieved() = true → level_grants created (period-scoped)
+            → tg_achievement_reward → limit_credits or meter_credits granted
             → tg_invitee_achievement → record_event('invitee_achieved_*', inviter_id)
 ```
 
-All triggers are SECURITY DEFINER — users don't need direct INSERT permission on events or credits tables.
+All triggers are SECURITY DEFINER — users don't need direct write access to events or credits tables.
 
 ---
 
@@ -186,11 +188,14 @@ The top-level `achievements[]` section defines levels with requirements and opti
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `reward_type` | `"limit_credit"` \| `"meter_credit"` | **Yes** | — | Credit system to grant to |
-| `target_name` | string | **Yes** | — | Limit name or meter slug |
+| `target_name` | string | **Yes** | — | Limit name (for `limit_credit`) or meter slug (for `meter_credit`) |
 | `amount` | integer | **Yes** | — | Number of credits to grant |
-| `credit_type` | string | No | `"permanent"` | `"permanent"`, `"expiring"`, etc. |
+| `credit_type` | string | No | `"permanent"` | `"permanent"`, `"expiring"`, `"period"`, etc. |
+| `expires_interval` | interval string | No | `null` | Credits expire after this duration (e.g., `"30 days"`). `meter_credit` only. |
 
-See [references/achievements.md](references/achievements.md) for cross-table achievements, multi-entity-scope examples, and the reward trigger chain.
+`meter_credit` rewards require both `events_module` and `billing_module` to be provisioned for the same database.
+
+See [references/achievements.md](references/achievements.md) for reward type details, period-aware aggregates, re-triggerable achievements, cross-table achievements, and the reward trigger chain.
 
 ---
 
@@ -260,6 +265,6 @@ See [references/invite-virality.md](references/invite-virality.md) for detailed 
 | File | Contents |
 |------|----------|
 | [references/event-tracker.md](references/event-tracker.md) | Full EventTracker parameter reference, compound conditions, toggle mode, entity-scoped examples |
-| [references/achievements.md](references/achievements.md) | Achievement definitions, requirements, rewards, credit grant trigger chain |
+| [references/achievements.md](references/achievements.md) | Achievement definitions, requirements, rewards (limit_credit + meter_credit), expires_interval, period-aware aggregates, re-triggerable achievements |
 | [references/invite-virality.md](references/invite-virality.md) | Simple + meta invite tiers, full virality chain, cross-entity examples |
 | [references/triggers.md](references/triggers.md) | Internal trigger reference: tg_check_achievements, tg_achievement_reward, tg_invitee_achievement |
