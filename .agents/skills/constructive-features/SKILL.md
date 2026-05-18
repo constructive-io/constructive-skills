@@ -33,9 +33,9 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Device tracking / trusted devices | `devices_module` + `has_device_support` | `full` (not yet fully wired; see `module-presets.md`) | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | API keys | `user_state_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (per-user) | `user_secrets_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (org-scoped) | `org_secrets_module` | standalone (not in presets yet) | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (app-wide, admin-only) | `app_secrets` (part of `user_secrets_module`) | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (per-user) | `config_secrets_user_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (org-scoped) | `config_secrets_org_module` | standalone (not in presets yet) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (app-wide, admin-only) | `app_secrets` (part of `config_secrets_user_module`) | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Web3 wallet addresses | `crypto_addresses_module` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Password reset / forgot password | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Email verification | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
