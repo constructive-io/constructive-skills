@@ -133,7 +133,9 @@ When provisioning, you can specify which modules to install:
 | `users_module` | User management |
 | `user_auth_module` | Authentication (sign in, sign up) |
 | `tokens_module` | JWT token management |
-| `secrets_module` | Secret storage |
+| `user_state_module` | User state storage (plaintext key-value, e.g. API keys) |
+| `user_secrets_module` | User secrets (encrypted, e.g. password hashes) |
+| `org_secrets_module` | Org-scoped encrypted secrets (optional, requires orgs) |
 | `permissions_module:app` | App-level permissions |
 | `permissions_module:org` | Org-level permissions |
 | `memberships_module:app` | App memberships |
