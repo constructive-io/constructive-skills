@@ -116,7 +116,7 @@ Tracks the state of each table during blueprint construction. One row per table 
 
 ### constructBlueprint(blueprintId, schemaId)
 
-Executes a draft blueprint, provisioning real database tables and relations across 5 phases.
+Executes a draft blueprint, provisioning real database tables and relations across 7 phases.
 
 ```typescript
 // ORM
@@ -130,24 +130,32 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
 
 **Behavior:**
 1. Validates blueprint exists and status is `draft`
-2. **Phase 1 — Tables:** For each entry in `definition.tables[]`:
+2. **Phase 0 — Entity Types:** For each entry in `definition.entity_types[]`:
+   - Creates dynamic entity types (channels, teams, data rooms) via `entity_type_provision`
+   - Provisions membership tables, permissions, and entity-scoped storage
+3. **Phase 0.5 — Storage:** For each entry in `definition.storage[]`:
+   - `scope: "app"` (default): provisions app-level storage (`app_buckets`/`app_files`)
+   - `scope: "org"`: provisions per-org/user storage (`org_buckets`/`org_files` with `owner_id`), creates AFTER INSERT seed trigger on entity table
+   - Auto-injects a private `functions` bucket for `scope: "org"` when infra is installed
+   - Applies RLS: `AuthzAppMembership` for app scope, `AuthzEntityMembership` for org scope
+4. **Phase 1 — Tables:** For each entry in `definition.tables[]`:
    - Resolves `schema_name` (per-table override or falls back to the `schema_id` parameter)
    - Creates the table with all fields and Data* nodes
    - Applies grants for each `grants[].roles[]` x `grants[].privileges[]` combination
    - Applies policies for each entry in `policies[]`
    - Enables RLS if `use_rls` is true (default) or if any policies are defined
    - Records table in `blueprint_construction` for state tracking
-3. **Phase 2 — Relations:** For each entry in `definition.relations[]`:
+5. **Phase 2 — Relations:** For each entry in `definition.relations[]`:
    - Resolves `source_table` and `target_table` to table IDs
    - Creates the relation (FK or junction table)
-4. **Phase 3 — Indexes:** For each entry in `definition.indexes[]` (or per-table `indexes[]`):
+6. **Phase 3 — Indexes:** For each entry in `definition.indexes[]` (or per-table `indexes[]`):
    - Creates indexes on the resolved table/columns
-5. **Phase 4 — Full-Text Search:** For each entry in `definition.full_text_search[]` (or per-table `full_text_search[]`):
+7. **Phase 4 — Full-Text Search:** For each entry in `definition.full_text_search[]` (or per-table `full_text_search[]`):
    - Creates tsvector column + GIN index + auto-update trigger
-6. **Phase 5 — Unique Constraints:** For each entry in `definition.unique_constraints[]` (or per-table `unique_constraints[]`):
+8. **Phase 5 — Unique Constraints:** For each entry in `definition.unique_constraints[]` (or per-table `unique_constraints[]`):
    - Creates unique constraints on the resolved columns
-7. **On success:** Sets `status = 'constructed'`, saves `constructed_definition`
-8. **On failure:** Sets `status = 'failed'`, saves `error_details`. Returns NULL.
+9. **On success:** Sets `status = 'constructed'`, saves `constructed_definition`
+10. **On failure:** Sets `status = 'failed'`, saves `error_details`. Returns NULL.
 
 **Idempotency:** All phases are idempotent — calling `constructBlueprint()` twice with the same definition is safe. The second call is a no-op.
 
