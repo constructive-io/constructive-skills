@@ -8,7 +8,7 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 
 ```json
 {
-  "storage": { ... },
+  "storage": [ ... ],
   "entity_types": [ ... ],
   "tables": [ ... ],
   "relations": [ ... ],
@@ -22,28 +22,64 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
 `tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, `unique_constraints`, and `achievements` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
 
-## App-Level Storage (Phase 0.5)
+## Top-Level Storage (Phase 0.5)
 
-The optional top-level `storage` key provisions app-level storage and seeds initial buckets. It runs after entity types (Phase 0) but before tables (Phase 1).
+The optional top-level `storage` key is an **array** of storage entries. Each entry has an optional `scope` field that controls where the storage tables are created. It runs after entity types (Phase 0) but before tables (Phase 1).
 
+- `scope: "app"` (default) — app-level storage (`app_buckets` / `app_files`), no `owner_id`, buckets seeded at migration time.
+- `scope: "org"` — per-org/user storage (`org_buckets` / `org_files`), with `owner_id` column, buckets seeded per-entity via an AFTER INSERT trigger on the users table.
+
+Only `"app"` and `"org"` are allowed. Child entity types get storage via `entity_types[].storage` instead.
+
+When infra is installed (`infra_public` schema exists), a private `functions` bucket is auto-injected into any `scope: "org"` entry that doesn't already have one.
+
+**App-scoped example** (default — equivalent to omitting `scope`):
 ```json
 {
-  "storage": {
-    "buckets": [
-      { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
-      { "name": "documents", "is_public": false, "max_file_size": 52428800 }
-    ],
-    "upload_url_expiry_seconds": 1800,
-    "download_url_expiry_seconds": 3600,
-    "default_max_file_size": 104857600,
-    "allowed_origins": ["https://app.example.com"],
-    "policies": [ ... ]
-  }
+  "storage": [
+    {
+      "buckets": [
+        { "name": "avatars", "is_public": true, "allowed_mime_types": ["image/png", "image/jpeg"] },
+        { "name": "documents", "is_public": false, "max_file_size": 52428800 }
+      ],
+      "upload_url_expiry_seconds": 1800,
+      "download_url_expiry_seconds": 3600,
+      "default_max_file_size": 104857600,
+      "allowed_origins": ["https://app.example.com"]
+    }
+  ]
+}
+```
+
+**Org-scoped example** (per-org/user storage):
+```json
+{
+  "storage": [
+    {
+      "scope": "org",
+      "buckets": [
+        { "name": "documents" },
+        { "name": "media", "is_public": true }
+      ]
+    }
+  ]
+}
+```
+
+**Both scopes in one blueprint:**
+```json
+{
+  "storage": [
+    { "buckets": [{ "name": "avatars", "is_public": true }] },
+    { "scope": "org", "buckets": [{ "name": "documents" }] }
+  ]
 }
 ```
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
+| `scope` | string | No | `"app"` | `"app"` for app-level storage, `"org"` for per-org/user storage |
+| `storage_key` | string | No | `"default"` | Multi-module discriminator. Non-default keys create infix tables: `{prefix}_{key}_buckets` |
 | `buckets` | array | No | `[]` | Bucket definitions to seed at deploy time |
 | `policies` | jsonb[] | No | sensible defaults | Policy objects. If provided, fully replaces defaults |
 | `upload_url_expiry_seconds` | integer | No | module default | Override presigned upload URL TTL |

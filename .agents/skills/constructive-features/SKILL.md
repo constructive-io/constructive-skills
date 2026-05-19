@@ -109,8 +109,9 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| S3 / MinIO buckets per entity type | `storage_module` + `storage_config` on `entity_type_provision` | `full`, any app using uploads | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) + [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Public vs private buckets | `storage_config.is_public` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| S3 / MinIO buckets per entity type | `storage_module` + `storage` on `entity_type_provision` | `full`, any app using uploads | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) + [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Org-scoped storage (per-org/user buckets) | Top-level `storage: [{ scope: "org", ... }]` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Public vs private buckets | `is_public` on bucket entries | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 | Presigned upload URLs | `requestUploadUrl` mutation | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 | Per-bucket RLS policies | `storage_config.policies[]` (Authz* nodes) | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) + [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Multi-scope bucket resolution | `bucketKey` + `ownerId` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
