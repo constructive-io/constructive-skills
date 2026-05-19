@@ -98,10 +98,16 @@ Files belong to a specific entity instance. Secured by `AuthzEntityMembership`. 
 
 See [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) for provisioning entity types with storage.
 
-## App-Level Bucket Seeding (Blueprint)
+## Bucket Seeding via Blueprint
 
-App-level buckets can be pre-seeded at deploy time via the blueprint `storage` key. The `storage` field is a **JSON array** of storage module definitions (object form is no longer supported):
+Buckets can be pre-seeded at deploy time via the blueprint `storage` key. The `storage` field is a **JSON array** of storage module entries. Each entry has an optional `scope` field:
 
+- `scope: "app"` (default) — app-level storage (`app_buckets`/`app_files`), no `owner_id`
+- `scope: "org"` — per-org/user storage (`org_buckets`/`org_files`), with `owner_id`, seeded per-entity via AFTER INSERT trigger
+
+Only `"app"` and `"org"` are allowed at the top level. Child entity types get storage via `entity_types[].storage`.
+
+**App-scoped (default):**
 ```json
 {
   "storage": [
@@ -114,6 +120,23 @@ App-level buckets can be pre-seeded at deploy time via the blueprint `storage` k
   ]
 }
 ```
+
+**Org-scoped (per-org/user):**
+```json
+{
+  "storage": [
+    {
+      "scope": "org",
+      "buckets": [
+        { "name": "documents" },
+        { "name": "media", "is_public": true }
+      ]
+    }
+  ]
+}
+```
+
+When infra is installed, a private `functions` bucket is auto-injected into any `scope: "org"` entry that doesn't already include one.
 
 ### Multi-module storage (separate tables per use case)
 

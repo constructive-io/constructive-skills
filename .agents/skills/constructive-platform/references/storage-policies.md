@@ -2,9 +2,10 @@
 
 Constructive storage (buckets, files) supports configurable security policies via the `policies` array. This lets blueprint authors compose specific `Authz*` node types per storage scope's tables, instead of always getting the sensible defaults.
 
-Storage can be provisioned at two levels:
-- **App-level** — via the top-level `storage` key in the blueprint definition (Phase 0.5)
-- **Entity-scoped** — via `has_storage: true` on an `entity_types[]` entry (Phase 0)
+Storage can be provisioned at three levels:
+- **App-level** — via the top-level `storage` key with `scope: "app"` (default) in the blueprint definition (Phase 0.5)
+- **Org-level** — via the top-level `storage` key with `scope: "org"` in the blueprint definition (Phase 0.5). Creates per-org/user storage (`org_buckets`/`org_files`) with `owner_id`
+- **Entity-scoped** — via `storage: [...]` on an `entity_types[]` entry (Phase 0)
 
 ## Two layers of storage access control
 
@@ -192,6 +193,7 @@ When `policies` is `NULL` or omitted, `apply_storage_security` applies **sensibl
 | Storage scope | Membership policy type | Policy data |
 |---------------|----------------------|-------------|
 | **App-level** (`membership_type IS NULL`) | `AuthzAppMembership` | `{}` |
+| **Org-level** (`membership_type = 2`) | `AuthzEntityMembership` | `{"entity_field": "owner_id", "membership_type": 2}` |
 | **Entity-scoped** (`membership_type = 3+`) | `AuthzEntityMembership` | `{"entity_field": "owner_id", "membership_type": <N>}` |
 
 The system automatically uses the correct membership policy type based on the storage module's `membership_type` value.
