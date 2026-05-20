@@ -101,6 +101,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Achievement reward credit grants | `tg_achievement_reward` + `limits_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 | Invite-based achievements (simple tier) | `has_invite_achievements` + `has_invites` + `has_levels` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 | Invitee achievement virality chain (meta tier) | `tg_invitee_achievement` + `invites_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| EventReferral (attribute events to inviters) | `EventReferral` node + `invites_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Multi-level referral chains (MLM) | `EventReferral` node + `max_depth` (2–10) | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 | Compound conditions (shared with JobTrigger) | `build_condition_ast()` + `conditions` param | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) + [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Partitioned event log (time-based retention) | `events_module` + `pg_partman` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 | Event aggregates (running counts per user) | `events_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
