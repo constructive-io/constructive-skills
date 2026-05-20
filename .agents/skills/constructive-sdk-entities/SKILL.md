@@ -74,6 +74,8 @@ Nested types must be provisioned **after** their parent type.
 
 Add `entity_types` to the blueprint `definition` JSONB. These are processed in **Phase 0** — before tables and relations — so blueprint tables can reference the entity tables they create.
 
+Each entry either **creates** a new entity type (has `name` + `prefix`) or **extends** an existing one (only `prefix`, no `name`). Extend entries add capabilities like storage to built-in types (e.g., `"org"`) without creating new entity types.
+
 See [blueprint-entity-types.md](./references/blueprint-entity-types.md) for the full spec and examples.
 
 ### 2. ORM / GraphQL Mutation

@@ -102,8 +102,22 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 ## Entity Types (Phase 0)
 
-`entity_types[]` provisions dynamic entity types **before** tables and relations. Each entry creates a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+`entity_types[]` provisions dynamic entity types **before** tables and relations. Each entry either **creates** a new entity type or **extends** an existing one:
 
+- **Create** (has `name`): provisions a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+- **Extend** (no `name`, only `prefix`): looks up an existing entity type by prefix (e.g., `"org"`) and adds capabilities like storage without creating a new entity type.
+
+This provides two equivalent paths for org storage — matching the pattern where constraints/indexes have both inline and top-level paths:
+
+```json
+// Path 1: top-level scope (Phase 0.5)
+{ "storage": [{ "scope": "org", "buckets": [{"name": "documents"}] }] }
+
+// Path 2: entity_types[] extend (Phase 0)
+{ "entity_types": [{ "prefix": "org", "storage": [{ "buckets": [{"name": "documents"}] }] }] }
+```
+
+**Create example:**
 ```json
 {
   "entity_types": [
@@ -117,10 +131,22 @@ For default storage policies and the full policy format, see [storage-policies.m
 }
 ```
 
+**Extend example** (adds storage to the built-in org):
+```json
+{
+  "entity_types": [
+    {
+      "prefix": "org",
+      "storage": [{ "buckets": [{"name": "documents"}, {"name": "media"}] }]
+    }
+  ]
+}
+```
+
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | string | **Yes** | — | Human-readable name (e.g. `"Channel Member"`) |
-| `prefix` | string | **Yes** | — | SQL prefix for generated objects (e.g. `"channel"` → `channels` table) |
+| `name` | string | No | — | Human-readable name. **Required** for creating new entity types. **Omit** to extend an existing type |
+| `prefix` | string | **Yes** | — | SQL prefix for generated objects (e.g. `"channel"` → `channels` table). For extend entries, must match an existing entity type prefix (e.g. `"org"`) |
 | `description` | string | No | `null` | Description of the entity type |
 | `parent_entity` | string | No | `"org"` | Parent type prefix. Must be already provisioned |
 | `table_name` | string | No | `prefix + 's'` | Override entity table name |
