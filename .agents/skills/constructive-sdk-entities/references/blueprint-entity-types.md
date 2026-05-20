@@ -2,8 +2,14 @@
 
 The `entity_types` array is a top-level key in the blueprint definition JSONB, alongside `storage`, `tables`, `relations`, `indexes`, etc. Entries are processed in **Phase 0** of `constructBlueprint()` — before tables and relations — so blueprint tables can reference the entity tables they create.
 
+Each entry either **creates** a new entity type or **extends** an existing one:
+
+- **Create** (has `name` + `prefix`): provisions a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+- **Extend** (only `prefix`, no `name`): looks up an existing entity type by prefix (e.g., `"org"`) and adds capabilities like storage — without creating a new entity type.
+
 ## Definition Shape
 
+**Create** — new entity type:
 ```json
 {
   "entity_types": [
@@ -28,12 +34,31 @@ The `entity_types` array is a top-level key in the blueprint definition JSONB, a
 }
 ```
 
+**Extend** — add storage to existing org:
+```json
+{
+  "entity_types": [
+    {
+      "prefix": "org",
+      "storage": [
+        { "buckets": [{"name": "documents"}, {"name": "media", "is_public": true}] }
+      ]
+    }
+  ],
+  "tables": [ ... ]
+}
+```
+
+When extending, the entry only needs `prefix` and the capabilities to add (e.g. `storage`). The extend path resolves the entity type from `memberships_module`, so it works for built-in types like `org` (membership_type=2) that aren't in `entity_type_provision`.
+
+> **Two paths for org storage:** You can also use top-level `storage[{ scope: "org" }]` (Phase 0.5) — both produce the same result, similar to how constraints/indexes have inline and top-level paths.
+
 ## Field Reference
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `name` | string | **Yes** | — | Human-readable name (e.g. `"Channel Member"`, `"Department Member"`) |
-| `prefix` | string | **Yes** | — | SQL prefix for generated objects (e.g. `"channel"` → `channels` table, `channel_permissions`, etc.) |
+| `name` | string | No | — | Human-readable name (e.g. `"Channel Member"`). **Required** for creating new entity types. **Omit** to extend an existing type |
+| `prefix` | string | **Yes** | — | SQL prefix for generated objects (e.g. `"channel"` → `channels` table). For extend entries, must match an existing entity type prefix (e.g. `"org"`) |
 | `description` | string | No | `null` | Optional description of the entity type |
 | `parent_entity` | string | No | `"org"` | Parent type prefix. Must be an already-provisioned type |
 | `table_name` | string | No | `prefix + 's'` | Override entity table name (e.g. `"rooms"` instead of default `"channels"`) |
