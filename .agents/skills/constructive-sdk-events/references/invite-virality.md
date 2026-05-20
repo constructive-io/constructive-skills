@@ -141,6 +141,21 @@ User A invites User B
     → A invites more people (viral loop)
 ```
 
+## Multi-Level Referral Chains (EventReferral + max_depth)
+
+For MLM-style referral rewards that go beyond direct inviters, use `EventReferral` with `max_depth > 1` on table nodes. This walks the `claimed_invites` chain up to N levels:
+
+```
+User A invites B, B invites C, C invites D
+
+D creates a database (EventReferral with max_depth=5):
+  → C gets 'invitee_created_db' event (depth 1)
+  → B gets 'invitee_created_db' event (depth 2)
+  → A gets 'invitee_created_db' event (depth 3)
+```
+
+This is separate from `has_invite_achievements` (which only tracks invite claims and achievement completions). See [event-referral.md](event-referral.md) for the full reference, blueprint examples, and attenuation design.
+
 ## Entity-Scoped Invites
 
 Each entity type gets its own independent invite achievement tracking. If both `app` and `org` have `has_invite_achievements: true`:

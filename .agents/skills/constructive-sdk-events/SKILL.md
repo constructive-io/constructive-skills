@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-events
-description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards (limit_credit + meter_credit with expires_interval), invite-based achievements (has_invite_achievements), period-aware event_aggregates (lazy count reset), re-triggerable achievements (per-period re-qualification), EventReferral for attributing events to inviters, and the full virality chain. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', 'meter_credit', 'expires_interval', 'period_interval', 'recurring credits', 'referral credits', 'EventReferral', or when working with events_module in blueprints."
+description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards (limit_credit + meter_credit with expires_interval), invite-based achievements (has_invite_achievements), period-aware event_aggregates (lazy count reset), re-triggerable achievements (per-period re-qualification), EventReferral for attributing events to inviters (with multi-level max_depth for MLM referral chains), and the full virality chain. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', 'meter_credit', 'expires_interval', 'period_interval', 'recurring credits', 'referral credits', 'EventReferral', 'max_depth', 'multi-level referral', 'MLM', 'referral chain', or when working with events_module in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -14,7 +14,7 @@ Three capabilities compose together:
 - **`EventTracker`** — table-level node. Attach to any table to declaratively record events when rows change. Same compound condition system as JobTrigger.
 - **`achievements[]`** — top-level blueprint section. Define levels with requirements (event counts) and optional rewards (`limit_credit` or `meter_credit` grants, with optional `expires_interval`).
 - **`has_invite_achievements`** — entity type flag. Auto-attaches EventTracker to `claimed_invites` and wires the invitee achievement virality chain.
-- **`EventReferral`** — entity type node. Wires referral attribution so that when an invitee's event is recorded, the inviter also gets an attributed event.
+- **`EventReferral`** — table-level node. Wires referral attribution so that when an invitee performs an action, the inviter gets an attributed event. Supports `max_depth` (1–10) for multi-level referral chains — walks up the `claimed_invites` chain N levels, crediting each ancestor.
 - **Period-aware counting** — event types with `period_interval` auto-reset aggregate counts each period (lazy reset). Enables re-triggerable achievements for recurring credit grants.
 
 Related skills:
@@ -113,6 +113,64 @@ Add `EventTracker` to a table's `nodes[]` to auto-create triggers that record ev
 **Constraints:** `conditions`, `condition_field`, and `watch_fields` are mutually exclusive — only one can be specified per trigger.
 
 See [references/event-tracker.md](references/event-tracker.md) for compound conditions syntax, toggle mode, entity-scoped examples, and common patterns.
+
+---
+
+## EventReferral Blueprint Node
+
+Add `EventReferral` to a table's `nodes[]` to credit the actor's inviter (and optionally their inviter's inviter, etc.) when a row changes:
+
+```json
+{
+  "tables": [{
+    "table_name": "user_uploads",
+    "nodes": [
+      { "$type": "EventReferral", "data": {
+        "event_name": "invitee_uploaded",
+        "events": ["INSERT"],
+        "actor_field": "owner_id",
+        "max_depth": 5
+      }}
+    ]
+  }]
+}
+```
+
+### Configuration Reference
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `event_name` | string | **(required)** | Event type name to record for each ancestor in the invite chain |
+| `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["INSERT"]` | Which DML events fire the trigger |
+| `actor_field` | string (column-ref) | `"owner_id"` | Column containing the invitee (actor) ID — used to look up the referrer via `claimed_invites.receiver_id` |
+| `entity_field` | string (column-ref) | — | Column containing the entity ID for entity-scoped referral events. **Cannot be combined with `max_depth > 1`.** |
+| `max_depth` | integer | `1` | How many levels up the invite chain to walk. `1` = direct inviter only (default, backward compatible). `2`–`10` = multi-level referral chain. Hard cap at 10. |
+| `auto_register_type` | boolean | `true` | Automatically register the `event_name` in the `event_types` catalog during provisioning |
+| `conditions` | object \| array | — | Compound conditions for WHEN clause (same syntax as EventTracker) |
+
+### Toggles & Controls
+
+- **Build-time:** `max_depth` is the toggle. Default `1` = today's single-hop behavior. Set `2`–`10` to opt in to multi-level. Omitting or setting to `1` produces the exact same trigger as before.
+- **Runtime:** `event_types.is_active` — flip to `false` to pause referral rewards without redeploying.
+- **Scope constraint:** `max_depth > 1` requires app-level scope only (`entity_field` must be omitted). The generator raises an exception if both are set.
+
+### How Multi-Level Works
+
+When `max_depth > 1`, the trigger builds a FOR loop that walks `claimed_invites`:
+
+```
+User action (INSERT on user_uploads)
+  → trigger resolves NEW.owner_id
+  → FOR depth IN 1..max_depth:
+      SELECT sender_id FROM claimed_invites WHERE receiver_id = current
+      EXIT WHEN no sender found
+      record_event(event_name, sender_id)
+      current := sender_id
+```
+
+Each ancestor in the chain receives the same event. Combined with tiered achievement thresholds, this creates natural attenuation — direct inviters accumulate events quickly (low threshold, high reward), while deeper ancestors accumulate slowly (high threshold, low reward).
+
+See [references/event-referral.md](references/event-referral.md) for multi-level blueprint examples, the viral loop pattern, and attenuation design.
 
 ---
 
@@ -265,6 +323,7 @@ See [references/invite-virality.md](references/invite-virality.md) for detailed 
 | File | Contents |
 |------|----------|
 | [references/event-tracker.md](references/event-tracker.md) | Full EventTracker parameter reference, compound conditions, toggle mode, entity-scoped examples |
+| [references/event-referral.md](references/event-referral.md) | EventReferral parameter reference, multi-level `max_depth` chain walk, MLM blueprint examples, attenuation design |
 | [references/achievements.md](references/achievements.md) | Achievement definitions, requirements, rewards (limit_credit + meter_credit), expires_interval, period-aware aggregates, re-triggerable achievements |
 | [references/invite-virality.md](references/invite-virality.md) | Simple + meta invite tiers, full virality chain, cross-entity examples |
 | [references/triggers.md](references/triggers.md) | Internal trigger reference: tg_check_achievements, tg_achievement_reward, tg_invitee_achievement |
