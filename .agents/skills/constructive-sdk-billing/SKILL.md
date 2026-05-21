@@ -58,7 +58,8 @@ Related skills:
 A meter defines **what** you track. Each meter is a billable dimension (API calls, storage, seats, etc.).
 
 Key properties:
-- **slug**: unique identifier (`api_requests`, `storage_gb`, `universal`)
+- **slug**: unique identifier (`llm_input_tokens`, `tts_characters`, `storage_gb`, `universal`)
+- **unit**: what "1" means for this meter (`tokens`, `characters`, `seconds`, `pages`, `images`, `requests`, etc.)
 - **credit_cost**: universal credits consumed per unit (NULL = no fallback to universal pool)
 - **period_interval**: reset cadence (`'1 month'`, `'1 year'`, NULL = never resets)
 - **rollover_cap**: max unused units carried forward on reset (NULL = unlimited rollover)
