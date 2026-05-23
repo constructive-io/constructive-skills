@@ -30,7 +30,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | OAuth / SSO (federated identity) | `identity_providers_module` + `connected_accounts_module` | `auth:sso`, `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Passkeys (WebAuthn) | `webauthn_credentials_module` + `webauthn_auth_module` + `session_secrets_module` | `auth:passkey`, `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Rate limits / throttling | `rate_limits_module` (optional — see `module-presets.md`) | `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
-| Device tracking / trusted devices | `devices_module` + `has_device_support` | `full` (not yet fully wired; see `module-presets.md`) | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+| Device tracking (passive) | `devices_module` + `app_settings_device.enable_device_tracking` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
+| Trusted devices (MFA bypass) | `devices_module` + `app_settings_device.enable_trusted_devices` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
+| Device approval gate (email) | `devices_module` + `app_settings_device.require_device_approval` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
+| Force MFA on new devices | `devices_module` + `app_settings_device.require_mfa_new_device` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | API keys | `user_state_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Encrypted secrets (per-user) | `config_secrets_user_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
@@ -234,7 +237,6 @@ See [`constructive/references/module-presets.md`](../constructive-platform/refer
 
 Listed for honesty — these are discussed in the modularity docs but aren't usable today:
 
-- **Device tracking end-to-end** — module exists, trigger doesn't wire it through (`has_device_support` is `false` in production). See [`constructive/references/module-presets.md`](../constructive-platform/references/module-presets.md).
 - **MFA / user_settings_security** — template hooks exist, module doesn't.
 - **`emails_module` opt-out** — email is required by the `user_auth_module` trigger today; `auth:sso` / `auth:passkey` presets still install it.
 

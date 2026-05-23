@@ -1,6 +1,6 @@
 ---
 name: constructive-platform
-description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
+description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), device settings (tracking, trusted devices, device approval gate), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -105,6 +105,20 @@ Sub-references:
 - [env-defaults.md](./references/env-defaults.md) — Default values for all configuration options
 - [env-vars.md](./references/env-vars.md) — Source file locations for env vars and types
 - [env-config-file.md](./references/env-config-file.md) — Config file reference (`pgpm.json`)
+
+## Device Settings
+
+- `devices_module` provisions `app_settings_device` (singleton) and `auth_user_devices` (per-user device tracking)
+- Three independent toggles on `app_settings_device` control device behavior:
+  - **`enable_trusted_devices`** (convenience) — recognized trusted devices skip MFA
+  - **`require_mfa_new_device`** (hardening) — force MFA on unrecognized devices
+  - **`require_device_approval`** (hardening) — block sign-in from new devices until email approval
+- Toggles compose independently: all three can be on simultaneously (Kraken-style: forced MFA + email approval for new devices, MFA skip for trusted devices)
+- First sign-up auto-approves the initial device (`approval_method = 'auto'`)
+
+**Triggers:** "device approval", "trusted devices", "device settings", "MFA bypass", "approve new device", "device tracking", "require_device_approval", "enable_trusted_devices", "require_mfa_new_device"
+
+See [device-settings.md](./references/device-settings.md) for the full composition matrix, auth flow integration, device record fields, and SDK usage.
 
 ## Module Presets
 
