@@ -83,6 +83,20 @@ Provisions shared infrastructure for realtime subscriptions:
 
 See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full SDK guide on using `DataRealtime` in blueprints.
 
+### `devices_module`
+
+Provisions device tracking, trusted device MFA bypass, and device approval gate:
+
+- **`app_settings_device` singleton** — six settings controlling device behavior (`enable_device_tracking`, `enable_trusted_devices`, `device_trust_duration`, `require_mfa_new_device`, `require_device_approval`, `max_devices_per_user`)
+- **`auth_user_devices` table** — per-user device records (token hash, IP, user agent, trust/approval status)
+- **`approve_device` procedure** — validates email approval tokens for the device approval flow
+
+**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'devices_module'` to your module list to enable.
+
+**Settings toggles:** All features are off by default (`enable_device_tracking = true` enables passive tracking only). Enable `enable_trusted_devices` for MFA bypass, `require_device_approval` for email approval gate, `require_mfa_new_device` to force MFA on new devices.
+
+See [device-settings.md](./device-settings.md) for the full composition matrix and SDK usage.
+
 ## Feature Flags / Toggles (future)
 
 The shape reserves room for a `settings?` field to carry toggles like `app_settings_auth.allow_password_sign_up = false` or a read-only mode. Not implemented yet — presets today are module-list only.
