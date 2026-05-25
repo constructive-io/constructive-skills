@@ -230,9 +230,39 @@ await db.secureTableProvision.create({
 
 ---
 
-## 6) Common mistakes
+## 6) `DataMemberOwner` — compound data node
+
+`DataMemberOwner` is a one-liner that creates both `owner_id` + `entity_id` columns (with FKs, indexes) AND applies `AuthzMemberOwner` policy. Use it for private data within an entity scope:
+
+```ts
+await db.secureTableProvision.create({
+  data: {
+    databaseId: '<database-id>',
+    tableId: '<table-id>',
+    nodeType: 'DataMemberOwner',
+    nodeData: { membership_type: 3 },
+
+    useRls: true,
+    grantRoles: ['authenticated'],
+    grantPrivileges: grant_privileges,
+  },
+  select: { id: true, tableId: true, outFields: true },
+}).execute();
+```
+
+This is equivalent to manually creating `owner_id` + `entity_id` fields, adding FKs and indexes, then creating an `AuthzMemberOwner` policy — but in a single provision call.
+
+**When to use `DataMemberOwner` vs separate provisions:**
+- Use `DataMemberOwner` when you want private-within-entity rows (actor owns row AND is entity member)
+- Use `DataDirectOwner` when rows are globally owned (no entity scoping)
+- Use `DataEntityMembership` when all entity members should see all rows (shared/communal)
+
+---
+
+## 7) Common mistakes
 
 1. **Using `AuthzAppMembership` for entity-scoped tables** (it is app-level only and does not bind to any entity field).
 2. **Forgetting RLS** (policies don't enforce without `useRls: true`).
 3. **Over-granting** (start with minimal grants; add column-scoped `fieldIds` for update).
 4. **Using `AuthzComposite` by default** (prefer multiple top-level permissive/restrictive policies).
+5. **Using `AuthzMemberOwner` when you want shared access** (it restricts to owner only — use `AuthzEntityMembership` for communal entity-scoped data).

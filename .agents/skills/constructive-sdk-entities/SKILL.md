@@ -133,6 +133,51 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 ### Optional Modules
 - `profiles_module:channel` (if `has_profiles`) — Named permission roles
 - `events_module:channel` (if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
+- `agent_module:channel` (if `agents` config provided) — AI agent tables (threads, messages, tasks, prompts, knowledge)
+
+---
+
+## Entity-Scoped Agent Module
+
+When the `agents` field is provided in entity_type_provision, the system creates AI agent tables for that entity:
+
+### Tables Created
+- `{prefix}_agent_thread` — Conversation threads (AuthzMemberOwner — private to owner within entity)
+- `{prefix}_agent_message` — Chat messages in threads (AuthzMemberOwner)
+- `{prefix}_agent_task` — Task tracking (AuthzMemberOwner)
+- `{prefix}_agent_prompt` — Shared prompt templates (AuthzEntityMembership — shared within entity)
+- `{prefix}_agent_knowledge` — Shared knowledge base (AuthzEntityMembership, optional via `has_knowledge`)
+
+### Blueprint: Entity with Agent Module
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "agents": [{ "has_knowledge": true }]
+    }
+  ]
+}
+```
+
+This produces: `data_room_agent_thread`, `data_room_agent_message`, `data_room_agent_task`, `data_room_agent_prompt`, `data_room_agent_knowledge`.
+
+### Security Model
+- **Private tables** (thread, message, task): `AuthzMemberOwner` — actor must own the row AND be a member of the entity
+- **Shared tables** (prompt, knowledge): `AuthzEntityMembership` — any entity member can read/write
+
+### Knowledge (opt-in via `has_knowledge`)
+When `has_knowledge: true`, an `agent_knowledge` table is created alongside a `data_chunks` child table (auto-generated via ProcessChunks). The chunks table has vector embeddings (pgvector) with HNSW index for semantic retrieval.
+
+### Config Table
+The `agent_module` config table tracks:
+- `thread_table_name`, `message_table_name`, `task_table_name`, `prompts_table_name`
+- `has_knowledge boolean` — whether knowledge + chunks are provisioned
+- `knowledge_table_name` — name of knowledge table (if enabled)
+- `api_name` — GraphQL API to expose tables on (default: `'agent'`)
 
 ---
 
