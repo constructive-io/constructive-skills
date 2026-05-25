@@ -95,7 +95,7 @@ Rule of thumb:
 
 ## Safegres policy node types — Quick reference
 
-There are **14 leaf policy node types** plus `AuthzComposite` (a meta-node for boolean trees).
+There are **15 leaf policy node types** plus `AuthzComposite` (a meta-node for boolean trees).
 
 | # | Type | Intent | Key config |
 |---|------|--------|------------|
@@ -103,16 +103,17 @@ There are **14 leaf policy node types** plus `AuthzComposite` (a meta-node for b
 | 2 | `AuthzDirectOwnerAny` | Multi-owner OR logic | `entity_fields` (array) |
 | 3 | `AuthzAppMembership` | App-level membership (hardcoded type=1) | optional `permission`/`is_admin` |
 | 4 | `AuthzEntityMembership` | Bound membership-to-row | `entity_field`, `membership_type` |
-| 5 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
-| 6 | `AuthzPeerOwnership` | Peer visibility (direct) | `owner_field`, `membership_type` |
-| 7 | `AuthzRelatedPeerOwnership` | Peer visibility via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
-| 8 | `AuthzOrgHierarchy` | Hierarchy (manager/subordinate) | `direction`, `anchor_field`, `entity_field` |
-| 9 | `AuthzTemporal` | Time-window constraints | `valid_from_field`, `valid_until_field` |
-| 10 | `AuthzPublishable` | Draft/published gating (READ-only) | `is_published_field`, `published_at_field` |
-| 11 | `AuthzMemberList` | Actor in UUID array (not recommended) | `array_field` |
-| 12 | `AuthzRelatedMemberList` | Actor in related UUID array (not recommended) | `owned_schema`/`owned_table`/`owned_table_key` |
-| 13 | `AuthzAllowAll` | Unconditional allow (use sparingly) | `{}` |
-| 14 | `AuthzDenyAll` | Unconditional deny | `{}` |
+| 5 | `AuthzMemberOwner` | Ownership AND entity membership (compound) | `owner_field`, `entity_field`, `membership_type` |
+| 6 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
+| 7 | `AuthzPeerOwnership` | Peer visibility (direct) | `owner_field`, `membership_type` |
+| 8 | `AuthzRelatedPeerOwnership` | Peer visibility via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
+| 9 | `AuthzOrgHierarchy` | Hierarchy (manager/subordinate) | `direction`, `anchor_field`, `entity_field` |
+| 10 | `AuthzTemporal` | Time-window constraints | `valid_from_field`, `valid_until_field` |
+| 11 | `AuthzPublishable` | Draft/published gating (READ-only) | `is_published_field`, `published_at_field` |
+| 12 | `AuthzMemberList` | Actor in UUID array (not recommended) | `array_field` |
+| 13 | `AuthzRelatedMemberList` | Actor in related UUID array (not recommended) | `owned_schema`/`owned_table`/`owned_table_key` |
+| 14 | `AuthzAllowAll` | Unconditional allow (use sparingly) | `{}` |
+| 15 | `AuthzDenyAll` | Unconditional deny | `{}` |
 
 See [authz-types.md](references/authz-types.md) for full documentation of each type including config shapes, semantics, use/avoid guidance, and code examples.
 

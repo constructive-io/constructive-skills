@@ -99,7 +99,40 @@ Optional keys:
 
 ---
 
-## 5) `AuthzRelatedEntityMembership`
+## 5) `AuthzMemberOwner`
+
+**Intent:** Compound policy requiring BOTH ownership AND entity membership. The actor must own the row (owner_field = current_user_id) AND be a member of the entity referenced by entity_field.
+
+**Config (typical):**
+```json
+{
+  "owner_field": "owner_id",
+  "entity_field": "entity_id",
+  "membership_type": 3
+}
+```
+
+Optional keys:
+- `sel_field` — SPRT column to select for entity match (default: `entity_id`)
+- `permission` / `permissions`
+- `entity_type` — string name resolved to membership_type via membership types module
+
+**Semantics:** "The actor owns this row (owner_field = current_user_id) AND the actor is a member of the entity referenced by entity_field."
+
+**Use when:**
+- Private data within an entity scope — e.g., personal chat threads that belong to a team/dataroom but only the author can see.
+- Personal notes, draft documents, or preferences scoped to an entity.
+- Any table where rows are both user-owned AND entity-scoped.
+
+**Do NOT use when:**
+- You want all entity members to see all rows (use `AuthzEntityMembership` instead).
+- You want just ownership without entity scoping (use `AuthzDirectOwner` instead).
+
+**Paired data node:** `DataMemberOwner` — creates both `owner_id` + `entity_id` columns with FKs, indexes, and applies this policy automatically.
+
+---
+
+## 6) `AuthzRelatedEntityMembership`
 
 **Intent:** Entity membership where the entity isn't directly on the protected row, but reachable via a join.
 
@@ -121,7 +154,7 @@ Optional keys:
 
 ---
 
-## 6) `AuthzPeerOwnership`
+## 7) `AuthzPeerOwnership`
 
 **Intent:** Peer visibility via shared entity membership (direct owner field on protected row).
 
@@ -147,7 +180,7 @@ Optional keys:
 
 ---
 
-## 7) `AuthzRelatedPeerOwnership`
+## 8) `AuthzRelatedPeerOwnership`
 
 **Intent:** Peer visibility via shared entity membership **through a related table**.
 
@@ -177,7 +210,7 @@ Optional keys:
 
 ---
 
-## 8) `AuthzOrgHierarchy`
+## 9) `AuthzOrgHierarchy`
 
 **Intent:** Visibility via org hierarchy (manager/subordinate relationships).
 
@@ -194,7 +227,7 @@ Optional keys:
 
 ---
 
-## 9) `AuthzTemporal`
+## 10) `AuthzTemporal`
 
 **Intent:** Time-window constraints.
 
@@ -227,7 +260,7 @@ Optional keys:
 
 ---
 
-## 10) `AuthzPublishable`
+## 11) `AuthzPublishable`
 
 > **READ-only policy.** `AuthzPublishable` should only be applied to the `select` privilege. It controls who can *read* published content — it should **never** be used for `insert`, `update`, or `delete`. For write operations (authorship, editing, deletion), use an identity-based policy like `AuthzEntityMembership` or `AuthzDirectOwner`. A typical blog pattern is: `AuthzEntityMembership` for all CRUD privileges, plus a second `AuthzPublishable` policy **only for `select`** to open reads to the public.
 
@@ -261,7 +294,7 @@ Optional keys:
 
 ---
 
-## 11) `AuthzMemberList`
+## 12) `AuthzMemberList`
 
 > **Not recommended.** This policy relies on a UUID array column rather than a proper foreign-key relationship. It does not scale well and bypasses normal relational integrity. Prefer `AuthzEntityMembership` or `AuthzPeerOwnership` with proper FK-based membership tables when possible.
 
@@ -279,7 +312,7 @@ Optional keys:
 
 ---
 
-## 12) `AuthzRelatedMemberList`
+## 13) `AuthzRelatedMemberList`
 
 > **Not recommended.** Same concern as `AuthzMemberList` -- relies on a UUID array column in a related table rather than proper FK-based membership. Prefer FK-based policies when possible.
 
@@ -303,7 +336,7 @@ Optional keys:
 
 ---
 
-## 13) `AuthzAllowAll`
+## 14) `AuthzAllowAll`
 
 > **WARNING: `AuthzAllowAll` is almost never what you want.** It grants unconditional access to every authenticated user for the specified privilege. Before using it, ask yourself: "Should literally every authenticated user be able to read/write this data?" If the answer is no (and it usually is), use a scoped policy like `AuthzDirectOwner` or `AuthzEntityMembership` instead.
 >
@@ -329,7 +362,7 @@ Optional keys:
 
 ---
 
-## 14) `AuthzDenyAll`
+## 15) `AuthzDenyAll`
 
 **Intent:** Unconditional deny.
 
