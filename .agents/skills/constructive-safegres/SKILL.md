@@ -1,10 +1,10 @@
 ---
 name: constructive-safegres
-description: Safegres is Constructive's security protocol for expressing authorization as Authz* policy nodes (types + JSON configs). This skill defines each Authz* type, its config shape, semantics, and when to use it. No SQL and no SDK/grant/RLS steps.
+description: "Safegres is Constructive's security protocol for expressing authorization as Authz* policy nodes (types + JSON configs). This skill defines each Authz* type, its config shape, semantics, and when to use it. Includes AuthzMemberOwner (compound ownership + entity membership) and its paired DataMemberOwner data node. No SQL and no SDK/grant/RLS steps."
 compatibility: Node.js 22+, @constructive-io/sdk
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Safegres (Authz* Security Protocol)
@@ -116,6 +116,18 @@ There are **15 leaf policy node types** plus `AuthzComposite` (a meta-node for b
 | 15 | `AuthzDenyAll` | Unconditional deny | `{}` |
 
 See [authz-types.md](references/authz-types.md) for full documentation of each type including config shapes, semantics, use/avoid guidance, and code examples.
+
+### Paired Data Nodes
+
+Some Authz* types have corresponding **Data* nodes** that create the required columns AND apply the policy in one shot:
+
+| Policy Type | Data Node | Creates |
+|-------------|-----------|---------|
+| `AuthzMemberOwner` | `DataMemberOwner` | `owner_id` + `entity_id` columns (FKs, indexes) + AuthzMemberOwner policy |
+| `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` column + AuthzDirectOwner policy |
+| `AuthzEntityMembership` | `DataEntityMembership` | `entity_id` column + AuthzEntityMembership policy |
+
+`DataMemberOwner` is the recommended way to provision private-within-entity tables (e.g., personal chat threads scoped to an org/team). See `constructive-sdk-security` for SDK usage.
 
 ---
 

@@ -1,9 +1,9 @@
 ---
 name: constructive-sdk-entities
-description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, memberships, and invites via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), invite system (email/blank/multiple types, profile assignment, email auto-verification), and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', 'invite users', 'profile assignment', 'assign roles on invite', 'invite error codes', or when working with entity_types in blueprints."
+description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, memberships, invites, agent modules, and namespace modules via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), agent_module (threads, messages, tasks, prompts, knowledge with AuthzMemberOwner), namespace_module (namespace_events partitioned K8s metrics log), invite system, and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', 'agent_module', 'agents config', 'namespace_events', 'namespace_module', 'invite users', 'profile assignment', or when working with entity_types in blueprints."
 metadata:
   author: constructive-io
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Custom Entities & Dynamic Entity Provisioning
@@ -134,6 +134,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 - `profiles_module:channel` (if `has_profiles`) — Named permission roles
 - `events_module:channel` (if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
 - `agent_module:channel` (if `agents` config provided) — AI agent tables (threads, messages, tasks, prompts, knowledge)
+- `namespace_module:channel` (if `namespaces` config provided) — K8s-style namespace containers + partitioned event log
 
 ---
 
@@ -178,6 +179,68 @@ The `agent_module` config table tracks:
 - `has_knowledge boolean` — whether knowledge + chunks are provisioned
 - `knowledge_table_name` — name of knowledge table (if enabled)
 - `api_name` — GraphQL API to expose tables on (default: `'agent'`)
+
+### Prefix Composition (PR #1332)
+
+Table names use explicit prefix-based composition (replaces brittle regex):
+
+| Scope | Prefix | Thread table |
+|-------|--------|--------------|
+| App-level (no entity) | — | `agent_thread` |
+| Entity-scoped (default) | `data_room` | `data_room_agent_thread` |
+| Entity-scoped (custom key) | `data_room` + key `support` | `data_room_support_agent_thread` |
+
+---
+
+## Entity-Scoped Namespace Module
+
+When `namespaces` config is provided in entity_type_provision (or via blueprint `entity_types[].namespaces`), the system creates K8s-style namespace containers with a partitioned event log for lifecycle tracking and resource metrics.
+
+### Tables Created
+- `{prefix}_namespaces` — Logical namespace containers (name, labels jsonb, annotations jsonb, is_active)
+- `{prefix}_namespace_events` — Monthly-partitioned audit log of namespace events + K8s resource metrics
+
+### Blueprint: Entity with Namespace Module
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "namespaces": true
+    }
+  ]
+}
+```
+
+This produces: `data_room_namespaces` (with computed `namespace_name` via inflection), `data_room_namespace_events` (partitioned).
+
+### `namespace_events` Event Types
+
+`created` | `activated` | `deactivated` | `labels_updated` | `annotations_updated` | `renamed` | `deleted` | `metrics_snapshot` | `scaled` | `quota_exceeded` | `resource_warning`
+
+### K8s Resource Metrics Columns (nullable — only present on metric events)
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `cpu_millicores` | integer | CPU usage in millicores |
+| `memory_bytes` | bigint | Memory usage in bytes |
+| `storage_bytes` | bigint | Storage usage in bytes |
+| `network_ingress_bytes` | bigint | Network ingress in bytes |
+| `network_egress_bytes` | bigint | Network egress in bytes |
+| `pod_count` | integer | Number of active pods |
+| `metrics` | jsonb | Additional metrics (gpu, replicas, quotas) |
+
+### Partition Config
+- **Strategy:** Range on `created_at`
+- **Interval:** 1 month
+- **Retention:** 12 months (detach, keep table)
+- **Premake:** 2 months ahead
+
+### Security
+Uses `apply_module_security` with `manage_namespaces` permission. Namespace INSERT triggers a `namespace:provision` job for cloud integration.
 
 ---
 
