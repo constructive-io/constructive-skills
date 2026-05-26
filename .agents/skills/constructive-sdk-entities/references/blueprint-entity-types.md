@@ -72,6 +72,9 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
+| `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, knowledge). See [Agents Config](#agents-config) |
+| `namespaces` | jsonb | No | `null` | Namespace module config. Provisions `namespace_module` tables (namespaces + namespace_events partitioned log). See [Namespaces Config](#namespaces-config) |
+| `functions` | jsonb | No | `null` | Function module config. Provisions `function_module` tables (functions, invocations) |
 
 ## Storage Config (`has_storage`, `storage_config`)
 
@@ -172,6 +175,135 @@ When `provisions` is absent (or a table key has no `policies`), these defaults a
 When a table key **does** include `policies[]`, defaults are skipped **for that table only** — other tables still get defaults. It's per-table replacement, not all-or-nothing.
 
 See [storage-policies.md](../../constructive-platform/references/storage-policies.md) for the full reference including the provisioning pipeline and all available policy types.
+
+## Agents Config
+
+The `agents` field provisions an `agent_module` for the entity type — creating AI agent infrastructure tables scoped to each entity instance.
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "agents": [{ "has_knowledge": true }]
+    }
+  ]
+}
+```
+
+### `agents[]` entry fields
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `has_knowledge` | boolean | `false` | Provision a shared knowledge base table with auto-chunked child table (pgvector HNSW index for semantic retrieval) |
+| `api_name` | string | `'agent'` | GraphQL API target to expose agent tables on |
+
+### Tables created
+
+With prefix `data_room` and `has_knowledge: true`:
+
+| Table | Security | Description |
+|-------|----------|-------------|
+| `data_room_agent_thread` | `AuthzMemberOwner` | Conversation threads — private to owner within entity |
+| `data_room_agent_message` | `AuthzMemberOwner` | Chat messages in threads (multi-modal `parts` jsonb) |
+| `data_room_agent_task` | `AuthzMemberOwner` | Background task tracking per thread |
+| `data_room_agent_prompt` | `AuthzEntityMembership` | Shared prompt templates — any entity member |
+| `data_room_agent_knowledge` | `AuthzEntityMembership` | Shared knowledge base (chunked for RAG) |
+| `data_room_agent_knowledge_chunks` | *(inherited)* | Auto-generated chunks with vector embeddings |
+
+### Prefix composition rules (PR #1332)
+
+The module uses explicit prefix-based composition (not regex):
+
+| Scope | Prefix | Thread table |
+|-------|--------|--------------|
+| App-level (no entity) | — | `agent_thread` |
+| Entity-scoped (default) | `data_room` | `data_room_agent_thread` |
+| Entity-scoped (custom key) | `data_room` + key `support` | `data_room_support_agent_thread` |
+
+### Security model
+
+- **Private tables** (thread, message, task): `AuthzMemberOwner` — actor must own the row AND be a member of the entity (via SPRT)
+- **Shared tables** (prompt, knowledge): `AuthzEntityMembership` — any entity member can read/write
+- **App-level fallback** (no entity_table_id): uses `AuthzDirectOwner` for private tables, `AuthzAppMembership` for shared tables
+
+### Composing storage + agents on the same entity
+
+An entity type can have both `has_storage` + `storage` AND `agents` simultaneously (PR #1335):
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "has_storage": true,
+      "storage": [{ "buckets": [{ "name": "documents" }] }],
+      "agents": [{ "has_knowledge": true }]
+    }
+  ]
+}
+```
+
+This provisions both `storage_module` and `agent_module` for the entity type. The `construct_blueprint` function forwards `agents`, `namespaces`, and `functions` configs to `entity_type_provision`.
+
+## Namespaces Config
+
+The `namespaces` field provisions a `namespace_module` for the entity type — K8s-style logical namespace containers with a partitioned event log for lifecycle and metrics tracking.
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "data_room",
+      "parent_entity": "org",
+      "namespaces": true
+    }
+  ]
+}
+```
+
+### Tables created
+
+| Table | Description |
+|-------|-------------|
+| `{prefix}_namespaces` | Logical namespace containers with name, labels (jsonb), annotations (jsonb), is_active flag |
+| `{prefix}_namespace_events` | Monthly-partitioned audit log of namespace lifecycle events + K8s resource metrics |
+
+### `namespace_events` columns
+
+| Column | Type | Required | Description |
+|--------|------|----------|-------------|
+| `id` | uuid | yes | UUIDv7 event identifier |
+| `created_at` | timestamptz | yes | Event timestamp (partition key) |
+| `namespace_id` | uuid | yes | FK to namespaces table |
+| `event_type` | text | yes | One of: `created`, `activated`, `deactivated`, `labels_updated`, `annotations_updated`, `renamed`, `deleted`, `metrics_snapshot`, `scaled`, `quota_exceeded`, `resource_warning` |
+| `actor_id` | uuid | no | User who triggered the event (NULL for system/automated) |
+| `message` | text | no | Human-readable event description |
+| `metadata` | jsonb | no | Structured context (old/new values, labels diff) |
+| `cpu_millicores` | integer | no | CPU usage in millicores |
+| `memory_bytes` | bigint | no | Memory usage in bytes |
+| `storage_bytes` | bigint | no | Storage usage in bytes |
+| `network_ingress_bytes` | bigint | no | Network ingress in bytes |
+| `network_egress_bytes` | bigint | no | Network egress in bytes |
+| `pod_count` | integer | no | Number of active pods |
+| `metrics` | jsonb | no | Additional resource metrics (gpu, replicas, quotas) |
+| `owner_id` | uuid | entity-scoped | Entity FK (only for entity-scoped namespaces) |
+
+### Partition config
+
+- **Strategy:** Range on `created_at`
+- **Interval:** 1 month
+- **Retention:** 12 months (detach, keep table)
+- **Premake:** 2 months ahead
+
+### Security
+
+Namespace tables use `apply_module_security` with `manage_namespaces` permission — entity members with that permission can read/write namespace records.
 
 ## Entity-Table Policies (`is_visible`, `skip_entity_policies`, `table_provision`)
 
