@@ -84,6 +84,8 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 | `priority` | integer | `0` | Lower = higher priority |
 | `run_at_delay` | string | — | PostgreSQL interval delay (e.g., `'30 seconds'`) |
 | `max_attempts` | integer | `25` | Maximum retry attempts |
+| `entity_field` | string (column-ref) | — | Column holding (or referencing) the entity_id. Forwarded to the job payload for entity context. For FK lookups, combine with `entity_lookup`. |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 
 **Constraints:** `conditions`, `condition_field`, and `watch_fields` are mutually exclusive — only one can be specified per trigger.
 

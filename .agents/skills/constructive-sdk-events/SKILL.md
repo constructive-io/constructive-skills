@@ -103,7 +103,8 @@ Add `EventTracker` to a table's `nodes[]` to auto-create triggers that record ev
 | `count` | integer | `1` | Number of events to record per trigger fire |
 | `toggle` | boolean | `false` | Toggle mode: records event when condition is met, removes when condition is unmet |
 | `actor_field` | string (column-ref) | `"owner_id"` | Column containing the actor (user) ID to attribute the event to |
-| `entity_field` | string (column-ref) | — | Column containing the entity ID (org/group) for entity-scoped events. Omit for user-only events. |
+| `entity_field` | string (column-ref) | — | Column containing the entity ID (org/group) for entity-scoped events. For FK lookups, combine with `entity_lookup`. Omit for user-only events. |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK (e.g., `channel_id → channels.entity_id`). |
 | `auto_register_type` | boolean | `true` | Automatically register the `event_name` in the `event_types` catalog during provisioning |
 | `watch_fields` | string[] | — | For UPDATE: only fire when these columns change |
 | `condition_field` | string | — | Legacy: column for simple WHEN clause |
@@ -143,7 +144,8 @@ Add `EventReferral` to a table's `nodes[]` to credit the actor's inviter (and op
 | `event_name` | string | **(required)** | Event type name to record for each ancestor in the invite chain |
 | `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["INSERT"]` | Which DML events fire the trigger |
 | `actor_field` | string (column-ref) | `"owner_id"` | Column containing the invitee (actor) ID — used to look up the referrer via `claimed_invites.receiver_id` |
-| `entity_field` | string (column-ref) | — | Column containing the entity ID for entity-scoped referral events. **Cannot be combined with `max_depth > 1`.** |
+| `entity_field` | string (column-ref) | — | Column containing the entity ID for entity-scoped referral events. For FK lookups, combine with `entity_lookup`. **Cannot be combined with `max_depth > 1`.** |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 | `max_depth` | integer | `1` | How many levels up the invite chain to walk. `1` = direct inviter only (default, backward compatible). `2`–`10` = multi-level referral chain. Hard cap at 10. |
 | `auto_register_type` | boolean | `true` | Automatically register the `event_name` in the `event_types` catalog during provisioning |
 | `conditions` | object \| array | — | Compound conditions for WHEN clause (same syntax as EventTracker) |

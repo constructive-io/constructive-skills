@@ -61,7 +61,8 @@ All three ancestors (C, B, A) receive the same `invitee_uploaded` event. The loo
 | `event_name` | string | **(required)** | Event type name to record for each ancestor |
 | `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["INSERT"]` | Which DML events fire the trigger |
 | `actor_field` | string (column-ref) | `"owner_id"` | Column containing the invitee (actor) ID |
-| `entity_field` | string (column-ref) | — | Entity ID column for entity-scoped events. **Cannot be combined with `max_depth > 1`.** |
+| `entity_field` | string (column-ref) | — | Entity ID column for entity-scoped events. For FK lookups, combine with `entity_lookup`. **Cannot be combined with `max_depth > 1`.** |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 | `max_depth` | integer | `1` | Levels to walk up the invite chain. Range: 1–10. |
 | `auto_register_type` | boolean | `true` | Auto-register `event_name` in `event_types` during provisioning |
 | `conditions` | object \| array | — | Compound conditions for WHEN clause |

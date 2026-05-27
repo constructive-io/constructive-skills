@@ -82,8 +82,10 @@ Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `limit_name` | text | *(required)* | Name of the limit (must match a `limitDefault` entry) |
-| `scope` | text | `'app'` | `'app'` (user-level) or `'org'` (user-within-entity) |
+| `scope` | text | `'app'` | Membership type prefix — supports any provisioned type (e.g. `'app'`, `'org'`, `'data_room'`, `'channel'`, `'team'`). Resolved dynamically via `memberships_module`. |
 | `actor_field` | text | `'owner_id'` | Field on the table holding the user ID |
+| `entity_field` | text | — | Column holding (or referencing) the entity_id. For FK lookups, combine with `entity_lookup`. |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK rather than a direct entity_id. |
 | `events` | text[] | `['INSERT', 'DELETE']` | DML events: `INSERT`, `DELETE`, `UPDATE` |
 
 **Behavior per event:**
@@ -126,7 +128,9 @@ Add `LimitAggregate` to enforce total usage across an entire entity (org, databa
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `limit_name` | text | *(required)* | Name of the aggregate limit |
-| `entity_field` | text | `'entity_id'` | Field on the table holding the entity ID |
+| `scope` | text | `'org'` | Membership type prefix — supports any provisioned type (e.g. `'org'`, `'data_room'`, `'channel'`, `'team'`). Resolved dynamically via `memberships_module`. |
+| `entity_field` | text | `'entity_id'` | Column holding (or referencing) the entity_id. For FK lookups, combine with `entity_lookup`. |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 | `events` | text[] | `['INSERT', 'DELETE']` | DML events: `INSERT`, `DELETE`, `UPDATE` |
 
 **Behavior per event:**
@@ -173,10 +177,67 @@ Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `feature_name` | text | *(required)* | Cap name (must exist in caps defaults) |
-| `scope` | text | `'app'` | `'app'` (global check) or `'org'` (per-entity check) |
-| `entity_field` | text | `'entity_id'` | Field on table holding entity ID (org scope only) |
+| `scope` | text | `'app'` | Membership type prefix — supports any provisioned type (e.g. `'app'`, `'org'`, `'data_room'`, `'channel'`, `'team'`). Resolved dynamically via `memberships_module`. |
+| `entity_field` | text | `'entity_id'` | Column holding (or referencing) the entity_id. For FK lookups, combine with `entity_lookup`. |
+| `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 
 **Resolution:** `COALESCE(per-entity override, scope default, 0)` — if result is 0 or less, raises `FEATURE_DISABLED`.
+
+---
+
+### Entity Lookup (FK-based entity resolution)
+
+When the target table doesn't have `entity_id` directly but references it through a FK, use `entity_lookup`:
+
+```json
+{
+  "$type": "LimitAggregate",
+  "data": {
+    "limit_name": "messages",
+    "scope": "data_room",
+    "entity_field": "channel_id",
+    "entity_lookup": {
+      "obj_table": "channels",
+      "obj_field": "entity_id"
+    }
+  }
+}
+```
+
+This generates a trigger that does `SELECT channels.entity_id FROM channels WHERE channels.id = NEW.channel_id` at runtime, baked as a static SQL join (resolved at provision time, not dynamic SQL).
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `obj_table` | yes | Related table name (e.g. `"channels"`) |
+| `obj_schema` | no | Schema name (e.g. `"public"`). Omit to auto-resolve within the same database. |
+| `obj_field` | yes | Column on the related table holding entity_id (e.g. `"entity_id"`) |
+
+All Limit*, Event*, and Billing* generators support `entity_lookup`. The schema is validated against metaschema at provision time.
+
+---
+
+### Type 3+ Scopes (custom entity types)
+
+The `scope` parameter now supports any provisioned membership type, not just `'app'` and `'org'`. If your blueprint has custom entity types:
+
+```json
+{
+  "membership_types": [
+    { "name": "Data Room Member", "prefix": "data_room", "has_limits": true },
+    { "name": "Channel Member", "prefix": "channel", "has_limits": true }
+  ]
+}
+```
+
+Then you can scope limits to those entities:
+
+```json
+{ "$type": "LimitCounter", "data": { "limit_name": "files", "scope": "data_room" } }
+{ "$type": "LimitAggregate", "data": { "limit_name": "total_docs", "scope": "data_room" } }
+{ "$type": "LimitFeatureFlag", "data": { "feature_name": "enable_sharing", "scope": "channel" } }
+```
+
+The scope prefix is resolved dynamically via `memberships_module` at provision time to the corresponding `membership_type` integer.
 
 ---
 
@@ -367,7 +428,9 @@ await db.appLimit.update({
 |----------|----------------|-----------|
 | "Each user can create N items" | `LimitCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
 | "Each user within an org can do N things" | `LimitCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
+| "Each user within a data room can do N things" | `LimitCounter` (scope: `'data_room'`) | `db.dataRoomLimitDefault`, `db.dataRoomLimit` |
 | "This org can have N total seats" | `LimitAggregate` | `db.orgLimitAggregate` |
+| "This data room can have N files" | `LimitAggregate` (scope: `'data_room'`) | `db.dataRoomLimitAggregate` |
 | "Is feature X enabled for this entity?" | `LimitFeatureFlag` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
 | "Bump a user's ceiling by 10" | *(none — ORM only)* | `db.appLimitCredit.create(...)` |
 | "Apply Pro plan to an entity" | *(none — ORM only)* | `db.orgLimitAggregate.update(...)` per limit |
