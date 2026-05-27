@@ -115,6 +115,28 @@ By default, events are user-scoped (attributed to `actor_field`). For entity-sco
 
 This calls the entity variant of `record_event(step, actor_id, entity_id)`, which stores the event scoped to both user and entity.
 
+### FK-based entity resolution (entity_lookup)
+
+When `entity_field` is a FK (not a direct entity_id), combine with `entity_lookup`:
+
+```json
+{
+  "$type": "EventTracker",
+  "data": {
+    "event_name": "message_sent",
+    "events": ["INSERT"],
+    "actor_field": "sender_id",
+    "entity_field": "channel_id",
+    "entity_lookup": {
+      "obj_table": "channels",
+      "obj_field": "entity_id"
+    }
+  }
+}
+```
+
+The generator resolves `channel_id → channels.entity_id` at provision time and bakes the JOIN as static SQL in the trigger.
+
 ## Common Patterns
 
 ### Track avatar upload (UPDATE with condition)
