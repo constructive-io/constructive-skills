@@ -380,9 +380,7 @@ const result = await db.field.findMany({
 if (result.ok) {
   const fields = result.data.fields.nodes;
   fields.forEach(f => {
-    const required = f.isRequired ? 'NOT NULL' : 'NULL';
-    const def = f.defaultValue ? ` DEFAULT ${JSON.stringify(f.defaultValue)}` : '';
-    console.log(`${f.name} ${JSON.stringify(f.type)} ${required}${def}`);
+    console.log(f.name, f.type, f.defaultValue);
   });
 }
 ```
