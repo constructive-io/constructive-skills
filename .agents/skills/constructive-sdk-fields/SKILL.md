@@ -40,10 +40,9 @@ The `metaschema_public.field` table stores field metadata:
 | `name` | text | Field name (unique per table) |
 | `label` | text | Human-readable label |
 | `description` | text | Field description |
-| `type` | citext | PostgreSQL type (text, int, uuid, etc.) |
+| `type` | jsonb (FieldType) | PostgreSQL type as a structured object: `{ name, schema?, args?, array_dimensions?, range? }` |
 | `isRequired` | boolean | NOT NULL constraint |
-| `defaultValue` | text | Default value expression |
-| `defaultValueAst` | jsonb | Default value as AST |
+| `defaultValue` | jsonb (FieldDefault) | Default value as a structured object: `{ value?, function?, schema?, args?, cast?, operator?, left?, right?, sql_keyword? }` |
 | `isHidden` | boolean | Hide from GraphQL API |
 | `smartTags` | jsonb | PostGraphile smart tags |
 | `fieldOrder` | int | Display order |
@@ -81,7 +80,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'title',
     label: 'Title',
-    type: 'text',
+    type: { name: 'text' },
     isRequired: true,
   },
   select: {
@@ -95,7 +94,7 @@ const result = await db.field.create({
 if (result.ok) {
   const field = result.data.createField.field;
   console.log('Created field:', field.name);
-  console.log('Type:', field.type);
+  console.log('Type:', field.type); // { name: 'text' }
 } else {
   console.error('Failed to create field:', result.errors);
 }
@@ -110,9 +109,9 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'status',
     label: 'Status',
-    type: 'text',
+    type: { name: 'text' },
     isRequired: true,
-    defaultValue: "'draft'",  // SQL expression with quotes
+    defaultValue: { value: 'draft' },  // FieldDefault object
   },
   select: {
     id: true,
@@ -131,9 +130,9 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'id',
     label: 'ID',
-    type: 'uuid',
+    type: { name: 'uuid' },
     isRequired: true,
-    defaultValue: 'uuid_generate_v4()',
+    defaultValue: { function: 'uuidv7' },
   },
   select: {
     id: true,
@@ -153,7 +152,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'price',
     label: 'Price',
-    type: 'numeric(10,2)',
+    type: { name: 'numeric', args: [10, 2] },
     isRequired: true,
     min: 0,
     max: 999999.99,
@@ -177,7 +176,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'email',
     label: 'Email Address',
-    type: 'citext',
+    type: { name: 'citext' },
     isRequired: true,
     regexp: '^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$',
   },
@@ -198,7 +197,7 @@ const result = await db.field.create({
     tableId: ordersTableId,
     name: 'customer_id',
     label: 'Customer',
-    type: 'uuid',
+    type: { name: 'uuid' },
     isRequired: true,
   },
   select: {
@@ -223,7 +222,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'internal_notes',
     label: 'Internal Notes',
-    type: 'text',
+    type: { name: 'text' },
     isHidden: true,
   },
   select: {
@@ -243,7 +242,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'password_hash',
     label: 'Password Hash',
-    type: 'text',
+    type: { name: 'text' },
     smartTags: {
       omit: true,  // Hide from all GraphQL operations
     },
@@ -265,8 +264,8 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'metadata',
     label: 'Metadata',
-    type: 'jsonb',
-    defaultValue: "'{}'::jsonb",
+    type: { name: 'jsonb' },
+    defaultValue: { value: {}, cast: { name: 'jsonb' } },
   },
   select: {
     id: true,
@@ -278,19 +277,18 @@ const result = await db.field.create({
 
 ### Array Field
 
-**Important**: Do NOT pass the SQL array syntax (e.g., `'text[]'`) as the `type` value. The `createField` mutation expects the base type combined with `isArray: true`. Passing `'text[]'` or `'citext[]'` as the type will fail with `Variable "$input" got invalid value` because the type validation (`pg_type_is_visible`) does not recognize the `[]` suffix.
+**Important**: Use the `array_dimensions` property in the FieldType object to declare array types. Do NOT pass SQL array syntax (e.g., `'text[]'`) as a string.
 
 ```typescript
-// CORRECT - use base type + isArray flag
+// CORRECT - use array_dimensions in FieldType
 const result = await db.field.create({
   data: {
     databaseId: databaseId,
     tableId: tableId,
     name: 'tags',
     label: 'Tags',
-    type: 'text',        // base type only, no []
-    isArray: true,        // marks the column as an array type
-    defaultValue: "'{}'::text[]",
+    type: { name: 'text', array_dimensions: 1 },  // text[]
+    defaultValue: { value: [], cast: { name: 'text', array_dimensions: 1 } },
   },
   select: {
     id: true,
@@ -299,9 +297,7 @@ const result = await db.field.create({
   },
 }).execute();
 
-// WRONG - will fail with invalid value error
-// type: 'text[]'   <-- do not use SQL array syntax
-// type: 'citext[]' <-- do not use SQL array syntax
+// 2D array: { name: 'integer', array_dimensions: 2 }  → integer[][]
 ```
 
 ### Timestamp Field
@@ -313,7 +309,7 @@ const result = await db.field.create({
     tableId: tableId,
     name: 'published_at',
     label: 'Published At',
-    type: 'timestamptz',
+    type: { name: 'timestamptz' },
   },
   select: {
     id: true,
@@ -323,22 +319,42 @@ const result = await db.field.create({
 }).execute();
 ```
 
-## Common PostgreSQL Types
+## Common FieldType Patterns
 
-| Type | Description | Example |
+| FieldType Object | SQL Type | Use Case |
 |------|-------------|---------|
-| `text` | Variable-length string | Names, descriptions |
-| `citext` | Case-insensitive text | Emails, usernames |
-| `int` / `integer` | 32-bit integer | Counts, quantities |
-| `bigint` | 64-bit integer | Large IDs |
-| `numeric(p,s)` | Exact decimal | Prices, amounts |
-| `boolean` | True/false | Flags, toggles |
-| `uuid` | UUID | Primary keys, references |
-| `timestamptz` | Timestamp with timezone | Dates, times |
-| `date` | Date only | Birthdays |
-| `jsonb` | Binary JSON | Flexible data |
-| `text` + `isArray: true` | Text array | Tags, lists |
-| `citext` + `isArray: true` | CI text array | Case-insensitive tags |
+| `{ name: 'text' }` | `text` | Names, descriptions |
+| `{ name: 'citext' }` | `citext` | Emails, usernames |
+| `{ name: 'integer' }` | `integer` | Counts, quantities |
+| `{ name: 'bigint' }` | `bigint` | Large IDs |
+| `{ name: 'numeric', args: [10, 2] }` | `numeric(10,2)` | Prices, amounts |
+| `{ name: 'boolean' }` | `boolean` | Flags, toggles |
+| `{ name: 'uuid' }` | `uuid` | Primary keys, references |
+| `{ name: 'timestamptz' }` | `timestamptz` | Dates, times |
+| `{ name: 'date' }` | `date` | Birthdays |
+| `{ name: 'jsonb' }` | `jsonb` | Flexible data |
+| `{ name: 'text', array_dimensions: 1 }` | `text[]` | Tags, lists |
+| `{ name: 'citext', array_dimensions: 1 }` | `citext[]` | Case-insensitive tags |
+| `{ name: 'geometry', args: ['Point', 4326] }` | `geometry(Point,4326)` | Geospatial |
+| `{ name: 'vector', args: [768] }` | `vector(768)` | Embeddings |
+| `{ name: 'interval' }` | `interval` | Durations |
+| `{ name: 'bit', args: [8] }` | `bit(8)` | Bit fields |
+
+## Common FieldDefault Patterns
+
+| FieldDefault Object | SQL Default | Use Case |
+|------|-------------|---------|
+| `{ function: 'uuidv7' }` | `uuidv7()` | UUID primary keys |
+| `{ function: 'now' }` | `now()` | Timestamps |
+| `{ sql_keyword: 'CURRENT_TIMESTAMP' }` | `CURRENT_TIMESTAMP` | Timestamps (keyword) |
+| `{ value: 'draft' }` | `'draft'` | String literals |
+| `{ value: true }` | `true` | Boolean defaults |
+| `{ value: 0 }` | `0` | Numeric defaults |
+| `{ value: {}, cast: { name: 'jsonb' } }` | `'{}'::jsonb` | Empty JSON object |
+| `{ value: [], cast: { name: 'jsonb' } }` | `'[]'::jsonb` | Empty JSON array |
+| `{ value: [], cast: { name: 'text', array_dimensions: 1 } }` | `'{}'::text[]` | Empty text array |
+| `{ function: 'encode', args: [{ function: 'gen_random_bytes', args: [16] }, 'hex'] }` | `encode(gen_random_bytes(16), 'hex')` | Random hex tokens |
+| `{ operator: '+', left: { function: 'now' }, right: { value: '5 minutes', cast: { name: 'interval' } } }` | `now() + '5 minutes'::interval` | Future timestamps |
 
 ## Querying Fields
 
@@ -364,9 +380,7 @@ const result = await db.field.findMany({
 if (result.ok) {
   const fields = result.data.fields.nodes;
   fields.forEach(f => {
-    const required = f.isRequired ? 'NOT NULL' : 'NULL';
-    const def = f.defaultValue ? ` DEFAULT ${f.defaultValue}` : '';
-    console.log(`${f.name} ${f.type} ${required}${def}`);
+    console.log(f.name, f.type, f.defaultValue);
   });
 }
 ```
@@ -499,7 +513,7 @@ For environments where TypeScript isn't available:
     "tableId": "table-uuid",
     "name": "title",
     "label": "Title",
-    "type": "text",
+    "type": { "name": "text" },
     "isRequired": true
   },
   "select": {
@@ -522,11 +536,11 @@ For environments where TypeScript isn't available:
 
 ```typescript
 const fieldConfigs = [
-  { name: 'id', type: 'uuid', isRequired: true, defaultValue: 'uuid_generate_v4()' },
-  { name: 'name', type: 'text', isRequired: true },
-  { name: 'description', type: 'text', isRequired: false },
-  { name: 'price', type: 'numeric(10,2)', isRequired: true, min: 0 },
-  { name: 'is_active', type: 'boolean', isRequired: true, defaultValue: 'true' },
+  { name: 'id', type: { name: 'uuid' }, isRequired: true, defaultValue: { function: 'uuidv7' } },
+  { name: 'name', type: { name: 'text' }, isRequired: true },
+  { name: 'description', type: { name: 'text' }, isRequired: false },
+  { name: 'price', type: { name: 'numeric', args: [10, 2] }, isRequired: true, min: 0 },
+  { name: 'is_active', type: { name: 'boolean' }, isRequired: true, defaultValue: { value: true } },
 ];
 
 for (const config of fieldConfigs) {
@@ -603,7 +617,7 @@ for (const config of fieldConfigs) {
 5. **Order fields logically** - Use fieldOrder for consistent display
 6. **Document fields** - Add labels and descriptions
 7. **Hide sensitive data** - Use isHidden or smart tags for internal fields
-8. **Never use SQL array syntax in type** - Always use the base type with `isArray: true`
+8. **Never use SQL string syntax for type** - Always use FieldType objects (e.g., `{ name: 'text', array_dimensions: 1 }` not `'text[]'`)
 9. **Change type before constraints** - When changing a field's type, update type first, then set new constraints in a separate update
 
 ## Error Handling
@@ -614,7 +628,7 @@ const result = await db.field.create({
     databaseId: databaseId,
     tableId: tableId,
     name: 'title',  // Already exists!
-    type: 'text',
+    type: { name: 'text' },
   },
   select: { id: true },
 }).execute();

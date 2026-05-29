@@ -45,8 +45,8 @@ In your blueprint definition, add `DataRealtime` to the table's `nodes[]`:
     "DataRealtime"
   ],
   "fields": [
-    { "name": "body", "type": "text" },
-    { "name": "author_id", "type": "uuid" }
+    { "name": "body", "type": { "name": "text" } },
+    { "name": "author_id", "type": { "name": "uuid" } }
   ],
   "grants": [
     { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -320,8 +320,8 @@ A collaborative document editor with realtime updates:
         "DataRealtime"
       ],
       "fields": [
-        { "name": "title", "type": "text" },
-        { "name": "content", "type": "jsonb" }
+        { "name": "title", "type": { "name": "text" } },
+        { "name": "content", "type": { "name": "jsonb" } }
       ],
       "grants": [
         { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -342,9 +342,9 @@ A collaborative document editor with realtime updates:
         { "$type": "DataRealtime", "data": { "operations": ["INSERT"] } }
       ],
       "fields": [
-        { "name": "document_id", "type": "uuid" },
-        { "name": "editor_id", "type": "uuid" },
-        { "name": "patch", "type": "jsonb" }
+        { "name": "document_id", "type": { "name": "uuid" } },
+        { "name": "editor_id", "type": { "name": "uuid" } },
+        { "name": "patch", "type": { "name": "jsonb" } }
       ],
       "grants": [
         { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"]] }

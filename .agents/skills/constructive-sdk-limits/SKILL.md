@@ -57,8 +57,8 @@ Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
   "tables": [{
     "table_name": "projects",
     "fields": [
-      { "name": "title", "type": "text" },
-      { "name": "owner_id", "type": "uuid" }
+      { "name": "title", "type": { "name": "text" } },
+      { "name": "owner_id", "type": { "name": "uuid" } }
     ],
     "nodes": [
       "DataId",
@@ -104,8 +104,8 @@ Add `LimitAggregate` to enforce total usage across an entire entity (org, databa
   "tables": [{
     "table_name": "seats",
     "fields": [
-      { "name": "user_id", "type": "uuid" },
-      { "name": "entity_id", "type": "uuid" }
+      { "name": "user_id", "type": { "name": "uuid" } },
+      { "name": "entity_id", "type": { "name": "uuid" } }
     ],
     "nodes": [
       "DataId",
@@ -153,8 +153,8 @@ Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
   "tables": [{
     "table_name": "analytics_reports",
     "fields": [
-      { "name": "entity_id", "type": "uuid" },
-      { "name": "report_data", "type": "jsonb" }
+      { "name": "entity_id", "type": { "name": "uuid" } },
+      { "name": "report_data", "type": { "name": "jsonb" } }
     ],
     "nodes": [
       "DataId",
@@ -490,9 +490,9 @@ Controls how sub-entities share parent capacity:
     {
       "table_name": "documents",
       "fields": [
-        { "name": "title", "type": "text" },
-        { "name": "owner_id", "type": "uuid" },
-        { "name": "entity_id", "type": "uuid" }
+        { "name": "title", "type": { "name": "text" } },
+        { "name": "owner_id", "type": { "name": "uuid" } },
+        { "name": "entity_id", "type": { "name": "uuid" } }
       ],
       "nodes": [
         "DataId",

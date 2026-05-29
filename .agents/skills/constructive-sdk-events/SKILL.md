@@ -87,8 +87,8 @@ Add `EventTracker` to a table's `nodes[]` to auto-create triggers that record ev
       }}
     ],
     "fields": [
-      { "name": "display_name", "type": "text" },
-      { "name": "avatar_url", "type": "text" }
+      { "name": "display_name", "type": { "name": "text" } },
+      { "name": "avatar_url", "type": { "name": "text" } }
     ]
   }]
 }
@@ -203,8 +203,8 @@ The top-level `achievements[]` section defines levels with requirements and opti
         }}
       ],
       "fields": [
-        { "name": "display_name", "type": "text" },
-        { "name": "avatar_url", "type": "text" }
+        { "name": "display_name", "type": { "name": "text" } },
+        { "name": "avatar_url", "type": { "name": "text" } }
       ]
     }
   ],

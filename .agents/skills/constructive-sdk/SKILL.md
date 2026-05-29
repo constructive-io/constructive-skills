@@ -227,8 +227,8 @@ await db.field.create({
     databaseId,
     tableId,
     name: 'status',
-    type: 'project_status',
-    defaultValue: 'draft',
+    type: { name: 'project_status' },
+    defaultValue: { value: 'draft' },
   },
   select: { id: true },
 }).execute();

@@ -16,7 +16,7 @@ const contentField = await db.field.create({
     databaseId,
     tableId: documentsTableId,
     name: 'content',
-    type: 'text',
+    type: { name: 'text' },
   },
   select: { id: true, name: true },
 }).execute();
