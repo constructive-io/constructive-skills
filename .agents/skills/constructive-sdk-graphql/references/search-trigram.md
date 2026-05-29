@@ -16,7 +16,7 @@ const titleField = await db.field.create({
     databaseId,
     tableId: articlesTableId,
     name: 'title',
-    type: 'text',
+    type: { name: 'text' },
     isRequired: true,
   },
   select: { id: true, name: true },

@@ -214,9 +214,9 @@ A single table can have multiple EventTracker nodes for different events:
     }}
   ],
   "fields": [
-    { "name": "display_name", "type": "text" },
-    { "name": "avatar_url", "type": "text" },
-    { "name": "bio", "type": "text" }
+    { "name": "display_name", "type": { "name": "text" } },
+    { "name": "avatar_url", "type": { "name": "text" } },
+    { "name": "bio", "type": { "name": "text" } }
   ]
 }
 ```

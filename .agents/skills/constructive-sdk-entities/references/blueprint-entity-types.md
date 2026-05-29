@@ -343,7 +343,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
   "use_rls": true,
   "nodes": [ { "$type": "DataTimestamps" } ],
   "fields": [
-    { "name": "topic", "type": "text" }
+    { "name": "topic", "type": { "name": "text" } }
   ],
   "grants": [
     { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"]] }
@@ -387,7 +387,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
   "table_provision": {
     "nodes": [ { "$type": "DataTimestamps" } ],
     "fields": [
-      { "name": "topic", "type": "text" }
+      { "name": "topic", "type": { "name": "text" } }
     ],
     "policies": [
       {
@@ -431,7 +431,7 @@ const definition: BlueprintDefinition = {
       table_name: 'messages',
       nodes: ['DataId', 'DataTimestamps'],
       fields: [
-        { name: 'body', type: 'text' },
+        { name: 'body', type: { name: 'text' } },
       ],
       policies: [
         {
@@ -488,7 +488,7 @@ const template = await db.blueprintTemplate.create({
         {
           table_name: 'messages',
           nodes: ['DataId', 'DataTimestamps'],
-          fields: [{ name: 'body', type: 'text' }],
+          fields: [{ name: 'body', type: { name: 'text' } }],
           policies: [
             {
               $type: 'AuthzEntityMembership',
@@ -606,8 +606,8 @@ A common pattern: provision entity types in Phase 0, then create domain tables i
         { "$type": "DataOwnershipInEntity", "data": { "entity_field": "channel_id" } }
       ],
       "fields": [
-        { "name": "body", "type": "text" },
-        { "name": "is_pinned", "type": "boolean" }
+        { "name": "body", "type": { "name": "text" } },
+        { "name": "is_pinned", "type": { "name": "boolean" } }
       ],
       "policies": [
         {

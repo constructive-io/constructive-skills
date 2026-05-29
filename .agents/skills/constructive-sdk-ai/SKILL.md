@@ -94,11 +94,11 @@ The most powerful node. Orchestrates embedding + BM25 + optional FTS + optional 
     }},
   ],
   fields: [
-    { name: 'first_name', type: 'text', is_required: true },
-    { name: 'last_name', type: 'text' },
-    { name: 'headline', type: 'text' },
-    { name: 'bio', type: 'text' },
-    { name: 'embedding_text', type: 'text' },
+    { name: 'first_name', type: { name: 'text' }, is_required: true },
+    { name: 'last_name', type: { name: 'text' } },
+    { name: 'headline', type: { name: 'text' } },
+    { name: 'bio', type: { name: 'text' } },
+    { name: 'embedding_text', type: { name: 'text' } },
   ],
 }
 ```
@@ -127,8 +127,8 @@ Use for tables that need vector embeddings but NOT the full search stack (no BM2
     { $type: 'SearchVector', data: { field_name: 'embedding', enqueue_job: false } },
   ],
   fields: [
-    { name: 'url', type: 'text', is_required: true },
-    { name: 'meta', type: 'jsonb' },
+    { name: 'url', type: { name: 'text' }, is_required: true },
+    { name: 'meta', type: { name: 'jsonb' } },
   ],
 }
 ```
@@ -285,8 +285,8 @@ Standalone node that creates a child chunks table for any parent table. Each chu
     }},
   ],
   fields: [
-    { name: 'title', type: 'text', is_required: true },
-    { name: 'body', type: 'text' },
+    { name: 'title', type: { name: 'text' }, is_required: true },
+    { name: 'body', type: { name: 'text' } },
   ],
 }
 ```

@@ -178,8 +178,8 @@ Each entry in `tables[]` defines one database table:
   "schema_name": "app_public",
   "nodes": ["DataId", "DataTimestamps"],
   "fields": [
-    { "name": "title", "type": "text", "description": "Display name of the product" },
-    { "name": "price", "type": "numeric", "description": "Unit price in the default currency" }
+    { "name": "title", "type": { "name": "text" }, "description": "Display name of the product" },
+    { "name": "price", "type": { "name": "numeric" }, "description": "Unit price in the default currency" }
   ],
   "grants": [
     { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -296,7 +296,7 @@ All 28 node types from the `node_type_registry`:
     { "$type": "DataEntityMembership", "data": { "entity_field_name": "org_id" } },
     { "$type": "LimitCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "org_id" } }
   ],
-  "fields": [ { "name": "title", "type": "text" } ]
+  "fields": [ { "name": "title", "type": { "name": "text" } } ]
 }
 ```
 
@@ -308,7 +308,7 @@ All 28 node types from the `node_type_registry`:
     "DataId", "DataTimestamps", "DataDirectOwner",
     { "$type": "LimitFeatureFlag", "data": { "feature_name": "advanced_reporting" } }
   ],
-  "fields": [ { "name": "title", "type": "text" } ]
+  "fields": [ { "name": "title", "type": { "name": "text" } } ]
 }
 ```
 Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enable, or `max: 0` to disable. Per-entity overrides go in `limit_caps`.
@@ -336,7 +336,7 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
     { "$type": "DataEntityMembership", "data": { "entity_field_name": "channel_id" } },
     "DataRealtime"
   ],
-  "fields": [ { "name": "body", "type": "text" } ]
+  "fields": [ { "name": "body", "type": { "name": "text" } } ]
 }
 ```
 
@@ -371,11 +371,21 @@ See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide 
 ```json
 {
   "name": "title",
-  "type": "text"
+  "type": { "name": "text" }
 }
 ```
 
-Standard PostgreSQL types are supported: `text`, `integer`, `numeric`, `boolean`, `timestamptz`, `uuid`, `jsonb`, etc.
+The `type` property is a **FieldType object** with the following shape:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `name` | string | **(required)** PostgreSQL type name (e.g., `"text"`, `"integer"`, `"timestamptz"`, `"uuid"`, `"jsonb"`) |
+| `schema` | string | Schema qualifier (e.g., `"public"`) |
+| `args` | array | Type arguments (e.g., `[10, 2]` for `numeric(10,2)`, `["Point", 4326]` for `geometry(Point,4326)`) |
+| `array_dimensions` | integer | Number of array dimensions. `1` = `text[]`, `2` = `text[][]` |
+| `range` | string[] | Interval field range. 1-2 elements: `["day"]` or `["day", "second"]` |
+
+The `default` property is a **FieldDefault object** — see [FieldDefault reference](#fielddefault-reference) below.
 
 Optional field properties:
 
@@ -383,7 +393,7 @@ Optional field properties:
 |----------|------|-------------|
 | `description` | string | Field description. Emitted as `COMMENT ON COLUMN` in PostgreSQL. Visible in database tools and introspection. |
 | `is_required` | boolean | Whether the field is NOT NULL (default: `false`) |
-| `default` | string | SQL default expression |
+| `default` | FieldDefault | Default value expression as a FieldDefault object |
 | `min` | float | Minimum value constraint |
 | `max` | float | Maximum value constraint |
 | `regexp` | string | Regex validation pattern |
@@ -391,9 +401,37 @@ Optional field properties:
 
 Example with index:
 ```json
-{ "name": "email", "type": "citext", "index": "btree" }
-{ "name": "tags", "type": "citext[]", "index": "gin" }
-{ "name": "location", "type": "geometry", "index": "gist" }
+{ "name": "email", "type": { "name": "citext" }, "index": "btree" }
+{ "name": "tags", "type": { "name": "citext", "array_dimensions": 1 }, "index": "gin" }
+{ "name": "location", "type": { "name": "geometry" }, "index": "gist" }
+```
+
+### FieldDefault Reference
+
+The `default` property on fields uses a **FieldDefault object** representing a structured PostgreSQL default value expression:
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `value` | string \| number \| boolean \| null \| array \| object | Literal value |
+| `function` | string | Function name (e.g., `"now"`, `"uuidv7"`, `"gen_random_bytes"`) |
+| `schema` | string | Schema qualifier for function |
+| `args` | array | Function arguments (recursive \u2014 each can be a FieldDefault) |
+| `cast` | FieldType | Output type cast |
+| `operator` | string | Binary operator (e.g., `"+"`, `"-"`, `"\\|\\|"`) |
+| `left` | FieldDefault | Left operand for operator expression |
+| `right` | FieldDefault | Right operand for operator expression |
+| `sql_keyword` | string | SQL keyword (e.g., `"CURRENT_TIMESTAMP"`, `"CURRENT_USER"`) |
+
+**Common patterns:**
+```json
+{ "function": "now" }
+{ "function": "uuidv7" }
+{ "value": true }
+{ "value": "draft" }
+{ "value": {}, "cast": { "name": "jsonb" } }
+{ "value": [], "cast": { "name": "citext", "array_dimensions": 1 } }
+{ "sql_keyword": "CURRENT_TIMESTAMP" }
+{ "operator": "+", "left": { "function": "now" }, "right": { "value": "5 minutes", "cast": { "name": "interval" } } }
 ```
 
 ### Grants
@@ -629,9 +667,9 @@ For full examples including invite virality and cross-table achievements, see [`
       "table_name": "categories",
       "nodes": ["DataId", "DataTimestamps"],
       "fields": [
-        { "name": "name", "type": "text" },
-        { "name": "slug", "type": "text" },
-        { "name": "description", "type": "text" }
+        { "name": "name", "type": { "name": "text" } },
+        { "name": "slug", "type": { "name": "text" } },
+        { "name": "description", "type": { "name": "text" } }
       ],
       "grants": [
         { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -653,10 +691,10 @@ For full examples including invite virality and cross-table achievements, see [`
         { "$type": "DataOwnershipInEntity", "data": { "entity_field": "owner_id" } }
       ],
       "fields": [
-        { "name": "title", "type": "text" },
-        { "name": "price", "type": "numeric" },
-        { "name": "description", "type": "text" },
-        { "name": "is_published", "type": "boolean" }
+        { "name": "title", "type": { "name": "text" } },
+        { "name": "price", "type": { "name": "numeric" } },
+        { "name": "description", "type": { "name": "text" } },
+        { "name": "is_published", "type": { "name": "boolean" } }
       ],
       "grants": [
         { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
@@ -680,8 +718,8 @@ For full examples including invite virality and cross-table achievements, see [`
       "table_name": "orders",
       "nodes": ["DataId", "DataTimestamps"],
       "fields": [
-        { "name": "total", "type": "numeric" },
-        { "name": "status", "type": "text" }
+        { "name": "total", "type": { "name": "numeric" } },
+        { "name": "status", "type": { "name": "text" } }
       ],
       "grants": [
         { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"]] }

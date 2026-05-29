@@ -101,7 +101,7 @@ const result = await db.entityTypeProvision.create({
     tableProvision: {
       use_rls: true,
       nodes: [{ $type: 'DataTimestamps' }],
-      fields: [{ name: 'topic', type: 'text' }],
+      fields: [{ name: 'topic', type: { name: 'text' } }],
       grants: [
         { roles: ['authenticated'], privileges: [['select', '*'], ['insert', '*']] },
       ],

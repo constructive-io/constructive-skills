@@ -100,8 +100,8 @@ A complete blueprint showing 5-level referral rewards with tiered achievements:
     {
       "table_name": "databases",
       "fields": [
-        { "name": "name", "type": "text", "is_required": true },
-        { "name": "owner_id", "type": "uuid", "is_required": true }
+        { "name": "name", "type": { "name": "text" }, "is_required": true },
+        { "name": "owner_id", "type": { "name": "uuid" }, "is_required": true }
       ],
       "nodes": [
         { "$type": "EventReferral", "data": {

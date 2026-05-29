@@ -56,8 +56,8 @@ Add to a table's `nodes[]` in a blueprint definition to auto-create triggers:
     },
   ],
   fields: [
-    { name: 'amount', type: 'numeric', is_required: true },
-    { name: 'status', type: 'text', default_value: "'draft'" },
+    { name: 'amount', type: { name: 'numeric' }, is_required: true },
+    { name: 'status', type: { name: 'text' }, default_value: { value: 'draft' } },
   ],
 }
 ```
@@ -327,8 +327,8 @@ The chunks table gets:
     }},
   ],
   fields: [
-    { name: 'title', type: 'text', is_required: true },
-    { name: 'body', type: 'text' },
+    { name: 'title', type: { name: 'text' }, is_required: true },
+    { name: 'body', type: { name: 'text' } },
   ],
 }
 ```
