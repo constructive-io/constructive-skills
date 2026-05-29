@@ -643,6 +643,7 @@ if (!result.ok) {
 
 ## References
 
+- **[FieldType & FieldDefault Reference](references/field-types.md)** — Full property reference, all type/default patterns, blueprint and SDK examples, validation rules
 - Related skill: [`constructive-sdk-tables`](../constructive-sdk-tables) for table management
 - Related skill: [`constructive-sdk-indexes`](../constructive-sdk-indexes) for adding indexes to fields (btree, unique, partial, covering)
 - Related skill: [`constructive-sdk-search`](../constructive-sdk-search) for search-related fields (`tsvector`, `vector(N)`) and search indexes
