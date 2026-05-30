@@ -234,7 +234,7 @@ csdk event-types create \
   --period-interval '1 month'
 ```
 
-Non-periodic event types (the default) omit `periodInterval` — they count events across the user's entire lifetime, unchanged from previous behavior.
+Non-periodic event types (the default) omit `periodInterval` — they count events across the user's entire lifetime.
 
 ## Re-Triggerable Achievements
 

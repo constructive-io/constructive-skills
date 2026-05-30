@@ -71,7 +71,7 @@ All three ancestors (C, B, A) receive the same `invitee_uploaded` event. The loo
 
 - **`max_depth` range:** 1–10. The generator raises an exception for values outside this range.
 - **App-level scope only:** When `max_depth > 1`, `entity_field` must be omitted. The chain walk uses `claimed_invites` which is scoped by membership_type at the app level. Entity-scoped actions still credit the chain — the trigger resolves the *user* who performed the action, not the entity.
-- **Backward compatible:** `max_depth: 1` (or omitted) produces the exact same single-lookup trigger as before the feature existed.
+- **Default behavior:** `max_depth: 1` (or omitted) produces a single-lookup trigger (direct inviter only).
 
 ## Toggles
 

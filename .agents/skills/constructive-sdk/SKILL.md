@@ -279,7 +279,7 @@ await db.relationProvision.create({
 
 ### FK Cascade Defaults
 
-Foreign key cascade behavior now defaults to `NO ACTION` (previously `CASCADE`). Always specify the cascade behavior explicitly:
+Foreign key cascade behavior defaults to `NO ACTION`. Always specify the cascade behavior explicitly:
 
 | Cascade | When to Use |
 |---------|-------------|
