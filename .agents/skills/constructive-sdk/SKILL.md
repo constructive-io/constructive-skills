@@ -51,7 +51,7 @@ const { accessToken, userId } = result.signIn.result;
 
 See `references/provisioning.md` for end-to-end flow with per-DB auth.
 
-Always use `modules: ['all']` and `bootstrapUser: true`:
+Pass an **explicit module list** (never `['all']` — it is not a sentinel and silently installs nothing; see `references/provisioning.md`) and `bootstrapUser: true`. The `auth:email` list below is the verified default for a basic auth app:
 
 ```typescript
 import { createClient as createPublicClient } from '@constructive-io/sdk/public';
@@ -61,10 +61,18 @@ const publicDb = createPublicClient({
   headers: { Authorization: `Bearer ${accessToken}` },
 });
 
+// auth:email preset modules. Source: node-type-registry/src/module-presets/auth-email.ts
+const modules = [
+  'users_module', 'membership_types_module',
+  'permissions_module:app', 'limits_module:app', 'levels_module:app',
+  'memberships_module:app', 'sessions_module', 'user_state_module',
+  'config_secrets_user_module', 'emails_module', 'rls_module', 'user_auth_module',
+];
+
 const result = await publicDb.databaseProvisionModule.create({
   data: {
     databaseName: dbName, ownerId: userId, subdomain: dbName, domain: 'localhost',
-    modules: ['all'], bootstrapUser: true,
+    modules, bootstrapUser: true,
   },
   select: { id: true, databaseId: true, databaseName: true, status: true }
 }).execute();
@@ -323,6 +331,6 @@ In almost all situations, prefer `secureTableProvision`.
 
 - `references/auth-flow.md` — auth endpoints, JWT, bootstrap user
 - `references/provisioning.md` — full provisioning flow with per-DB auth
-- `constructive-db-built-in-schemas` — what `modules: ['all']` creates
+- `constructive-db-built-in-schemas` — the schemas/tables the module set creates
 - `constructive-safegres` — Authz* type reference
 - `constructive-sdk-security` — RLS, grants, policies

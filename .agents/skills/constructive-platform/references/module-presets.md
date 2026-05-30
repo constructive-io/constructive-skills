@@ -36,7 +36,7 @@ interface ModulePreset {
 | `auth:passkey` | auth:email + WebAuthn | Phishing-resistant auth |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links | Production consumer auth |
 | `b2b` | auth:hardened + orgs + invites + permissions + levels + profiles + hierarchy | Multi-tenant SaaS |
-| `full` | `['all']` sentinel | Reference / demo DBs / greenfield |
+| `full` | every standard module (explicit list) | Reference / demo DBs / greenfield |
 
 ## Usage
 
@@ -77,7 +77,7 @@ Provisions shared infrastructure for realtime subscriptions:
 - **Partitioned `change_log` table** — durable, time-partitioned event stream for change tracking. Uses PostgreSQL native range partitioning with automatic partition lifecycle management (creation, rotation, cleanup)
 - **`emit_change()` trigger function** — called by statement-level triggers on source tables to record changes and emit NOTIFY signals
 
-**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'realtime_module'` to your module list to enable.
+**Included in:** none of the shipped presets by default — add `'realtime_module'` to your explicit module list to enable. (There is no `['all']` sentinel; even `full` is an explicit list and does not currently include this module.)
 
 **Runtime toggle:** `database_settings.enable_realtime` and `api_settings.enable_realtime` control whether the server activates realtime processing. API setting takes precedence over database setting.
 
@@ -91,7 +91,7 @@ Provisions device tracking, trusted device MFA bypass, and device approval gate:
 - **`auth_user_devices` table** — per-user device records (token hash, IP, user agent, trust/approval status)
 - **`approve_device` procedure** — validates email approval tokens for the device approval flow
 
-**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'devices_module'` to your module list to enable.
+**Included in:** the `b2b` and `full` preset module lists. Not included in other presets by default — add `'devices_module'` to your explicit module list to enable. (There is no `['all']` sentinel.)
 
 **Settings toggles:** All features are off by default (`enable_device_tracking = true` enables passive tracking only). Enable `enable_trusted_devices` for MFA bypass, `require_device_approval` for email approval gate, `require_mfa_new_device` to force MFA on new devices.
 

@@ -145,7 +145,7 @@ When provisioning, you can specify which modules to install:
 | `profiles_module` | User profiles |
 | `hierarchy_module` | Org hierarchy |
 
-Use `['all']` to install all default modules.
+Pass an explicit list of these module names — there is **no `['all']` sentinel** (it matches zero branches in `provision_database_modules` and installs nothing). For a basic auth app use the `auth:email` list; for everything use the `full` preset's list. See `constructive-sdk`'s `references/provisioning.md` and the `constructive-platform` `module-presets.md` catalog.
 
 ## Querying Databases
 

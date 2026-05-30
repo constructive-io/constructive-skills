@@ -347,7 +347,15 @@ const result = await db.databaseProvisionModule.create({
     ownerId: userId,
     subdomain: 'my-app',
     domain: 'constructive.io',
-    modules: ['all'],
+    // Explicit module list — never ['all'] (not a sentinel; installs nothing).
+    // auth:email preset; see constructive-sdk references/provisioning.md.
+    modules: [
+      'users_module', 'membership_types_module',
+      'permissions_module:app', 'limits_module:app', 'levels_module:app',
+      'memberships_module:app', 'sessions_module', 'user_state_module',
+      'config_secrets_user_module', 'emails_module', 'rls_module', 'user_auth_module',
+    ],
+    bootstrapUser: true, // creates the admin user row; without it per-DB auth is empty
     options: {
       site: {
         title: 'My Application',

@@ -229,7 +229,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | `auth:passkey` | `auth:email` + WebAuthn |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links |
 | `b2b` | `auth:hardened` + orgs + invites + permissions + levels + profiles + hierarchy |
-| `full` | `['all']` — everything |
+| `full` | every standard module (explicit list — there is no `['all']` sentinel) |
 
 See [`constructive/references/module-presets.md`](../constructive-platform/references/module-presets.md) for the full catalog, shapes, and ORM usage.
 
