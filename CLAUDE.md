@@ -21,6 +21,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-sdk-uploads** | File uploads — presigned URL flow, bucket provisioning, upload-client, deduplication |
 | **constructive-starter-kits** | Project scaffolding — `pgpm init` templates, Next.js app boilerplate, custom template authoring |
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
+| **constructive-blocks** | Copy-in UI blocks (shadcn registry, `@constructive/<block>`) that bind to the host's per-app generated GraphQL SDK — install/wire/author flow, `blocks-runtime`, `requires.json` manifests, bundled `check-sdk.mjs` preflight |
 | **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
 | **constructive-sdk-events** | Events & achievements — EventTracker blueprint node, blueprint achievements[], invite virality, achievement credit rewards |
 | **constructive-jobs** | Background jobs — JobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
