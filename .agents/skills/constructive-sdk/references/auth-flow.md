@@ -14,7 +14,7 @@ const authDb = createAuthClient({ endpoint: 'http://auth.localhost:3000/graphql'
 
 await authDb.mutation.signUp(
   { input: { email, password } },
-  { select: { ok: true, errors: true } }
+  { select: { result: { select: { id: true } } } }
 ).execute();
 ```
 
@@ -110,13 +110,17 @@ localStorage.setItem('device_token', r.outDeviceToken);
 ### Sign up (first device auto-approved)
 
 ```typescript
+// `deviceToken` is a SignUpInput field; everything you read back is selected off
+// `result` (a SignUpRecord) — there is no top-level field on SignUpPayload.
+// `outDeviceToken` is only present when `devices_module` is installed (see §intro).
 const result = await authDb.mutation.signUp(
   { input: { email, password, deviceToken: '<new-opaque-token>' } },
-  { select: { outDeviceToken: true, accessToken: true } }
+  { select: { result: { select: { accessToken: true, outDeviceToken: true } } } }
 ).execute();
 
-// First device is auto-approved even when require_device_approval is on
-localStorage.setItem('device_token', result.signUp.outDeviceToken);
+// First device is auto-approved even when require_device_approval is on —
+// persist the returned device token for future logins.
+localStorage.setItem('device_token', result.signUp.result.outDeviceToken);
 ```
 
 See [`constructive-platform/references/device-settings.md`](../../constructive-platform/references/device-settings.md) for the full composition matrix of device settings.

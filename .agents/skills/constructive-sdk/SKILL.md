@@ -29,12 +29,13 @@ Related skills:
 See `references/auth-flow.md` for full details (endpoints, JWT structure, bootstrap user).
 
 ```typescript
-import { createClient as createAuthClient } from '@constructive-db/sdk/auth';
+import { createClient as createAuthClient } from '@constructive-io/sdk/auth';
 
 const authDb = createAuthClient({ endpoint: 'http://auth.localhost:3000/graphql' });
 
-// Sign up
-await authDb.mutation.signUp({ input: { email, password } }, { select: { ok: true, errors: true } }).execute();
+// Sign up — returns a SignUpPayload whose `result` is a SignUpRecord (id, userId, accessToken, …).
+// There is NO `ok`/`errors` selection; select fields off `result`.
+await authDb.mutation.signUp({ input: { email, password } }, { select: { result: { select: { id: true } } } }).execute();
 
 // Sign in — returns accessToken (NOT jwtToken, see workarounds/known-issues SDK-002)
 const result = await authDb.mutation.signIn(
@@ -53,7 +54,7 @@ See `references/provisioning.md` for end-to-end flow with per-DB auth.
 Always use `modules: ['all']` and `bootstrapUser: true`:
 
 ```typescript
-import { createClient as createPublicClient } from '@constructive-db/sdk/public';
+import { createClient as createPublicClient } from '@constructive-io/sdk/public';
 
 const publicDb = createPublicClient({
   endpoint: 'http://api.localhost:3000/graphql',
@@ -83,28 +84,43 @@ After provisioning, apply workarounds: `workarounds/fix-membership-defaults` and
 
 ### Create secure table + fields + grants + policy
 
+`SecureTableProvisionInput` is the **Blueprint shape**: four independent, optional arrays —
+`nodes[]` (Data* field modules), `fields[]` (explicit columns), `grants[]` (per-role privilege
+targeting), and `policies[]` (Authz* RLS policies). Each entry is discriminated by a `$type`.
+This is NOT the flat `nodeType`/`grantRoles`/`grantPrivileges`/`policyType`/`policyData` shape —
+that is stale and no longer matches the live platform.
+
 ```ts
-const grant_privileges = [
-  ['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*'],
-] as unknown as Record<string, unknown>;
-
-const policy_data: Record<string, unknown> = {
-  entity_field: 'entity_id',
-  membership_type: 2,
-};
-
 const res = await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     // schemaId is optional -- defaults to the database's app_public schema
     tableName: 'projects',
-    nodeType: 'DataEntityMembership',
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: grant_privileges,
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: policy_data,
+    // nodes[]: one entry per Data* field module (compose multiple in one call)
+    nodes: [
+      { $type: 'DataEntityMembership' },
+      { $type: 'DataTimestamps', data: { include_id: false } },
+    ] as unknown as Record<string, unknown>,
+    // fields[]: explicit columns (the generated type is Record<string, unknown>[] — an
+    // array — so the literal assigns directly; no cast needed, unlike nodes/grants/policies)
+    fields: [
+      { name: 'title', type: 'text', is_required: true },
+      { name: 'body', type: 'text' },
+    ],
+    // grants[]: each entry targets roles + privilege list ([privilege, columns] tuples)
+    grants: [
+      { roles: ['authenticated'], privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']] },
+    ] as unknown as Record<string, unknown>,
+    // policies[]: one entry per Authz* policy, discriminated by $type
+    policies: [
+      {
+        $type: 'AuthzEntityMembership',
+        permissive: true,
+        privileges: ['select', 'insert', 'update', 'delete'],
+        data: { entity_field: 'entity_id', membership_type: 2 },
+      },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true, tableId: true, outFields: true, tableName: true },
 }).execute();
@@ -114,7 +130,7 @@ const table_id = provision.tableId;
 ```
 
 What success looks like:
-- `provision.outFields` is populated with created field IDs when `nodeType` is set
+- `provision.outFields` is populated with created field IDs when `nodes`/`fields` are supplied
 - `metaschema_public.table_grant` rows exist (for the requested privileges + roles)
 - `metaschema_public.policy` rows exist (for the chosen Safegres policy)
 - RLS is enabled on the table when `useRls=true`
@@ -129,13 +145,17 @@ What success looks like:
 
 ### Add more fields by composing
 
+Target the same `tableId` again with another `nodes[]` entry (each module is a `$type` with
+optional `data`). Multiple modules can also be passed in a single `nodes[]` array.
+
 ```ts
 await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     tableId: table_id,
-    nodeType: 'DataTimestamps',
-    nodeData: { include_id: false },
+    nodes: [
+      { $type: 'DataTimestamps', data: { include_id: false } },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true, outFields: true },
 }).execute();

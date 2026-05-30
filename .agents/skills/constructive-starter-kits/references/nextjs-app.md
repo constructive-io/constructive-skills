@@ -232,6 +232,26 @@ pnpm codegen
 
 Config in `graphql-codegen.config.ts` points to `http://api.localhost:3000/graphql` by default.
 
+#### SDK output path vs the Blocks `@/generated/*` convention
+
+This boilerplate generates its SDK into `src/graphql/schema-builder-sdk/api` and imports it
+via the `@sdk`/`src/graphql/...` paths. The **`constructive-blocks`** skill, by contrast, requires
+data blocks to import generated hooks from a fixed convention path, `@/generated/<namespace>`
+(e.g. `@/generated/auth`, `@/generated/admin`), aliased in `tsconfig.json`. **These two conventions
+are complementary, not contradictory** — the boilerplate's path is the app's own hand-written data
+layer; the `@/generated/*` alias is the *stable name a copy-in block compiles against*. If you install
+Constructive Blocks into this boilerplate, do **not** rename the existing SDK directory. Instead, satisfy
+the block contract additively in one of two ways:
+
+- **Alias (preferred, no second codegen):** point `@/generated/*` at the SDK you already generate, e.g.
+  `"paths": { "@/generated/*": ["./src/graphql/schema-builder-sdk/*"] }` (must expose per-namespace
+  `auth`/`admin` entrypoints with `--react-query --orm` output).
+- **Separate output:** run a second `cnc codegen --api-names auth,admin --react-query --orm -o src/generated`
+  so blocks resolve `@/generated/<ns>` and the app keeps using `src/graphql/...` for its own queries.
+
+Run the block preflight (`check-sdk.mjs` from the `constructive-blocks` skill) after either, and see that
+skill for the full host-wiring contract (`<BlocksRuntime>`, the `NEXT_PUBLIC_<NS>_GRAPHQL_ENDPOINT` env vars).
+
 ## Features
 
 - **Authentication** — Login, register, logout, password reset, email verification
@@ -241,6 +261,44 @@ Config in `graphql-codegen.config.ts` points to `http://api.localhost:3000/graph
 - **Account Management** — Profile, email verification, account deletion
 - **App Shell** — Sidebar navigation, theme switching, responsive layout
 - **Permissions** — Role-based access control for org features
+
+## Testing components and blocks
+
+There is no dedicated Constructive frontend-test skill; this is the minimum that keeps React component
+and Block tests green. The hard constraint: generated SDK hooks (`use<Op>Mutation`, `use<Plural>Query`)
+are bound to a **module-level client singleton** — they make no network call you can intercept by passing
+a prop, and there is no client argument. So a test must replace the data layer, not the network.
+
+Pick one of three approaches (in order of preference):
+
+1. **Use the block's override seam (no mocking).** Every data block accepts an `onSubmit` (mutations) /
+   `adapter` (queries) prop that *fully replaces* the generated hook. This is the cleanest unit test —
+   render the block, pass a fake resolver, assert on form state / success callback:
+
+   ```tsx
+   render(<SignInCard onSubmit={async () => ({ accessToken: 'tok' })} onSuccess={onSuccess} />);
+   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+   expect(onSuccess).toHaveBeenCalled();
+   ```
+
+2. **Mock the `@/generated/<ns>` module.** When you must exercise the default hook path, mock the
+   generated module so the singleton is never touched (Jest example; the Vitest equivalent is `vi.mock`):
+
+   ```tsx
+   jest.mock('@/generated/auth', () => ({
+     useSignInMutation: () => ({ mutateAsync: jest.fn().mockResolvedValue({ signIn: { result: { accessToken: 'tok' } } }), isPending: false }),
+     configure: jest.fn(),
+   }));
+   ```
+
+3. **Mount `<BlocksRuntime>` (integration).** For a test that needs the real hook + `QueryClient`, wrap
+   the tree in `<BlocksRuntime namespaces={['auth']} getToken={() => null}>` and point
+   `NEXT_PUBLIC_AUTH_GRAPHQL_ENDPOINT` at a mock server (e.g. MSW). Reserve this for a few integration
+   tests — it requires a fetch mock and is slower than (1)/(2).
+
+In all cases wrap rendered components that read React Query state in a `QueryClientProvider` (or
+`BlocksRuntime`, which provides one). Never import a real generated module *and* leave it unmocked in a
+unit test — it will try to read a `NEXT_PUBLIC_*` endpoint that isn't set and fail opaquely.
 
 ## Troubleshooting
 

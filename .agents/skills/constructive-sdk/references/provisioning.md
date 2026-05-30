@@ -3,8 +3,8 @@
 ## Client Setup
 
 ```typescript
-import { createClient as createAuthClient }   from '@constructive-db/sdk/auth';
-import { createClient as createPublicClient } from '@constructive-db/sdk/public';
+import { createClient as createAuthClient }   from '@constructive-io/sdk/auth';
+import { createClient as createPublicClient } from '@constructive-io/sdk/public';
 
 const authDb   = createAuthClient({ endpoint: 'http://auth.localhost:3000/graphql' });
 const publicDb = createPublicClient({ endpoint: 'http://api.localhost:3000/graphql' });
@@ -13,7 +13,7 @@ const publicDb = createPublicClient({ endpoint: 'http://api.localhost:3000/graph
 ## Step 1: Sign Up + Sign In
 
 ```typescript
-await authDb.mutation.signUp({ input: { email, password } }, { select: { ok: true, errors: true } }).execute();
+await authDb.mutation.signUp({ input: { email, password } }, { select: { result: { select: { id: true } } } }).execute();
 
 const signIn = await authDb.mutation.signIn(
   { input: { email, password } },
