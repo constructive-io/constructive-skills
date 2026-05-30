@@ -116,7 +116,7 @@ Returns a URL for any file that has a `key` value. Returns `null` if the file ha
 ### App-level (no `ownerId`)
 
 ```sql
-SELECT ... FROM storage_module WHERE database_id = $1 AND membership_type IS NULL
+SELECT ... FROM storage_module WHERE database_id = $1 AND scope = 'app'
 ```
 
 Uses the app-level storage module. Buckets table and files table are resolved from this single module.
@@ -129,7 +129,7 @@ SELECT ... FROM storage_module WHERE database_id = $1
 SELECT 1 FROM {entity_table} WHERE id = $ownerId
 ```
 
-Loads all storage modules for the database, filters to entity-scoped ones (those with a `membership_type`), probes each module's entity table for a matching `ownerId` row, and uses the matching module.
+Loads all storage modules for the database, filters to entity-scoped ones (those with a `scope` other than `'app'`), probes each module's entity table for a matching `ownerId` row, and uses the matching module.
 
 ### CORS Resolution Hierarchy
 

@@ -146,13 +146,13 @@ Add `EventReferral` to a table's `nodes[]` to credit the actor's inviter (and op
 | `actor_field` | string (column-ref) | `"owner_id"` | Column containing the invitee (actor) ID — used to look up the referrer via `claimed_invites.receiver_id` |
 | `entity_field` | string (column-ref) | — | Column containing the entity ID for entity-scoped referral events. For FK lookups, combine with `entity_lookup`. **Cannot be combined with `max_depth > 1`.** |
 | `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
-| `max_depth` | integer | `1` | How many levels up the invite chain to walk. `1` = direct inviter only (default, backward compatible). `2`–`10` = multi-level referral chain. Hard cap at 10. |
+| `max_depth` | integer | `1` | How many levels up the invite chain to walk. `1` = direct inviter only (default). `2`–`10` = multi-level referral chain. Hard cap at 10. |
 | `auto_register_type` | boolean | `true` | Automatically register the `event_name` in the `event_types` catalog during provisioning |
 | `conditions` | object \| array | — | Compound conditions for WHEN clause (same syntax as EventTracker) |
 
 ### Toggles & Controls
 
-- **Build-time:** `max_depth` is the toggle. Default `1` = today's single-hop behavior. Set `2`–`10` to opt in to multi-level. Omitting or setting to `1` produces the exact same trigger as before.
+- **Build-time:** `max_depth` is the toggle. Default `1` = single-hop behavior. Set `2`–`10` to opt in to multi-level.
 - **Runtime:** `event_types.is_active` — flip to `false` to pause referral rewards without redeploying.
 - **Scope constraint:** `max_depth > 1` requires app-level scope only (`entity_field` must be omitted). The generator raises an exception if both are set.
 
