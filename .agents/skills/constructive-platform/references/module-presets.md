@@ -97,6 +97,21 @@ Provisions device tracking, trusted device MFA bypass, and device approval gate:
 
 See [device-settings.md](./device-settings.md) for the full composition matrix and SDK usage.
 
+### `agent_module`
+
+Provisions AI agent infrastructure — threads, messages, tasks, prompts. Supports colon-separated presets to enable optional features:
+
+| Preset | `has_plans` | `has_knowledge` | Description |
+|--------|-------------|-----------------|-------------|
+| `agent_module` | false | false | Bare install — threads, messages, tasks, prompts |
+| `agent_module:plans` | true | false | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
+| `agent_module:knowledge` | false | true | Adds `agent_knowledge` + chunks table with pgvector HNSW + BM25 indexes for RAG |
+| `agent_module:full` | true | true | Plans + knowledge combined |
+
+**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add the desired variant to your module list.
+
+**Note:** `:knowledge` and `:full` require `pg_textsearch` for BM25 indexes. The `generate:constructive` reference DB uses `:plans` (no BM25 dependency).
+
 ## Feature Flags / Toggles (future)
 
 The shape reserves room for a `settings?` field to carry toggles like `app_settings_auth.allow_password_sign_up = false` or a read-only mode. Not implemented yet — presets today are module-list only.

@@ -72,7 +72,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
-| `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, knowledge). See [Agents Config](#agents-config) |
+| `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, plan, knowledge). See [Agents Config](#agents-config) |
 | `namespaces` | jsonb | No | `null` | Namespace module config. Provisions `namespace_module` tables (namespaces + namespace_events partitioned log). See [Namespaces Config](#namespaces-config) |
 | `functions` | jsonb | No | `null` | Function module config. Provisions `function_module` tables (functions, invocations) |
 
@@ -187,7 +187,7 @@ The `agents` field provisions an `agent_module` for the entity type — creating
       "name": "Data Room",
       "prefix": "data_room",
       "parent_entity": "org",
-      "agents": [{ "has_knowledge": true }]
+      "agents": [{ "has_plans": true, "has_knowledge": true }]
     }
   ]
 }
@@ -197,21 +197,50 @@ The `agents` field provisions an `agent_module` for the entity type — creating
 
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
+| `has_plans` | boolean | `false` | Provision an `agent_plan` table for workflow plans with ordered tasks and approval gates. When true, tasks belong to plans (`plan_id NOT NULL`) instead of directly to threads. Hierarchy: thread → plan → task |
 | `has_knowledge` | boolean | `false` | Provision a shared knowledge base table with auto-chunked child table (pgvector HNSW index for semantic retrieval) |
 | `api_name` | string | `'agent'` | GraphQL API target to expose agent tables on |
 
 ### Tables created
 
-With prefix `data_room` and `has_knowledge: true`:
+With prefix `data_room`, `has_plans: true`, and `has_knowledge: true`:
 
 | Table | Security | Description |
 |-------|----------|-------------|
 | `data_room_agent_thread` | `AuthzMemberOwner` | Conversation threads — private to owner within entity |
 | `data_room_agent_message` | `AuthzMemberOwner` | Chat messages in threads (multi-modal `parts` jsonb) |
-| `data_room_agent_task` | `AuthzMemberOwner` | Background task tracking per thread |
+| `data_room_agent_plan` | `AuthzMemberOwner` | Workflow plans — ordered task lists with status lifecycle (draft → active → completed/failed/cancelled) |
+| `data_room_agent_task` | `AuthzMemberOwner` | Task tracking — belongs to plan when `has_plans`, otherwise to thread |
 | `data_room_agent_prompt` | `AuthzEntityMembership` | Shared prompt templates — any entity member |
 | `data_room_agent_knowledge` | `AuthzEntityMembership` | Shared knowledge base (chunked for RAG) |
 | `data_room_agent_knowledge_chunks` | *(inherited)* | Auto-generated chunks with vector embeddings |
+
+### Plan table fields (when `has_plans: true`)
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | uuid | Primary key (DataId) |
+| `owner_id` | uuid NOT NULL | DataDirectOwner, FK → users. Inherited from thread via DataInheritFromParent |
+| `thread_id` | uuid NOT NULL | FK → agent_thread (CASCADE delete) |
+| `entity_id` | uuid | Entity scope (DataInheritFromParent from thread, if entity-scoped) |
+| `title` | text NOT NULL | Plan name |
+| `description` | text | Optional longer context / goal |
+| `status` | text NOT NULL DEFAULT 'draft' | Lifecycle: draft → active → completed / failed / cancelled |
+| `created_at` / `updated_at` | timestamptz | DataTimestamps |
+
+### Task approval fields (when `has_plans: true`)
+
+When `has_plans` is enabled, `agent_task` gets `plan_id NOT NULL` (replacing `thread_id`) plus these approval fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `plan_id` | uuid NOT NULL | FK → agent_plan (CASCADE delete) |
+| `order_index` | integer | Position within the plan |
+| `requires_approval` | boolean NOT NULL DEFAULT false | Marks this task as an approval gate |
+| `approval_status` | text | `pending` / `approved` / `rejected` (NULL if not an approval task) |
+| `approved_by` | uuid | FK → users — who approved/rejected |
+| `approved_at` | timestamptz | When the decision was made |
+| `approval_feedback` | text | Reviewer's feedback |
 
 ### Prefix composition rules (PR #1332)
 
@@ -225,9 +254,10 @@ The module uses explicit prefix-based composition (not regex):
 
 ### Security model
 
-- **Private tables** (thread, message, task): `AuthzMemberOwner` — actor must own the row AND be a member of the entity (via SPRT)
+- **Private tables** (thread, message, task, plan): `AuthzMemberOwner` — actor must own the row AND be a member of the entity (via SPRT)
 - **Shared tables** (prompt, knowledge): `AuthzEntityMembership` — any entity member can read/write
 - **App-level fallback** (no entity_table_id): uses `AuthzDirectOwner` for private tables, `AuthzAppMembership` for shared tables
+- **RLS inheritance** (when `has_plans`): `owner_id` + `entity_id` cascade via DataInheritFromParent: thread → plan → task
 
 ### Composing storage + agents on the same entity
 
@@ -242,7 +272,7 @@ An entity type can have both `has_storage` + `storage` AND `agents` simultaneous
       "parent_entity": "org",
       "has_storage": true,
       "storage": [{ "buckets": [{ "name": "documents" }] }],
-      "agents": [{ "has_knowledge": true }]
+      "agents": [{ "has_plans": true, "has_knowledge": true }]
     }
   ]
 }

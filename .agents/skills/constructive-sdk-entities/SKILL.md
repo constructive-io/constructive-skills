@@ -133,7 +133,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 ### Optional Modules
 - `profiles_module:channel` (if `has_profiles`) — Named permission roles
 - `events_module:channel` (if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
-- `agent_module:channel` (if `agents` config provided) — AI agent tables (threads, messages, tasks, prompts, knowledge)
+- `agent_module:channel` (if `agents` config provided) — AI agent tables (threads, messages, tasks, plans, prompts, knowledge)
 - `namespace_module:channel` (if `namespaces` config provided) — K8s-style namespace containers + partitioned event log
 
 ---
@@ -145,7 +145,8 @@ When the `agents` field is provided in entity_type_provision, the system creates
 ### Tables Created
 - `{prefix}_agent_thread` — Conversation threads (AuthzMemberOwner — private to owner within entity)
 - `{prefix}_agent_message` — Chat messages in threads (AuthzMemberOwner)
-- `{prefix}_agent_task` — Task tracking (AuthzMemberOwner)
+- `{prefix}_agent_plan` — Workflow plans with ordered tasks and approval gates (AuthzMemberOwner, optional via `has_plans`)
+- `{prefix}_agent_task` — Task tracking (AuthzMemberOwner) — belongs to plan when `has_plans`, otherwise to thread
 - `{prefix}_agent_prompt` — Shared prompt templates (AuthzEntityMembership — shared within entity)
 - `{prefix}_agent_knowledge` — Shared knowledge base (AuthzEntityMembership, optional via `has_knowledge`)
 
@@ -158,13 +159,13 @@ When the `agents` field is provided in entity_type_provision, the system creates
       "name": "Data Room",
       "prefix": "data_room",
       "parent_entity": "org",
-      "agents": [{ "has_knowledge": true }]
+      "agents": [{ "has_plans": true, "has_knowledge": true }]
     }
   ]
 }
 ```
 
-This produces: `data_room_agent_thread`, `data_room_agent_message`, `data_room_agent_task`, `data_room_agent_prompt`, `data_room_agent_knowledge`.
+This produces: `data_room_agent_thread`, `data_room_agent_message`, `data_room_agent_plan`, `data_room_agent_task`, `data_room_agent_prompt`, `data_room_agent_knowledge`.
 
 ### Security Model
 - **Private tables** (thread, message, task): `AuthzMemberOwner` — actor must own the row AND be a member of the entity
@@ -175,8 +176,10 @@ When `has_knowledge: true`, an `agent_knowledge` table is created alongside a `d
 
 ### Config Table
 The `agent_module` config table tracks:
-- `thread_table_name`, `message_table_name`, `task_table_name`, `prompts_table_name`
+- `thread_table_name`, `message_table_name`, `task_table_name`, `prompts_table_name`, `plan_table_name`
+- `has_plans boolean` — whether plan table + approval workflow are provisioned
 - `has_knowledge boolean` — whether knowledge + chunks are provisioned
+- `plan_table_name` — name of plan table (if enabled)
 - `knowledge_table_name` — name of knowledge table (if enabled)
 - `api_name` — GraphQL API to expose tables on (default: `'agent'`)
 
