@@ -43,10 +43,11 @@ const SRC_EXT = /\.(?:[cm]?tsx?|d\.ts)$/;
 // args
 // ---------------------------------------------------------------------------
 function parseArgs(argv) {
-  const opts = { project: process.cwd(), only: null, json: false };
+  const opts = { project: process.cwd(), only: null, json: false, manifestsDir: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--project' || a === '-p') opts.project = resolve(argv[++i] ?? '.');
+    else if (a === '--manifests-dir' || a === '-m') opts.manifestsDir = argv[++i] ?? null;
     else if (a === '--json') opts.json = true;
     else if (a === '--help' || a === '-h') opts.help = true;
     else if (!a.startsWith('-')) opts.only = a; // block name or manifest path
@@ -57,12 +58,103 @@ function parseArgs(argv) {
 // ---------------------------------------------------------------------------
 // tsconfig: read compilerOptions.paths (+ baseUrl), following one `extends`.
 // JSONC-tolerant (tsconfig allows comments + trailing commas).
+//
+// Comment stripping is STRING-AWARE: a single-pass scanner that ignores `//`
+// and `/* */` sequences occurring inside quoted strings. A naive regex would
+// corrupt valid JSON like the path glob `"@/*": ["./src/*/index"]`, whose
+// `/*` … `*/` substrings (spread across string literals) look like a block
+// comment and get devoured. Escapes (`\"`, `\\`) inside strings are honoured.
 // ---------------------------------------------------------------------------
+function stripJsonComments(txt) {
+  let out = '';
+  let i = 0;
+  const n = txt.length;
+  let inStr = false; // inside a double-quoted string literal
+  while (i < n) {
+    const c = txt[i];
+    const next = i + 1 < n ? txt[i + 1] : '';
+    if (inStr) {
+      out += c;
+      if (c === '\\') {
+        // copy the escaped char verbatim (handles \" and \\)
+        if (i + 1 < n) out += txt[i + 1];
+        i += 2;
+        continue;
+      }
+      if (c === '"') inStr = false;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === '/' && next === '/') {
+      // line comment: skip to (but keep) the newline
+      i += 2;
+      while (i < n && txt[i] !== '\n' && txt[i] !== '\r') i += 1;
+      continue;
+    }
+    if (c === '/' && next === '*') {
+      // block comment: skip through the closing */
+      i += 2;
+      while (i < n && !(txt[i] === '*' && i + 1 < n && txt[i + 1] === '/')) i += 1;
+      i += 2; // consume the closing */
+      continue;
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
+// Strip trailing commas (`,]` / `,}`) that sit OUTSIDE string literals, so a
+// comma inside a string value is never touched. Runs after comment stripping.
+function stripTrailingCommas(txt) {
+  let out = '';
+  let i = 0;
+  const n = txt.length;
+  let inStr = false;
+  while (i < n) {
+    const c = txt[i];
+    if (inStr) {
+      out += c;
+      if (c === '\\') {
+        if (i + 1 < n) out += txt[i + 1];
+        i += 2;
+        continue;
+      }
+      if (c === '"') inStr = false;
+      i += 1;
+      continue;
+    }
+    if (c === '"') {
+      inStr = true;
+      out += c;
+      i += 1;
+      continue;
+    }
+    if (c === ',') {
+      // look ahead past whitespace for a closing } or ]
+      let j = i + 1;
+      while (j < n && /\s/.test(txt[j])) j += 1;
+      if (j < n && (txt[j] === '}' || txt[j] === ']')) {
+        i += 1; // drop the comma
+        continue;
+      }
+    }
+    out += c;
+    i += 1;
+  }
+  return out;
+}
+
 function readJsonc(file) {
   let txt = readFileSync(file, 'utf-8');
-  txt = txt.replace(/\/\*[\s\S]*?\*\//g, ''); // block comments
-  txt = txt.replace(/(^|[^:])\/\/.*$/gm, '$1'); // line comments (not URLs)
-  txt = txt.replace(/,(\s*[}\]])/g, '$1'); // trailing commas
+  txt = stripJsonComments(txt); // string-aware: comments only outside strings
+  txt = stripTrailingCommas(txt); // string-aware trailing-comma removal
   return JSON.parse(txt);
 }
 
@@ -189,25 +281,58 @@ const queryHook = (op) => `use${pascal(op)}Query`;
 // A manifest is either a single { namespace, mutations, queries, models }
 // object, or { requires: [ {…}, … ] } for cross-namespace blocks.
 // ---------------------------------------------------------------------------
-function manifestDir(projectRoot) {
-  return join(projectRoot, '.constructive', 'blocks');
+// Candidate manifest dirs, in priority order. shadcn writes block manifests to
+// `<project>/src/.constructive/blocks` whenever the blocks registry target sits
+// under src/ (the common Next.js layout) — the project-root `.constructive` is
+// only used when the target is at the root. We scan BOTH so manifests are never
+// silently missed (which would false-pass the check). An explicit
+// --manifests-dir override short-circuits discovery.
+function manifestDirs(projectRoot, override) {
+  if (override) {
+    const dir = isAbsolute(override) ? override : resolve(projectRoot, override);
+    return [dir];
+  }
+  return [join(projectRoot, '.constructive', 'blocks'), join(projectRoot, 'src', '.constructive', 'blocks')];
 }
 
-function findManifests(projectRoot, only) {
+// Primary dir — used in messages (the location the operator should expect).
+function manifestDir(projectRoot, override) {
+  return manifestDirs(projectRoot, override)[0];
+}
+
+function findManifests(projectRoot, only, override) {
+  const dirs = manifestDirs(projectRoot, override);
   if (only) {
-    // explicit path, or a block name resolved under .constructive/blocks/
+    // explicit path, or a block name resolved under any candidate dir
     const direct = isAbsolute(only) ? only : resolve(projectRoot, only);
     if (existsSync(direct) && statSync(direct).isFile()) return [direct];
-    const named = join(manifestDir(projectRoot), only.endsWith('.requires.json') ? only : `${only}.requires.json`);
-    if (existsSync(named)) return [named];
-    fail(2, `No manifest found for "${only}" (looked for ${named}).`);
+    const fileName = only.endsWith('.requires.json') ? only : `${only}.requires.json`;
+    const tried = [];
+    for (const dir of dirs) {
+      const named = join(dir, fileName);
+      tried.push(named);
+      if (existsSync(named)) return [named];
+    }
+    fail(2, `No manifest found for "${only}" (looked for ${tried.join(', ')}).`);
   }
-  const dir = manifestDir(projectRoot);
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.requires.json'))
-    .map((f) => join(dir, f))
-    .sort();
+  // De-dupe by manifest file name. Dirs are scanned in priority order (root
+  // before src/), so the first occurrence of a given `<block>.requires.json`
+  // wins — covering both two candidate dirs that resolve to the same place AND
+  // the same block accidentally present in both locations (otherwise it would
+  // be reported twice). Distinct blocks keep distinct file names, so this never
+  // merges different manifests.
+  const seen = new Set();
+  const found = [];
+  for (const dir of dirs) {
+    if (!existsSync(dir)) continue;
+    for (const f of readdirSync(dir)) {
+      if (!f.endsWith('.requires.json')) continue;
+      if (seen.has(f)) continue;
+      seen.add(f);
+      found.push(join(dir, f));
+    }
+  }
+  return found.sort();
 }
 
 function normalizeRequirements(raw) {
@@ -251,12 +376,17 @@ function fail(code, msg) {
 const HELP = `check-sdk.mjs — verify the host SDK satisfies installed Constructive data blocks.
 
 Usage:
-  node check-sdk.mjs [block] [--project DIR] [--json]
+  node check-sdk.mjs [block] [--project DIR] [--manifests-dir DIR] [--json]
 
-  [block]          a block name (auth-sign-in-card) or manifest path; omit to check all
-  --project DIR    project root to check (default: cwd)
-  --json           emit a machine-readable report
-  --help           show this help`;
+  [block]            a block name (auth-sign-in-card) or manifest path; omit to check all
+  --project DIR      project root to check (default: cwd)
+  --manifests-dir DIR  explicit .constructive/blocks dir (overrides auto-discovery)
+  --json             emit a machine-readable report
+  --help             show this help
+
+Manifests are auto-discovered under both <project>/.constructive/blocks and
+<project>/src/.constructive/blocks (shadcn writes to the latter when the blocks
+target lives under src/). Use --manifests-dir to point at a non-standard location.`;
 
 // ---------------------------------------------------------------------------
 // main
@@ -271,9 +401,10 @@ function main() {
   const ts = loadTsconfig(opts.project);
   if (!ts) fail(2, `No tsconfig.json in ${opts.project}. Run from the host app root or pass --project.`);
 
-  const manifests = findManifests(opts.project, opts.only);
+  const manifests = findManifests(opts.project, opts.only, opts.manifestsDir);
   if (!manifests.length) {
-    console.log(`${C.dim('•')} No data-block manifests in ${manifestDir(opts.project)} — nothing to check.`);
+    const where = opts.manifestsDir ? manifestDir(opts.project, opts.manifestsDir) : manifestDirs(opts.project).join(' or ');
+    console.log(`${C.dim('•')} No data-block manifests in ${where} — nothing to check.`);
     process.exit(0);
   }
 

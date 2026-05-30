@@ -10,6 +10,8 @@ Every **data block** (any block importing a generated hook) ships a co-located, 
 .constructive/blocks/<block>.requires.json
 ```
 
+This path is **relative to the blocks registry target**. shadcn resolves the target against the host's aliases, so on a standard Next.js `src/` layout the manifest actually lands at `src/.constructive/blocks/<block>.requires.json`; only when the blocks target sits at the project root does it land at the root `.constructive/blocks/`. `check-sdk.mjs` scans **both** locations (and accepts `--manifests-dir` to override), so a manifest under `src/` is never silently missed.
+
 **Presentational blocks ship none** (no generated-hook import → nothing to verify). The registry item's `docs` field always carries a *human-readable* summary of the same prerequisites; the JSON manifest is the machine-checkable twin that `check-sdk.mjs` reads.
 
 ## Schema — single namespace (canonical)
@@ -76,13 +78,16 @@ node scripts/check-sdk.mjs                       # check every installed manifes
 node scripts/check-sdk.mjs auth-sign-in-card     # one block by name…
 node scripts/check-sdk.mjs ./path/to.requires.json   # …or by manifest path
 node scripts/check-sdk.mjs --project /path/app   # check a different project root
+node scripts/check-sdk.mjs --manifests-dir DIR   # point at a non-standard manifests dir
 node scripts/check-sdk.mjs --json                # machine-readable report on stdout
 node scripts/check-sdk.mjs --help
 ```
 
+Manifests are auto-discovered under **both** `<project>/.constructive/blocks` and `<project>/src/.constructive/blocks` (a block name passed as `[block]` is resolved against both, too). `--manifests-dir` overrides discovery with an explicit directory.
+
 ### What it verifies
 
-1. The `@/generated/*` alias exists in the host `tsconfig.json` (follows one `extends` level; tolerant of JSONC comments + trailing commas).
+1. The `@/generated/*` alias exists in the host `tsconfig.json` (follows one `extends` level; tolerant of JSONC comments + trailing commas — comment/comma stripping is **string-aware**, so path globs like `"@/*": ["./src/*"]` are never mis-parsed as block comments).
 2. The generated dir for each block's namespace exists, resolved **via the alias** (tries `@/generated/<ns>`, `@/generated/<ns>/*`, then `@/generated/*` — never a hardcoded path).
 3. Every manifest `mutation`/`query`/`model` maps to a real export of that SDK (it scans every SDK source file, so a leaf `export function useXMutation` is found regardless of barrel re-exports).
 4. *(Advisory)* whether `<BlocksRuntime>` appears mounted somewhere in the host source.

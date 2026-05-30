@@ -82,7 +82,7 @@ npx shadcn add @constructive/auth-sign-in-card
 node path/to/skill/scripts/check-sdk.mjs auth-sign-in-card
 ```
 
-Step 1 also writes the block's manifest to `.constructive/blocks/<block>.requires.json`. **Always run step 2 after installing a data block** — it is the §9 enforcement gate. A green check means the block will compile against real operations; a red check names the exact missing op *before* you waste a build.
+Step 1 also writes the block's manifest to `.constructive/blocks/<block>.requires.json` — relative to wherever the blocks registry target lives, so on a standard Next.js `src/` layout it lands at **`src/.constructive/blocks/<block>.requires.json`**. `check-sdk.mjs` auto-discovers both the project-root and `src/` locations (use `--manifests-dir DIR` for anything non-standard). **Always run step 2 after installing a data block** — it is the §9 enforcement gate. A green check means the block will compile against real operations; a red check names the exact missing op *before* you waste a build.
 
 Then render it:
 
@@ -98,7 +98,7 @@ import { SignInCard } from '@/blocks/auth/sign-in-card/sign-in-card';
 
 ## The `requires.json` manifest
 
-Every **data block** ships a co-located, machine-readable manifest declaring exactly what the host SDK must expose. It lands at `.constructive/blocks/<block>.requires.json` on install:
+Every **data block** ships a co-located, machine-readable manifest declaring exactly what the host SDK must expose. It lands at `.constructive/blocks/<block>.requires.json` on install — under `src/` when the blocks target lives there (`src/.constructive/blocks/<block>.requires.json`), which is the usual Next.js layout:
 
 ```json
 { "namespace": "auth", "mutations": ["signIn"], "queries": [], "models": [] }
