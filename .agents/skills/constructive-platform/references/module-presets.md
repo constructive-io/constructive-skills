@@ -18,7 +18,7 @@ interface ModulePreset {
   description: string;   // longer narrative: when / why / tradeoffs
   good_for: string[];    // concrete "use this if..."
   not_for: string[];     // concrete "don't use this if..."
-  modules: string[];     // flat module name list
+  modules: (string | [string, Record<string, unknown>])[];  // module names or [name, options] tuples
   includes_notes?: Record<string, string>;  // per-module rationale
   omits_notes?: Record<string, string>;     // per-skipped-module rationale
   extends?: string[];    // informational: "composes from these presets"
@@ -35,8 +35,9 @@ interface ModulePreset {
 | `auth:sso` | auth:email + OAuth + connected accounts | B2B / federation |
 | `auth:passkey` | auth:email + WebAuthn | Phishing-resistant auth |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links | Production consumer auth |
-| `b2b` | auth:hardened + orgs + invites + permissions + levels + profiles + hierarchy | Multi-tenant SaaS |
-| `full` | `['all']` sentinel | Reference / demo DBs / greenfield |
+| `b2b` | auth:hardened + orgs + invites + permissions + levels + profiles + hierarchy + user_settings | Multi-tenant SaaS |
+| `b2b:storage` | b2b + file upload infrastructure (buckets, files, RLS) + user_settings | B2B with file uploads |
+| `full` | everything — i18n, user_settings, storage, billing, notifications | Reference / demo DBs / greenfield |
 
 ## Usage
 
@@ -96,6 +97,26 @@ Provisions device tracking, trusted device MFA bypass, and device approval gate:
 **Settings toggles:** All features are off by default (`enable_device_tracking = true` enables passive tracking only). Enable `enable_trusted_devices` for MFA bypass, `require_device_approval` for email approval gate, `require_mfa_new_device` to force MFA on new devices.
 
 See [device-settings.md](./device-settings.md) for the full composition matrix and SDK usage.
+
+### `user_settings_module`
+
+Creates a skeleton 1:1 `user_settings` table per user (`AuthzDirectOwner` RLS, SELECT + UPDATE only) in `users_public`. Other modules extend it by adding columns via `metaschema.create_field()`:
+
+- `notifications_module` adds `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_*`, `notifs_default_channels`
+- `i18n_module` will add `preferred_language`
+- `user_auth_module` will add MFA preference columns
+
+**Included in:** `b2b`, `b2b:storage`, `full` presets. Must be installed before `notifications_module` so that notification settings auto-resolve.
+
+### `i18n_module`
+
+Provisions app-level internationalization config:
+
+- **`i18n_private` schema** — contains `app_settings_i18n` singleton (default_language, supported_languages, fallback_chain, is_enabled)
+- **`i18n_public` schema** — reserved for future public helpers
+- Required for `DataI18n` blueprint nodes (translation tables)
+
+**Included in:** `full` preset. Add `'i18n_module'` to your module list to enable in other presets.
 
 ## Feature Flags / Toggles (future)
 
