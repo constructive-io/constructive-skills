@@ -29,7 +29,15 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Phone / SMS sign-in | `phone_numbers_module` + toggle | `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | OAuth / SSO (federated identity) | `identity_providers_module` + `connected_accounts_module` | `auth:sso`, `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Passkeys (WebAuthn) | `webauthn_credentials_module` + `webauthn_auth_module` + `session_secrets_module` | `auth:passkey`, `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| User credentials (bcrypt credential store) | `user_credentials_module` | all auth presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| MFA / 2FA (TOTP, email, SMS, backup codes) | `app_settings_auth.require_mfa` + `allow_totp_mfa` + `allow_email_mfa` + `allow_sms_mfa` + `allow_backup_codes` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Anonymous sessions | `app_settings_auth.allow_anonymous_sessions` | — (toggle) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| CAPTCHA / reCAPTCHA gate | `app_settings_auth.enable_captcha` | — (toggle) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Cookie-based authentication | `app_settings_auth.enable_cookie_auth` + cookie config fields | — (toggle) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Session management (idle timeout, max sessions) | `app_settings_auth.session_idle_timeout` + `max_sessions_per_user` + `allow_multiple_sessions` | — (toggle) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Cross-origin token support | `app_settings_auth.allow_cross_origin_token` | — (toggle) | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Rate limits / throttling | `rate_limits_module` (optional — see `module-presets.md`) | `auth:hardened`, `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
+| Billing-aware rate limit meters | `rate_limit_meters_module` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Device tracking (passive) | `devices_module` + `app_settings_device.enable_device_tracking` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
 | Trusted devices (MFA bypass) | `devices_module` + `app_settings_device.enable_trusted_devices` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
 | Device approval gate (email) | `devices_module` + `app_settings_device.require_device_approval` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
@@ -37,9 +45,9 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | User settings (extensible 1:1 preferences) | `user_settings_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | API keys | `user_state_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (per-user) | `config_secrets_user_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (org-scoped) | `config_secrets_org_module` | standalone (not in presets yet) | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Encrypted secrets (app-wide, admin-only) | `app_secrets` (part of `config_secrets_user_module`) | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (per-user) | `["config_secrets_module", {"scope": "app"}]` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (org-scoped) | `["config_secrets_module", {"scope": "org"}]` | standalone (not in presets yet) | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Encrypted secrets (app-wide, admin-only) | `app_secrets` (part of `config_secrets_module`) | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Web3 wallet addresses | `crypto_addresses_module` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Password reset / forgot password | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Email verification | `emails_module` + auth procs | `auth:email`+ | [`constructive-platform`](../constructive-platform/SKILL.md) |
@@ -50,13 +58,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
 | Row-level security on every table | `rls_module` + `secure_table_provision` | all | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
-| 14 `Authz*` policy node types | Node Type Registry | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| 18 `Authz*` policy node types (17 leaf + AuthzComposite) | Node Type Registry | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Permission levels | `levels_module` | `b2b`, `full` | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 | "Users are organizations" identity | `membership_types_module` | all auth presets | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| AuthzFilePath (path-scoped file sharing via ltree) | `AuthzFilePath` node | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
 
 ## 3. Multi-tenancy & Membership
 
@@ -70,10 +79,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Email auto-verification on invite claim | `invites_module` + `emails_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Limits (metered quotas per scope) | `["limits_module", {"scope": "app"}]` / `["limits_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Cap tables (static config values) | `limits_module` → `limit_caps_defaults` + `limit_caps` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| Feature flags (cap-based gating) | `LimitFeatureFlag` node + `limit_caps_defaults(max=0\|1)` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Feature flags (cap-based gating) | `LimitEnforceFeature` node + `limit_caps_defaults(max=0\|1)` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Credits (append-only ledger) | `limits_module` → `limit_credits` + `credit_codes` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Profiles per scope | `["profiles_module", {"scope": "app"}]` / `["profiles_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Hierarchy (entity_type tree) | `hierarchy_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Entity-scoped function module | `entity_type_provision.functions[]` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Entity-scoped graph module | `entity_type_provision.graphs[]` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Entity-scoped namespace module | `entity_type_provision.namespaces[]` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Entity-scoped agent module | `entity_type_provision.agents[]` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 4. Data Modeling
 
@@ -83,19 +96,38 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Blueprint templates / marketplace | `copy_template_to_blueprint()` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | Merkle definition_hash | backend trigger | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
 | Tables + fields | `secure_table_provision` | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
-| Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
-| Node type generators (11 categories: Data*, Search*, Authz*, Check*, Limit*, Billing*, Job*, Process*, Relation*, View*, Event*) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| Relations (1:1, 1:N, M:N, Spatial) | `relation_provision` | — | [`constructive-platform`](../constructive-platform/references/blueprints.md) |
+| Node type generators (12 categories: Data\*, Search\*, Authz\*, Check\*, Limit\*, Billing\*, Job\*, Process\*, Relation\*, View\*, Event\*, Table\*) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataDirectOwner / DataEntityMembership / DataOwnershipInEntity | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPeoplestamps (created_by / updated_by) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataCompositeField (derived text concatenation) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Behavior triggers (DataSlug, DataInflection, DataForceCurrentUser) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| LimitCounter (metered usage tracking) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| LimitFeatureFlag (cap-based feature gating) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| LimitEnforceCounter (metered usage enforcement) | `LimitEnforceCounter` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| LimitEnforceFeature (cap-based feature gating) | `LimitEnforceFeature` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
 | Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataI18n (translation tables + multilingual search) | `DataI18n` node + `i18n_module` | — | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| DataId (UUID PK generation) | `DataId` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataTimestamps (created_at / updated_at) | `DataTimestamps` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataSoftDelete (is_deleted + deleted_at) | `DataSoftDelete` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataArchivable (is_archived + archived_at) | `DataArchivable` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataRealtime (per-table subscriber table) | `DataRealtime` node + `realtime_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataBulk (bulk mutation smart tags) | `DataBulk` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataJsonb (JSONB field) | `DataJsonb` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataMemberOwner (compound ownership) | `DataMemberOwner` node | — | [`constructive-safegres`](../constructive-safegres/SKILL.md) |
+| DataStatusField (status field generation) | `DataStatusField` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataTags (citext\[\] tags + GIN index) | `DataTags` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| LimitEnforceAggregate (aggregate limit checks) | `LimitEnforceAggregate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| LimitEnforceRate (rate limiting) | `LimitEnforceRate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| LimitTrackUsage (billing usage tracking) | `LimitTrackUsage` node + `billing_module` | — | [`constructive-sdk-billing`](../constructive-sdk-billing/SKILL.md) |
+| LimitWarningCounter (soft limit warnings) | `LimitWarningCounter` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| LimitWarningAggregate (aggregate warnings) | `LimitWarningAggregate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| LimitWarningRate (rate limit warnings) | `LimitWarningRate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
+| TableOrganizationSettings (org settings skeleton) | `TableOrganizationSettings` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| TableUserProfiles (user profile skeleton) | `TableUserProfiles` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| TableUserSettings (user settings skeleton) | `TableUserSettings` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 
 ## 5. Events & Achievements
 
@@ -111,6 +143,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Compound conditions (shared with JobTrigger) | `build_condition_ast()` + `conditions` param | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) + [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Partitioned event log (time-based retention) | `events_module` + `pg_partman` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 | Event aggregates (running counts per user) | `events_module` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Event type runtime controls (is_milestone, feeds_levels) | `event_types` fields | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
+| Events security provisioning | `apply_events_security()` | — | [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md) |
 
 ## 6. Storage & Uploads
 
@@ -127,6 +161,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Content-hash deduplication | `requestUploadUrl` (deduplicated field) | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 | Download URLs (presigned GET / CDN) | `downloadUrl` computed field | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 | MIME type restrictions + file size limits | `allowed_mime_types` + `max_file_size` on bucket | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| File versioning (version chains) | `has_versioning` on `storage_module` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| File events audit log | `has_audit_log` on `storage_module` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Virtual filesystem (path shares) | `has_path_shares` on `storage_module` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Custom S3 keys | `has_custom_keys` on `storage_module` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Upload confirmation (deferred verification) | `has_confirm_upload` on `storage_module` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Multi-module storage (separate tables per use case) | `storage_key` on `storage[]` entries | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| File deletion GC (async S3 cleanup) | AFTER DELETE trigger → `storage_gc` queue | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
+| Stream-based file uploads (Upload scalar) | `graphile-upload-plugin` | — | [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) |
 
 ## 7. Search
 
@@ -140,6 +182,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | SearchSpatial (PostGIS geometry) | `SearchSpatial` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | SearchSpatialAggregate (materialized aggregates) | `SearchSpatialAggregate` blueprint node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Unified composite search (GraphQL) | `unifiedSearch` field | — | [`graphile-search`](../graphile-search/SKILL.md) |
+| RelationSpatial (cross-table PostGIS predicates) | `RelationSpatial` node + `graphile-postgis` | — | [`graphile-search`](../graphile-search/SKILL.md) |
+| Chunk-aware search (parent+chunk embeddings) | `@hasChunks` smart tag | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) + [`graphile-search`](../graphile-search/SKILL.md) |
+| Recency boost (timestamp-based score decay) | `@searchConfig.boost_recent` | — | [`graphile-search`](../graphile-search/SKILL.md) |
+| SearchFullText lang_column (per-row language stemming) | `SearchFullText` + `lang_column` param | — | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
 
 ## 8. AI
 
@@ -148,14 +194,21 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | SearchVector (pgvector columns + HNSW/IVFFlat) | `SearchVector` blueprint node | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Embedding stale tracking + job enqueue | `SearchVector` `include_updated_at` + `enqueue_job` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Chunk tables (long text splitting) | `SearchVector` `chunks_config` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| Embedding worker pipeline | Graphile Worker + `generate_embedding` task | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding worker pipeline | Graphile Worker + `generate_embedding` task (SQL triggers exist; Knative handlers not yet implemented) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama` (shipped); `@agentic-kit/anthropic`, `@agentic-kit/openai` (optional) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent plans + approval workflow | `["agent_module", {"has_plans": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent resources (unified skills + knowledge) | `["agent_module", {"has_resources": true}]` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent registry + personas | `["agent_module", {"has_agents": true}]` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent prompt templates | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| graphile-llm RAG plugin (ragQuery field) | `LlmRagPlugin` + `graphile-llm` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| graphile-llm metering (billing-aware LLM calls) | `MeteringPlugin` + `graphile-llm` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| graphile-llm agent discovery | `AgentDiscoveryPlugin` + `graphile-llm` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| agentic-server REST API (threads, messages, embed) | `agentic-server` package | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| LLM module (per-database provider config) | `llm_module` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding model/provider params | `SearchVector` + `embedding_model` / `embedding_provider` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Agent sub-agent hierarchy | agent table `parent_id` FK + `is_ephemeral` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 9. GraphQL & Codegen
 
@@ -172,6 +225,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Dynamic `_meta` forms (zero-config CRUD) | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 | CRUD Stack cards (iOS-style panels) | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
 | 50+ UI components | `@constructive-io/ui` | — | [`constructive-frontend`](../constructive-frontend/SKILL.md) |
+| Subscription hooks codegen | `--react-query` + `DataRealtime` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Codegen watch mode (live-reload) | `cnc codegen --watch` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Query key factory generator | `cnc codegen` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
+| Docs/skills auto-generation from codegen | `cnc codegen` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
 ## 10. Services & Routing
 
@@ -179,8 +236,15 @@ When a feature is gated by a module, installing / omitting the module from a pre
 |---|---|---|---|
 | Multiple APIs per database | `api` + `api_schema` entities | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Domain / subdomain routing | `domain` + `site` entities | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
-| Public vs admin API routing | `api.routing_mode` | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
+| Public vs admin API routing | `apis.is_public` + `API_IS_PUBLIC` env | — | [`constructive-platform`](../constructive-platform/references/server-config.md) |
 | Schema grants per API | `schema_grant` | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| CORS settings (per-database, per-API) | `cors_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| Database feature flags (12 toggles) | `database_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| Per-API feature flag overrides | `api_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| RLS runtime config | `rls_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| WebAuthn runtime config | `webauthn_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| Public-key crypto auth config | `pubkey_settings` table | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
+| Application definitions | `apps` table in `services_public` | — | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 
 ## 11. Realtime Subscriptions
 
@@ -197,7 +261,6 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Connection state hook (`useConnectionState`) | `cnc codegen` + realtime config | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | ORM realtime (`client.subscribe()`) | `realtime` config on `createClient` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 | Runtime toggle (`enable_realtime`) | `database_settings` / `api_settings` | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
-| Policy-driven field generation | `column-ref` in `parameter_schema` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Partition table support | Declarative `partitioned` flag + automatic lifecycle | — | [`constructive-platform`](../constructive-platform/references/realtime-subscriptions.md) |
 
 ## 12. Background Work & Operations
@@ -206,14 +269,17 @@ When a feature is gated by a module, installing / omitting the module from a pre
 |---|---|---|---|
 | Background jobs (Knative) | `jobs` package | — | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Job triggers (JobTrigger) | `JobTrigger` node | — | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
+| ProcessImageVersions (image variant generation) | `ProcessImageVersions` node | — | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Cloud functions (Knative HTTP) | `functions/*` | — | [`constructive-platform`](../constructive-platform/references/cloud-functions.md) |
 | Deterministic DB migrations | `pgpm deploy / verify / revert` | — | [`pgpm`](../pgpm/SKILL.md) |
 | Module provisioning | `metaschema_generators.provision_database_modules` | — | [`constructive-platform`](../constructive-platform/references/module-presets.md) |
 | DB introspection → SDK | `cnc codegen` | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 | Ephemeral test DBs | `pgsql-test` + friends | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
-| Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Notifications (email/push/webhook — channels, preferences, digest, delivery_log, subscriptions) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Internationalization (multilingual search + translations) | `i18n_module` + `DataI18n` + `lang_column` | `full` | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
+| pg_cron SQL scheduling (7 maintenance tasks) | `register_maintenance_jobs` | — | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| CursorTracker at-least-once delivery | `listener_node` + `drain_changes()` + `touch_listener()` | — | [`constructive-platform`](../constructive-platform/SKILL.md) |
 
 ## 13. Project Setup & Scaffolding
 
@@ -230,14 +296,14 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Preset | Shape |
 |---|---|
-| `minimal` | users + sessions + rls + secrets — no server-side auth |
+| `minimal` | users + sessions + rls + API keys — no server-side auth |
 | `auth:email` | email/password, single tenant |
 | `auth:email+magic` | `auth:email` + magic link / email OTP |
 | `auth:sso` | `auth:email` + OAuth + connected accounts |
 | `auth:passkey` | `auth:email` + WebAuthn |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links |
-| `b2b` | `auth:hardened` + orgs + invites + permissions + levels + profiles + hierarchy + user_settings |
-| `b2b:storage` | `b2b` + file upload infrastructure (buckets, files, RLS) + user_settings |
+| `b2b` | `auth:hardened` + orgs + invites + permissions + levels + profiles + hierarchy + devices |
+| `b2b:storage` | `b2b` + file upload infrastructure (buckets, files, RLS) + devices |
 | `full` | everything — includes i18n_module, user_settings_module, storage, billing, notifications |
 
 See [`constructive/references/module-presets.md`](../constructive-platform/references/module-presets.md) for the full catalog, shapes, and ORM usage.
@@ -250,13 +316,12 @@ See [`constructive/references/module-presets.md`](../constructive-platform/refer
 |---|---|
 | `notifications_module` | `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_start`, `notifs_quiet_hours_end`, `notifs_quiet_hours_timezone`, `notifs_default_channels` |
 | `i18n_module` | `preferred_language` |
-| `user_auth_module` (planned) | `mfa_totp_enabled`, `mfa_email_enabled`, `mfa_sms_enabled` |
 
 ## Things Not (Yet) a Feature
 
-- **MFA columns on `user_settings`** — `user_auth_module` has AST procedure builders that reference MFA fields, but they aren't wired to `user_settings_module` yet.
 - **`emails_module` opt-out** — email is required by the `user_auth_module` trigger today; `auth:sso` / `auth:passkey` presets still install it.
 - **`organization_settings_module`** — will follow the same pattern as `user_settings_module` for org-level settings.
+- **Embedding worker Knative handlers** — SQL triggers for embedding enqueue exist, but Knative worker handlers are not yet wired.
 
 ## Flow-Based Programming (separate toolkit)
 
