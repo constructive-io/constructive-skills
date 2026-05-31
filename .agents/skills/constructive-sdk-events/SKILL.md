@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-events
-description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards (limit_credit + meter_credit with expires_interval), invite-based achievements (has_invite_achievements), period-aware event_aggregates (lazy count reset), re-triggerable achievements (per-period re-qualification), EventReferral for attributing events to inviters (with multi-level max_depth for MLM referral chains), and the full virality chain. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', 'meter_credit', 'expires_interval', 'period_interval', 'recurring credits', 'referral credits', 'EventReferral', 'max_depth', 'multi-level referral', 'MLM', 'referral chain', or when working with events_module in blueprints."
+description: "Events, achievements, and gamification — EventTracker blueprint node for recording events on row changes, blueprint achievements[] for defining levels with requirements and credit rewards (limit_credit + meter_credit with expires_interval), invite-based achievements (has_invite_achievements), period-aware event_aggregates (lazy count reset), re-triggerable achievements (per-period re-qualification), EventReferral for attributing events to inviters (with multi-level max_depth for MLM referral chains), the full virality chain, event_types.is_milestone (partition pruning exemption), event_types.feeds_levels (achievement system toggle), and apply_events_security (automatic RLS for all 7 events tables). Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'record events', 'EventTracker', 'level requirements', 'achievement rewards', 'invite achievements', 'invite virality', 'credit grants for achievements', 'meter_credit', 'expires_interval', 'period_interval', 'recurring credits', 'referral credits', 'EventReferral', 'max_depth', 'multi-level referral', 'MLM', 'referral chain', 'is_milestone', 'feeds_levels', 'events security', 'apply_events_security', or when working with events_module in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -173,6 +173,56 @@ User action (INSERT on user_uploads)
 Each ancestor in the chain receives the same event. Combined with tiered achievement thresholds, this creates natural attenuation — direct inviters accumulate events quickly (low threshold, high reward), while deeper ancestors accumulate slowly (high threshold, low reward).
 
 See [references/event-referral.md](references/event-referral.md) for multi-level blueprint examples, the viral loop pattern, and attenuation design.
+
+---
+
+## Event Type Configuration Fields
+
+The `event_types` table is auto-populated when `auto_register_type: true` (default) during provisioning. Each event type row has runtime-configurable fields beyond the basic `name`:
+
+| Field | Type | Default | Description |
+|-------|------|---------|-------------|
+| `is_active` | boolean | `true` | Kill switch — set to `false` to pause recording without redeploying |
+| `is_milestone` | boolean | `false` | Exempts this event type from partition pruning/retention. Milestone events are **never deleted** regardless of the module's `retention` interval. Use for irreversible achievements or compliance-critical events. |
+| `feeds_levels` | boolean | `true` | Controls whether this event type participates in the achievement system. When `true`, recording an event updates `event_aggregates` and triggers `tg_check_achievements`. Set to `false` for telemetry-only events that should not drive level progression. |
+| `retention_days` | integer | `NULL` | Per-type retention override in days. `NULL` uses the module default; `0` means keep forever. |
+| `period_interval` | interval | `NULL` | Period for aggregate count reset. `NULL` means lifetime counting. |
+
+### Example: Milestone + non-level event types
+
+```typescript
+// Via ORM: mark 'account_created' as a milestone (never pruned)
+await db.appEventType.update({
+  where: { name: { equalTo: 'account_created' } },
+  data: { isMilestone: true },
+}).execute();
+
+// 'page_view' is telemetry only — don't feed achievements
+await db.appEventType.update({
+  where: { name: { equalTo: 'page_view' } },
+  data: { feedsLevels: false },
+}).execute();
+```
+
+---
+
+## Events Security
+
+Events security is **automatically provisioned** when the events module is installed — no manual RLS setup required. The `apply_events_security()` generator creates RLS policies for all 7 events tables:
+
+| Table | SELECT | Mutations | Admin |
+|-------|--------|-----------|-------|
+| `events` | Own rows (`AuthzDirectOwner` on `actor_id`) | System triggers only | `admin_levels` permission |
+| `event_aggregates` | All authenticated (`AuthzAllowAll` — leaderboards) | System triggers only | `admin_levels` |
+| `event_types` | All authenticated | — | `admin_levels` (INSERT/UPDATE/DELETE) |
+| `levels` | All authenticated | — | `admin_levels` (INSERT/UPDATE/DELETE) |
+| `level_requirements` | All authenticated | — | `admin_levels` (INSERT/UPDATE/DELETE) |
+| `level_grants` | Own rows | System triggers only | `admin_levels` |
+| `achievement_rewards` | All authenticated | — | `admin_levels` (INSERT/UPDATE/DELETE) |
+
+For entity-scoped events, policies use `AuthzEntityMembership` instead of `AuthzAppMembership`, with the same permission structure scoped to the entity.
+
+For platform-scoped events, all tables use `apply_module_security` with `AuthzRelatedEntityMembership` through the database record.
 
 ---
 

@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-uploads
-description: "File uploads with GraphQL + S3/MinIO — presigned URL flow (requestUploadUrl → PUT → downloadUrl), bucket provisioning, downloadUrl computed field, public/private/entity-scoped buckets, MIME type restrictions, file size limits, deduplication, and the upload-client library. Use when asked to 'upload files', 'add file uploads', 'configure storage', 'set up MinIO', 'presigned URLs', 'download URLs', or when working with graphile-presigned-url-plugin, graphile-bucket-provisioner-plugin, or @constructive-io/upload-client."
+description: "File uploads with GraphQL + S3/MinIO — presigned URL flow (requestUploadUrl → PUT → downloadUrl), bucket provisioning, downloadUrl computed field, public/private/entity-scoped buckets, MIME type restrictions, file size limits, deduplication, the upload-client library, file versioning (has_versioning), audit log (has_audit_log), path shares / virtual filesystem (has_path_shares), custom S3 keys (has_custom_keys), confirm upload flow (has_confirm_upload), multi-module storage (storage_key), file deletion GC, and graphile-upload-plugin (Upload scalar). Use when asked to 'upload files', 'add file uploads', 'configure storage', 'set up MinIO', 'presigned URLs', 'download URLs', 'file versioning', 'audit log', 'path shares', 'custom keys', 'confirm upload', 'storage_key', 'file GC', 'Upload scalar', or when working with graphile-presigned-url-plugin, graphile-bucket-provisioner-plugin, graphile-upload-plugin, or @constructive-io/upload-client."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -156,6 +156,45 @@ Each module gets its own table pair (`app_buckets`/`app_files` for default, `app
 The `storage_key` must be max 16 chars, lowercase snake_case, and cannot be `'buckets'`/`'files'`/`'bucket'`/`'file'`.
 
 This creates rows in the appropriate buckets table during `construct_blueprint()` Phase 0.5. The physical S3 bucket is still lazily created on the first `requestUploadUrl` call. See [blueprint-definition-format.md](../constructive-platform/references/blueprint-definition-format.md) for the full `storage` key spec.
+
+---
+
+## Storage Feature Flags
+
+Each `storage[]` entry accepts boolean flags that opt into additional tables, triggers, and computed fields. Enable them in blueprint storage config:
+
+```ts
+const blueprint = {
+  storage: [{
+    has_versioning: true,
+    has_audit_log: true,
+    has_path_shares: true,
+    has_confirm_upload: true,
+    confirm_upload_delay: '30 seconds',
+    buckets: [{ name: 'documents' }],
+  }],
+};
+```
+
+| Flag | Default | Creates |
+|------|---------|---------|
+| `has_versioning` | `false` | `previous_version_id` FK, `is_latest` boolean, `set_version_not_latest` trigger, `promote_previous_version` trigger, `version_history` computed field (recursive CTE) |
+| `has_audit_log` | `false` | `{prefix}_file_events` table with 13 event types, AFTER trigger on files, immutable records. `SET NULL` on file delete. |
+| `has_path_shares` | `false` | `{prefix}_file_path_shares` table (`bucket_id`, `path` ltree, `grantee_id`, `can_read`/`write`/`delete`, `expires_at`), `filePath` computed field, `move_files` function, `rename_file` function |
+| `has_custom_keys` | `false` | `allow_custom_keys` boolean on buckets (immutable). Clients provide custom S3 keys instead of content hash. Implies `has_versioning` + `has_content_hash`. |
+| `has_confirm_upload` | `false` | `confirm_file_uploaded` + `mark_file_processed` SECURITY DEFINER functions, AFTER INSERT trigger enqueuing `storage:confirm_upload` job. Status flow: `requested → uploaded → processed`. |
+| `has_content_hash` | `false` | Content-hash addressing for deduplication |
+| `has_audit_log` event types | — | `upload`, `delete`, `version_created`, `move`, `rename`, `download`, `publish`, `unpublish`, `share_created`, `share_revoked`, `permission_granted`, `permission_revoked`, `bulk_upload` |
+
+### File deletion GC (always active)
+
+An AFTER DELETE trigger on the files table always enqueues a `delete_s3_object` job on the `storage_gc` queue (priority 100, 5-second delay, max 5 attempts). The worker checks refcount before deleting from S3 — deduplicated files are kept until the last reference is removed.
+
+### graphile-upload-plugin (stream-based uploads)
+
+Separate from the presigned URL flow. The `graphile-upload-plugin` adds a GraphQL `Upload` scalar for stream-based file uploads where bytes flow through the GraphQL server (multipart form). Use for small files or when server-side processing is needed at upload time. Controlled by the `enable_direct_uploads` database setting.
+
+See [storage-features.md](./references/storage-features.md) for detailed reference on each feature flag including table schemas, trigger behavior, ORM examples, and job configuration.
 
 ---
 
