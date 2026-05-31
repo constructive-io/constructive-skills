@@ -1,6 +1,6 @@
 # Safegres Authz* Policy Types — Detailed Reference
 
-Complete documentation for all 14 leaf policy node types and the `AuthzComposite` meta-node.
+Complete documentation for all 17 leaf policy node types and the `AuthzComposite` meta-node.
 
 Each policy is described as:
 - **Intent**: what it's for
@@ -375,6 +375,76 @@ Optional keys:
 
 **Use when:**
 - Explicitly blocking a privilege.
+
+---
+
+## 16) `AuthzFilePath`
+
+**Intent:** Path-scoped file sharing via ltree containment. Grants access when a `path_shares` row matches the current user, bucket, and an ancestor path with the required permission.
+
+**Config (typical):**
+```json
+{
+  "shares_schema": "public",
+  "shares_table": "path_shares",
+  "files_table": "files",
+  "permission_field": "can_read"
+}
+```
+
+Required keys:
+- `shares_schema` — schema of the path_shares table
+- `shares_table` — name of the path_shares table
+- `files_table` — name of the files table (qualifies column refs in EXISTS subquery)
+- `permission_field` — boolean column on path_shares granting the required permission (e.g. `can_read`, `can_write`)
+
+Optional keys:
+- `files_schema` — schema of the files table (defaults to same as shares_schema)
+- `bucket_field` — column on the files table referencing the bucket (default `"bucket_id"`)
+- `path_field` — ltree column on the files table representing the file path (default `"path"`)
+
+**Semantics:** EXISTS subquery checks for a `path_shares` row where the actor matches, the bucket matches, the share's path is an ancestor of (or equal to) the file's path via ltree containment (`@>`), and the `permission_field` is true.
+
+**Use when:**
+- File-level access control using ltree path hierarchy (e.g. shared folders, virtual filesystem ACLs).
+- You have a `path_shares` table mapping users to path prefixes with per-permission booleans.
+
+**Tags:** `storage`, `authz`
+
+---
+
+## 17) `AuthzNotReadOnly`
+
+> **Restrictive policy.** `AuthzNotReadOnly` should be used as a restrictive counterpart to a permissive identity policy (e.g. `AuthzEntityMembership`). It blocks write operations for members whose `is_read_only` flag is true on the SPRT.
+
+**Intent:** Restrict mutations for read-only members.
+
+**Config (typical):**
+```json
+{ "entity_field": "entity_id" }
+```
+
+Required keys:
+- `entity_field` — column referencing the entity (e.g. `entity_id`, `org_id`)
+
+Optional keys:
+- `membership_type` — scope: `2` = org, `3`+ = dynamic entity types. Must be >= 2 (entity-scoped).
+
+**Semantics:** Checks `actor_id` + `is_read_only IS NOT TRUE` on the SPRT. Members with `is_read_only = true` on their membership are denied writes.
+
+**Use when:**
+- You want entity members to read data but selectively restrict mutations based on the `is_read_only` membership flag.
+- Combine with a permissive `AuthzEntityMembership` policy: the permissive policy grants access, then `AuthzNotReadOnly` (restrictive) blocks writes for read-only members.
+
+**Typical pattern:**
+```
+Policy 1 (permissive):  AuthzEntityMembership { entity_field: "org_id", membership_type: 2 }
+Policy 2 (restrictive): AuthzNotReadOnly { entity_field: "org_id" }
+
+Effective: org members can read; org members with is_read_only=true cannot insert/update/delete
+```
+
+**Tags:** `membership`, `authz`, `restrictive`
 
 ---
 

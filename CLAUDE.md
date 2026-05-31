@@ -12,7 +12,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 |-------|-------------|
 | **constructive-features** | Feature catalog — one-page router mapping every app capability (auth, authz, multi-tenancy, storage, search, AI, GraphQL, ops) to the authoritative skill |
 | **constructive-platform** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
-| **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
+| **constructive-safegres** | Safegres authorization protocol — all 17 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
 | **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, run tests, local email services |
 | **pgpm** | PostgreSQL Package Manager — migrations, CLI, Docker, CI/CD workflows |
 | **constructive-pnpm** | PNPM workspace management — monorepo config, dist-folder publishing with makage/lerna, dependency management |

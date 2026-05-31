@@ -1,6 +1,6 @@
 ---
 name: constructive-platform
-description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), device settings (tracking, trusted devices, device approval gate), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
+description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), device settings (tracking, trusted devices, device approval gate), auth settings (MFA, anonymous sessions, CAPTCHA, cookie auth, session management, cross-origin token, rate_limit_meters_module, user_credentials_module), service settings (cors_settings, database_settings, api_settings, rls_settings, pubkey_settings, webauthn_settings, apps), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -44,7 +44,7 @@ See [storage-policies.md](./references/storage-policies.md) for typical policy c
 
 The Safegres authorization protocol is now its own top-level skill: **[`constructive-safegres`](../constructive-safegres/SKILL.md)**.
 
-It covers: 14 Authz* policy node types, permissive vs restrictive composition, `AuthzComposite` boolean trees, and the "users are organizations" identity model.
+It covers: 17 Authz* policy node types, permissive vs restrictive composition, `AuthzComposite` boolean trees, and the "users are organizations" identity model.
 
 **Triggers:** "Safegres policy", "authorization protocol", "Authz* node types", "RLS policy composition", "security model" → see [`constructive-safegres`](../constructive-safegres/SKILL.md)
 
@@ -131,6 +131,37 @@ See [device-settings.md](./references/device-settings.md) for the full compositi
 **Triggers:** "module presets", "what modules should I install", "auth:email preset", "auth:sso preset", "b2b preset", "minimal constructive setup", "which modules are optional"
 
 See [module-presets.md](./references/module-presets.md) for the preset catalog and shape.
+
+## Auth Settings
+
+- `app_settings_auth` singleton table (provisioned by `sessions_module`) controls all authentication behavior
+- MFA / 2FA framework: 7 toggles (`require_mfa`, `allow_totp_mfa`, `allow_email_mfa`, `allow_sms_mfa`, `allow_backup_codes`, `step_up_window`, `mfa_challenge_expiry`)
+- Anonymous sessions: `allow_anonymous_sessions` toggle for CSRF/cart flows
+- CAPTCHA/reCAPTCHA: `enable_captcha` + `captcha_site_key` gate
+- Cookie-based auth: `enable_cookie_auth` + 6 cookie config fields (`cookie_secure`, `cookie_samesite`, `cookie_domain`, `cookie_httponly`, `cookie_max_age`, `cookie_path`)
+- Session management: `session_idle_timeout`, `max_sessions_per_user`, `allow_multiple_sessions`
+- Cross-origin token: `allow_cross_origin_token` toggle for domain handoff
+- `rate_limit_meters_module`: billing-aware rate limit meters (distinct from `rate_limits_module`), in `full` preset
+- `user_credentials_module`: bcrypt credential store (`user_secrets` table), in every auth preset
+
+**Triggers:** "MFA configuration", "enable TOTP", "enable captcha", "cookie auth", "session timeout", "anonymous sessions", "cross-origin token", "rate limit meters", "user credentials module"
+
+See [auth-settings.md](./references/auth-settings.md) for field reference, defaults, and ORM examples.
+
+## Service Settings
+
+- Typed per-database and per-API runtime configuration tables in `services_public`
+- `cors_settings`: CORS origin configuration (database-wide default + per-API override)
+- `database_settings`: 12 feature toggles (`enable_aggregates`, `enable_postgis`, `enable_search`, `enable_direct_uploads`, `enable_presigned_uploads`, `enable_many_to_many`, `enable_connection_filter`, `enable_ltree`, `enable_llm`, `enable_realtime`, `enable_bulk`, `enable_i18n`)
+- `api_settings`: per-API feature flag overrides (nullable for inheritance from `database_settings`)
+- `rls_settings`: per-database RLS module runtime config (authenticate/role function references)
+- `pubkey_settings`: per-database public-key / crypto auth config
+- `webauthn_settings`: per-database WebAuthn / passkey config (RP, attestation, challenge TTL)
+- `apps`: mobile/native app configuration linked to a site
+
+**Triggers:** "CORS settings", "database settings", "API settings", "feature flags", "enable realtime", "enable bulk", "RLS settings", "pubkey settings", "webauthn settings", "app configuration"
+
+See [service-settings.md](./references/service-settings.md) for column schemas, defaults, and ORM examples.
 
 ## CNC CLI Execution Engine
 
