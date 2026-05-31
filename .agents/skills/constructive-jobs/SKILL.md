@@ -1,6 +1,6 @@
 ---
 name: constructive-jobs
-description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks in blueprints."
+description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks/ProcessImageVersions composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, pg_cron maintenance scheduling, CursorTracker at-least-once delivery, notifications_module, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'image versions', 'thumbnails', 'pg_cron', 'maintenance jobs', 'CursorTracker', 'realtime subscriptions', 'notifications module', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks/ProcessImageVersions in blueprints."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -383,20 +383,110 @@ Headers sent to the function:
 
 ## Scheduled Jobs
 
-For recurring jobs, use `app_jobs.add_scheduled_job()` or the `runtime_schedules` table (in agentic-db):
+For recurring jobs, use `app_jobs.add_scheduled_job()` (identifier + payload + cron rule) or the `runtime_schedules` table (in agentic-db). The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
 
-```sql
--- database_id and actor_id are read from JWT claims automatically
-SELECT app_jobs.add_scheduled_job(
-  identifier := 'daily_report',
-  payload := '{"report_type": "daily"}'::json,
-  schedule_info := json_build_object(
-    'rule', '0 9 * * *'  -- 9 AM daily
-  )
-);
+## ProcessImageVersions Blueprint Node
+
+Image variant generation node. Composes a JobTrigger that fires on image upload, enqueuing a Knative worker that generates resized/reformatted variants. Source: `node-type-registry/src/process/image-versions.ts`.
+
+```typescript
+{
+  ref: 'files',
+  table_name: 'files',
+  nodes: [
+    ...STORAGE_NODES,
+    { $type: 'ProcessImageVersions', data: {
+      versions: [
+        { name: 'thumb', width: 150, height: 150, fit: 'cover', format: 'webp', quality: 80 },
+        { name: 'preview', width: 800, height: 600, fit: 'inside', format: 'webp' },
+        { name: 'hero', width: 1920, height: 1080, fit: 'cover', format: 'jpeg', quality: 90 },
+      ],
+      mime_patterns: ['image/%'],            // default
+      task_identifier: 'process_image_versions',  // default
+    }},
+  ],
+}
 ```
 
-The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `versions` | array | **(required)** | Version definitions: `name`, `width`, `height`, `fit`, `format`, `quality` |
+| `mime_patterns` | string[] | `['image/%']` | MIME LIKE patterns |
+| `task_identifier` | string | `'process_image_versions'` | Job task name |
+| `events` | string[] | `['INSERT']` | Trigger events |
+| `queue_name` | string | `'image_processing'` | Worker queue |
+| `entity_field` / `entity_lookup` | — | — | Entity billing scope (same as JobTrigger) |
+
+The external Knative worker generates the variants and writes them back as new file records linked to the source image.
+
+## pg_cron Maintenance Scheduling
+
+Seven SQL-only scheduled tasks run entirely inside PostgreSQL via `pg_cron` — they do **not** flow through `app_jobs` or the Knative worker. Registered by `register_maintenance_jobs()` when `pg_cron` is available.
+
+| Job Identifier | Schedule | Description |
+|----------------|----------|-------------|
+| `usage:collect` | Daily 01:00 UTC | Capture pg_stat telemetry into typed usage_log tables |
+| `usage:rollup-daily` | Daily 02:00 UTC | Aggregate usage logs into daily summary tables |
+| `usage:reconcile` | 1st of month 03:00 UTC | Bridge daily summaries into billing meters |
+| `maintenance:partman` | Daily 03:00 UTC | pg_partman: create new partitions, enforce retention |
+| `maintenance:prune-events` | Daily 04:00 UTC | Delete events past per-type retention_days |
+| `billing:monthly-rollup` | 1st of month 02:00 UTC | Compress balances into usage_summary |
+| `billing:subscription-sweep` | Daily 07:00 UTC | Deactivate expired subscriptions, log to ledger |
+
+All are pure SQL `SECURITY DEFINER` functions — no Node.js or HTTP involved.
+
+## CursorTracker / At-Least-Once Delivery
+
+The realtime subscription system uses a cursor-based polling model for at-least-once event delivery, complementing PostgreSQL `NOTIFY` (which is best-effort). Source: `graphile-realtime-subscriptions/src/`.
+
+### Lifecycle
+
+1. **`start()`** → calls `touch_listener()` to register/heartbeat the listener node
+2. **Periodic `drain_changes()` polling** — fetches new `change_log` entries (default batch: 500, default interval: 5s)
+3. **Periodic `touch_listener()` heartbeat** — keeps the node alive (default: 30s)
+4. **`stop()`** → calls `cleanup_ephemeral()` to remove ephemeral subscriptions and delete the listener node
+
+### RealtimeManager Bridge
+
+`RealtimeManager` converts `ChangeLogEntry` objects from `drain_changes()` into NOTIFY-format payloads (`"OPERATION:rowId"`) and emits them on PgSubscriber's internal EventEmitter. This means cursor-tracked events flow through the same subscription plans as real NOTIFY events — clients receive them identically.
+
+```
+CursorTracker (polls change_log)
+  → RealtimeManager (converts to NOTIFY format)
+    → PgSubscriber.eventEmitter.emit(channel, payload)
+      → PostGraphile subscription plans deliver to clients
+```
+
+Duplicates are expected — clients should be idempotent. NOTIFY provides instant delivery; cursor polling catches up on anything missed during disconnects or restarts.
+
+## Notifications Module
+
+A 1215-line generator (`notifications_module`) with 5 gated sub-features. Produces a complete notification inbox system with per-user state, delivery tracking, and preference management.
+
+### Sub-Features (Toggle Flags)
+
+| Flag | Default | Tables/Features Generated |
+|------|---------|--------------------------|
+| *(core — always on)* | — | `notifications` (inbox with category, kind, priority, topic, deep links, grouping, expiry) + `notification_read_state` (per-user sparse read/seen state) |
+| `has_channels` | `true` | `notification_channels` (device/push endpoints with type, token, expiry) + `notification_delivery_log` (per-attempt delivery audit trail) |
+| `has_preferences` | `true` | `notification_preferences` (per-user per-category channel preferences with mute/snooze) |
+| `has_digest_metadata` | `false` | Adds `digest_bucket`, `deliver_after` fields to notifications for batched digest delivery |
+| `has_subscriptions` | `false` | Topic-based follow/unfollow subscriptions |
+
+### Enabling in a Blueprint
+
+```typescript
+{
+  modules: {
+    notifications_module: {
+      has_channels: true,
+      has_preferences: true,
+      has_digest_metadata: true,
+      has_subscriptions: false,
+    }
+  }
+}
+```
 
 ## Related Skills
 

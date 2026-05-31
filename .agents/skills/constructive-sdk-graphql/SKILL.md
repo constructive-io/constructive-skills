@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-graphql
-description: "Unified GraphQL skill for Constructive — code generation (React Query hooks, Prisma-like ORM, CLI), runtime query generation, search (tsvector, BM25, trgm, pgvector, PostGIS, unified composite), pagination, and documentation generation. Use when asked to generate hooks, ORM, CLI, query data, add search, paginate results, or work with @constructive-io/graphql-codegen or @constructive-io/graphql-query."
+description: "Unified GraphQL skill for Constructive — code generation (React Query hooks, Prisma-like ORM, CLI, subscription hooks, query key factories), watch mode, runtime query generation, search (tsvector, BM25, trgm, pgvector, PostGIS, unified composite), pagination, and documentation/skills auto-generation. Use when asked to generate hooks, ORM, CLI, query data, add search, paginate results, use watch mode, subscription hooks, query key invalidation, or work with @constructive-io/graphql-codegen or @constructive-io/graphql-query."
 compatibility: Node.js 22+, PostgreSQL 14+, PostGraphile v5+
 metadata:
   author: constructive-io
@@ -193,6 +193,154 @@ See [search-composite.md](./references/search-composite.md) for the decision mat
 | [query-runtime.md](./references/query-runtime.md) | `@constructive-io/graphql-query` package | Runtime/browser-safe query generation, `_meta` introspection |
 | [query-generators-api.md](./references/query-generators-api.md) | Generator API reference | `buildSelect`, `buildFindOne`, `buildCount`, mutations |
 | [query-meta-introspection.md](./references/query-meta-introspection.md) | `_meta` endpoint reference | PostGraphile metadata introspection, `cleanTable()` adapter |
+
+## Subscription Hooks Codegen
+
+Codegen generates per-table `useXxxSubscription` hooks and a shared `useConnectionState` hook for real-time data. Source: `graphql/codegen/src/core/codegen/subscriptions.ts`.
+
+### Output Structure
+
+```
+subscriptions/
+  useContactSubscription.ts   # Per-table subscription hook
+  useConnectionState.ts        # Shared connection-state hook
+```
+
+### Generated Hook Shape
+
+Each per-table hook wraps `getClient().subscribe()` with typed callbacks:
+
+```typescript
+import { useContactSubscription } from '@/generated/hooks/subscriptions';
+import type { SubscriptionEvent, Unsubscribe } from '@/generated/orm/client';
+
+// Subscribe to real-time changes on a table
+useContactSubscription({
+  onEvent: (event: SubscriptionEvent<Contact>) => {
+    // event.event = 'INSERT' | 'UPDATE' | 'DELETE'
+    // event.contact = typed row data
+    // event.timestamp = server timestamp
+  },
+  onError: (error: Error) => { /* optional error handler */ },
+  enabled: true,                // toggle subscription on/off
+  invalidateQueries: true,      // auto-invalidate React Query cache on events
+});
+```
+
+The `invalidateQueries` option integrates with the query-key factory — when a subscription event arrives, all queries for that table are automatically invalidated via `queryClient.invalidateQueries()`.
+
+## Codegen Watch Mode
+
+Live-reload codegen that polls a GraphQL endpoint for schema changes and regenerates the SDK automatically. Source: `graphql/codegen/src/core/watch/`.
+
+### Usage
+
+```bash
+cnc codegen --watch                          # watch default target
+cnc codegen --watch --target public          # watch a specific target
+cnc codegen --watch --verbose                # verbose polling logs
+```
+
+### Architecture
+
+```
+WatchOrchestrator
+  ├── SchemaPoller       — polls endpoint via introspection query
+  ├── SchemaCache        — in-memory hash comparison (no file I/O)
+  ├── debounce()         — coalesces rapid schema changes
+  └── regenerate()       — re-runs the configured generator (ORM or hooks)
+```
+
+### Config Options (in `defineConfig`)
+
+```typescript
+{
+  watch: {
+    pollInterval: 5000,   // ms between introspection polls (default: 5000)
+    debounce: 1000,        // ms debounce before regeneration (default: 1000)
+    touchFile: null,       // optional file path to touch on schema change
+    clearScreen: true,     // clear terminal on regeneration
+  }
+}
+```
+
+Events emitted: `poll-start`, `poll-success`, `poll-error`, `schema-changed`, `schema-unchanged`.
+
+## Query Key Factory
+
+Codegen generates hierarchical, scoped cache keys following the [lukemorales/query-key-factory](https://tanstack.com/query/docs/framework/react/community/lukemorales-query-key-factory) pattern. Source: `graphql/codegen/src/core/codegen/query-keys.ts`.
+
+### Output Shape
+
+```typescript
+// Generated query-keys.ts
+export const contactKeys = {
+  all: ['contacts'] as const,
+  byOrganization: (organizationId: string) =>
+    ['contacts', { organizationId }] as const,
+  scoped: (scope?: ContactScope) => {
+    if (scope?.organizationId) return contactKeys.byOrganization(scope.organizationId);
+    return contactKeys.all;
+  },
+} as const;
+```
+
+For entities with parent-child relationships (`EntityRelationship` config), the factory generates `byParent` accessors for each ancestor, creating a full hierarchy of scoped keys.
+
+### Usage for Cache Invalidation
+
+```typescript
+import { contactKeys } from '@/generated/hooks/query-keys';
+
+// Invalidate all contacts
+queryClient.invalidateQueries({ queryKey: contactKeys.all });
+
+// Invalidate contacts scoped to an organization
+queryClient.invalidateQueries({
+  queryKey: contactKeys.byOrganization('org-123'),
+});
+```
+
+See [codegen-query-keys.md](./references/codegen-query-keys.md) for the full reference.
+
+## Docs / Skills Auto-Generation
+
+Codegen can emit agent skill markdown (SKILL.md format) and README documentation alongside the generated SDK. Source: `hooks-docs-generator.ts`, `target-docs-generator.ts`.
+
+### Enabling
+
+```typescript
+await generate({
+  // ...
+  docs: true,           // enable all doc generation (readme + agents + skills)
+  // or granular:
+  docs: {
+    readme: true,        // per-target README.md with setup + hook/ORM tables
+    agents: true,        // AGENTS.md for AI coding assistants
+    skills: true,        // SKILL.md in agentskills.io format
+  },
+});
+```
+
+### What Gets Generated
+
+- **Target README** (`README.md`): Overview of table count, custom operations, available generators (ORM/hooks/CLI), setup snippets, and links to per-module docs.
+- **Hooks README** (`hooks/README.md`): Full hook reference table (query/mutation hooks per table + custom operations) with usage examples.
+- **Root README** (`README.md` at output root): Multi-target index linking each API target to its endpoint and docs.
+- **SKILL.md**: Agent-consumable skill file with hook names, ORM patterns, and CLI commands.
+
+## `cleanStaleTargets` in `generateMulti()`
+
+When running multi-target codegen, stale output directories from previously configured targets can accumulate. The `cleanStaleTargets` option auto-removes them:
+
+```typescript
+await generateMulti({
+  configs: [publicConfig, adminConfig],
+  cleanStaleTargets: true,  // removes subdirs in output root that don't match any current target
+});
+```
+
+This is a config-level option — not a CLI flag. It compares subdirectory names in the output root against the set of active target names and removes any that are no longer configured.
 
 ## Cross-References
 

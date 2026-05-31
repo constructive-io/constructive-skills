@@ -1,6 +1,6 @@
 ---
 name: graphile-search
-description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and unifiedSearch fields. Includes codegen SDK query patterns for all search types. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", "query search via SDK/codegen", or when building search features on a Constructive or PostGraphile v5 stack.
+description: Unified PostGraphile v5 search plugin (graphile-search). Consolidates tsvector, BM25, pg_trgm, and pgvector into a single adapter-based architecture with composite searchScore and unifiedSearch fields. Includes codegen SDK query patterns, chunk-aware search (@hasChunks), recency boost (@searchConfig), cross-table PostGIS spatial relations (@spatialRelation), and DataCompositeField embedding text concatenation. Use when asked to "add search to GraphQL", "expose search in PostGraphile", "configure search adapters", "query search via SDK/codegen", "chunk-aware search", "recency boost", "spatial relations", or when building search features on a Constructive or PostGraphile v5 stack.
 compatibility: PostGraphile v5, graphile-search, graphile-build-pg, graphile-connection-filter
 metadata:
   author: constructive-io
@@ -248,6 +248,120 @@ Bounded ranges use linear normalization. Unbounded ranges use sigmoid normalizat
 | `Unknown type "FullText"` | TsvectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |
 | `Unknown type "Vector"` | VectorCodecPlugin not loaded | Use `UnifiedSearchPreset()` which includes all codecs |
 | Duplicate type errors | Multiple search presets | Use only `UnifiedSearchPreset()`, not individual presets |
+
+## RelationSpatial — Cross-Table PostGIS Predicates
+
+Not part of graphile-search itself, but a related spatial search capability exposed via `graphile-postgis`'s `PostgisSpatialRelationsPlugin`.
+
+Uses the `@spatialRelation` smart tag on geometry/geography columns to create virtual spatial relations that emit `EXISTS` subqueries joined by PostGIS predicates (e.g., `ST_Contains`, `ST_DWithin`).
+
+### Smart Tag Grammar
+
+```
+@spatialRelation <relation_name> <target_ref> <operator> [<param_name>]
+```
+
+- `target_ref` — `schema.table.col` or `table.col` (same schema as owner)
+- `operator` — `st_contains`, `st_within`, `st_intersects`, `st_dwithin`, `st_covers`, `st_coveredby`, `st_crosses`, `st_overlaps`
+- `param_name` — required for parametric operators (e.g., `st_dwithin` needs a distance)
+
+### ORM Query Pattern
+
+```typescript
+// Find clinics within 5km of a point
+const clinics = await db.telemedicineClinic.findMany({
+  where: {
+    nearbyClinic: {
+      location: { distance: 5000 },
+    },
+  },
+  select: { id: true, name: true },
+}).execute().unwrap();
+```
+
+For full details, see the `graphile-postgis` skill in `constructive-io/constructive`.
+
+## Chunk-Aware Search
+
+The `@hasChunks` smart tag enables transparent parent + chunk embedding search via lateral subqueries. All 4 adapters (pgvector, tsvector, BM25, trgm) support chunk-aware querying.
+
+When a parent table has `@hasChunks`, each adapter:
+1. Detects the chunk table and its search infrastructure
+2. Adds an `includeChunks` boolean argument to the filter field
+3. Emits a `LATERAL` subquery that finds the best-matching chunk and returns its score/distance alongside the parent row
+
+### How It Works
+
+```
+Parent table (e.g., documents)
+  @hasChunks → "document_chunks"
+    └── chunks table with embedding/tsvector/BM25 columns
+
+Query:
+  SELECT parent.*, best_chunk.distance
+  FROM documents parent
+  LEFT JOIN LATERAL (
+    SELECT MIN(distance) FROM document_chunks
+    WHERE parent_id = parent.id AND <search_predicate>
+  ) best_chunk ON true
+```
+
+### ORM Query Pattern
+
+```typescript
+const results = await db.document.findMany({
+  where: {
+    vectorEmbedding: {
+      query: embeddingVector,
+      includeChunks: true,   // default true for @hasChunks tables
+    },
+  },
+  orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
+  select: { id: true, title: true, embeddingVectorDistance: true },
+}).execute().unwrap();
+```
+
+Each adapter checks for chunk support independently — a table can have chunked pgvector search but non-chunked tsvector search if the chunks table only has embedding columns.
+
+## Recency Boost
+
+The `@searchConfig` smart tag supports timestamp-based score decay for the composite `searchScore` field. This biases search results toward more recently updated rows.
+
+### Configuration via Smart Tag
+
+```
+@searchConfig {"boost_recent": true, "boost_recency_field": "updated_at", "boost_recency_decay": 0.95}
+```
+
+| Key | Type | Default | Description |
+|-----|------|---------|-------------|
+| `boost_recent` | boolean | `false` | Enable recency boost for this table |
+| `boost_recency_field` | string | `'updated_at'` | Timestamp column to use for decay |
+| `boost_recency_decay` | number | `0.95` | Decay factor (0..1); lower = more aggressive recency bias |
+
+The boost is applied during `searchScore` computation — it multiplies the normalized score by a decay function based on the age of the row. If the specified `boost_recency_field` doesn't exist on the table, recency boost is disabled gracefully with a console warning.
+
+## DataCompositeField — Embedding Text Concatenation
+
+The `DataCompositeField` blueprint node creates a derived text field (default: `embedding_text`) that auto-concatenates multiple source columns via a BEFORE INSERT/UPDATE trigger. Used internally by `SearchUnified` to produce unified text for embedding, but independently usable on any table.
+
+```typescript
+{
+  ref: 'articles',
+  table_name: 'articles',
+  nodes: [
+    'DataId', 'DataTimestamps',
+    { $type: 'DataCompositeField', data: {
+      target: 'embedding_text',          // derived field name (default)
+      source_fields: ['title', 'body'],  // columns to concatenate
+      format: 'labeled',                 // 'labeled' = "title: value\nbody: value", 'plain' = values only
+    }},
+    { $type: 'SearchUnified', data: { /* uses embedding_text */ } },
+  ],
+}
+```
+
+The trigger fires with `_000` prefix to run before `Search*` triggers alphabetically, ensuring the derived field is populated before search indexes are updated.
 
 ## Related Skills
 
