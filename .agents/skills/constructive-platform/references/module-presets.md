@@ -19,8 +19,6 @@ interface ModulePreset {
   good_for: string[];    // concrete "use this if..."
   not_for: string[];     // concrete "don't use this if..."
   modules: (string | [string, Record<string, unknown>])[];  // module names or [name, options] tuples
-  includes_notes?: Record<string, string>;  // per-module rationale
-  omits_notes?: Record<string, string>;     // per-skipped-module rationale
   extends?: string[];    // informational: "composes from these presets"
 }
 ```
@@ -55,16 +53,14 @@ const row = await db.databaseProvisionModule.create({
     databaseName: 'my_app',
     domain: 'example.com',
     subdomain: 'app',
-    // modules is text[] at the SQL layer; serialize the preset as a PG array literal
-    modules: `{${preset.modules.join(',')}}`,
+    // modules is jsonb at the SQL layer; pass the preset modules directly
+    modules: JSON.stringify(preset.modules),
     options: {},
     bootstrapUser: false, // set true if you also want an owner/user seeded
   },
   select: { id: true, databaseId: true, status: true },
 }).execute();
 ```
-
-`preset.includes_notes` and `preset.omits_notes` carry per-module rationale — use them to render CLI help, scaffolder prompts, or docs.
 
 ## Notable Standalone Modules
 
@@ -97,6 +93,21 @@ Provisions device tracking, trusted device MFA bypass, and device approval gate:
 **Settings toggles:** All features are off by default (`enable_device_tracking = true` enables passive tracking only). Enable `enable_trusted_devices` for MFA bypass, `require_device_approval` for email approval gate, `require_mfa_new_device` to force MFA on new devices.
 
 See [device-settings.md](./device-settings.md) for the full composition matrix and SDK usage.
+
+### `agent_module`
+
+Provisions AI agent infrastructure — threads, messages, tasks, prompts. Supports jsonb tuple options:
+
+| Configuration | `has_plans` | `has_knowledge` | Description |
+|--------|-------------|-----------------|-------------|
+| `"agent_module"` | false | false | Bare install — threads, messages, tasks, prompts |
+| `["agent_module", {"has_plans": true}]` | true | false | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
+| `["agent_module", {"has_knowledge": true}]` | false | true | Adds `agent_knowledge` + chunks table with pgvector HNSW + BM25 indexes for RAG |
+| `["agent_module", {"has_plans": true, "has_knowledge": true}]` | true | true | Plans + knowledge combined |
+
+**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add the desired variant to your module list.
+
+**Note:** `has_knowledge` requires `pg_textsearch` for BM25 indexes. The `generate:constructive` reference DB uses `["agent_module", {"has_plans": true}]` (no BM25 dependency).
 
 ### `user_settings_module`
 

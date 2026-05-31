@@ -151,6 +151,10 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Embedding worker pipeline | Graphile Worker + `generate_embedding` task | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Agent threads + messages | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent plans + approval workflow | `agent_module:plans` (`has_plans`) | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent knowledge base (RAG) | `agent_module:knowledge` (`has_knowledge`) | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent prompt templates | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 9. GraphQL & Codegen
 
