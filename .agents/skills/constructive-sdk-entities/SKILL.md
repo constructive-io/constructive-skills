@@ -143,7 +143,7 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 When the `agents` field is provided in entity_type_provision, the system creates AI agent tables for that entity:
 
 ### Tables Created
-- `{prefix}_agent_thread` — Conversation threads (AuthzMemberOwner — private to owner within entity)
+- `{prefix}_agent_thread` — Conversation threads with `tags citext[]` for organizing (AuthzMemberOwner — private to owner within entity)
 - `{prefix}_agent_message` — Chat messages in threads (AuthzMemberOwner)
 - `{prefix}_agent_plan` — Workflow plans with ordered tasks and approval gates (AuthzMemberOwner, optional via `has_plans`)
 - `{prefix}_agent_task` — Task tracking (AuthzMemberOwner) — belongs to plan when `has_plans`, otherwise to thread
