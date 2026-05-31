@@ -1,6 +1,6 @@
 ---
 name: constructive-platform
-description: "Constructive platform architecture and core concepts — blueprints (declarative schema provisioning with Merkle hashing), security model (Safegres authorization protocol), device settings (tracking, trusted devices, device approval gate), auth settings (MFA, anonymous sessions, CAPTCHA, cookie auth, session management, cross-origin token, rate_limit_meters_module, user_credentials_module), service settings (cors_settings, database_settings, api_settings, rls_settings, pubkey_settings, webauthn_settings, apps), service/schema configuration, Docker deployment, PostGraphile server, Knative cloud functions, environment configuration, and the cnc CLI execution engine."
+description: "Platform core — services/schemas, deployment, server config, cloud functions, environment configuration, and the cnc CLI execution engine. Use when asked to 'deploy constructive', 'start the server', 'cnc server', 'GraphQL API', 'configure domains', 'cloud functions', 'Knative', 'env config', 'cnc execute', 'docker compose', 'set up service', 'API routing', 'services_public', or when working with server deployment or environment configuration."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -9,52 +9,23 @@ metadata:
 
 # Constructive Platform
 
-Consolidated reference for the Constructive platform's core architecture: blueprints, authorization, services, deployment, server configuration, cloud functions, environment configuration, and the CLI execution engine.
+Server configuration, services/schemas, deployment, cloud functions, environment configuration, and the cnc CLI execution engine.
 
-## Blueprints
+## When to Apply
 
-- Declarative schema provisioning system — define complete domain schemas as portable JSONB documents
-- Two-layer model: `blueprint_template` (shareable marketplace recipe) and `blueprint` (owned, executable instance scoped to a database)
-- Definition format: `entity_types[]` (Phase 0 entity provisioning), `storage` (Phase 0.5 app-level storage), `tables[]` with `nodes[]`, `fields[]`, `policies[]` (using `$type` discriminators), and `relations[]`
-- `construct_blueprint()` executes a draft blueprint, provisioning real tables and relations via `secure_table_provision` + `relation_provision`
-- `copy_template_to_blueprint()` copies a template to a new blueprint with visibility checks and copy_count tracking
-- Merkle-style content-addressable hashing: `definition_hash` (Merkle root) and `table_hashes` (per-table UUIDv5 hashes) for deduplication, provenance tracking, and structural comparison
-- Hashes are backend-computed via trigger using `uuid_generate_v5(uuid_ns_url(), jsonb::text)` — same pattern as `object_store.object_hash_uuid()`
-
-**Triggers:** "create a blueprint", "blueprint template", "construct blueprint", "copy template", "blueprint definition", "definition hash", "table hashes", "schema marketplace", "blueprint provisioning"
-
-See [blueprints.md](./references/blueprints.md) for the full system reference.
-
-Sub-references:
-- [blueprint-definition-format.md](./references/blueprint-definition-format.md) — The blueprint definition format spec with complete examples
-
-## Storage Security Policies
-
-- Configurable per-bucket RLS policies via `storage_config.policies[]` on `entity_type_provision`
-- Each policy is an explicit object: `{ "$type", "privileges", "data", "tables" }` — same vocabulary as `table_provision.policies[]`
-- `tables` key scopes a policy to specific storage tables using logical names (`"buckets"`, `"files"`) — not the prefixed physical table names
-- Two layers: `is_public` controls S3 bucket ACL (transport), `policies` controls RLS (data)
-- When `policies` is omitted, defaults apply (membership + AuthzPublishable + AuthzDirectOwner)
-
-**Triggers:** "storage policies", "bucket security", "storage_config", "file access control", "upload permissions", "is_public vs policies"
-
-See [storage-policies.md](./references/storage-policies.md) for typical policy combinations and the full provisioning pipeline.
-
-## Security Model (Safegres)
-
-The Safegres authorization protocol is now its own top-level skill: **[`constructive-safegres`](../constructive-safegres/SKILL.md)**.
-
-It covers: 17 Authz* policy node types, permissive vs restrictive composition, `AuthzComposite` boolean trees, and the "users are organizations" identity model.
-
-**Triggers:** "Safegres policy", "authorization protocol", "Authz* node types", "RLS policy composition", "security model" → see [`constructive-safegres`](../constructive-safegres/SKILL.md)
+Use this skill when:
+- Starting the Constructive GraphQL server or GraphiQL explorer
+- Configuring services, APIs, domains, and schema grants
+- Deploying with Docker Compose or building Docker images
+- Writing Knative cloud functions
+- Configuring environment variables and config files
+- Using the cnc CLI for queries and context management
 
 ## Services & Schemas
 
-- Create and configure API services, attach database schemas, set up domain/subdomain routing, and manage schema grants via the `@constructive-io/sdk`
+- Create and configure API services, attach database schemas, set up domain/subdomain routing, and manage schema grants
 - Entity hierarchy: Database > Schema > Api > ApiSchema, ApiModule, Domain, Site
-- Full CRUD examples for Api, ApiSchema, ApiModule, Domain, SchemaGrant, and Site entities
-
-**Triggers:** "create an API", "set up a service", "attach schema to API", "configure domains", "add API module", "grant schema access", "set up service routing"
+- Full CRUD via ORM for Api, ApiSchema, ApiModule, Domain, SchemaGrant, and Site entities
 
 See [services-schemas.md](./references/services-schemas.md) for details. See [services-schemas-entity-fields.md](./references/services-schemas-entity-fields.md) for the full field reference.
 
@@ -65,8 +36,6 @@ See [services-schemas.md](./references/services-schemas.md) for details. See [se
 - Docker image build process: multi-stage build, CLI shims (`constructive`, `cnc`, `pgpm`)
 - Makefile targets, environment variables, networking, and troubleshooting
 
-**Triggers:** "deploy constructive", "set up docker compose", "run constructive locally", "deploy to production", "build Docker image"
-
 See [deployment.md](./references/deployment.md) for details.
 
 ## Server Configuration
@@ -74,9 +43,6 @@ See [deployment.md](./references/deployment.md) for details.
 - Running the Constructive GraphQL server (`cnc server`), GraphiQL explorer (`cnc explorer`), and code generation (`cnc codegen`)
 - API routing modes: public (domain-based) vs admin (header-based), Services API routing
 - The schema-to-GraphQL pipeline: PostgreSQL schemas > PostGraphile introspection > GraphQL API > codegen > typed client
-- Environment variables, exposed schemas, CI integration, and troubleshooting
-
-**Triggers:** "start the server", "run cnc server", "start GraphQL API", "run GraphiQL", "configure API routing", "generate types"
 
 See [server-config.md](./references/server-config.md) for details.
 
@@ -86,8 +52,6 @@ See [server-config.md](./references/server-config.md) for details.
 - Function handler pattern: `export default async (params, context) => { ... }` with GraphQL client access
 - Direct database access via `pg-cache`, programmatic PGPM usage, Docker builds, and Kubernetes deployment
 
-**Triggers:** "create a cloud function", "build serverless function", "Knative function", "deploy function to Kubernetes", "run PGPM in a function"
-
 See [cloud-functions.md](./references/cloud-functions.md) for details.
 
 ## Environment Configuration
@@ -95,9 +59,6 @@ See [cloud-functions.md](./references/cloud-functions.md) for details.
 - Unified, type-safe environment configuration for all Constructive and PGPM projects
 - Two packages: `@pgpmjs/env` (core) and `@constructive-io/graphql-env` (extends with GraphQL/API options)
 - Merge hierarchy: defaults > config file > env vars > runtime overrides
-- Utility functions: `parseEnvBoolean`, `parseEnvNumber`, `getNodeEnv`
-
-**Triggers:** "configure environment", "set env vars", "use getEnvOptions", "configure database connection", "configuration hierarchy"
 
 See [env-config.md](./references/env-config.md) for details.
 
@@ -106,69 +67,33 @@ Sub-references:
 - [env-vars.md](./references/env-vars.md) — Source file locations for env vars and types
 - [env-config-file.md](./references/env-config-file.md) — Config file reference (`pgpm.json`)
 
-## Device Settings
-
-- `devices_module` provisions `app_settings_device` (singleton) and `auth_user_devices` (per-user device tracking)
-- Three independent toggles on `app_settings_device` control device behavior:
-  - **`enable_trusted_devices`** (convenience) — recognized trusted devices skip MFA
-  - **`require_mfa_new_device`** (hardening) — force MFA on unrecognized devices
-  - **`require_device_approval`** (hardening) — block sign-in from new devices until email approval
-- Toggles compose independently: all three can be on simultaneously (Kraken-style: forced MFA + email approval for new devices, MFA skip for trusted devices)
-- First sign-up auto-approves the initial device (`approval_method = 'auto'`)
-
-**Triggers:** "device approval", "trusted devices", "device settings", "MFA bypass", "approve new device", "device tracking", "require_device_approval", "enable_trusted_devices", "require_mfa_new_device"
-
-See [device-settings.md](./references/device-settings.md) for the full composition matrix, auth flow integration, device record fields, and SDK usage.
-
-## Module Presets
-
-- Curated, named bundles of Constructive modules for common app shapes (`minimal`, `auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, `auth:hardened`, `b2b`, `full`)
-- Metadata only — passing `preset.modules` into `db.databaseProvisionModule.create({ data: { modules, bootstrapUser: false, ... } })` via the codegen'd ORM is what installs them
-- Lives in TypeScript: `packages/node-type-registry/src/module-presets/` — exported as `allModulePresets` and `getModulePreset(name)` from `@constructive-io/node-type-registry`
-- Each preset carries `display_name`, `summary`, narrative `description`, `good_for[]`, `not_for[]`, `modules[]`, and per-module `includes_notes` / `omits_notes` for rationale
-- Narrative reference (what's optional vs load-bearing vs unwired) lives in `constructive-db` at `docs/architecture/module-presets.md`
-
-**Triggers:** "module presets", "what modules should I install", "auth:email preset", "auth:sso preset", "b2b preset", "minimal constructive setup", "which modules are optional"
-
-See [module-presets.md](./references/module-presets.md) for the preset catalog and shape.
-
-## Auth Settings
-
-- `app_settings_auth` singleton table (provisioned by `sessions_module`) controls all authentication behavior
-- MFA / 2FA framework: 7 toggles (`require_mfa`, `allow_totp_mfa`, `allow_email_mfa`, `allow_sms_mfa`, `allow_backup_codes`, `step_up_window`, `mfa_challenge_expiry`)
-- Anonymous sessions: `allow_anonymous_sessions` toggle for CSRF/cart flows
-- CAPTCHA/reCAPTCHA: `enable_captcha` + `captcha_site_key` gate
-- Cookie-based auth: `enable_cookie_auth` + 6 cookie config fields (`cookie_secure`, `cookie_samesite`, `cookie_domain`, `cookie_httponly`, `cookie_max_age`, `cookie_path`)
-- Session management: `session_idle_timeout`, `max_sessions_per_user`, `allow_multiple_sessions`
-- Cross-origin token: `allow_cross_origin_token` toggle for domain handoff
-- `rate_limit_meters_module`: billing-aware rate limit meters (distinct from `rate_limits_module`), in `full` preset
-- `user_credentials_module`: bcrypt credential store (`user_secrets` table), in every auth preset
-
-**Triggers:** "MFA configuration", "enable TOTP", "enable captcha", "cookie auth", "session timeout", "anonymous sessions", "cross-origin token", "rate limit meters", "user credentials module"
-
-See [auth-settings.md](./references/auth-settings.md) for field reference, defaults, and ORM examples.
-
-## Service Settings
-
-- Typed per-database and per-API runtime configuration tables in `services_public`
-- `cors_settings`: CORS origin configuration (database-wide default + per-API override)
-- `database_settings`: 12 feature toggles (`enable_aggregates`, `enable_postgis`, `enable_search`, `enable_direct_uploads`, `enable_presigned_uploads`, `enable_many_to_many`, `enable_connection_filter`, `enable_ltree`, `enable_llm`, `enable_realtime`, `enable_bulk`, `enable_i18n`)
-- `api_settings`: per-API feature flag overrides (nullable for inheritance from `database_settings`)
-- `rls_settings`: per-database RLS module runtime config (authenticate/role function references)
-- `pubkey_settings`: per-database public-key / crypto auth config
-- `webauthn_settings`: per-database WebAuthn / passkey config (RP, attestation, challenge TTL)
-- `apps`: mobile/native app configuration linked to a site
-
-**Triggers:** "CORS settings", "database settings", "API settings", "feature flags", "enable realtime", "enable bulk", "RLS settings", "pubkey settings", "webauthn settings", "app configuration"
-
-See [service-settings.md](./references/service-settings.md) for column schemas, defaults, and ORM examples.
-
 ## CNC CLI Execution Engine
 
 - Execute raw GraphQL queries against Constructive APIs using the `cnc` CLI
 - Context management (create, list, switch, delete) similar to kubectl contexts, stored in `~/.cnc/config/`
 - Authentication: secure token storage, per-context credentials, expiration support
 
-**Triggers:** "run a query", "execute GraphQL", "set up API context", "configure API token", "manage API endpoints", "cnc execute"
-
 See [cnc-cli.md](./references/cnc-cli.md) for details.
+
+## References
+
+| File | Content |
+|------|---------|
+| [server-config.md](./references/server-config.md) | Server, explorer, API routing, schema pipeline |
+| [services-schemas.md](./references/services-schemas.md) | Services, APIs, domains, schema grants |
+| [services-schemas-entity-fields.md](./references/services-schemas-entity-fields.md) | Full field reference for services entities |
+| [deployment.md](./references/deployment.md) | Docker Compose, pgpm deploy, image build |
+| [cloud-functions.md](./references/cloud-functions.md) | Knative cloud functions |
+| [env-config.md](./references/env-config.md) | Environment configuration overview |
+| [env-config-file.md](./references/env-config-file.md) | Config file reference |
+| [env-defaults.md](./references/env-defaults.md) | Default values |
+| [env-vars.md](./references/env-vars.md) | Environment variable reference |
+| [cnc-cli.md](./references/cnc-cli.md) | CNC CLI execution engine |
+
+## Cross-References
+
+- **Blueprints (definition format, presets, construction):** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
+- **Auth (MFA, sessions, devices, service settings):** [`constructive-auth`](../constructive-auth/SKILL.md)
+- **Security (Safegres, Authz*, RLS, storage policies):** [`constructive-security`](../constructive-security/SKILL.md)
+- **Background jobs:** [`constructive-jobs`](../constructive-jobs/SKILL.md)
+- **Code generation:** [`constructive-codegen`](../constructive-codegen/SKILL.md)
