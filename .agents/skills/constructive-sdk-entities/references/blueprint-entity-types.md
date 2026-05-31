@@ -214,7 +214,7 @@ With prefix `data_room`, `has_plans: true`, `has_resources: true`, and `has_agen
 
 | Table | Security | Description |
 |-------|----------|-------------|
-| `data_room_agent_thread` | `AuthzMemberOwner` | Conversation threads — private to owner within entity |
+| `data_room_agent_thread` | `AuthzMemberOwner` | Conversation threads — private to owner within entity, with tags for organizing |
 | `data_room_agent_message` | `AuthzMemberOwner` | Chat messages in threads (multi-modal `parts` jsonb) |
 | `data_room_agent_plan` | `AuthzMemberOwner` | Workflow plans — ordered task lists with status lifecycle (draft → active → completed/failed/cancelled) |
 | `data_room_agent_task` | `AuthzMemberOwner` | Task tracking — belongs to plan when `has_plans`, otherwise to thread |
@@ -223,6 +223,22 @@ With prefix `data_room`, `has_plans: true`, `has_resources: true`, and `has_agen
 | `data_room_agent_resource_chunks` | *(inherited)* | Auto-generated chunks with vector embeddings |
 | `data_room_agent` | `AuthzEntityMembership` | Agent registry — any entity member |
 | `data_room_agent_persona` | `AuthzEntityMembership` | Agent persona templates — any entity member |
+
+### Thread table fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | uuid | Primary key (DataId) |
+| `owner_id` | uuid NOT NULL | FK → users, defaults to `current_user_id()` |
+| `entity_id` | uuid | Entity scope (when entity-scoped) |
+| `status` | text NOT NULL DEFAULT 'active' | Thread lifecycle status |
+| `title` | text | Human-readable conversation title |
+| `mode` | text NOT NULL DEFAULT 'ask' | Conversation mode: `ask` (plain Q&A) or `agent` (tool-enabled) |
+| `model` | text | LLM model id this thread is bound to |
+| `system_prompt` | text | System prompt active for this thread |
+| `tags` | citext[] | User-defined labels for organizing/filtering threads (GIN indexed, case-insensitive) |
+| `is_archived` / `archived_at` | boolean / timestamptz | DataArchivable — soft archive with partial index |
+| `created_at` / `updated_at` | timestamptz | DataTimestamps |
 
 ### Plan table fields (when `has_plans: true`)
 
