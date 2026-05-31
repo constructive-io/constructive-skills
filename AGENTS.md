@@ -23,6 +23,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-sdk-i18n** | *(standalone)* | Internationalization, DataI18n, multilingual tsvector, lang_column, graphile-i18n |
 | **constructive-sdk-events** | *(standalone)* | Events, achievements, gamification, EventTracker, invite virality, credit rewards |
 | **constructive-jobs** | *(standalone)* | Background jobs, JobTrigger, Knative worker pipeline |
+| **constructive-sdk-realtime** | *(standalone)* | Realtime subscriptions, CursorTracker, RealtimeManager, notifications_module |
 | **constructive-sdk-ai** | *(standalone)* | Search* blueprint nodes (SearchUnified, SearchVector), embedding worker, agentic-kit, RAG pipelines |
 | **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
 | **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
