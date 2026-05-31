@@ -1,6 +1,6 @@
 ---
 name: constructive-jobs
-description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks in blueprints."
+description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks/ProcessImageVersions composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'image versions', 'thumbnails', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks/ProcessImageVersions in blueprints."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -383,23 +383,45 @@ Headers sent to the function:
 
 ## Scheduled Jobs
 
-For recurring jobs, use `app_jobs.add_scheduled_job()` or the `runtime_schedules` table (in agentic-db):
+For recurring jobs, use `app_jobs.add_scheduled_job()` (identifier + payload + cron rule) or the `runtime_schedules` table (in agentic-db). The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
 
-```sql
--- database_id and actor_id are read from JWT claims automatically
-SELECT app_jobs.add_scheduled_job(
-  identifier := 'daily_report',
-  payload := '{"report_type": "daily"}'::json,
-  schedule_info := json_build_object(
-    'rule', '0 9 * * *'  -- 9 AM daily
-  )
-);
+## ProcessImageVersions Blueprint Node
+
+Image variant generation node. Composes a JobTrigger that fires on image upload, enqueuing a Knative worker that generates resized/reformatted variants. Source: `node-type-registry/src/process/image-versions.ts`.
+
+```typescript
+{
+  ref: 'files',
+  table_name: 'files',
+  nodes: [
+    ...STORAGE_NODES,
+    { $type: 'ProcessImageVersions', data: {
+      versions: [
+        { name: 'thumb', width: 150, height: 150, fit: 'cover', format: 'webp', quality: 80 },
+        { name: 'preview', width: 800, height: 600, fit: 'inside', format: 'webp' },
+        { name: 'hero', width: 1920, height: 1080, fit: 'cover', format: 'jpeg', quality: 90 },
+      ],
+      mime_patterns: ['image/%'],            // default
+      task_identifier: 'process_image_versions',  // default
+    }},
+  ],
+}
 ```
 
-The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `versions` | array | **(required)** | Version definitions: `name`, `width`, `height`, `fit`, `format`, `quality` |
+| `mime_patterns` | string[] | `['image/%']` | MIME LIKE patterns |
+| `task_identifier` | string | `'process_image_versions'` | Job task name |
+| `events` | string[] | `['INSERT']` | Trigger events |
+| `queue_name` | string | `'image_processing'` | Worker queue |
+| `entity_field` / `entity_lookup` | — | — | Entity billing scope (same as JobTrigger) |
+
+The external Knative worker generates the variants and writes them back as new file records linked to the source image.
 
 ## Related Skills
 
+- **[`constructive-sdk-realtime`](../constructive-sdk-realtime/SKILL.md)** — Realtime subscriptions, CursorTracker at-least-once delivery, notifications module
 - **[`constructive-platform`](../constructive-platform/references/cloud-functions.md)** — Cloud functions: building the Knative function that handles a job
 - **[`constructive-safegres`](../constructive-safegres/SKILL.md)** — Security policies for tables with job triggers
 - **[`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md)** — AI search nodes (SearchUnified, SearchVector), RAG patterns, and agentic-kit LLM client
