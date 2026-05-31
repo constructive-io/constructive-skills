@@ -154,54 +154,6 @@ nodes: [
 
 ## Querying Translations
 
-### SQL — insert and search translations
-
-```sql
--- Insert a Spanish translation
-INSERT INTO app_public.products_translations
-  (products_id, lang_code, name, description)
-VALUES
-  ($1, 'spanish', 'Zapatos para correr', 'Los mejores zapatos deportivos');
-
--- Search in Spanish (stems match: "corriendo" → "corr", same as "correr")
-SELECT * FROM app_public.products_translations
-WHERE lang_code = 'spanish'
-  AND search @@ plainto_tsquery('spanish'::regconfig, 'corriendo');
-
--- Search across all languages
-SELECT * FROM app_public.products_translations
-WHERE search @@ plainto_tsquery(lang_code::regconfig, 'running shoes');
-```
-
-### ORM — query translations via parent relation
-
-```ts
-// From parent → translations
-const product = await db.product.findFirst({
-  where: { id: productId },
-  select: {
-    id: true,
-    name: true,
-    price: true,
-    productTranslations: {
-      select: { langCode: true, name: true, description: true }
-    }
-  }
-});
-
-// From translation → parent
-const translation = await db.productTranslation.findFirst({
-  where: { langCode: { equalTo: 'es' } },
-  select: {
-    langCode: true,
-    name: true,
-    product: {
-      select: { id: true, price: true }
-    }
-  }
-});
-```
-
 ### GraphQL — localeStrings (via graphile-i18n plugin)
 
 ```graphql
