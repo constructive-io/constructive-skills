@@ -179,30 +179,6 @@ const result = await db.table.create({
 }).execute();
 ```
 
-### Module Table
-
-Tables created by modules have category and module set:
-
-```typescript
-const result = await db.table.create({
-  data: {
-    databaseId: databaseId,
-    schemaId: schemaId,
-    name: 'user_settings',
-    label: 'User Settings',
-    category: 'module',
-    module: 'user_settings_module',
-    scope: 1,  // App-level
-  },
-  select: {
-    id: true,
-    name: true,
-    category: true,
-    module: true,
-  },
-}).execute();
-```
-
 ### Table Inheritance
 
 Create a table that inherits from another:
