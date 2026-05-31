@@ -62,17 +62,17 @@ When a feature is gated by a module, installing / omitting the module from a pre
 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
-| App-scope memberships (single tenant) | `memberships_module:app` | all auth presets | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Org-scope memberships (multi-tenant) | `memberships_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| App-scope memberships (single tenant) | `["memberships_module", {"scope": "app"}]` | all auth presets | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Org-scope memberships (multi-tenant) | `["memberships_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Dynamic entity types (channels, teams, depts) | `entity_type_provision` + `provision_membership_table()` | — (runtime) | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Invites (email, blank, multiple) | `invites_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Profile assignment on email invites | `invites_module` + `profiles_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Email auto-verification on invite claim | `invites_module` + `emails_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Limits (metered quotas per scope) | `limits_module:app` / `limits_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Limits (metered quotas per scope) | `["limits_module", {"scope": "app"}]` / `["limits_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Cap tables (static config values) | `limits_module` → `limit_caps_defaults` + `limit_caps` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Feature flags (cap-based gating) | `LimitFeatureFlag` node + `limit_caps_defaults(max=0\|1)` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Credits (append-only ledger) | `limits_module` → `limit_credits` + `credit_codes` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| Profiles per scope | `profiles_module:app` / `profiles_module:org` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Profiles per scope | `["profiles_module", {"scope": "app"}]` / `["profiles_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 4. Data Modeling
@@ -152,8 +152,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Agent plans + approval workflow | `agent_module:plans` (`has_plans`) | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Agent knowledge base (RAG) | `agent_module:knowledge` (`has_knowledge`) | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent plans + approval workflow | `["agent_module", {"has_plans": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent knowledge base (RAG) | `["agent_module", {"has_knowledge": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent prompt templates | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 9. GraphQL & Codegen

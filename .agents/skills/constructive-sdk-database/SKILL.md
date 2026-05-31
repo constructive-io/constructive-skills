@@ -97,7 +97,7 @@ const result = await db.databaseProvisionModule.create({
     ownerId: userId,
     subdomain: 'my-app',
     domain: 'constructive.io',
-    modules: ['users_module', 'user_auth_module', 'permissions_module:app'],
+    modules: ['users_module', 'user_auth_module', ['permissions_module', { scope: 'app' }]],
     options: {
       tokens_expiration: '30 days',
       site: {
@@ -136,10 +136,10 @@ When provisioning, you can specify which modules to install:
 | `user_state_module` | User state storage (plaintext key-value, e.g. API keys) |
 | `config_secrets_user_module` | User secrets (encrypted, e.g. password hashes) |
 | `config_secrets_org_module` | Org-scoped encrypted secrets (optional, requires orgs) |
-| `permissions_module:app` | App-level permissions |
-| `permissions_module:org` | Org-level permissions |
-| `memberships_module:app` | App memberships |
-| `memberships_module:org` | Org memberships |
+| `["permissions_module", {"scope": "app"}]` | App-level permissions |
+| `["permissions_module", {"scope": "org"}]` | Org-level permissions |
+| `["memberships_module", {"scope": "app"}]` | App memberships |
+| `["memberships_module", {"scope": "org"}]` | Org memberships |
 | `emails_module` | Email addresses |
 | `invites_module` | User invitations |
 | `profiles_module` | User profiles |

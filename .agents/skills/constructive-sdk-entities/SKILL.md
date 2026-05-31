@@ -124,17 +124,17 @@ When you provision a new entity type (e.g. prefix=`channel`), the system creates
 - `channel_files` — File records (key, mime_type, size, filename, is_public, owner_id)
 
 ### Modules Registered
-- `permissions_module:channel`
-- `memberships_module:channel`
-- `limits_module:channel` (if `has_limits`)
-- `invites_module:channel` (if `has_invites`, or auto-provisioned when `emails_module` exists)
-- `storage_module:channel` (if `has_storage`)
+- `permissions_module` (scope: channel)
+- `memberships_module` (scope: channel)
+- `limits_module` (scope: channel, if `has_limits`)
+- `invites_module` (scope: channel, if `has_invites`, or auto-provisioned when `emails_module` exists)
+- `storage_module` (scope: channel, if `has_storage`)
 
 ### Optional Modules
-- `profiles_module:channel` (if `has_profiles`) — Named permission roles
-- `events_module:channel` (if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
-- `agent_module:channel` (if `agents` config provided) — AI agent tables (threads, messages, tasks, plans, prompts, knowledge)
-- `namespace_module:channel` (if `namespaces` config provided) — K8s-style namespace containers + partitioned event log
+- `profiles_module` (scope: channel, if `has_profiles`) — Named permission roles
+- `events_module` (scope: channel, if `has_levels`) — Event tracking, achievements, gamification. See [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)
+- `agent_module` (scope: channel, if `agents` config provided) — AI agent tables (threads, messages, tasks, plans, prompts, knowledge)
+- `namespace_module` (scope: channel, if `namespaces` config provided) — K8s-style namespace containers + partitioned event log
 
 ---
 
@@ -342,7 +342,7 @@ const result = await db.entityTypeProvision.create({
     outInstalledModules: true,
   },
 }).execute();
-// outInstalledModules includes 'storage_module:data_room'
+// outInstalledModules includes 'storage_module (data_room)'
 ```
 
 ### Creating Buckets for an Entity

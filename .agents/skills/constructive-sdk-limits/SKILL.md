@@ -42,7 +42,7 @@ Limits are provisioned per-scope via `membership_types` in a blueprint:
 
 Setting `has_limits: true` provisions the limits module for that entity scope (creates the limits tables, aggregate tables, caps tables, and all enforcement functions).
 
-The built-in `app` (type 1) and `org` (type 2) scopes get limits automatically when the database is provisioned with the `limits_module:app` and `limits_module:org` modules.
+The built-in `app` (type 1) and `org` (type 2) scopes get limits automatically when the database is provisioned with `["limits_module", {"scope": "app"}]` and `["limits_module", {"scope": "org"}]`.
 
 ---
 
