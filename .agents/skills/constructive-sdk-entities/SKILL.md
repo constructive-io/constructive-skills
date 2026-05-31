@@ -148,7 +148,9 @@ When the `agents` field is provided in entity_type_provision, the system creates
 - `{prefix}_agent_plan` — Workflow plans with ordered tasks and approval gates (AuthzMemberOwner, optional via `has_plans`)
 - `{prefix}_agent_task` — Task tracking (AuthzMemberOwner) — belongs to plan when `has_plans`, otherwise to thread
 - `{prefix}_agent_prompt` — Shared prompt templates (AuthzEntityMembership — shared within entity)
-- `{prefix}_agent_knowledge` — Shared knowledge base (AuthzEntityMembership, optional via `has_knowledge`)
+- `{prefix}_agent_resource` — Unified skills + knowledge base (AuthzEntityMembership, optional via `has_resources`). Has `kind = 'skill' | 'knowledge' | 'convention'` column, searchable and embeddable.
+- `{prefix}_agent` — Agent registry (AuthzEntityMembership, optional via `has_agents`)
+- `{prefix}_agent_persona` — Agent persona templates (AuthzEntityMembership, optional via `has_agents`)
 
 ### Blueprint: Entity with Agent Module
 
@@ -159,28 +161,52 @@ When the `agents` field is provided in entity_type_provision, the system creates
       "name": "Data Room",
       "prefix": "data_room",
       "parent_entity": "org",
-      "agents": [{ "has_plans": true, "has_knowledge": true }]
+      "agents": [{
+        "has_plans": true,
+        "has_resources": true,
+        "has_agents": true,
+        "resources": [{ "dimensions": 1536, "chunk_size": 500, "chunk_strategy": "sentence" }]
+      }]
     }
   ]
 }
 ```
 
-This produces: `data_room_agent_thread`, `data_room_agent_message`, `data_room_agent_plan`, `data_room_agent_task`, `data_room_agent_prompt`, `data_room_agent_knowledge`.
+This produces: `data_room_agent_thread`, `data_room_agent_message`, `data_room_agent_plan`, `data_room_agent_task`, `data_room_agent_prompt`, `data_room_agent_resource`, `data_room_agent`, `data_room_agent_persona`.
+
+### Feature Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `has_plans` | `false` | Provision an `agent_plan` table for workflow plans with approval gates |
+| `has_resources` | `false` | Provision a unified `agent_resource` table (skills + knowledge + conventions) with auto-chunking (ProcessChunks) and vector embeddings |
+| `has_agents` | `false` | Provision `agent` + `agent_persona` tables for agent registry and templates. Implies `has_resources`. |
 
 ### Security Model
-- **Private tables** (thread, message, task): `AuthzMemberOwner` — actor must own the row AND be a member of the entity
-- **Shared tables** (prompt, knowledge): `AuthzEntityMembership` — any entity member can read/write
+- **Private tables** (thread, message, task, plan): `AuthzMemberOwner` — actor must own the row AND be a member of the entity
+- **Shared tables** (prompt, resource, agent, persona): `AuthzEntityMembership` — any entity member can read/write
 
-### Knowledge (opt-in via `has_knowledge`)
-When `has_knowledge: true`, an `agent_knowledge` table is created alongside a `data_chunks` child table (auto-generated via ProcessChunks). The chunks table has vector embeddings (pgvector) with HNSW index for semantic retrieval.
+### Resources (opt-in via `has_resources`)
+When `has_resources: true`, a unified `agent_resource` table is created with:
+- `kind` column: `'skill' | 'knowledge' | 'convention'`
+- `slug` for portable human-readable identifiers
+- Full-text search (tsvector on title, description, body)
+- Vector embedding (pgvector HNSW) for semantic search
+- Auto-chunking via ProcessChunks (configurable via `resources` array)
+- `DataArchivable` for user-reversible archiving
+
+The `resources` configuration array accepts:
+```json
+[{ "dimensions": 768, "chunk_size": 1000, "chunk_overlap": 200, "chunk_strategy": "paragraph" }]
+```
 
 ### Config Table
 The `agent_module` config table tracks:
-- `thread_table_name`, `message_table_name`, `task_table_name`, `prompts_table_name`, `plan_table_name`
+- `thread_table_name`, `message_table_name`, `task_table_name`, `prompts_table_name`, `plan_table_name`, `agent_table_name`, `persona_table_name`, `resource_table_name`
 - `has_plans boolean` — whether plan table + approval workflow are provisioned
-- `has_knowledge boolean` — whether knowledge + chunks are provisioned
-- `plan_table_name` — name of plan table (if enabled)
-- `knowledge_table_name` — name of knowledge table (if enabled)
+- `has_resources boolean` — whether unified resource table is provisioned
+- `has_agents boolean` — whether agent + persona tables are provisioned
+- `resources jsonb` — resource configuration (dimensions, chunk_size, etc.)
 - `api_name` — GraphQL API to expose tables on (default: `'agent'`)
 
 ### Prefix Composition (PR #1332)

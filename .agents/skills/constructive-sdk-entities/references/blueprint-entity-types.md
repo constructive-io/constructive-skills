@@ -187,7 +187,12 @@ The `agents` field provisions an `agent_module` for the entity type — creating
       "name": "Data Room",
       "prefix": "data_room",
       "parent_entity": "org",
-      "agents": [{ "has_plans": true, "has_knowledge": true }]
+      "agents": [{
+        "has_plans": true,
+        "has_resources": true,
+        "has_agents": true,
+        "resources": [{ "dimensions": 1536, "chunk_size": 500, "chunk_strategy": "sentence" }]
+      }]
     }
   ]
 }
@@ -198,12 +203,14 @@ The `agents` field provisions an `agent_module` for the entity type — creating
 | Field | Type | Default | Description |
 |-------|------|---------|-------------|
 | `has_plans` | boolean | `false` | Provision an `agent_plan` table for workflow plans with ordered tasks and approval gates. When true, tasks belong to plans (`plan_id NOT NULL`) instead of directly to threads. Hierarchy: thread → plan → task |
-| `has_knowledge` | boolean | `false` | Provision a shared knowledge base table with auto-chunked child table (pgvector HNSW index for semantic retrieval) |
+| `has_resources` | boolean | `false` | Provision a unified `agent_resource` table (kind: skill/knowledge/convention) with auto-chunking (ProcessChunks) and vector embeddings |
+| `has_agents` | boolean | `false` | Provision `agent` + `agent_persona` tables for agent registry and templates. Implies `has_resources`. |
+| `resources` | array | `null` | Resource configuration array: `[{ dimensions, chunk_size, chunk_overlap, chunk_strategy }]`. Defaults: 768d, 1000 chunk, 200 overlap, paragraph strategy |
 | `api_name` | string | `'agent'` | GraphQL API target to expose agent tables on |
 
 ### Tables created
 
-With prefix `data_room`, `has_plans: true`, and `has_knowledge: true`:
+With prefix `data_room`, `has_plans: true`, `has_resources: true`, and `has_agents: true`:
 
 | Table | Security | Description |
 |-------|----------|-------------|
@@ -212,8 +219,10 @@ With prefix `data_room`, `has_plans: true`, and `has_knowledge: true`:
 | `data_room_agent_plan` | `AuthzMemberOwner` | Workflow plans — ordered task lists with status lifecycle (draft → active → completed/failed/cancelled) |
 | `data_room_agent_task` | `AuthzMemberOwner` | Task tracking — belongs to plan when `has_plans`, otherwise to thread |
 | `data_room_agent_prompt` | `AuthzEntityMembership` | Shared prompt templates — any entity member |
-| `data_room_agent_knowledge` | `AuthzEntityMembership` | Shared knowledge base (chunked for RAG) |
-| `data_room_agent_knowledge_chunks` | *(inherited)* | Auto-generated chunks with vector embeddings |
+| `data_room_agent_resource` | `AuthzEntityMembership` | Unified skills + knowledge (kind: skill/knowledge/convention), auto-chunked |
+| `data_room_agent_resource_chunks` | *(inherited)* | Auto-generated chunks with vector embeddings |
+| `data_room_agent` | `AuthzEntityMembership` | Agent registry — any entity member |
+| `data_room_agent_persona` | `AuthzEntityMembership` | Agent persona templates — any entity member |
 
 ### Plan table fields (when `has_plans: true`)
 
@@ -255,7 +264,7 @@ The module uses explicit prefix-based composition (not regex):
 ### Security model
 
 - **Private tables** (thread, message, task, plan): `AuthzMemberOwner` — actor must own the row AND be a member of the entity (via SPRT)
-- **Shared tables** (prompt, knowledge): `AuthzEntityMembership` — any entity member can read/write
+- **Shared tables** (prompt, resource, agent, persona): `AuthzEntityMembership` — any entity member can read/write
 - **App-level fallback** (no entity_table_id): uses `AuthzDirectOwner` for private tables, `AuthzAppMembership` for shared tables
 - **RLS inheritance** (when `has_plans`): `owner_id` + `entity_id` cascade via DataInheritFromParent: thread → plan → task
 
@@ -272,7 +281,7 @@ An entity type can have both `has_storage` + `storage` AND `agents` simultaneous
       "parent_entity": "org",
       "has_storage": true,
       "storage": [{ "buckets": [{ "name": "documents" }] }],
-      "agents": [{ "has_plans": true, "has_knowledge": true }]
+      "agents": [{ "has_plans": true, "has_resources": true, "has_agents": true }]
     }
   ]
 }

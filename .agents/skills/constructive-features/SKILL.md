@@ -153,7 +153,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent plans + approval workflow | `["agent_module", {"has_plans": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
-| Agent knowledge base (RAG) | `["agent_module", {"has_knowledge": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent resources (unified skills + knowledge) | `["agent_module", {"has_resources": true}]` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
+| Agent registry + personas | `["agent_module", {"has_agents": true}]` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent prompt templates | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 
 ## 9. GraphQL & Codegen

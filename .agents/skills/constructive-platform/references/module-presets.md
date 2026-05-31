@@ -96,18 +96,27 @@ See [device-settings.md](./device-settings.md) for the full composition matrix a
 
 ### `agent_module`
 
-Provisions AI agent infrastructure — threads, messages, tasks, prompts. Supports jsonb tuple options:
+Provisions AI agent infrastructure — threads, messages, tasks, prompts, resources, agents, personas. Supports jsonb tuple options:
 
-| Configuration | `has_plans` | `has_knowledge` | Description |
-|--------|-------------|-----------------|-------------|
-| `"agent_module"` | false | false | Bare install — threads, messages, tasks, prompts |
-| `["agent_module", {"has_plans": true}]` | true | false | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
-| `["agent_module", {"has_knowledge": true}]` | false | true | Adds `agent_knowledge` + chunks table with pgvector HNSW + BM25 indexes for RAG |
-| `["agent_module", {"has_plans": true, "has_knowledge": true}]` | true | true | Plans + knowledge combined |
+| Configuration | Description |
+|--------|-------------|
+| `"agent_module"` | Bare install — threads, messages, tasks, prompts |
+| `["agent_module", {"has_plans": true}]` | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
+| `["agent_module", {"has_resources": true}]` | Adds unified `agent_resource` table (kind: skill/knowledge/convention) with auto-chunking (ProcessChunks) and vector embeddings |
+| `["agent_module", {"has_agents": true}]` | Adds `agent` + `agent_persona` tables. Implies `has_resources` (agents need resources to reference) |
+| `["agent_module", {"has_plans": true, "has_resources": true, "has_agents": true}]` | Full agent stack — plans, resources, agent registry, personas |
+
+**Resource configuration** (optional, via `resources` array):
+```json
+["agent_module", {"has_resources": true, "resources": [{"dimensions": 1536, "chunk_size": 500, "chunk_strategy": "sentence"}]}]
+```
+Defaults: 768 dimensions, 1000 chunk_size, 200 chunk_overlap, `"paragraph"` strategy, `["tsvector"]` search indexes.
+
+**Scoping:** Supports `scope` option (`"app"`, `"org"`, etc.) for entity-level provisioning. The `generate:constructive` reference DB uses `["agent_module", {"has_plans": true, "has_resources": true, "has_agents": true, "scope": "org"}]`.
 
 **Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add the desired variant to your module list.
 
-**Note:** `has_knowledge` requires `pg_textsearch` for BM25 indexes. The `generate:constructive` reference DB uses `["agent_module", {"has_plans": true}]` (no BM25 dependency).
+**Note:** The old `has_knowledge` and `has_skills` flags are replaced by `has_resources`. The unified `agent_resource` table covers both via the `kind` column.
 
 ### `user_settings_module`
 
