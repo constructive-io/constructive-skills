@@ -1,6 +1,6 @@
 ---
 name: constructive-safegres
-description: "Safegres is Constructive's security protocol for expressing authorization as Authz* policy nodes (types + JSON configs). This skill defines each Authz* type, its config shape, semantics, and when to use it. Includes AuthzMemberOwner (compound ownership + entity membership) and its paired DataMemberOwner data node. No SQL and no SDK/grant/RLS steps."
+description: "Safegres is Constructive's security protocol for expressing authorization as Authz* policy nodes (types + JSON configs). This skill defines each Authz* type, its config shape, semantics, and when to use it. Includes AuthzMemberOwner (compound ownership + entity membership), AuthzFilePath (path-scoped file sharing via ltree containment), AuthzNotReadOnly (restricts mutations for read-only members), and DataMemberOwner data node. No SQL and no SDK/grant/RLS steps."
 compatibility: Node.js 22+, @constructive-io/sdk
 metadata:
   author: constructive-io
@@ -95,7 +95,7 @@ Rule of thumb:
 
 ## Safegres policy node types — Quick reference
 
-There are **15 leaf policy node types** plus `AuthzComposite` (a meta-node for boolean trees).
+There are **17 leaf policy node types** plus `AuthzComposite` (a meta-node for boolean trees).
 
 | # | Type | Intent | Key config |
 |---|------|--------|------------|
@@ -114,6 +114,8 @@ There are **15 leaf policy node types** plus `AuthzComposite` (a meta-node for b
 | 13 | `AuthzRelatedMemberList` | Actor in related UUID array (not recommended) | `owned_schema`/`owned_table`/`owned_table_key` |
 | 14 | `AuthzAllowAll` | Unconditional allow (use sparingly) | `{}` |
 | 15 | `AuthzDenyAll` | Unconditional deny | `{}` |
+| 16 | `AuthzFilePath` | Path-scoped file sharing via ltree containment | `shares_schema`, `shares_table`, `files_table`, `permission_field` |
+| 17 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
 
 See [authz-types.md](references/authz-types.md) for full documentation of each type including config shapes, semantics, use/avoid guidance, and code examples.
 
