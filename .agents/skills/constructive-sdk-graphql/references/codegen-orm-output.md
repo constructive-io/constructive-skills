@@ -513,7 +513,7 @@ The namespace import pulls from `select-types` (via `index.ts`), so it gives you
 
 ### Important notes
 
-- The deep import path depends on the SDK's internal file layout. If the SDK reorganizes directories in a future version, the path may change.
+- The deep import path depends on the SDK's internal file layout. If the SDK reorganizes directories, the path may change.
 - Add `@constructive-io/sdk` as a **direct dependency** (not just devDependency) if your package needs these types at build time — this ensures pnpm creates the symlink for the deep path to resolve.
 - The `types.ts` barrel (`export * from './input-types'`) exists as a convenience re-export within the `orm/` directory but is not chained through `index.ts`.
 

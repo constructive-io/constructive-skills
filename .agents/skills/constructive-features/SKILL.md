@@ -194,8 +194,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | SearchVector (pgvector columns + HNSW/IVFFlat) | `SearchVector` blueprint node | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Embedding stale tracking + job enqueue | `SearchVector` `include_updated_at` + `enqueue_job` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Chunk tables (long text splitting) | `SearchVector` `chunks_config` | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| Embedding worker pipeline | Graphile Worker + `generate_embedding` task (SQL triggers exist; Knative handlers not yet implemented) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
-| agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama` (shipped); `@agentic-kit/anthropic`, `@agentic-kit/openai` (optional) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| Embedding worker pipeline | Graphile Worker + `generate_embedding` task, SQL trigger enqueue, Knative worker processing | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
+| agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`; `@agentic-kit/anthropic`, `@agentic-kit/openai` (optional) | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
 | Agent plans + approval workflow | `["agent_module", {"has_plans": true}]` | — | [`constructive-sdk-entities`](../constructive-sdk-entities/SKILL.md) |
@@ -316,12 +316,6 @@ See [`constructive/references/module-presets.md`](../constructive-platform/refer
 |---|---|
 | `notifications_module` | `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_start`, `notifs_quiet_hours_end`, `notifs_quiet_hours_timezone`, `notifs_default_channels` |
 | `i18n_module` | `preferred_language` |
-
-## Things Not (Yet) a Feature
-
-- **`emails_module` opt-out** — email is required by the `user_auth_module` trigger today; `auth:sso` / `auth:passkey` presets still install it.
-- **`organization_settings_module`** — will follow the same pattern as `user_settings_module` for org-level settings.
-- **Embedding worker Knative handlers** — SQL triggers for embedding enqueue exist, but Knative worker handlers are not yet wired.
 
 ## Flow-Based Programming (separate toolkit)
 

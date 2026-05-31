@@ -751,24 +751,13 @@ stack.push({ id: 'new-deal', title: 'New Deal',
 | `bool`, `boolean` | `<Switch>` | |
 | `date` | `<Input type="date">` | |
 | `timestamp`, `timestamptz` | `<Input type="datetime-local">` | |
-| `uuid` (FK) | Locked or UUID input | Use `defaultValues` to lock from context; future: `<EntitySearch>` |
+| `uuid` (FK) | Locked or UUID input | Use `defaultValues` to lock from context |
 | `uuid` (non-FK) | `<Input>` mono | Rare — raw UUID |
 | `json`, `jsonb` | `<Textarea>` mono | JSON.parse / stringify |
 
 ---
 
-## 11. Future extensions
-
-| Feature | How |
-|---|---|
-| **EntitySearch for FK fields** | Replace `select` case in `DynamicField` with an `<EntitySearch tableName={fk.referencedTable}>` component that fetches + autocompletes |
-| **Array fields** | Handle `isArray: true` in MetaField — render `<TagInput>` for `text[]` |
-| **Enum fields** | Query `__schema` for enum values — render `<Select>` |
-| **Package** | Extract `DynamicFormCard`, `DynamicField`, `useMeta`, field-renderer into `@constructive/meta-forms` npm package so any Constructive-backed app gets this for free |
-
----
-
-## 12. Troubleshooting
+## 11. Troubleshooting
 
 | Issue | Fix |
 |---|---|
@@ -778,5 +767,5 @@ stack.push({ id: 'new-deal', title: 'New Deal',
 | Form shows no editable fields | All fields in `SYSTEM_FIELDS` — check provisioned columns |
 | Required validation on system fields | Bug — verify `SYSTEM_FIELDS` set covers all auto-managed field names |
 | Edit form is empty on open | Check `useCardReady()` gate — data fetches only after card animation completes |
-| FK shows UUID instead of name | Use `defaultValueLabels` prop, or build `EntitySearch` (future work) |
+| FK shows UUID instead of name | Use `defaultValueLabels` prop |
 | `hasDefault=true` field marked required | Bug in `isRequiredField` — must check `!hasDefault` |

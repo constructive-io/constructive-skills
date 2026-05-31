@@ -133,14 +133,10 @@ Creates a skeleton 1:1 `user_settings` table per user (`AuthzDirectOwner` RLS, S
 Provisions app-level internationalization config:
 
 - **`i18n_private` schema** — contains `app_settings_i18n` singleton (default_language, supported_languages, fallback_chain, is_enabled)
-- **`i18n_public` schema** — reserved for future public helpers
+- **`i18n_public` schema** — public helpers
 - Required for `DataI18n` blueprint nodes (translation tables)
 
 **Included in:** `full` preset. Add `'i18n_module'` to your module list to enable in other presets.
-
-## Feature Flags / Toggles (future)
-
-The shape reserves room for a `settings?` field to carry toggles like `app_settings_auth.allow_password_sign_up = false` or a read-only mode. Not implemented yet — presets today are module-list only.
 
 ## When to Pick Which
 

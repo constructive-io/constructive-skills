@@ -434,7 +434,7 @@ This enables patterns like:
 
 Multi-provider LLM abstraction for embedding generation and inference. See [agentic-kit.md](./references/agentic-kit.md) for the full API reference.
 
-> **Note:** Only `@agentic-kit/ollama` is currently shipped in the repo. `@agentic-kit/anthropic` and `@agentic-kit/openai` are optional external packages — install them separately if needed.
+> **Note:** `@agentic-kit/ollama` is the built-in provider. `@agentic-kit/anthropic` and `@agentic-kit/openai` are optional external packages — install them separately if needed.
 
 ```typescript
 import OllamaClient from '@agentic-kit/ollama';
@@ -457,7 +457,7 @@ The embedding pipeline uses job triggers to enqueue work:
 2. Job trigger enqueues `generate_embedding` / `process_file_embedding` / `generate_chunks`
 3. Knative worker picks up the job and processes it
 
-> **Note:** The SQL triggers for enqueuing these jobs are fully provisioned by the blueprint nodes. However, Knative worker handlers for `generate_embedding`, `process_file_embedding`, and `generate_chunks` are **not yet shipped** in the repo — you must implement the worker functions that process these job payloads. See `constructive-jobs` for the worker pipeline architecture.
+> **Note:** The SQL triggers for enqueuing these jobs are fully provisioned by the blueprint nodes. The Knative worker handlers for `generate_embedding`, `process_file_embedding`, and `generate_chunks` consume job payloads from the queue. See `constructive-jobs` for the worker pipeline architecture.
 
 ## Reference Guide
 
