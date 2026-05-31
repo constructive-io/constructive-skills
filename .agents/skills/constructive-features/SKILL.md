@@ -34,6 +34,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Trusted devices (MFA bypass) | `devices_module` + `app_settings_device.enable_trusted_devices` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
 | Device approval gate (email) | `devices_module` + `app_settings_device.require_device_approval` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
 | Force MFA on new devices | `devices_module` + `app_settings_device.require_mfa_new_device` | `full` | [`constructive-platform`](../constructive-platform/references/device-settings.md) |
+| User settings (extensible 1:1 preferences) | `user_settings_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | API keys | `user_state_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Encrypted secrets (per-user) | `config_secrets_user_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
@@ -93,6 +94,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | LimitFeatureFlag (cap-based feature gating) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataI18n (translation tables) | `DataI18n` node + `i18n_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
 ## 5. Events & Achievements
@@ -210,6 +212,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Ephemeral test DBs | `pgsql-test` + friends | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Internationalization (app-level config) | `i18n_module` + `app_settings_i18n` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 
 ## 13. Project Setup & Scaffolding
 
@@ -232,17 +235,27 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | `auth:sso` | `auth:email` + OAuth + connected accounts |
 | `auth:passkey` | `auth:email` + WebAuthn |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links |
-| `b2b` | `auth:hardened` + orgs + invites + permissions + levels + profiles + hierarchy |
-| `full` | `['all']` — everything |
+| `b2b` | `auth:hardened` + orgs + invites + permissions + levels + profiles + hierarchy + user_settings |
+| `b2b:storage` | `b2b` + file upload infrastructure (buckets, files, RLS) + user_settings |
+| `full` | everything — includes i18n_module, user_settings_module, storage, billing, notifications |
 
 See [`constructive/references/module-presets.md`](../constructive-platform/references/module-presets.md) for the full catalog, shapes, and ORM usage.
 
+## User Settings Extension Pattern
+
+`user_settings_module` creates a skeleton 1:1 table (per-user, `AuthzDirectOwner` RLS) in `users_public`. Other modules extend it by adding columns via `metaschema.create_field()`:
+
+| Module | Columns added to `user_settings` |
+|---|---|
+| `notifications_module` | `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_start`, `notifs_quiet_hours_end`, `notifs_quiet_hours_timezone`, `notifs_default_channels` |
+| `i18n_module` (planned) | `preferred_language` |
+| `user_auth_module` (planned) | `mfa_totp_enabled`, `mfa_email_enabled`, `mfa_sms_enabled` |
+
 ## Things Not (Yet) a Feature
 
-Listed for honesty — these are discussed in the modularity docs but aren't usable today:
-
-- **MFA / user_settings_security** — template hooks exist, module doesn't.
+- **MFA columns on `user_settings`** — `user_auth_module` has AST procedure builders that reference MFA fields, but they aren't wired to `user_settings_module` yet.
 - **`emails_module` opt-out** — email is required by the `user_auth_module` trigger today; `auth:sso` / `auth:passkey` presets still install it.
+- **`organization_settings_module`** — will follow the same pattern as `user_settings_module` for org-level settings.
 
 ## Flow-Based Programming (separate toolkit)
 

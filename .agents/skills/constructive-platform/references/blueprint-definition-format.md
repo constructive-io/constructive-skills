@@ -319,6 +319,43 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 |-----------|---------|----------------|
 | `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
+#### Internationalization
+
+| Node Type | Creates | `data` options |
+|-----------|---------|----------------|
+| `DataI18n` | Creates a `{table}_translations` table in the same schema as the base table. The translation table has a FK to the base table, a `locale` text field, and copies of the specified translatable fields. Unique constraint on `(parent_fk, locale)`. Uses `RelationHasMany` internally for the FK plumbing. | `fields` (required — array of field names from the base table to make translatable), `nodes` (optional — array of node types to apply to the translation table, e.g. `SearchVector` for per-language embeddings) |
+
+**Prerequisites:** Requires `i18n_module` to be provisioned. Install via `modules:['all']`, the `full` preset, or add `'i18n_module'` to your module list.
+
+**Example — make name and description translatable:**
+```json
+{
+  "table_name": "products",
+  "nodes": [
+    "DataId", "DataTimestamps",
+    { "$type": "DataI18n", "data": { "fields": ["name", "description"] } }
+  ],
+  "fields": [
+    { "name": "name", "type": { "name": "text" } },
+    { "name": "description", "type": { "name": "text" } },
+    { "name": "price", "type": { "name": "numeric" } }
+  ]
+}
+```
+
+**Example — with per-language embeddings for multilingual search:**
+```json
+{
+  "$type": "DataI18n",
+  "data": {
+    "fields": ["name", "description"],
+    "nodes": [
+      { "$type": "SearchVector", "data": { "source_fields": ["name", "description"] } }
+    ]
+  }
+}
+```
+
 #### Realtime
 
 | Node Type | Purpose | `data` options |

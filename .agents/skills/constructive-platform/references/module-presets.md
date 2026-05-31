@@ -18,9 +18,7 @@ interface ModulePreset {
   description: string;   // longer narrative: when / why / tradeoffs
   good_for: string[];    // concrete "use this if..."
   not_for: string[];     // concrete "don't use this if..."
-  modules: string[];     // flat module name list
-  includes_notes?: Record<string, string>;  // per-module rationale
-  omits_notes?: Record<string, string>;     // per-skipped-module rationale
+  modules: (string | [string, Record<string, unknown>])[];  // module names or [name, options] tuples
   extends?: string[];    // informational: "composes from these presets"
 }
 ```
@@ -35,8 +33,9 @@ interface ModulePreset {
 | `auth:sso` | auth:email + OAuth + connected accounts | B2B / federation |
 | `auth:passkey` | auth:email + WebAuthn | Phishing-resistant auth |
 | `auth:hardened` | rate limits + SSO + passkeys + SMS + magic links | Production consumer auth |
-| `b2b` | auth:hardened + orgs + invites + permissions + levels + profiles + hierarchy | Multi-tenant SaaS |
-| `full` | `['all']` sentinel | Reference / demo DBs / greenfield |
+| `b2b` | auth:hardened + orgs + invites + permissions + levels + profiles + hierarchy + user_settings | Multi-tenant SaaS |
+| `b2b:storage` | b2b + file upload infrastructure (buckets, files, RLS) + user_settings | B2B with file uploads |
+| `full` | everything — i18n, user_settings, storage, billing, notifications | Reference / demo DBs / greenfield |
 
 ## Usage
 
@@ -54,16 +53,14 @@ const row = await db.databaseProvisionModule.create({
     databaseName: 'my_app',
     domain: 'example.com',
     subdomain: 'app',
-    // modules is text[] at the SQL layer; serialize the preset as a PG array literal
-    modules: `{${preset.modules.join(',')}}`,
+    // modules is jsonb at the SQL layer; pass the preset modules directly
+    modules: JSON.stringify(preset.modules),
     options: {},
     bootstrapUser: false, // set true if you also want an owner/user seeded
   },
   select: { id: true, databaseId: true, status: true },
 }).execute();
 ```
-
-`preset.includes_notes` and `preset.omits_notes` carry per-module rationale — use them to render CLI help, scaffolder prompts, or docs.
 
 ## Notable Standalone Modules
 
@@ -99,18 +96,38 @@ See [device-settings.md](./device-settings.md) for the full composition matrix a
 
 ### `agent_module`
 
-Provisions AI agent infrastructure — threads, messages, tasks, prompts. Supports colon-separated presets to enable optional features:
+Provisions AI agent infrastructure — threads, messages, tasks, prompts. Supports jsonb tuple options:
 
-| Preset | `has_plans` | `has_knowledge` | Description |
+| Configuration | `has_plans` | `has_knowledge` | Description |
 |--------|-------------|-----------------|-------------|
-| `agent_module` | false | false | Bare install — threads, messages, tasks, prompts |
-| `agent_module:plans` | true | false | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
-| `agent_module:knowledge` | false | true | Adds `agent_knowledge` + chunks table with pgvector HNSW + BM25 indexes for RAG |
-| `agent_module:full` | true | true | Plans + knowledge combined |
+| `"agent_module"` | false | false | Bare install — threads, messages, tasks, prompts |
+| `["agent_module", {"has_plans": true}]` | true | false | Adds `agent_plan` table, tasks belong to plans (thread → plan → task hierarchy), approval workflow fields |
+| `["agent_module", {"has_knowledge": true}]` | false | true | Adds `agent_knowledge` + chunks table with pgvector HNSW + BM25 indexes for RAG |
+| `["agent_module", {"has_plans": true, "has_knowledge": true}]` | true | true | Plans + knowledge combined |
 
 **Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add the desired variant to your module list.
 
-**Note:** `:knowledge` and `:full` require `pg_textsearch` for BM25 indexes. The `generate:constructive` reference DB uses `:plans` (no BM25 dependency).
+**Note:** `has_knowledge` requires `pg_textsearch` for BM25 indexes. The `generate:constructive` reference DB uses `["agent_module", {"has_plans": true}]` (no BM25 dependency).
+
+### `user_settings_module`
+
+Creates a skeleton 1:1 `user_settings` table per user (`AuthzDirectOwner` RLS, SELECT + UPDATE only) in `users_public`. Other modules extend it by adding columns via `metaschema.create_field()`:
+
+- `notifications_module` adds `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_*`, `notifs_default_channels`
+- `i18n_module` will add `preferred_language`
+- `user_auth_module` will add MFA preference columns
+
+**Included in:** `b2b`, `b2b:storage`, `full` presets. Must be installed before `notifications_module` so that notification settings auto-resolve.
+
+### `i18n_module`
+
+Provisions app-level internationalization config:
+
+- **`i18n_private` schema** — contains `app_settings_i18n` singleton (default_language, supported_languages, fallback_chain, is_enabled)
+- **`i18n_public` schema** — reserved for future public helpers
+- Required for `DataI18n` blueprint nodes (translation tables)
+
+**Included in:** `full` preset. Add `'i18n_module'` to your module list to enable in other presets.
 
 ## Feature Flags / Toggles (future)
 
