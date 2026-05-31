@@ -188,10 +188,10 @@ const result = await db.table.create({
   data: {
     databaseId: databaseId,
     schemaId: schemaId,
-    name: 'user_preferences',
-    label: 'User Preferences',
+    name: 'user_settings',
+    label: 'User Settings',
     category: 'module',
-    module: 'preferences_module',
+    module: 'user_settings_module',
     scope: 1,  // App-level
   },
   select: {
