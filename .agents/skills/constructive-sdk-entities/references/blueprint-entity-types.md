@@ -260,6 +260,23 @@ The module uses explicit prefix-based composition (not regex):
 | App-level (no entity) | — | `agent_thread` |
 | Entity-scoped (default) | `data_room` | `data_room_agent_thread` |
 | Entity-scoped (custom key) | `data_room` + key `support` | `data_room_support_agent_thread` |
+| Entity-scoped (empty prefix) | `""` | `agent_thread` |
+
+### Prefix override (empty prefix for unprefixed table names)
+
+All module config types (`BlueprintStorageConfig`, `BlueprintNamespaceConfig`,
+`BlueprintFunctionConfig`, `BlueprintAgentConfig`) accept `prefix?: string`.
+Set it to an empty string to produce unprefixed table names:
+
+```json
+{
+  "agents": [{ "scope": "org", "prefix": "", "has_resources": true }]
+}
+```
+
+This produces `agent_thread`, `agent_message`, etc. instead of
+`org_agent_thread`, `org_agent_message`. Works the same for storage
+(`buckets` instead of `org_buckets`), namespaces, and functions.
 
 ### Security model
 
