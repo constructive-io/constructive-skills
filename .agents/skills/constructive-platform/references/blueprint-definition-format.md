@@ -323,9 +323,11 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 
 | Node Type | Creates | `data` options |
 |-----------|---------|----------------|
-| `DataI18n` | Creates a `{table}_translations` table in the same schema as the base table. The translation table has a FK to the base table, a `locale` text field, and copies of the specified translatable fields. Unique constraint on `(parent_fk, locale)`. Uses `RelationHasMany` internally for the FK plumbing. | `fields` (required — array of field names from the base table to make translatable), `nodes` (optional — array of node types to apply to the translation table, e.g. `SearchVector` for per-language embeddings) |
+| `DataI18n` | Creates a `{table}_translations` table with FK, `lang_code`, and copies of translatable fields. Unique constraint on `(parent_fk, lang_code)`. When `search` is provided, creates a SearchFullText tsvector on the translations table with dynamic per-row language stemming (30+ languages out of the box). | `fields` (required — array of field names to make translatable), `search` (optional — SearchFullText config, auto-sets `lang_column: 'lang_code'` for dynamic stemming) |
 
 **Prerequisites:** Requires `i18n_module` to be provisioned. Install via `modules:['all']`, the `full` preset, or add `'i18n_module'` to your module list.
+
+For full documentation including ORM queries, GraphQL localeStrings, and SQL search patterns, see [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md).
 
 **Example — make name and description translatable:**
 ```json
@@ -343,18 +345,24 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 }
 ```
 
-**Example — with per-language embeddings for multilingual search:**
+**Example — with multilingual full-text search (recommended):**
 ```json
 {
   "$type": "DataI18n",
   "data": {
     "fields": ["name", "description"],
-    "nodes": [
-      { "$type": "SearchVector", "data": { "source_fields": ["name", "description"] } }
-    ]
+    "search": {
+      "field_name": "search",
+      "source_fields": [
+        { "field": "name", "weight": "A" },
+        { "field": "description", "weight": "B" }
+      ]
+    }
   }
 }
 ```
+
+Each translation row is stemmed in its own language — insert with `lang_code = 'spanish'` and "corriendo" stems to "corr". Insert with `lang_code = 'french'` and "courant" stems properly. No per-language configuration needed.
 
 #### Realtime
 
@@ -393,7 +401,7 @@ See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide 
 |-----------|---------|----------------|
 | `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration | `source_fields` (optional, creates DataCompositeField first), `bm25` (sub-config), `trgm` (sub-config), `fts` (sub-config), `boost_recency` (optional `{"field": "updated_at"}`) |
 | `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_updated_at` (default `true`), `enqueue_job` (default `true`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-sdk-ai`](../../constructive-sdk-ai/SKILL.md) |
-| `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `search_score_weight` (default `1.0`) |
+| `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `lang_column` (optional — column name containing a `regconfig` value for dynamic per-row language stemming, e.g. `'lang_code'`), `search_score_weight` (default `1.0`) |
 | `SearchBm25` | BM25 (pg_search/ParadeDB) index on existing text field | `field_name` (required — must already exist), `text_config` (default `'english'`), `search_score_weight` (default `1.0`), `k1` (optional BM25 tuning), `b` (optional BM25 tuning) |
 | `SearchTrgm` | GIN trigram indexes on existing fields | `fields` (required, array of field names — must already exist). Sets `@trgmSearch` smart tag |
 | `SearchSpatial` | PostGIS `geometry`/`geography` column + GiST index | `field_name` (default `'geom'`), `geometry_type` (default `'Point'`), `srid` (default `4326`), `dimension` (default `2`), `use_geography` (default `false`), `index_method` (`'gist'`\|`'spgist'`) |
