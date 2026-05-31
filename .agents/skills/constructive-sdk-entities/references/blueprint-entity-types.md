@@ -72,7 +72,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
-| `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, plan, knowledge). See [Agents Config](#agents-config) |
+| `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, plan, resource, agent, persona). See [Agents Config](#agents-config) |
 | `namespaces` | jsonb | No | `null` | Namespace module config. Provisions `namespace_module` tables (namespaces + namespace_events partitioned log). See [Namespaces Config](#namespaces-config) |
 | `functions` | jsonb | No | `null` | Function module config. Provisions `function_module` tables (functions, invocations) |
 
