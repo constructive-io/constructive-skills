@@ -125,9 +125,6 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | LimitWarningCounter (soft limit warnings) | `LimitWarningCounter` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
 | LimitWarningAggregate (aggregate warnings) | `LimitWarningAggregate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
 | LimitWarningRate (rate limit warnings) | `LimitWarningRate` node + `limits_module` | — | [`constructive-sdk-limits`](../constructive-sdk-limits/SKILL.md) |
-| TableOrganizationSettings (org settings skeleton) | `TableOrganizationSettings` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| TableUserProfiles (user profile skeleton) | `TableUserProfiles` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| TableUserSettings (user settings skeleton) | `TableUserSettings` node | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 
 ## 5. Events & Achievements
 
@@ -278,8 +275,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | Notifications (email/push/webhook — channels, preferences, digest, delivery_log, subscriptions) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Internationalization (multilingual search + translations) | `i18n_module` + `DataI18n` + `lang_column` | `full` | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
-| pg_cron SQL scheduling (7 maintenance tasks) | `register_maintenance_jobs` | — | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| CursorTracker at-least-once delivery | `listener_node` + `drain_changes()` + `touch_listener()` | — | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| CursorTracker at-least-once delivery | `listener_node` + `drain_changes()` + `touch_listener()` | — | [`constructive-sdk-realtime`](../constructive-sdk-realtime/SKILL.md) |
 
 ## 13. Project Setup & Scaffolding
 

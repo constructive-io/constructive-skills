@@ -201,21 +201,18 @@ const contentHash = createHash('sha256')
   .digest('hex');
 
 // 2. Request presigned URL
-const { data } = await graphqlClient.mutate({
-  mutation: REQUEST_UPLOAD_URL,
-  variables: {
-    input: {
-      bucketKey: 'public',
-      contentHash,
-      contentType: file.type,
-      size: file.size,
-      filename: file.name,
-      // ownerId: entityId,  // for entity-scoped uploads
-    },
+const result = await db.mutation.requestUploadUrl({
+  input: {
+    bucketKey: 'public',
+    contentHash,
+    contentType: file.type,
+    size: file.size,
+    filename: file.name,
+    // ownerId: entityId,  // for entity-scoped uploads
   },
-});
+}).execute();
 
-const { uploadUrl, fileId, deduplicated } = data.requestUploadUrl;
+const { uploadUrl, fileId, deduplicated } = result;
 
 // 3. PUT to presigned URL (skip if deduplicated)
 if (!deduplicated) {
@@ -237,17 +234,14 @@ if (!deduplicated) {
 Same flow, just add `ownerId` to the input:
 
 ```typescript
-const { data } = await graphqlClient.mutate({
-  mutation: REQUEST_UPLOAD_URL,
-  variables: {
-    input: {
-      bucketKey: 'documents',
-      ownerId: dataRoomId,   // entity instance UUID
-      contentHash,
-      contentType: file.type,
-      size: file.size,
-      filename: file.name,
-    },
+const result = await db.mutation.requestUploadUrl({
+  input: {
+    bucketKey: 'documents',
+    ownerId: dataRoomId,   // entity instance UUID
+    contentHash,
+    contentType: file.type,
+    size: file.size,
+    filename: file.name,
   },
-});
+}).execute();
 ```

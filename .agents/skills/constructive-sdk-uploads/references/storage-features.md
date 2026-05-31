@@ -34,19 +34,16 @@ Both `previous_version_id` and `is_latest` are immutable after INSERT.
 ### ORM: Creating a new version
 
 ```typescript
-const newVersion = await graphqlClient.mutate({
-  mutation: REQUEST_UPLOAD_URL,
-  variables: {
-    input: {
-      bucketKey: 'documents',
-      contentHash: newHash,
-      contentType: 'application/pdf',
-      size: newFile.size,
-      filename: 'contract-v2.pdf',
-      previousVersionId: existingFileId,  // links to the file being superseded
-    },
+const result = await db.mutation.requestUploadUrl({
+  input: {
+    bucketKey: 'documents',
+    contentHash: newHash,
+    contentType: 'application/pdf',
+    size: newFile.size,
+    filename: 'contract-v2.pdf',
+    previousVersionId: existingFileId,  // links to the file being superseded
   },
-});
+}).execute();
 ```
 
 ### ORM: Querying version history

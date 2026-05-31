@@ -96,19 +96,15 @@ await db.dataRoomBucket.create({
 }).execute();
 ```
 
-Or via the `provisionBucket` GraphQL mutation:
+Or via the `provisionBucket` ORM mutation:
 
-```graphql
-mutation {
-  provisionBucket(input: {
-    bucketKey: "documents"
-    ownerId: "data-room-uuid"
-  }) {
-    success
-    bucketName
-    accessType
-  }
-}
+```typescript
+const result = await db.mutation.provisionBucket({
+  input: {
+    bucketKey: 'documents',
+    ownerId: dataRoomId,
+  },
+}).execute();
 ```
 
 ## Uploading to Entity-Scoped Buckets
@@ -116,19 +112,16 @@ mutation {
 Pass `ownerId` in the `requestUploadUrl` mutation to target the entity's storage:
 
 ```typescript
-const { data } = await graphqlClient.mutate({
-  mutation: REQUEST_UPLOAD_URL,
-  variables: {
-    input: {
-      bucketKey: 'documents',
-      ownerId: dataRoomId,     // entity instance UUID
-      contentHash,
-      contentType: 'application/pdf',
-      size: file.size,
-      filename: 'contract.pdf',
-    },
+const result = await db.mutation.requestUploadUrl({
+  input: {
+    bucketKey: 'documents',
+    ownerId: dataRoomId,     // entity instance UUID
+    contentHash,
+    contentType: 'application/pdf',
+    size: file.size,
+    filename: 'contract.pdf',
   },
-});
+}).execute();
 ```
 
 The plugin resolves the correct storage module by probing entity tables for the `ownerId`, then uses that module's file tables.
