@@ -94,7 +94,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | LimitFeatureFlag (cap-based feature gating) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
-| DataI18n (translation tables) | `DataI18n` node + `i18n_module` | — | [`constructive-platform`](../constructive-platform/references/blueprint-definition-format.md) |
+| DataI18n (translation tables + multilingual search) | `DataI18n` node + `i18n_module` | — | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-sdk-graphql`](../constructive-sdk-graphql/SKILL.md) |
 
 ## 5. Events & Achievements
@@ -208,7 +208,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Ephemeral test DBs | `pgsql-test` + friends | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | RLS / policy testing | `pgsql-test` + JWT context | — | [`constructive-testing`](../constructive-testing/SKILL.md) |
 | Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| Internationalization (app-level config) | `i18n_module` + `app_settings_i18n` | `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Internationalization (multilingual search + translations) | `i18n_module` + `DataI18n` + `lang_column` | `full` | [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md) |
 
 ## 13. Project Setup & Scaffolding
 
@@ -244,7 +244,7 @@ See [`constructive/references/module-presets.md`](../constructive-platform/refer
 | Module | Columns added to `user_settings` |
 |---|---|
 | `notifications_module` | `notifs_enabled`, `notifs_default_digest_frequency`, `notifs_quiet_hours_start`, `notifs_quiet_hours_end`, `notifs_quiet_hours_timezone`, `notifs_default_channels` |
-| `i18n_module` (planned) | `preferred_language` |
+| `i18n_module` | `preferred_language` |
 | `user_auth_module` (planned) | `mfa_totp_enabled`, `mfa_email_enabled`, `mfa_sms_enabled` |
 
 ## Things Not (Yet) a Feature
