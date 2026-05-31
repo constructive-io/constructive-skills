@@ -398,12 +398,17 @@ SELECT app_jobs.add_scheduled_job(
 
 The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
 
-## Related Skills
+## References
 
-- **[`constructive-platform`](../constructive-platform/references/cloud-functions.md)** — Cloud functions: building the Knative function that handles a job
-- **[`constructive-safegres`](../constructive-safegres/SKILL.md)** — Security policies for tables with job triggers
-- **[`constructive-sdk-ai`](../constructive-sdk-ai/SKILL.md)** — AI search nodes (SearchUnified, SearchVector), RAG patterns, and agentic-kit LLM client
-- **[`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)** — EventTracker node (shares compound conditions), achievements, invite virality, credit rewards
-- **Blueprint definition format** — [blueprints.md](../constructive-platform/references/blueprint-definition-format.md) for the full node types table
+| File | Content |
+|------|---------|
+| [common-patterns.md](./references/common-patterns.md) | Process wrappers and common job patterns |
+| [payload-strategies.md](./references/payload-strategies.md) | Payload strategies for job triggers |
 
-For SQL-level internals (generator functions, AST helpers, trigger function source), see the `constructive-db-compound-conditions` and `constructive-db-data-modules` skills in `constructive-io/constructive-db`.
+## Cross-References
+
+- **Cloud functions (Knative handlers):** [`constructive-platform`](../constructive-platform/SKILL.md)
+- **Security policies:** [`constructive-security`](../constructive-security/SKILL.md)
+- **AI and embeddings:** [`constructive-agents`](../constructive-agents/SKILL.md)
+- **Events (shared conditions system):** [`constructive-events`](../constructive-events/SKILL.md)
+- **Blueprint definition format:** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
