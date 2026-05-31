@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-entities
-description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, memberships, invites, agent modules, and namespace modules via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), agent_module (threads, messages, tasks, prompts, knowledge with AuthzMemberOwner), namespace_module (namespace_events partitioned K8s metrics log), invite system, and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', 'agent_module', 'agents config', 'namespace_events', 'namespace_module', 'invite users', 'profile assignment', or when working with entity_types in blueprints."
+description: "Custom entity types and dynamic entity provisioning — how to create custom entities (channels, departments, teams, data rooms) with per-entity storage, permissions, memberships, invites, agent modules, namespace modules, function modules, and graph modules via the ORM, CLI, or blueprint definitions. Covers the entity hierarchy, permissions per entity type, entity-scoped storage (buckets + file uploads), agent_module (threads, messages, tasks, prompts, knowledge with AuthzMemberOwner), namespace_module (namespace_events partitioned K8s metrics log), function_module (definitions, invocations, execution_logs), graph_module (FBP graph permissions with merkle_store_module), invite system, and the provisioning lifecycle. Use when asked to 'create entity types', 'add channels/teams/data rooms', 'provision entity storage', 'entity-scoped buckets', 'agent_module', 'agents config', 'namespace_events', 'namespace_module', 'function_module', 'entity functions', 'graph_module', 'entity graphs', 'invite users', 'profile assignment', or when working with entity_types in blueprints."
 metadata:
   author: constructive-io
   version: "2.2.0"
@@ -273,6 +273,74 @@ Uses `apply_module_security` with `manage_namespaces` permission. Namespace INSE
 
 ---
 
+## Entity-Scoped Function Module
+
+The `functions[]` JSON array provisions `function_module` instances per entity type, creating serverless function management tables scoped to entity membership.
+
+### Blueprint
+
+```json
+{
+  "entity_types": [{
+    "name": "Data Room",
+    "prefix": "data_room",
+    "functions": [{}]
+  }]
+}
+```
+
+Each element recognizes:
+- `key` (text) — module discriminator (default: `'default'`)
+- `policies` (jsonb[]) — RLS policy overrides (default: `apply_function_security()`)
+
+### Tables Created
+
+| Table | Description |
+|-------|-------------|
+| `{prefix}_function_definitions` | Function definitions (name, runtime, handler, config) |
+| `{prefix}_function_invocations` | Invocation records with input/output payloads |
+| `{prefix}_function_execution_logs` | Execution logs with timing, errors, and metadata |
+
+### Permissions Registered
+- `manage_functions` — create/update/delete function definitions
+- `invoke_functions` — execute functions and view invocation results
+
+Function INSERTs dispatch a `function:provision` job via the job trigger system. Depends on `config_secrets_module` for `resolve_function_secrets`.
+
+---
+
+## Entity-Scoped Graph Module
+
+The `graphs[]` JSON array registers graph (FBP) permissions per entity type. Graph module depends on `merkle_store_module` for content-addressed storage of graph definitions.
+
+### Blueprint
+
+```json
+{
+  "entity_types": [{
+    "name": "Data Room",
+    "prefix": "data_room",
+    "graphs": [{}]
+  }]
+}
+```
+
+Each element recognizes:
+- `key` (text) — module discriminator (default: `'default'`)
+- `policies` (jsonb[]) — RLS policy overrides (default: `apply_graph_security()`)
+
+### What Gets Provisioned
+
+Entity-scoped `graphs[]` **registers permission bits only** — the graph module tables (objects, stores, commits, refs) are provisioned separately via `graph_module` in the database modules array, which requires a resolved `merkle_store_module_id` dependency.
+
+### Permissions Registered
+- `manage_graphs` — create/update/delete graph definitions
+- `execute_graphs` — run graph evaluations
+
+The `graph_module` is auto-provisioned with a `merkle_store_module` prefix of `'graph'` when `graph_module` appears in the database modules list.
+
+---
+
 ## Entity-Scoped Storage (Buckets & File Uploads)
 
 When `has_storage: true`, the system provisions one or more `storage_module` entries for the entity type. This creates dedicated buckets and files tables with RLS policies scoped to entity membership.
@@ -333,136 +401,7 @@ This creates two table pairs: `data_room_buckets`/`data_room_files` (default) an
 
 The `storage_key` must be max 16 chars, lowercase snake_case, and cannot be reserved words.
 
-### ORM: Entity with Storage
-
-```typescript
-const result = await db.entityTypeProvision.create({
-  data: {
-    databaseId: dbId,
-    name: 'Data Room',
-    prefix: 'data_room',
-    parentEntity: 'org',
-    hasStorage: true,
-    storageConfig: [
-      {
-        has_path_shares: true,
-        provisions: {
-          files: {
-            policies: [
-              { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
-              { $type: 'AuthzPublishable', privileges: ['select'] },
-            ],
-          },
-          buckets: {
-            policies: [
-              { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
-            ],
-          },
-        },
-      },
-    ],
-  },
-  select: {
-    outMembershipType: true,
-    outEntityTableId: true,
-    outInstalledModules: true,
-  },
-}).execute();
-// outInstalledModules includes 'storage_module (data_room)'
-```
-
-### Creating Buckets for an Entity
-
-After provisioning the entity type with storage, create bucket rows for each entity instance:
-
-```typescript
-// Create a 'documents' bucket for a specific data room
-await db.dataRoomBucket.create({
-  data: {
-    key: 'documents',
-    type: 'private',
-    isPublic: false,
-    ownerId: dataRoomId,
-    allowedMimeTypes: ['image/png', 'image/jpeg', 'application/pdf'],
-    maxFileSize: 10485760,  // 10MB
-  },
-}).execute();
-```
-
-Or via the `provisionBucket` GraphQL mutation:
-
-```graphql
-mutation {
-  provisionBucket(input: {
-    bucketKey: "documents"
-    ownerId: "data-room-uuid"
-  }) {
-    success
-    bucketName
-    accessType
-  }
-}
-```
-
-### Uploading to Entity-Scoped Buckets
-
-Pass `ownerId` in the `requestUploadUrl` mutation to target the entity's storage:
-
-```typescript
-const { data } = await graphqlClient.mutate({
-  mutation: REQUEST_UPLOAD_URL,
-  variables: {
-    input: {
-      bucketKey: 'documents',
-      ownerId: dataRoomId,     // entity instance UUID
-      contentHash,
-      contentType: 'application/pdf',
-      size: file.size,
-      filename: 'contract.pdf',
-    },
-  },
-});
-```
-
-The plugin resolves the correct storage module by probing entity tables for the `ownerId`, then uses that module's file tables. See [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md) for the complete upload flow, deduplication, error codes, and client library.
-
-### `storage[]` Entry Fields
-
-Each element in the `storage` array is a storage module definition:
-
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `storage_key` | string | `'default'` | Unique key for this module. Becomes infix in table names (omitted for 'default'). Max 16 chars, lowercase snake_case. |
-| `has_path_shares` | boolean | `false` | Enable ltree path column + file_path_shares table |
-| `has_versioning` | boolean | `false` | Enable file version history (previous_version_id, is_latest) |
-| `has_content_hash` | boolean | `false` | Enable content-hash addressing |
-| `has_custom_keys` | boolean | `false` | Allow clients to specify S3 keys |
-| `has_audit_log` | boolean | `false` | Create file_events audit table |
-| `has_confirm_upload` | boolean | `false` | Enable HeadObject upload confirmation flow |
-| `restrict_reads` | boolean | `false` | Add read_files permission requirement for SELECT |
-| `upload_url_expiry_seconds` | number | plugin default | Override presigned URL expiry |
-| `download_url_expiry_seconds` | number | plugin default | Override download URL expiry |
-| `default_max_file_size` | number | `null` | Module-level max file size in bytes |
-| `allowed_origins` | string[] | `null` | Module-level CORS origins |
-| `buckets` | array | `[]` | Auto-seed bucket rows per entity instance |
-| `provisions` | object | `null` | Per-table overrides keyed by `"files"` or `"buckets"`. Each value: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table |
-
-Each policy object (inside `provisions.{table}.policies`) has `$type` (required), `privileges` (required), plus optional `data` and `policy_name`. Missing `data` is auto-populated with storage-specific defaults (e.g., `AuthzPublishable` → `{"is_published_field": "is_public", "require_published_at": false}`).
-
-### Default Storage Policies
-
-When `provisions` is omitted (or a table key has no `policies`), the system applies **sensible locked-down defaults**: membership gets `select` + `insert`, `AuthzDirectOwner` on `actor_id` gates `update` + `delete`, and `AuthzPublishable` on `is_public` gates public `select`. See [storage-policies.md](../constructive-platform/references/storage-policies.md) for the full default policy matrix.
-
-When a table key includes `policies[]`, defaults are skipped **for that table only** — other tables without a `policies` key still get defaults. It's per-table replacement, not all-or-nothing.
-
-### Typical Policy Combinations
-
-| Combination | Use case |
-|-------------|----------|
-| *(omit provisions entirely)* | Locked-down default: members view/upload, only creator can update/delete |
-| `provisions.files.policies: [{ "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] }]` | Full CRUD for all members on files (buckets still get defaults) |
-| Per-table explicit policies on both keys | Full custom: you control exactly what each storage table gets |
-| `provisions.files.nodes: [{ "$type": "SearchBm25", ... }]` (no policies key) | Add search to files, keep default policies |
+See [storage-config.md](./references/storage-config.md) for ORM provisioning examples, bucket creation, upload flow, `storage[]` entry field reference, and default policy matrix. For feature flag details (versioning, audit log, path shares, custom keys, confirm upload, GC), see [`constructive-sdk-uploads`](../constructive-sdk-uploads/SKILL.md).
 
 ---
 

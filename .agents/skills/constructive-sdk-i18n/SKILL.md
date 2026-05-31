@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-i18n
-description: "Internationalization and multilingual search — DataI18n blueprint node for translation tables, SearchFullText composition with dynamic per-row language stemming (30+ languages out of the box), i18n_module for app-level language config, and the graphile-i18n plugin for Accept-Language negotiation. Use when asked to 'add translations', 'make fields translatable', 'multilingual search', 'i18n', 'DataI18n', 'i18n_module', 'lang_column', 'per-language stemming', 'tsvector multilingual', 'translation tables', 'locale strings', 'Accept-Language', or when working with i18n in blueprints."
+description: "Internationalization and multilingual search — DataI18n blueprint node for translation tables, SearchFullText composition with dynamic per-row language stemming (30+ languages out of the box), i18n_module for app-level language config, the graphile-i18n plugin for Accept-Language negotiation, and the enable_i18n runtime toggle (database_settings + api_settings). Use when asked to 'add translations', 'make fields translatable', 'multilingual search', 'i18n', 'DataI18n', 'i18n_module', 'lang_column', 'per-language stemming', 'tsvector multilingual', 'translation tables', 'locale strings', 'Accept-Language', 'enable_i18n', 'disable i18n', or when working with i18n in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -207,6 +207,45 @@ const preset = {
   },
 };
 ```
+
+---
+
+## `enable_i18n` Runtime Toggle
+
+The `enable_i18n` flag in `database_settings` and `api_settings` controls whether the `graphile-i18n` plugin activates at server startup. This is separate from the `i18n_module` kill switch (`app_settings_i18n.is_enabled`):
+
+| Setting | Level | Default | Effect |
+|---------|-------|---------|--------|
+| `database_settings.enable_i18n` | Database-wide | `false` | Master toggle — when `false`, the graphile-i18n plugin is not loaded for any API in this database |
+| `api_settings.enable_i18n` | Per-API override | `NULL` (inherit) | Set to `true`/`false` to override the database default for a specific API. `NULL` inherits from `database_settings`. |
+| `app_settings_i18n.is_enabled` | App runtime | `true` | In-database kill switch for i18n SQL features (translation lookups, localeStrings resolution) |
+
+### Behavior when disabled
+
+When `enable_i18n = false`:
+- The graphile-i18n plugin is **not loaded** into the PostGraphile server preset
+- `localeStrings` fields are **not added** to GraphQL types
+- `Accept-Language` header negotiation does **not occur**
+- Translation tables still exist if `i18n_module` was provisioned — they are simply dormant
+- The `app_settings_i18n` singleton is unaffected (can still be configured for later activation)
+
+### ORM: Enabling i18n
+
+```typescript
+// Enable at database level
+await db.databaseSetting.update({
+  where: { databaseId: { equalTo: myDatabaseId } },
+  data: { enableI18n: true },
+}).execute();
+
+// Override for a specific API
+await db.apiSetting.update({
+  where: { apiId: { equalTo: myApiId } },
+  data: { enableI18n: true },
+}).execute();
+```
+
+After toggling, restart the GraphQL server for the change to take effect (the setting is read at startup).
 
 ---
 
