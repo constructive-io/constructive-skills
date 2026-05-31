@@ -1,16 +1,40 @@
 ---
 name: constructive-sdk-limits
-description: SDK-level guide to the Constructive limits system — blueprint nodes (LimitCounter, LimitAggregate, LimitFeatureFlag), ORM operations for managing limits/caps/plans/credits. Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'apply plan', 'transfer quota', 'limit credits', 'LimitCounter', 'LimitAggregate', 'LimitFeatureFlag', or when working with limits in blueprints or the ORM.
+description: SDK-level guide to the Constructive limits system — blueprint nodes (LimitCounter, LimitAggregate, LimitFeatureFlag, LimitEnforceRate), warning nodes (LimitWarningCounter, LimitWarningAggregate, LimitWarningRate), ORM operations for managing limits/caps/plans/credits, and the warning system (soft_max thresholds, dedup, job payloads). Use when asked to 'set up limits', 'check limits', 'feature flags', 'cap tables', 'aggregate limits', 'entity limits', 'database limits', 'apply plan', 'transfer quota', 'limit credits', 'rate limiting', 'LimitCounter', 'LimitAggregate', 'LimitFeatureFlag', 'LimitEnforceRate', 'LimitWarningCounter', 'limit warnings', 'soft limit', 'warning threshold', or when working with limits in blueprints or the ORM.
 ---
 
 # Constructive Limits (SDK Guide)
 
 The limits system provides usage metering, feature gating, and quota enforcement. Everything is configured through **blueprints** (Limit* nodes) and managed via the **ORM**.
 
-Three blueprint nodes cover all limit enforcement:
+Seven blueprint node types cover limit enforcement and warnings:
+
+**Enforcement nodes** (BEFORE triggers — reject mutations that exceed limits):
 - **`LimitCounter`** — per-user metered limits (e.g. "each user can create 10 projects")
 - **`LimitAggregate`** — per-entity aggregate limits (e.g. "this org can have 50 seats total")
 - **`LimitFeatureFlag`** — boolean feature gates (e.g. "analytics is enabled for this org")
+- **`LimitEnforceRate`** — sliding-window rate limiting (e.g. "max 100 requests per minute")
+
+**Warning nodes** (AFTER triggers — fire background jobs when usage approaches thresholds):
+- **`LimitWarningCounter`** — soft limit warning for per-user counters
+- **`LimitWarningAggregate`** — soft limit warning for aggregate counters
+- **`LimitWarningRate`** — soft limit warning for rate-based meters
+
+### Name Mapping: SDK → Node Type Registry
+
+This skill uses simplified names. The node type registry (`blueprint-types.generated.ts`) uses full names:
+
+| SDK Shorthand | Registry Name (blueprint `$type`) |
+|---|---|
+| LimitCounter | `LimitEnforceCounter` |
+| LimitAggregate | `LimitEnforceAggregate` |
+| LimitFeatureFlag | `LimitEnforceFeature` |
+| LimitEnforceRate | `LimitEnforceRate` |
+| LimitWarningCounter | `LimitWarningCounter` |
+| LimitWarningAggregate | `LimitWarningAggregate` |
+| LimitWarningRate | `LimitWarningRate` |
+
+Both names are accepted in blueprints — the SDK shorthands are aliases.
 
 Related skills:
 - **`constructive-sdk-billing`**: Billing meters, universal credits, billing provider bridge
@@ -182,6 +206,101 @@ Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
 | `entity_lookup` | object | — | FK lookup config: `{ obj_table, obj_schema?, obj_field }`. Resolves entity_id through a related table when `entity_field` is a FK. |
 
 **Resolution:** `COALESCE(per-entity override, scope default, 0)` — if result is 0 or less, raises `FEATURE_DISABLED`.
+
+---
+
+### 4. Rate limiting enforcement (LimitEnforceRate)
+
+Add `LimitEnforceRate` to enforce sliding-window rate limits before mutations:
+
+```json
+{
+  "$type": "LimitEnforceRate",
+  "data": {
+    "meter_slug": "messaging",
+    "entity_field": "entity_id",
+    "actor_field": "owner_id",
+    "events": ["INSERT"]
+  }
+}
+```
+
+**What this does:** BEFORE trigger calls `check_rate_limit()` which checks all three scopes (entity, actor-in-entity, actor) in a single call. Which scopes are enforced depends on what rows exist in `rate_window_limits` (plan-based config). Requires `meter_rate_limits_module` and `billing_module`.
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `meter_slug` | text | *(required)* | Billing meter slug to check rate limits against |
+| `entity_field` | text | `'entity_id'` | Column holding entity_id (supports `entity_lookup`) |
+| `actor_field` | text | `'owner_id'` | Column holding actor id |
+| `events` | text[] | `['INSERT']` | DML events (`INSERT`, `UPDATE` — `DELETE` excluded) |
+
+---
+
+### 5–7. Warning Nodes (LimitWarningCounter, LimitWarningAggregate, LimitWarningRate)
+
+Warning nodes are AFTER INSERT triggers that check if usage has crossed a configurable `soft_max` threshold. When a threshold is crossed for the first time, a background job is enqueued (e.g. email notification). See [warning-system.md](./references/warning-system.md) for the full end-to-end flow.
+
+**LimitWarningCounter** — warns when a per-user counter approaches its limit:
+
+```json
+{
+  "$type": "LimitWarningCounter",
+  "data": {
+    "limit_name": "projects",
+    "scope": "app",
+    "actor_field": "owner_id"
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit_name` | text | *(required)* | Must match a `limit_warnings.name` entry |
+| `scope` | text | `'app'` | Membership type prefix |
+| `actor_field` | text | `'owner_id'` | Column holding actor id |
+| `entity_field` | text | — | Column holding entity_id (supports `entity_lookup`) |
+
+**LimitWarningAggregate** — warns when an entity's aggregate usage approaches its limit:
+
+```json
+{
+  "$type": "LimitWarningAggregate",
+  "data": {
+    "limit_name": "seats",
+    "scope": "org",
+    "entity_field": "entity_id"
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit_name` | text | *(required)* | Must match a `limit_warnings.name` entry |
+| `scope` | text | `'org'` | Membership type prefix |
+| `entity_field` | text | `'entity_id'` | Column holding entity_id (supports `entity_lookup`) |
+
+**LimitWarningRate** — warns when rate limit usage approaches capacity:
+
+```json
+{
+  "$type": "LimitWarningRate",
+  "data": {
+    "meter_slug": "inference",
+    "scope": "app",
+    "entity_field": "entity_id",
+    "actor_field": "owner_id"
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `meter_slug` | text | *(required)* | Billing meter slug to check rate limits against |
+| `scope` | text | `'app'` | Membership type prefix |
+| `entity_field` | text | `'entity_id'` | Column holding entity_id (supports `entity_lookup`) |
+| `actor_field` | text | `'owner_id'` | Column holding actor id |
+
+All warning nodes support `entity_lookup` for FK-based resolution (same pattern as enforcement nodes).
 
 ---
 
@@ -558,6 +677,14 @@ await db.orgLimitCap.create({
 - The entire table is gated behind the `enable_documents` feature flag (`LimitFeatureFlag`)
 
 All enforcement happens automatically via database triggers. No application code needed beyond the initial ORM setup.
+
+---
+
+## Reference Guide
+
+| Reference | Topic | Consult When |
+|-----------|-------|--------------|
+| [warning-system.md](./references/warning-system.md) | Warning system end-to-end | Setting up soft limit warnings, threshold config, dedup, job payloads |
 
 ---
 

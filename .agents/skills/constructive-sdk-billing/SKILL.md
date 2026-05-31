@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-billing
-description: SDK-level guide to the Constructive billing system — provisioning meters, granting credits (permanent/period/rollover with expiration), recording usage, checking quotas, universal credits waterfall, and the billing provider bridge. Use when asked to 'set up billing', 'create meters', 'grant credits', 'record usage', 'check quota', 'universal credits', 'billing provider', 'credit expiration', 'rollover credits', 'period reset', or when working with billing in blueprints or the ORM.
+description: SDK-level guide to the Constructive billing system — provisioning meters, granting credits (permanent/period/rollover with expiration), recording usage, checking quotas, universal credits waterfall, billing provider bridge, meter_sources (automated reconciliation), usage_summary (daily rollup), and category_meter (three-tier credit waterfall). Use when asked to 'set up billing', 'create meters', 'grant credits', 'record usage', 'check quota', 'universal credits', 'billing provider', 'credit expiration', 'rollover credits', 'period reset', 'meter_sources', 'usage_summary', 'category_meter', 'reconcile usage', 'billing dashboard', 'category credits', or when working with billing in blueprints or the ORM.
 ---
 
 # Constructive Billing (SDK-Level Guide)
@@ -722,6 +722,61 @@ FUNCTION process_billing_event(provider, idempotency_key, payload):
    update sub,
    etc.)
 ```
+
+---
+
+## Meter Sources (Automated Reconciliation)
+
+The `meter_sources` table maps billing meters to typed daily summary table columns for automated usage reconciliation. Each row tells `reconcile_typed_usage()` which column to aggregate from which summary table.
+
+Source metric types: `table_usage` (from `usage_summary_db_table_stats_daily`), `query_time` (from `usage_summary_db_query_stats_daily`), `row_count` (trigger-based, skipped by reconcile).
+
+```typescript
+await db.meterSource.create({
+  data: {
+    meterSlug: 'storage_gb',
+    sourceMetric: 'table_usage',
+    dimensionPath: 'total_bytes',
+    aggregationType: 'sum',
+    isActive: true,
+  },
+  select: { id: true },
+}).execute();
+```
+
+See [meter-sources.md](./references/meter-sources.md) for full schema, reconciliation flow, and additional examples.
+
+---
+
+## Usage Summary (Daily Rollup)
+
+The `usage_summary` table provides permanent monthly roll-ups per entity per meter for billing dashboards. Key columns: `entity_id`, `organization_id`, `entity_type`, `meter_slug`, `period_start`.
+
+```typescript
+const summaries = await db.usageSummary.findMany({
+  where: { entityId: { equalTo: orgId } },
+  orderBy: { periodStart: 'DESC' },
+  select: { meterSlug: true, periodStart: true, entityType: true },
+}).execute();
+```
+
+See [usage-summary.md](./references/usage-summary.md) for rollup lifecycle, table schema, and query patterns.
+
+---
+
+## Category Meter (Three-Tier Credit Waterfall)
+
+The `category_meter` column on `meters` (citext FK) groups meters into categories, enabling a three-tier waterfall: **meter → category → universal**.
+
+```typescript
+// Create category pool + assign meters
+await db.meter.create({ data: { slug: 'ai_credits', displayName: 'AI Credits Pool', meterType: 'credit_pool', periodInterval: '1 month' } });
+await db.meter.update({ where: { slug: 'llm_input_tokens' }, data: { categoryMeter: 'ai_credits' } });
+```
+
+When a meter's quota is exceeded: if `category_meter` is set → try category pool → if exhausted and `credit_cost > 0` → try universal.
+
+See [category-meter.md](./references/category-meter.md) for full waterfall diagram and use cases.
 
 ---
 

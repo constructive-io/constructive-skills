@@ -1,6 +1,6 @@
 ---
 name: constructive-sdk-ai
-description: "AI and vector search on the Constructive platform — Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessChunks for file tables, embedding worker pipeline, agentic-kit multi-provider LLM client, and RAG patterns with the codegen'd ORM. Use when adding AI search to a table, building RAG pipelines, working with embeddings, adding file/image embeddings, multi-modal embedding, chunking, or integrating LLM providers (Ollama, Anthropic, OpenAI)."
+description: "AI and vector search on the Constructive platform — Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessChunks for file tables, embedding worker pipeline, agentic-kit multi-provider LLM client, RAG patterns, graphile-llm plugin suite (LlmRagPlugin, MeteringPlugin, AgentDiscoveryPlugin, LlmModulePlugin, TextMutationPlugin, TextSearchPlugin), agentic-server REST API, llm_module per-database config, agent sub-agent hierarchy, and embedding_model/embedding_provider parameters. Use when adding AI search, building RAG pipelines, working with embeddings, adding file/image embeddings, chunking, integrating LLM providers (Ollama, Anthropic, OpenAI), 'graphile-llm', 'agentic-server', 'llm_module', 'ragQuery', 'embedText', 'agent hierarchy', 'sub-agents', 'is_ephemeral', or 'embedding worker'."
 metadata:
   author: constructive-io
   version: "4.0.0"
@@ -352,28 +352,118 @@ const result = await db.contact.findMany({
 
 > For full ORM query patterns, see the `constructive-sdk-graphql` skill ([search-pgvector.md](../constructive-sdk-graphql/references/search-pgvector.md)).
 
+## SearchVector `embedding_model` / `embedding_provider` Parameters
+
+All Search* and Process* blueprint nodes accept optional `embedding_model` and `embedding_provider` parameters. These flow into the job payload so the embedding worker knows which model/provider to use:
+
+```typescript
+{ $type: 'SearchVector', data: {
+  field_name: 'embedding',
+  embedding_model: 'nomic-embed-text',
+  embedding_provider: 'ollama',
+}}
+```
+
+When omitted, the worker falls back to runtime config (llm_module → env vars).
+
+Supported on: `SearchVector`, `SearchUnified` (inside `embedding`), `ProcessFileEmbedding`, `ProcessImageEmbedding`, `ProcessChunks`.
+
+---
+
+## graphile-llm Plugin Suite
+
+The `graphile-llm` package provides server-side LLM integration for PostGraphile v5. Entry point: `GraphileLlmPreset({ defaultEmbedder, defaultChatCompleter, enableRag })`.
+
+| Plugin | Purpose |
+|---|---|
+| **LlmModulePlugin** | Resolves per-database LLM provider configuration from `api_modules.llm_module`. Makes `build.llmEmbedder` and `build.llmChatCompleter` available to other plugins. Resolution order: llm_module → preset defaults → env vars → null (disabled). |
+| **LlmRagPlugin** | Adds `ragQuery` root GraphQL field (embed prompt → pgvector chunk search → context assembly → LLM generation) and `embedText` for standalone text-to-vector conversion. |
+| **LlmMeteringPlugin** | Billing-aware wrappers for embedder and chat functions. Checks `check_billing_quota` before calls, calls `record_usage` after. Uses real token counting. When quota is exceeded, embedder returns null (search falls back to text-only). |
+| **AgentDiscoveryPlugin** | Discovers agent tables by querying `agent_chat_module` config table at runtime. Results cached per-database with 60s TTL. Returns `{ thread, message, task }` table info. |
+| **LlmTextMutationPlugin** | Text companion fields for pgvector columns — write text, server embeds automatically. |
+| **LlmTextSearchPlugin** | Text-based search fields that embed the query server-side before pgvector lookup. |
+
+### llm_module
+
+Per-database LLM provider configuration stored in `services_public.api_modules`. The `LlmModulePlugin` reads this at schema build time to resolve which embedder/chat provider to use per database.
+
+This enables multi-tenant deployments where each database can use a different LLM provider (e.g. database A uses OpenAI, database B uses Ollama).
+
+---
+
+## agentic-server
+
+Standalone Express REST service for agent conversations. Lives in `packages/agentic-server`.
+
+**Endpoints:**
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/v1/threads` | Create a new conversation thread |
+| POST | `/v1/threads/:thread_id/messages` | Send message + stream LLM response |
+| POST | `/v1/orgs/:entity_id/threads` | Create thread (entity-scoped) |
+| POST | `/v1/orgs/:entity_id/threads/:thread_id/messages` | Send message (entity-scoped) |
+| POST | `/v1/embed` | Generate embedding for text |
+
+**Features:**
+- Streaming responses (SSE)
+- Automatic billing metering (`check_billing_quota` + `record_usage`)
+- Inference logging for audit/debugging
+- RLS-enforced thread/message access
+- Requires `agent_module` provisioned on the database
+
+---
+
+## Agent Sub-Agent Hierarchy
+
+The `agent` table (provisioned by `agent_module`) has a self-referential `parent_id` FK for delegation hierarchies:
+
+| Column | Type | Description |
+|---|---|---|
+| `parent_id` | uuid | FK → self (agent table). Creates parent/child delegation tree. |
+| `is_ephemeral` | boolean | If true, agent is destroyed when its spawning thread ends. |
+
+This enables patterns like:
+- A coordinator agent spawning specialist sub-agents
+- Thread-scoped ephemeral agents that auto-terminate
+- Multi-level delegation chains
+
+---
+
 ## agentic-kit (LLM Client)
 
 Multi-provider LLM abstraction for embedding generation and inference. See [agentic-kit.md](./references/agentic-kit.md) for the full API reference.
 
+> **Note:** Only `@agentic-kit/ollama` is currently shipped in the repo. `@agentic-kit/anthropic` and `@agentic-kit/openai` are optional external packages — install them separately if needed.
+
 ```typescript
-import { createOllamaKit } from 'agentic-kit';
 import OllamaClient from '@agentic-kit/ollama';
 
 // Embeddings
 const client = new OllamaClient('http://localhost:11434');
 const embedding = await client.generateEmbedding('document text', 'nomic-embed-text');
 
-// Generation (single or multi-provider)
-const kit = createOllamaKit('http://localhost:11434');
-const answer = await kit.generate({ model: 'llama3.2', prompt: 'What is pgvector?' });
+// Generation
+const answer = await client.generate({ model: 'llama3.2', prompt: 'What is pgvector?' });
 ```
+
+---
+
+## Embedding Worker Pipeline
+
+The embedding pipeline uses job triggers to enqueue work:
+
+1. Row INSERT/UPDATE fires stale trigger
+2. Job trigger enqueues `generate_embedding` / `process_file_embedding` / `generate_chunks`
+3. Knative worker picks up the job and processes it
+
+> **Note:** The SQL triggers for enqueuing these jobs are fully provisioned by the blueprint nodes. However, Knative worker handlers for `generate_embedding`, `process_file_embedding`, and `generate_chunks` are **not yet shipped** in the repo — you must implement the worker functions that process these job payloads. See `constructive-jobs` for the worker pipeline architecture.
 
 ## Reference Guide
 
 | Reference | Topic | Consult When |
 |-----------|-------|---------------|
-| [rag-pipeline.md](./references/rag-pipeline.md) | RAG pipeline patterns | Building end-to-end RAG (embed -> store -> retrieve -> generate) |
+| [rag-pipeline.md](./references/rag-pipeline.md) | RAG pipeline patterns | Building end-to-end RAG (embed → store → retrieve → generate) |
 | [agentic-kit.md](./references/agentic-kit.md) | agentic-kit multi-provider LLM | Embedding generation, LLM inference, streaming, multi-provider setup |
 
 ## Cross-References
