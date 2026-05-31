@@ -36,9 +36,9 @@ const result = await db.entityTypeProvision.create({
 //   outEntityTableId: '<uuid>',        // UUID of the channels table
 //   outEntityTableName: 'channels',    // table name
 //   outInstalledModules: [             // modules installed
-//     'permissions_module:channel',
-//     'memberships_module:channel',
-//     'invites_module:channel'
+//     'permissions_module (channel)',
+//     'memberships_module (channel)',
+//     'invites_module (channel)'
 //   ]
 // }
 ```
