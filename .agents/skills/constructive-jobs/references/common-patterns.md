@@ -23,9 +23,9 @@ Send an email when a new invite is inserted:
     },
   ],
   fields: [
-    { name: 'email', type: 'citext', is_required: true },
-    { name: 'role', type: 'text', default_value: "'member'" },
-    { name: 'accepted_at', type: 'timestamptz' },
+    { name: 'email', type: { name: 'citext' }, is_required: true },
+    { name: 'role', type: { name: 'text' }, default_value: { value: 'member' } },
+    { name: 'accepted_at', type: { name: 'timestamptz' } },
   ],
 }
 ```
@@ -59,10 +59,10 @@ Sync data whenever specific fields change:
     },
   ],
   fields: [
-    { name: 'amount', type: 'numeric', is_required: true },
-    { name: 'currency', type: 'text', default_value: "'USD'" },
-    { name: 'status', type: 'text', default_value: "'draft'" },
-    { name: 'stripe_id', type: 'text' },
+    { name: 'amount', type: { name: 'numeric' }, is_required: true },
+    { name: 'currency', type: { name: 'text' }, default_value: { value: 'USD' } },
+    { name: 'status', type: { name: 'text' }, default_value: { value: 'draft' } },
+    { name: 'stripe_id', type: { name: 'text' } },
   ],
 }
 ```

@@ -80,6 +80,6 @@ See [meta-forms.md](./references/meta-forms.md) for DynamicFormCard, locked FK p
 
 ## Cross-References
 
-- `constructive-sdk-graphql` — Code generation and SDK usage (data fetching for components)
-- `constructive-starter-kits` — Next.js app boilerplate (uses these UI components)
+- `constructive-codegen` — Code generation and SDK usage (data fetching for components)
+- `pgpm` — Starter kits and Next.js app boilerplate (uses these UI components) — in [constructive-io/constructive](https://github.com/constructive-io/constructive)
 - `constructive-platform` — Platform core, server configuration

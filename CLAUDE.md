@@ -10,25 +10,27 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 
 | Skill | Description |
 |-------|-------------|
-| **constructive-features** | Feature catalog — one-page router mapping every app capability (auth, authz, multi-tenancy, storage, search, AI, GraphQL, ops) to the authoritative skill |
-| **constructive-platform** | Platform core — security model (Safegres), services/schemas, deployment, server config, cloud functions, env config, CNC CLI |
-| **constructive-safegres** | Safegres authorization protocol — all 14 Authz* policy types, config shapes, semantics, permissive/restrictive composition |
-| **constructive-setup** | Monorepo setup — install dependencies, start PostgreSQL via pgpm Docker, bootstrap users, build, run tests, local email services |
-| **pgpm** | PostgreSQL Package Manager — migrations, CLI, Docker, CI/CD workflows |
-| **constructive-pnpm** | PNPM workspace management — monorepo config, dist-folder publishing with makage/lerna, dependency management |
-| **constructive-sdk-graphql** | SDK GraphQL — codegen (hooks, ORM, CLI), runtime queries, search (all algorithms), pagination |
-| **constructive-sdk-entities** | Entity types — custom entities (channels, teams, data rooms), memberships, entity-scoped storage |
-| **constructive-sdk-uploads** | File uploads — presigned URL flow, bucket provisioning, upload-client, deduplication |
-| **constructive-starter-kits** | Project scaffolding — `pgpm init` templates, Next.js app boilerplate, custom template authoring |
-| **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, dynamic `_meta` forms |
+| **constructive-features** | Feature catalog — router mapping every app capability to the authoritative skill |
+| **constructive-blueprints** | Declarative schema definition — blueprints, node type registry, module presets |
+| **constructive-auth** | Identity, login, sessions, MFA, devices, auth settings, service settings |
+| **constructive-security** | Authorization — Safegres protocol, 18 Authz* types, RLS, grants, storage policies |
+| **constructive-entities** | Multi-tenancy — entity types, memberships, invites, entity-scoped storage, agent module |
+| **constructive-data-modeling** | Tables, fields, relations, constraints, indexes, database provisioning (SDK CRUD) |
+| **constructive-billing** | Billing, limits, plans, credits, feature flags, meters, usage tracking |
+| **constructive-storage** | Uploads, buckets, presigned URLs, file lifecycle, upload-client |
+| **constructive-search** | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified composite |
+| **constructive-agents** | AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit |
+| **constructive-events** | EventTracker, achievements, referrals, invite virality, gamification |
+| **constructive-realtime** | Subscriptions, notifications, change_log, CursorTracker |
+| **constructive-jobs** | Background jobs — JobTrigger, Process* wrappers, Knative worker, scheduling |
+| **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
+| **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
+| **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
 | **constructive-blocks** | Copy-in UI blocks (shadcn registry, `@constructive/<block>`) that bind to the host's per-app generated GraphQL SDK — install/wire/author flow, `blocks-runtime`, `requires.json` manifests, bundled `check-sdk.mjs` preflight |
-| **constructive-testing** | All test frameworks — pgsql-test, drizzle-orm-test, supabase-test, Drizzle ORM patterns, pgsql-parser |
-| **constructive-sdk-events** | Events & achievements — EventTracker blueprint node, blueprint achievements[], invite virality, achievement credit rewards |
-| **constructive-jobs** | Background jobs — JobTrigger blueprint node, payload strategies, Knative worker pipeline, scheduled jobs |
-| **constructive-sdk-ai** | AI capabilities — Search* blueprint nodes (SearchUnified, SearchVector), embedding worker pipeline, agentic-kit LLM client, RAG patterns |
-| **inquirerer-cli** | inquirerer CLI framework — interactive prompts, appStash, yanse colors, README formatting |
-| **graphile-search** | Unified search plugin internals — SearchAdapter, tsvector/BM25/trgm/pgvector adapters (team-level) |
-| **fbp** | Flow-Based Programming — types, spec, evaluator, graph editor |
+| **constructive-codegen** | Code generation pipeline — config, templates, AST transforms, introspection |
+| **constructive-orm** | Generated ORM — query patterns, mutations, relations, pagination, _meta |
+| **constructive-hooks** | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |
+| **constructive-platform** | Server config, services, domains, deployment, env, cloud functions, cnc CLI |
 
 ## Commands
 

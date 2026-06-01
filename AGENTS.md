@@ -11,21 +11,25 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
 | **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
-| **constructive-platform** | safegres, services-schemas, deployment, server-config, functions, cnc-execution-engine, constructive-env | Platform core |
-| **pgpm** | github-workflows-pgpm | Database migrations, CLI, Docker, CI/CD |
-| **constructive-pnpm** | *(standalone)* | PNPM workspace management, dist-folder publishing, dependency management |
-| **constructive-sdk-graphql** | graphql-codegen, sdk-search, graphql-query | SDK codegen (ORM, hooks, CLI), runtime queries, search, pagination |
-| **constructive-starter-kits** | boilerplate-pgpm-init, boilerplate-nextjs-app, boilerplate-authoring | Project scaffolding via `pgpm init` |
-| **constructive-frontend** | constructive-ui, crud-stack, meta-forms | UI components, Stack cards, dynamic forms |
-| **constructive-testing** | pgsql-test, drizzle-orm-test, supabase-test, drizzle-orm, pgsql-parser-testing | All test frameworks |
-| **constructive-sdk-entities** | *(standalone)* | Entity types, memberships, entity-scoped storage |
-| **constructive-sdk-uploads** | *(standalone)* | File uploads, presigned URLs, buckets, upload-client |
-| **constructive-sdk-events** | *(standalone)* | Events, achievements, gamification, EventTracker, invite virality, credit rewards |
+| **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
+| **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
+| **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — Safegres, Authz* types, RLS, grants, storage policies |
+| **constructive-entities** | constructive-sdk-entities | Multi-tenancy, memberships, invites, entity types, entity-scoped storage |
+| **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
+| **constructive-billing** | constructive-sdk-billing, constructive-sdk-limits | Billing, limits, plans, credits, feature flags, meters |
+| **constructive-storage** | constructive-sdk-uploads | Uploads, buckets, presigned URLs, file lifecycle |
+| **constructive-search** | search refs from constructive-sdk-graphql, graphile-postgis | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified |
+| **constructive-agents** | constructive-sdk-ai | AI — agent module, LLM, RAG, embeddings, agentic-kit |
+| **constructive-events** | constructive-sdk-events | EventTracker, achievements, referrals, invite virality |
+| **constructive-realtime** | realtime refs from constructive-platform | Subscriptions, notifications, change_log |
 | **constructive-jobs** | *(standalone)* | Background jobs, JobTrigger, Knative worker pipeline |
-| **constructive-sdk-ai** | *(standalone)* | Search* blueprint nodes (SearchUnified, SearchVector), embedding worker, agentic-kit, RAG pipelines |
-| **inquirerer-cli** | inquirerer-cli, readme-formatting | CLI framework (inquirerer prompts, appStash, yanse colors) |
-| **graphile-search** | *(standalone)* | Unified search plugin internals (team-level) |
-| **fbp** | fbp-types, fbp-spec, fbp-evaluator, fbp-graph-editor | Flow-Based Programming toolkit |
+| **constructive-flow-graphs** | graph_module, merkle_store | Graph module + merkle store (SDK-authorable) with FBP spec links |
+| **constructive-i18n** | constructive-sdk-i18n | Internationalization — DataI18n, multilingual search, i18n_module |
+| **constructive-frontend** | *(standalone)* | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
+| **constructive-codegen** | codegen refs from constructive-sdk-graphql | Code generation pipeline — config, templates, AST transforms |
+| **constructive-orm** | ORM refs from constructive-sdk-graphql | Generated ORM — query patterns, mutations, relations, pagination, _meta |
+| **constructive-hooks** | hooks refs from constructive-sdk-graphql | Generated React Query hooks — cache, optimistic updates |
+| **constructive-platform** | constructive-sdk-api, sdk-services, sdk-site, monorepo-setup | Server config, services, domains, deployment, env, cnc CLI (slimmed) |
 
 Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
 

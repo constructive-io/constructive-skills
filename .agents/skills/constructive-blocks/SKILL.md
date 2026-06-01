@@ -30,7 +30,7 @@ Use this skill when:
 - **Host wiring**: aliasing `@/generated/*`, mounting `<BlocksRuntime>`, adding a namespace to the runtime, generating a missing SDK with `cnc codegen`.
 - **Authoring a block**: writing a new block that calls a generated hook, choosing its namespace, declaring its `requires.json`, adding the override seam.
 
-If the request is about generating the SDK itself (codegen flags, ORM/hook output shapes, search, pagination), defer to **`constructive-sdk-graphql`** — this skill *consumes* that SDK.
+If the request is about generating the SDK itself, defer to the codegen skills — this skill *consumes* that SDK: **`constructive-codegen`** (codegen CLI/config flags), **`constructive-hooks`** / **`constructive-orm`** (generated hook/ORM output shapes, pagination), **`constructive-search`** (search).
 
 ## Host setup — three steps (once per app)
 
@@ -213,6 +213,27 @@ The default path is the generated hook. Every data block also accepts an `onSubm
 
 This is the one soft point in the binding; everything else is the canonical Constructive-stack path.
 
+## Testing blocks
+
+Generated SDK hooks (`use<Op>Mutation`, `use<Plural>Query`) bind to a **module-level client singleton** — there is no client prop and no network call a prop can intercept. A test replaces the data layer, not the network. In order of preference:
+
+1. **Use the override seam (no mocking).** Pass the block's `onSubmit` (mutations) / `adapter` (queries) prop a fake resolver and assert on form state / `onSuccess`:
+   ```tsx
+   render(<SignInCard onSubmit={async () => ({ accessToken: 'tok' })} onSuccess={onSuccess} />);
+   await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+   expect(onSuccess).toHaveBeenCalled();
+   ```
+2. **Mock the `@/generated/<ns>` module** to exercise the default hook path without touching the singleton (`jest.mock`; Vitest `vi.mock` is equivalent):
+   ```tsx
+   jest.mock('@/generated/auth', () => ({
+     useSignInMutation: () => ({ mutateAsync: jest.fn().mockResolvedValue({ signIn: { result: { accessToken: 'tok' } } }), isPending: false }),
+     configure: jest.fn(),
+   }));
+   ```
+3. **Mount `<BlocksRuntime>` (integration).** For the real hook + `QueryClient`, wrap in `<BlocksRuntime namespaces={['auth']} getToken={() => null}>` and point `NEXT_PUBLIC_AUTH_GRAPHQL_ENDPOINT` at a mock server (e.g. MSW). Slower — reserve for a few integration tests.
+
+Always wrap rendered components that read React Query state in a `QueryClientProvider` (or `<BlocksRuntime>`, which provides one). Never leave a real generated module unmocked in a unit test — it reads a `NEXT_PUBLIC_*` endpoint that isn't set and fails opaquely.
+
 ## Authoring a new block — checklist
 
 A new block is contract-compliant only if all hold (full list in `references/binding-doctrine.md` §11):
@@ -238,6 +259,6 @@ UI is built on `@constructive-io/ui` (consumed as an npm dependency — **never*
 
 ## Cross-References
 
-- `constructive-sdk-graphql` — generating the SDK this skill consumes: `cnc codegen`, hook/ORM output shapes, selection/pagination/search.
+- `constructive-codegen` / `constructive-hooks` / `constructive-orm` / `constructive-search` — generating the SDK this skill consumes: `cnc codegen` flags, hook/ORM output shapes, selection/pagination/search.
 - `constructive-frontend` — the `@constructive-io/ui` component library blocks are built on.
 - `constructive-platform` — CNC CLI, server config, API/endpoint deployment (what determines which ops a namespace exposes).
