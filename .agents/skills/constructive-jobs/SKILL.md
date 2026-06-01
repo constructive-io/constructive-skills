@@ -91,7 +91,7 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 
 ### Compound Conditions
 
-The `conditions` parameter accepts a structured JSON syntax for complex WHEN clauses. Column types are resolved automatically from the PostgreSQL schema — values in JSON are cast to the correct type at generation time. This system is shared with `EventTracker` (see [`constructive-sdk-events`](../constructive-sdk-events/SKILL.md)) — both use the same `build_condition_ast()` function and `conditionProperties` schema.
+The `conditions` parameter accepts a structured JSON syntax for complex WHEN clauses. Column types are resolved automatically from the PostgreSQL schema — values in JSON are cast to the correct type at generation time. This system is shared with `EventTracker` (see [`constructive-events`](../constructive-events/SKILL.md)) — both use the same `build_condition_ast()` function and `conditionProperties` schema.
 
 **Leaf condition:**
 ```typescript

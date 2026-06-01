@@ -153,9 +153,9 @@ This provides two equivalent paths for org storage — matching the pattern wher
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. No-op when `table_provision` is supplied |
 | `has_limits` | boolean | No | `false` | Provision a limits module |
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
-| `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, gamification). See [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
+| `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, gamification). See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) |
-| `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
+| `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets and files tables) |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](./storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
@@ -165,7 +165,7 @@ This provides two equivalent paths for org storage — matching the pattern wher
 
 **Table map integration:** Entity tables created by Phase 0 are added to the internal `table_map`, so subsequent `tables` and `relations` can reference them by name (e.g. `"target_table": "channels"`).
 
-See the [`constructive-sdk-entities`](../../constructive-sdk-entities/SKILL.md) skill for the full entity types reference.
+See the [`constructive-entities`](../../constructive-entities/SKILL.md) skill for the full entity types reference.
 
 ## Table Entries
 
@@ -276,7 +276,7 @@ All 28 node types from the `node_type_registry`:
 | `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
 | `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
 | `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
-| `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. | `event_name` (required), `events` (default `['INSERT']`), `count` (default `1`), `toggle` (default `false`), `actor_field` (default `'owner_id'`, column-ref), `entity_field` (optional column-ref for entity-scoped events), `auto_register_type` (default `true`), `watch_fields` (optional array), `conditions` (compound WHEN clause — same syntax as JobTrigger), `condition_field`/`condition_value` (legacy) — see [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md) |
+| `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. | `event_name` (required), `events` (default `['INSERT']`), `count` (default `1`), `toggle` (default `false`), `actor_field` (default `'owner_id'`, column-ref), `entity_field` (optional column-ref for entity-scoped events), `auto_register_type` (default `true`), `watch_fields` (optional array), `conditions` (compound WHEN clause — same syntax as JobTrigger), `condition_field`/`condition_value` (legacy) — see [`constructive-events`](../../constructive-events/SKILL.md) |
 
 #### Limits & Feature Flags (trigger-only — requires `limits_module`)
 
@@ -327,7 +327,7 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 
 **Prerequisites:** Requires `i18n_module` to be provisioned. Install via `modules:['all']`, the `full` preset, or add `'i18n_module'` to your module list.
 
-For full documentation including ORM queries, GraphQL localeStrings, and SQL search patterns, see [`constructive-sdk-i18n`](../constructive-sdk-i18n/SKILL.md).
+For full documentation including ORM queries, GraphQL localeStrings, and SQL search patterns, see [`constructive-i18n`](../constructive-i18n/SKILL.md).
 
 **Example — make name and description translatable:**
 ```json
@@ -400,7 +400,7 @@ See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide 
 | Node Type | Creates | `data` options |
 |-----------|---------|----------------|
 | `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration | `source_fields` (optional, creates DataCompositeField first), `bm25` (sub-config), `trgm` (sub-config), `fts` (sub-config), `boost_recency` (optional `{"field": "updated_at"}`) |
-| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_updated_at` (default `true`), `enqueue_job` (default `true`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-sdk-ai`](../../constructive-sdk-ai/SKILL.md) |
+| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_updated_at` (default `true`), `enqueue_job` (default `true`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-agents`](../../constructive-agents/SKILL.md) |
 | `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `lang_column` (optional — column name containing a `regconfig` value for dynamic per-row language stemming, e.g. `'lang_code'`), `search_score_weight` (default `1.0`) |
 | `SearchBm25` | BM25 (pg_search/ParadeDB) index on existing text field | `field_name` (required — must already exist), `text_config` (default `'english'`), `search_score_weight` (default `1.0`), `k1` (optional BM25 tuning), `b` (optional BM25 tuning) |
 | `SearchTrgm` | GIN trigram indexes on existing fields | `fields` (required, array of field names — must already exist). Sets `@trgmSearch` smart tag |
@@ -535,7 +535,7 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 | `policy_name` | string | No | Custom policy name |
 | `policy_role` | string | No | Role the policy applies to |
 
-See the [constructive-safegres](../../constructive-safegres/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
+See the [constructive-security](../../constructive-security/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
 
 **`entity_type` resolution:** For membership-based policies (`AuthzMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
 
@@ -701,7 +701,7 @@ Each `rewards[]` entry:
 | `amount` | integer | **Yes** | — | Credits to grant |
 | `credit_type` | string | No | `"permanent"` | `"permanent"`, `"expiring"`, etc. |
 
-For full examples including invite virality and cross-table achievements, see [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md).
+For full examples including invite virality and cross-table achievements, see [`constructive-events`](../../constructive-events/SKILL.md).
 
 ## Complete Example: E-Commerce Blueprint
 

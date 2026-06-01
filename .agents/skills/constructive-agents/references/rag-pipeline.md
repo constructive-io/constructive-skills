@@ -17,7 +17,7 @@ Blueprint (SearchUnified node)
 ### Components
 
 1. **Blueprint**: SearchUnified / SearchVector nodes declare vector columns + indexes + stale tracking
-2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-sdk-graphql` skill — [codegen.md](../../constructive-sdk-graphql/references/codegen.md))
+2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-codegen` skill — [codegen.md](../../constructive-codegen/references/codegen.md))
 3. **Worker**: Graphile Worker `embed_record` task handles embedding generation + chunking
 4. **Query**: ORM `vectorEmbedding` filter + distance ordering
 5. **Generation**: agentic-kit feeds retrieved context to LLM
@@ -169,7 +169,7 @@ const result = await db.document.findMany({
 }).execute();
 ```
 
-> See `constructive-sdk-graphql` ([search-composite.md](../../constructive-sdk-graphql/references/search-composite.md)) for full combined search patterns.
+> See `constructive-codegen` ([search-composite.md](../../constructive-search/references/search-composite.md)) for full combined search patterns.
 
 ---
 
@@ -296,6 +296,6 @@ Chunk tables are auto-created via `chunkTable()` in the blueprint definition.
 
 ## Cross-References
 
-- `constructive-sdk-graphql` — [search-pgvector.md](../../constructive-sdk-graphql/references/search-pgvector.md): Full ORM query reference for pgvector
-- `constructive-sdk-graphql` — [search-composite.md](../../constructive-sdk-graphql/references/search-composite.md): Hybrid search (vector + text)
+- `constructive-codegen` — [search-pgvector.md](../../constructive-search/references/search-pgvector.md): Full ORM query reference for pgvector
+- `constructive-codegen` — [search-composite.md](../../constructive-search/references/search-composite.md): Hybrid search (vector + text)
 - [agentic-kit.md](./agentic-kit.md): Multi-provider LLM client API reference

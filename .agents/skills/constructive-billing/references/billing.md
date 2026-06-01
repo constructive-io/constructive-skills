@@ -10,8 +10,8 @@ The billing system provides metered usage tracking, credit management, and quota
 
 Related skills:
 - **`constructive-db-billing`**: SQL-level internals, AST code generation pipeline, locking patterns
-- **`constructive-safegres`**: Authorization policy types used by billing RLS
-- **`constructive-sdk-security`**: How to provision RLS and grants via SDK
+- **`constructive-security`**: Authorization policy types used by billing RLS
+- **`constructive-security`**: How to provision RLS and grants via SDK
 - **`constructive-platform`**: Blueprint provisioning overview
 
 ---
