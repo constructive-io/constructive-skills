@@ -71,6 +71,34 @@ export default function RootLayout({ children }) {
 
 The runtime mounts **one** shared `QueryClient`, calls each namespace's generated `configure()` (reading `NEXT_PUBLIC_<NS>_GRAPHQL_ENDPOINT`), and attaches `Authorization: Bearer <token>` via the host's `getToken`. A block **never** mounts a provider or calls `configure()`.
 
+## Flow selection (start here)
+
+**Before** you install any block, pick the **flow(s)** the app needs. A *flow* is a backend-capability bundle — it answers *"which auth flow do you want?"* with the exact database **modules** to provision, the GraphQL **operations** that go live, and the **blocks** that wire the UI. Every catalogued flow is **GA** (DB-wired, GraphQL-exposed, blocks resolve). This is the catalog-first analogue of better-auth's plugins, and it is the cure for the `modules:['all']` over-provisioning trap.
+
+The catalog is two co-located files (both generated from one source of truth in apps/blocks — never hand-edit them):
+
+- **[`references/flows.json`](./references/flows.json)** — the machine-readable catalog: each flow's `backend.preset`, the resolved flat `backend.modules[]`, `backend.exposedOps[]`, and `blocks[]`. Read this to drive provisioning + install programmatically.
+- **[`references/flow-catalog.md`](./references/flow-catalog.md)** — the human-readable index of the same data.
+
+### Decision procedure
+
+1. **Read the brief → list the capabilities** the app needs (e.g. "sign in, reset password, manage org members").
+2. **Map each capability to a flow id** in `references/flows.json` (e.g. `email-password`, `password-reset`, `org-members`). Pick the minimal set that covers the brief.
+3. **Provision the UNION of the chosen flows' `backend.modules[]`** — the exact flat list, deduplicated across flows. Pass it to `databaseProvisionModule.create({ data: { modules } })`. **Never `modules:['all']`.** A flow's `modules[]` is authoritative; `preset` is only the smallest covering shipped preset (advisory). Org flows have no preset smaller than `b2b`.
+4. **Install ONLY the chosen flows' `blocks[]`** — not the whole library. `npx shadcn@latest add <block> <block> …` for the union of the flows' blocks.
+5. **Run `check-sdk.mjs`** (below) for each installed data block — it proves the host SDK actually exposes the ops the flow's blocks call, before you waste a build.
+
+```bash
+# Example: brief needs sign-in + password reset.
+# flows.json → email-password (preset auth:email) + password-reset (preset auth:email).
+# Union of modules is the auth:email set (same preset) → provision that once, then:
+npx shadcn@latest add auth-sign-in-card auth-sign-up-card auth-sign-out-button \
+  auth-forgot-password-card auth-reset-password-card
+node path/to/skill/scripts/check-sdk.mjs   # gate every installed data block
+```
+
+If a needed capability is **not** in the catalog (magic-link, OTP, MFA enroll, passkey, anonymous, SSO/SCIM stubs, context-switch), its blocks exist in the library but are **not GA** — they ship a "backend-pending" banner and their `requires.json` names a not-yet-deployed op, so `check-sdk.mjs` fails clearly rather than letting you build against a guess.
+
 ## Installing a block
 
 ```bash
@@ -206,6 +234,7 @@ UI is built on `@constructive-io/ui` (consumed as an npm dependency — **never*
 |---|---|---|
 | [binding-doctrine.md](./references/binding-doctrine.md) | The canonical SDK binding law: namespaces, import convention, runtime, hook anatomy, override seam, compliance checklist | Authoring a block, reviewing one, or resolving any "how does a block reach the backend" question |
 | [manifest-and-checks.md](./references/manifest-and-checks.md) | Authoritative `requires.json` schema (single + cross-namespace), op-name rules, `check-sdk.mjs` invocation/exit codes/remediation | Writing or validating a manifest, interpreting a check failure |
+| [flow-catalog.md](./references/flow-catalog.md) | The GA flow catalog (human-readable) — each flow's preset, resolved modules, exposed ops, and blocks. Machine twin: [`flows.json`](./references/flows.json) | Picking which flow(s) to install, deciding the modules to provision and the blocks to add (see "Flow selection") |
 
 ## Cross-References
 
