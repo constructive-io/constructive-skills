@@ -374,6 +374,6 @@ kit.addProvider(new MyProvider());
 
 ## Cross-References
 
-- `constructive-sdk-graphql` — [search-pgvector.md](../../constructive-sdk-graphql/references/search-pgvector.md): ORM vector query patterns
-- `constructive-sdk-graphql` — [search-rag.md](../../constructive-sdk-graphql/references/search-rag.md): RAG patterns with codegen'd ORM
+- `constructive-codegen` — [search-pgvector.md](../../constructive-search/references/search-pgvector.md): ORM vector query patterns
+- `constructive-search` — [search-rag.md](../../constructive-search/references/search-rag.md): RAG patterns with codegen'd ORM
 - [rag-pipeline.md](./rag-pipeline.md): End-to-end RAG pipeline on Constructive

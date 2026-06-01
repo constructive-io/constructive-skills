@@ -68,7 +68,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
 | `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
-| `has_invite_achievements` | boolean | No | `false` | Auto-attach an EventTracker to `claimed_invites` for invite-based achievements + wire the invitee achievement virality trigger. Requires `has_invites=true` AND `has_levels=true`. See [`constructive-sdk-events`](../../constructive-sdk-events/SKILL.md). |
+| `has_invite_achievements` | boolean | No | `false` | Auto-attach an EventTracker to `claimed_invites` for invite-based achievements + wire the invitee achievement virality trigger. Requires `has_invites=true` AND `has_levels=true`. See [`constructive-events`](../../constructive-events/SKILL.md). |
 | `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
