@@ -32,9 +32,30 @@ A block that imports from one namespace ships a single top-level object:
 | `namespace` | The generated namespace the block imports from (`auth`, `admin`, `objects`, `public`, or a custom API). Exactly the `<ns>` in `@/generated/<ns>`. |
 | `mutations` | GraphQL **operation names** the block calls — camelCase, post-inflection (`signIn`, not `SignIn`, not `useSignInMutation`). The check derives the hook name. |
 | `queries` | GraphQL query operation names, same convention. |
-| `models` | Table **model accessors** the block needs — populated **only** when the block uses a `use<Plural>Query` list hook. Subject to the Connection rule (below). |
+| `models` | Table **model accessors** the block needs — populated **only** when the block uses a `use<Plural>Query` list hook. Subject to the Connection rule (below). The ORM accessor is **singular** (`db.orgMembership`); prefer the singular name, but the check normalises plural↔singular so either form matches. |
+| `pending` *(optional)* | Op/model names this block declares as **backend-pending** — a seam shipped for a proc not yet deployed in any public schema (e.g. `transferOrgOwnership`, `removeOrgMember`). The check **reports** these but never fails on them. A missing op that is **not** listed here still fails clearly. Omit when the block has no pending seam. Accepts a flat array `["transferOrgOwnership"]` or a per-kind object `{ "mutations": [...], "models": [...] }`. |
 
-All four keys are present; unused ones are empty arrays.
+The four core keys are present; unused ones are empty arrays. `pending` is optional.
+
+### Model names are singular-normalised
+
+A model accessor and its `models/<name>.ts` file are **always singular** (the ORM exposes `db.orgMembership.findMany()`, never `db.orgMemberships`), even though the *list hook* it pairs with is plural (`useOrgMembershipsQuery`). The manifest's `models` entry names the **accessor**, so the canonical form is singular (`orgMembership`, `email`, `user`). `check-sdk.mjs` normalises both the declared name and the on-disk file name through one singulariser, so a manifest that declares `orgMemberships` (plural) and one that declares `orgMembership` (singular) **both** satisfy the same `models/orgMembership.ts` — author either, prefer singular.
+
+### Declaring a backend-pending seam
+
+Some GA blocks ship a button/path for a procedure that is real-but-not-yet-deployed (the "pending seams" called out in `flows.json` — `transferOrgOwnership`, `removeOrgMember`, `resendOrgInvite`). Such a block is still **correctly wired**: its GA path stands alone and the pending action degrades gracefully. List the pending op in `pending` so the preflight reports it as informational (`◦ … (backend-pending)`) instead of a hard `✗`:
+
+```json
+{
+  "namespace": "admin",
+  "mutations": ["updateOrgMembership", "deleteOrgMembership", "removeOrgMember", "transferOrgOwnership"],
+  "queries": [],
+  "models": ["orgMembership"],
+  "pending": ["removeOrgMember", "transferOrgOwnership"]
+}
+```
+
+This keeps the check honest: declared-pending ops don't block a build, but any op the SDK lacks that is **not** declared pending still fails — so a genuine wiring/stale-SDK error is never masked.
 
 ## Schema — cross-namespace (locked shape)
 

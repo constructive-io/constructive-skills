@@ -24,7 +24,14 @@
  * What it verifies (per contract §9):
  *   1. the `@/generated/*` alias exists in the host tsconfig
  *   2. the generated dir for each block's namespace exists (resolved via alias)
- *   3. every mutation/query/model in requires.json is an export of that SDK
+ *   3. every mutation/query/model in requires.json is an export of that SDK.
+ *      Models are matched SINGULAR-insensitively: the ORM accessor (and its
+ *      `models/<name>.ts` file) is always singular, so a manifest may declare a
+ *      list model plural (`orgMemberships`) or singular (`orgMembership`) — both
+ *      satisfy the on-disk `models/orgMembership.ts`. Op/model names listed in a
+ *      manifest's optional `pending` array are reported but NEVER fail the check
+ *      (a block may ship a seam for a not-yet-deployed proc; a missing op that is
+ *      NOT declared pending still fails clearly).
  *   5. (advisory) `@constructive/blocks-runtime` appears mounted somewhere
  *
  * Drift detection (§9.4) and generating a missing SDK (§9.6) require `cnc
@@ -268,13 +275,40 @@ function collectSdk(sdkDir) {
       models.add(basename(file).replace(SRC_EXT, ''));
     }
   }
-  return { exports, models };
+  // Singular comparison keys for every model file basename. The ORM exposes a
+  // SINGULAR accessor (`db.orgMembership`, file `models/orgMembership.ts`) even
+  // for list queries, so a manifest that declares the model in the plural
+  // (`orgMemberships`) must still match. Normalising BOTH the on-disk name and
+  // the declared name through the same singulariser collapses plural-manifest,
+  // singular-manifest, and singular-file onto one key — see §model check.
+  const modelKeys = new Set([...models].map(singularizeModel));
+  return { exports, models, modelKeys };
 }
 
 // op name (camelCase GraphQL op) → expected generated hook identifier.
 const pascal = (s) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const mutationHook = (op) => `use${pascal(op)}Mutation`;
 const queryHook = (op) => `use${pascal(op)}Query`;
+
+// Singularise a camelCase model accessor for comparison. The ORM accessor (and
+// its `models/<name>.ts` file) is ALWAYS singular, so a manifest may legally
+// declare the model singular (`orgMembership`, `email`) or — as some catalog
+// manifests do — plural (`orgMemberships`, `users`). Normalising every name
+// through this one function makes both forms compare equal to the on-disk
+// singular file (the "make both-correct" rule of the SDK Binding Contract).
+//
+// Only the trailing word is inflected (operates on the final char-run, so
+// `orgMemberships` → `orgMembership`, not the leading `org`). Conservative:
+// nouns that are already singular but end in a sibilant cluster are uncommon
+// among generated accessors, and an over- or under-singularised key simply
+// falls back to the exact-name check the caller also performs.
+function singularizeModel(name) {
+  if (typeof name !== 'string' || name.length < 2) return name;
+  if (/[^aeiou]ies$/i.test(name)) return name.slice(0, -3) + 'y'; // identities → identity
+  if (/(?:ses|xes|zes|ches|shes)$/i.test(name)) return name.slice(0, -2); // boxes → box
+  if (/[^s]s$/i.test(name)) return name.slice(0, -1); // users → user, orgMemberships → orgMembership
+  return name; // address, status, email, phoneNumber — leave untouched
+}
 
 // ---------------------------------------------------------------------------
 // manifests: read .constructive/blocks/*.requires.json (or a named one).
@@ -341,7 +375,14 @@ function normalizeRequirements(raw) {
     namespace: r.namespace,
     mutations: r.mutations ?? [],
     queries: r.queries ?? [],
-    models: r.models ?? []
+    models: r.models ?? [],
+    // Optional: op/model names the block declares as backend-PENDING — a seam
+    // it ships for a procedure not yet deployed in any public schema (e.g.
+    // `transferOrgOwnership`, `removeOrgMember`). These are reported but DO NOT
+    // fail the check: a correctly-wired block that merely carries a pending
+    // seam must not exit 1. A missing op that is NOT declared pending still
+    // fails clearly. Accepts a flat array or a per-kind { mutations, queries }.
+    pending: new Set([...(Array.isArray(r.pending) ? r.pending : []), ...(r.pending?.mutations ?? []), ...(r.pending?.queries ?? []), ...(r.pending?.models ?? [])])
   }));
 }
 
@@ -437,15 +478,22 @@ function main() {
       nsEntry.generatedDir = cached.dir;
 
       const checkOp = (op, kind, expected, present) => {
-        const ok = !!cached.sdk && present;
-        if (!ok) failed = true;
-        nsEntry.ops.push({ op, kind, expects: expected, ok });
+        const satisfied = !!cached.sdk && present;
+        const pending = req.pending.has(op);
+        // A declared-pending op is informational: reported, never a failure —
+        // even when the SDK is present and the op is genuinely absent. Only a
+        // NON-pending unsatisfied op flips `failed`.
+        if (!satisfied && !pending) failed = true;
+        nsEntry.ops.push({ op, kind, expects: expected, ok: satisfied, pending });
       };
 
       for (const op of req.mutations) checkOp(op, 'mutation', mutationHook(op), cached.sdk?.exports.has(mutationHook(op)));
       for (const op of req.queries) checkOp(op, 'query', queryHook(op), cached.sdk?.exports.has(queryHook(op)));
+      // Model accessors are SINGULAR on disk; normalise the declared name (which
+      // may be plural) through the same singulariser used to key the SDK, then
+      // fall back to an exact export match for non-standard shapes.
       for (const mdl of req.models)
-        checkOp(mdl, 'model', `models/${mdl}`, cached.sdk?.models.has(mdl) || cached.sdk?.exports.has(mdl));
+        checkOp(mdl, 'model', `models/${singularizeModel(mdl)}`, cached.sdk?.modelKeys.has(singularizeModel(mdl)) || cached.sdk?.exports.has(mdl));
 
       blockEntry.namespaces.push(nsEntry);
     }
@@ -472,7 +520,10 @@ function main() {
       );
       if (!dirOk) missingNs.add(ns.namespace);
       for (const o of ns.ops) {
-        console.log(`    ${o.ok ? C.green('✓') : C.red('✗')} ${o.kind} ${C.bold(o.op)} ${C.dim(`→ ${o.expects}`)}`);
+        // pending + absent → ◦ (informational); pending + present → ✓; else ✓/✗.
+        const mark = o.ok ? C.green('✓') : o.pending ? C.dim('◦') : C.red('✗');
+        const note = o.pending && !o.ok ? C.dim(' (backend-pending — not yet deployed)') : '';
+        console.log(`    ${mark} ${o.kind} ${C.bold(o.op)} ${C.dim(`→ ${o.expects}`)}${note}`);
       }
     }
   }
@@ -494,7 +545,11 @@ function main() {
     process.exit(1);
   }
 
+  const pendingSeams = report.flatMap((b) => b.namespaces.flatMap((n) => n.ops.filter((o) => o.pending && !o.ok).map((o) => o.op)));
   console.log(C.green('\n✓ All data-block prerequisites satisfied.'));
+  if (pendingSeams.length) {
+    console.log(C.dim(`  (${pendingSeams.length} declared backend-pending seam(s): ${[...new Set(pendingSeams)].join(', ')} — the block's GA path stands alone until those procs ship.)`));
+  }
   process.exit(0);
 }
 

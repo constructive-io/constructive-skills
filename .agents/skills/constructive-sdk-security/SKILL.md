@@ -138,52 +138,50 @@ Important reminder:
 
 ## 5) Primary method: `secureTableProvision` (recommended)
 
-`secureTableProvision` can:
-- add fields via `nodeType` (Data* modules)
-- create grants (`grantRoles`, `grantPrivileges`)
-- create policies (`policyType`, `policyData`, `policyPermissive`, `policyPrivileges`)
-- enable RLS (`useRls`)
+`secureTableProvision` takes the **Blueprint shape**: four independent, optional arrays, each entry discriminated by a `$type`:
+- `nodes[]` — Data* field modules (`{ $type: 'DataEntityMembership' }`, optional `data`)
+- `fields[]` — explicit columns (`{ name, type, is_required }`, **snake_case**, bare-string `type`)
+- `grants[]` — per-role privilege targeting (`{ roles, privileges }`, privileges are `[privilege, columns]` tuples)
+- `policies[]` — Authz* RLS policies (`{ $type, permissive, privileges, data }`)
+- `useRls: true` — enable RLS
+
+> **The flat `nodeType` / `grantRoles` / `grantPrivileges` / `policyType` / `policyData` / `policyPermissive` / `policyPrivileges` shape is stale** and no longer matches the live platform (the generated `CreateSecureTableProvisionInput` exposes only `nodes` / `fields` / `grants` / `policies` / `useRls`). Use the arrays below.
 
 ### Example: Create an org-scoped table securely (fields + grants + policy + RLS)
 
 ```ts
-// Wildcard grants (all columns):
-const grant_privileges = [
-  ['select', '*'],
-  ['insert', '*'],
-  ['update', '*'],
-  ['delete', '*'],
-] as unknown as Record<string, unknown>;
-
-// Field-level grants (restrict which columns each privilege applies to):
-// const grant_privileges = [
-//   ['select', '*'],                      // read all columns
-//   ['insert', ['name', 'bio', 'email']], // can only insert these columns
-//   ['update', ['name', 'bio']],          // can only update these columns
-// ] as unknown as Record<string, unknown>;
-
-const policy_data: Record<string, unknown> = {
-  entity_field: 'entity_id',
-  membership_type: 2,
-};
-
 const provision = await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     // schemaId is optional -- defaults to the database's app_public schema
     tableName: 'projects',
-
-    // Fields:
-    nodeType: 'DataEntityMembership',
-
-    // Security:
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: grant_privileges,
 
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: policy_data,
+    // nodes[]: one entry per Data* field module (compose several in one call)
+    nodes: [
+      { $type: 'DataEntityMembership' },
+    ] as unknown as Record<string, unknown>,
+
+    // grants[]: each entry = roles + a privilege list of [privilege, columns] tuples.
+    // '*' = all columns; an array restricts the columns that privilege applies to.
+    grants: [
+      {
+        roles: ['authenticated'],
+        privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']],
+        // Field-level example (restrict columns per privilege):
+        // privileges: [['select', '*'], ['insert', ['name', 'bio']], ['update', ['bio']]],
+      },
+    ] as unknown as Record<string, unknown>,
+
+    // policies[]: one entry per Authz* policy, discriminated by $type
+    policies: [
+      {
+        $type: 'AuthzEntityMembership',
+        permissive: true,
+        privileges: ['select', 'insert', 'update', 'delete'],
+        data: { entity_field: 'entity_id', membership_type: 2 },
+      },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true, tableId: true, outFields: true },
 }).execute();
@@ -191,17 +189,20 @@ const provision = await db.secureTableProvision.create({
 const table_id = provision.createSecureTableProvision.secureTableProvision.tableId;
 ```
 
+> **Casting note:** `fields[]` is typed `Record<string, unknown>[]` (an array), so a field literal assigns directly with no cast. `nodes` / `grants` / `policies` are typed as a single `Record<string, unknown>`, so the array literal needs `as unknown as Record<string, unknown>` (as shown).
+
 ### Compose multiple provisions on the same table
 
-Add timestamps after the fact (fields only):
+Add timestamps after the fact (fields only) — target the same `tableId` with another `nodes[]` entry:
 
 ```ts
 await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     tableId: '<table-id>',
-    nodeType: 'DataTimestamps',
-    nodeData: { include_id: false },
+    nodes: [
+      { $type: 'DataTimestamps', data: { include_id: false } },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true },
 }).execute();
@@ -216,13 +217,15 @@ await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     tableId: '<table-id>',
-    policyType: 'AuthzPublishable',
-    policyPermissive: true,
-    policyData: {},
-    policyPrivileges: ['select'],  // READ-only — never insert/update/delete
-
-    // No grants in this row:
-    grantPrivileges: [] as unknown as Record<string, unknown>,
+    // policies[]: one read-only entry; omit grants[] entirely when adding only a policy.
+    policies: [
+      {
+        $type: 'AuthzPublishable',
+        permissive: true,
+        privileges: ['select'], // READ-only — never insert/update/delete
+        data: {},
+      },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true },
 }).execute();

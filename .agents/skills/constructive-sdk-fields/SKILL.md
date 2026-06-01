@@ -72,6 +72,11 @@ const db = createClient({
 
 ## Creating Fields
 
+> **Field-shape contract — this is the `metaschema_public.field` API, not the blueprint.**
+> On `db.field.create`/`db.field.update`, `type` is a **bare string** (`type: 'text'`, `type: 'numeric(10,2)'`) and `defaultValue` is a **SQL-expression string** (`defaultValue: "'draft'"`, `'uuid_generate_v4()'`). This matches the generated `CreateFieldInput` (`type: string`, `defaultValue?: string`) — do **not** wrap them in objects here.
+>
+> A **blueprint** field node (the `createBlueprint`/`constructBlueprint` GraphQL mutation in the provisioning APIs, `modules.localhost`) uses the **object** form instead — `type: { name: 'text' }` / `{ name: 'boolean' }` with `default: { value: false }` — and is **not** the same call as this SDK. Use the object shape only in a blueprint definition; use the bare-string shape (below) for the field SDK. The `secureTableProvision` `fields[]` array (see `constructive-sdk-security`) is a third shape again: bare-string `type` + snake_case keys (`{ name: 'title', type: 'text', is_required: true }`).
+
 ### Basic Field Creation
 
 ```typescript
