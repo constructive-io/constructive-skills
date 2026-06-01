@@ -46,7 +46,9 @@
  *   3. harness copy (if reachable) sotHash === SoT sotHash.
  *   4. skill copy bytes === harness copy bytes (if reachable).
  *   5. referential integrity per flow: status==='ga', blocks non-empty, preset
- *      resolves from node-type-registry (if reachable), modules ⊆ preset.
+ *      resolves from node-type-registry (if reachable), modules ⊆ preset
+ *      (compared on the display key — flows.json modules are NATIVE strings +
+ *      ["name",{scope}] tuples; the preset side is normalized to match).
  *
  * On any drift it prints the remediation: "re-run: (cd apps/blocks && pnpm gen:flows)".
  */
@@ -464,13 +466,18 @@ function main() {
       if (!flowIds.has(rel)) problems.push(`relatedFlows -> unknown flow '${rel}'`);
     }
     // modules ⊆ preset (only when the registry is reachable AND the preset resolves).
+    // flows.json carries NATIVE module entries (plain strings + ["name",{scope}]
+    // tuples — provisioning-ready); the preset resolver normalizes its entries to
+    // display strings. Compare on the shared display key (normalizeModule) so a
+    // tuple `["memberships_module",{scope:"app"}]` matches the preset's
+    // `memberships_module:app`.
     if (presetResolver && preset && Array.isArray(modules)) {
       const presetMods = presetResolver.resolvePreset(preset);
       if (presetMods === null) {
         problems.push(`preset '${preset}' did not resolve from node-type-registry`);
       } else {
-        const presetSet = new Set(presetMods);
-        const escapees = modules.filter((m) => !presetSet.has(m));
+        const presetSet = new Set(presetMods.map(normalizeModule));
+        const escapees = modules.map(normalizeModule).filter((m) => !presetSet.has(m));
         if (escapees.length) problems.push(`modules not ⊆ preset '${preset}': [${escapees.join(', ')}]`);
       }
     }

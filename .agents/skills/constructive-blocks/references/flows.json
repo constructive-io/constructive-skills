@@ -1,7 +1,7 @@
 {
   "generatedAt": null,
   "source": "apps/blocks/scripts/flows-content.mjs",
-  "sotHash": "200f0da2506f2df472e016b5467d2c2f10aec5cd7d77a96ddf0d85be261c6bbb",
+  "sotHash": "a47970f72893f7483eb9ab844c3744a6403154ffa0a8c2b660980b87aafa631c",
   "groups": [
     {
       "id": "authentication",
@@ -28,10 +28,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -78,10 +98,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -121,10 +161,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -166,10 +226,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -212,10 +292,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -253,10 +353,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -298,10 +418,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -342,10 +482,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -385,10 +545,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -427,10 +607,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -471,10 +671,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -514,10 +734,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -560,10 +800,30 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "permissions_module:app",
-          "limits_module:app",
-          "levels_module:app",
-          "memberships_module:app",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -603,8 +863,18 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "memberships_module:app",
-          "memberships_module:org",
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "org"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -619,17 +889,72 @@
           "webauthn_credentials_module",
           "webauthn_auth_module",
           "phone_numbers_module",
-          "permissions_module:app",
-          "permissions_module:org",
-          "limits_module:app",
-          "limits_module:org",
-          "levels_module:app",
-          "levels_module:org",
-          "profiles_module:app",
-          "profiles_module:org",
-          "hierarchy_module:org",
-          "invites_module:app",
-          "invites_module:org",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "permissions_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "hierarchy_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "org"
+            }
+          ],
           "devices_module"
         ],
         "exposedOps": [
@@ -666,8 +991,18 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "memberships_module:app",
-          "memberships_module:org",
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "org"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -682,17 +1017,72 @@
           "webauthn_credentials_module",
           "webauthn_auth_module",
           "phone_numbers_module",
-          "permissions_module:app",
-          "permissions_module:org",
-          "limits_module:app",
-          "limits_module:org",
-          "levels_module:app",
-          "levels_module:org",
-          "profiles_module:app",
-          "profiles_module:org",
-          "hierarchy_module:org",
-          "invites_module:app",
-          "invites_module:org",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "permissions_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "hierarchy_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "org"
+            }
+          ],
           "devices_module"
         ],
         "exposedOps": [
@@ -728,8 +1118,18 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "memberships_module:app",
-          "memberships_module:org",
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "org"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -744,17 +1144,72 @@
           "webauthn_credentials_module",
           "webauthn_auth_module",
           "phone_numbers_module",
-          "permissions_module:app",
-          "permissions_module:org",
-          "limits_module:app",
-          "limits_module:org",
-          "levels_module:app",
-          "levels_module:org",
-          "profiles_module:app",
-          "profiles_module:org",
-          "hierarchy_module:org",
-          "invites_module:app",
-          "invites_module:org",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "permissions_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "hierarchy_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "org"
+            }
+          ],
           "devices_module"
         ],
         "exposedOps": [
@@ -788,8 +1243,18 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "memberships_module:app",
-          "memberships_module:org",
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "org"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -804,17 +1269,72 @@
           "webauthn_credentials_module",
           "webauthn_auth_module",
           "phone_numbers_module",
-          "permissions_module:app",
-          "permissions_module:org",
-          "limits_module:app",
-          "limits_module:org",
-          "levels_module:app",
-          "levels_module:org",
-          "profiles_module:app",
-          "profiles_module:org",
-          "hierarchy_module:org",
-          "invites_module:app",
-          "invites_module:org",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "permissions_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "hierarchy_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "org"
+            }
+          ],
           "devices_module"
         ],
         "exposedOps": [
@@ -852,8 +1372,18 @@
         "modules": [
           "users_module",
           "membership_types_module",
-          "memberships_module:app",
-          "memberships_module:org",
+          [
+            "memberships_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "memberships_module",
+            {
+              "scope": "org"
+            }
+          ],
           "sessions_module",
           "user_state_module",
           "user_credentials_module",
@@ -868,17 +1398,72 @@
           "webauthn_credentials_module",
           "webauthn_auth_module",
           "phone_numbers_module",
-          "permissions_module:app",
-          "permissions_module:org",
-          "limits_module:app",
-          "limits_module:org",
-          "levels_module:app",
-          "levels_module:org",
-          "profiles_module:app",
-          "profiles_module:org",
-          "hierarchy_module:org",
-          "invites_module:app",
-          "invites_module:org",
+          [
+            "permissions_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "permissions_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "limits_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "levels_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "profiles_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "hierarchy_module",
+            {
+              "scope": "org"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "app"
+            }
+          ],
+          [
+            "invites_module",
+            {
+              "scope": "org"
+            }
+          ],
           "devices_module"
         ],
         "exposedOps": [

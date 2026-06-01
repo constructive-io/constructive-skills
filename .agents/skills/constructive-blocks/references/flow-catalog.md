@@ -2,7 +2,7 @@
 
 # Flow catalog
 
-Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `200f0da2506f2df472e016b5467d2c2f10aec5cd7d77a96ddf0d85be261c6bbb`.
+Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `a47970f72893f7483eb9ab844c3744a6403154ffa0a8c2b660980b87aafa631c`.
 
 Each flow is a backend-capability bundle: a preset to provision (resolved to a flat module list), the GraphQL operations it exposes, and the Blocks that wire the UI. GA-only.
 
