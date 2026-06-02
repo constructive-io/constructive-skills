@@ -1,7 +1,7 @@
 {
   "generatedAt": null,
   "source": "apps/blocks/scripts/flows-content.mjs",
-  "sotHash": "a47970f72893f7483eb9ab844c3744a6403154ffa0a8c2b660980b87aafa631c",
+  "sotHash": "0a956c32d942088d59ebadeaa1d8b435abe1ceab2731f3bf98f35d07d1440f49",
   "groups": [
     {
       "id": "authentication",
@@ -347,7 +347,7 @@
       "name": "Profile",
       "group": "account-session",
       "status": "ga",
-      "summary": "Let the signed-in user edit their display name and avatar, with a settings page and a security-posture summary.",
+      "summary": "Let the signed-in user edit their display name and avatar against the auth:email user model.",
       "backend": {
         "preset": "auth:email",
         "modules": [
@@ -391,14 +391,12 @@
         ]
       },
       "blocks": [
-        "auth-account-profile-card",
-        "auth-account-settings-page",
-        "auth-account-security-card"
+        "auth-account-profile-card"
       ],
       "howto": {
         "provision": "# updateUser / currentUser ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-profile-card auth-account-settings-page auth-account-security-card",
-        "wire": "import AccountSettingsPage from '@/blocks/auth/account-settings-page/account-settings-page';\n\n// The settings page composes the profile + security cards (and more) for you.\nexport default function AccountPage() {\n  return <AccountSettingsPage />;\n}",
+        "install": "npx shadcn@latest add auth-account-profile-card",
+        "wire": "import { AccountProfileCard } from '@/blocks/auth/account-profile-card/account-profile-card';\n\n// The profile card binds to updateUser/currentUser — only BlocksRuntime is required.\n// NOTE: auth-account-security-card (passkeys) and the auth-account-settings-page\n// composite hard-import ops OUTSIDE auth:email (webauthnCredentials, phoneNumbers/SMS,\n// connectedAccounts/SSO). They belong to a richer preset (auth:sso / b2b), not this\n// minimal profile flow — install them only once those modules are provisioned.\nexport default function AccountPage() {\n  return <AccountProfileCard />;\n}",
         "usage": "import { AccountProfileCard } from '@/blocks/auth/account-profile-card/account-profile-card';\n\n<AccountProfileCard onSuccess={() => toast.success(\"Profile updated\")} />"
       },
       "relatedFlows": [
@@ -652,8 +650,8 @@
       "howto": {
         "provision": "# API-key CRUD ships with auth:email (user_auth_module) — no extra modules.\npgpm install",
         "install": "npx shadcn@latest add auth-account-api-keys-list auth-api-key-create-dialog auth-api-key-created-modal",
-        "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Create is gated behind a high-severity step-up; mount the provider once.\n<StepUpProvider>{children}</StepUpProvider>",
-        "usage": "import { AccountApiKeysList } from '@/blocks/auth/account-api-keys-list/account-api-keys-list';\n\n// No generated list hook for user_api_keys — supply rows via the `keys` prop.\n<AccountApiKeysList keys={keys} onKeyCreated={refetch} onKeyRevoked={refetch} />"
+        "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Create is gated behind a high-severity step-up; mount the provider once.\n// The deployed create_api_key proc accepts ONLY:\n//   accessLevel ∈ { 'read_only', 'full_access' }   mfaLevel ∈ { 'none', 'verified' }\n// Any other value (read/write/admin, required) -> INVALID_ACCESS_LEVEL at runtime.\n// createApiKey also enforces STEP_UP_REQUIRED server-side: a verifyPassword on the\n// SAME session must precede the create. The dialog runs that step-up first; if you\n// call createApiKey directly, complete step-up (verifyPassword) before the mutation.\n<StepUpProvider>{children}</StepUpProvider>",
+        "usage": "import { AccountApiKeysList } from '@/blocks/auth/account-api-keys-list/account-api-keys-list';\n\n// No generated list hook for user_api_keys — supply rows via the `keys` prop.\n// Valid create inputs: accessLevel 'read_only' | 'full_access'; mfaLevel 'none' | 'verified'.\n<AccountApiKeysList keys={keys} onKeyCreated={refetch} onKeyRevoked={refetch} />"
       },
       "relatedFlows": [
         "step-up",
@@ -779,7 +777,7 @@
       "howto": {
         "provision": "# requireStepUp / verifyPassword ship with auth:email — no extra modules.\npgpm install",
         "install": "npx shadcn@latest add auth-step-up-dialog use-step-up",
-        "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Mount the provider once near the app root; consumers call useStepUp() below it.\n<StepUpProvider>{children}</StepUpProvider>",
+        "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Mount the provider once near the app root; consumers call useStepUp() below it.\n// Step-up resolves a verifyPassword/verifyTotp on the CURRENT session — server-side\n// gated ops (e.g. createApiKey enforces STEP_UP_REQUIRED) must be preceded by it.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { useStepUp, StepUpError } from '@/blocks/auth/use-step-up/use-step-up';\n\nasync function onDangerousAction() {\n  const stepUp = useStepUp();\n  try {\n    await stepUp({ tier: 'high' });\n    await deleteAccount();\n  } catch (err) {\n    if (err instanceof StepUpError && err.reason === 'cancelled') return;\n    throw err;\n  }\n}"
       },
       "relatedFlows": [
@@ -1086,10 +1084,9 @@
           "devices_module"
         ],
         "exposedOps": [
+          "orgMemberships",
           "updateOrgMembership",
-          "deleteOrgMembership",
-          "removeOrgMember",
-          "orgMemberships"
+          "deleteOrgMembership"
         ]
       },
       "blocks": [
@@ -1099,7 +1096,7 @@
         "provision": "# Org membership CRUD requires the b2b org-scoped memberships module — see Backend below.\npgpm install",
         "install": "npx shadcn@latest add org-members-list",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Sensitive member actions require a step-up before the mutation fires.\n<StepUpProvider>{children}</StepUpProvider>",
-        "usage": "import { OrgMembersList } from '@/blocks/org/members-list/members-list';\n\n// transferOrgOwnership is a pending seam — the GA list + role-change + remove path stands alone.\n<OrgMembersList orgId={orgId} />"
+        "usage": "import { MembersList } from '@/blocks/org/members-list/members-list';\n\n// GA path is updateOrgMembership (role change) + deleteOrgMembership (remove).\n// removeOrgMember / transferOrgOwnership are NOT deployed in the provisioned admin\n// schema yet — pending seams; do not call them.\n<MembersList orgId={orgId} />"
       },
       "relatedFlows": [
         "organization",
@@ -1219,13 +1216,14 @@
         ]
       },
       "blocks": [
+        "org-create-card",
         "org-roles-editor"
       ],
       "howto": {
         "provision": "# Org role profiles require the b2b org-scoped profiles module — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-roles-editor",
-        "wire": "// org-roles-editor binds to the generated admin SDK hooks — only BlocksRuntime is required.",
-        "usage": "import { OrgRolesEditor } from '@/blocks/org/roles-editor/roles-editor';\n\n<OrgRolesEditor orgId={orgId} />"
+        "install": "npx shadcn@latest add org-create-card org-roles-editor",
+        "wire": "// Both blocks bind to the generated admin SDK hooks — only BlocksRuntime is required.",
+        "usage": "import { OrgCreateCard } from '@/blocks/org/create-card/create-card';\nimport { OrgRolesEditor } from '@/blocks/org/roles-editor/roles-editor';\n\n// OrgRolesEditor needs an orgId (a User row with type=2). Create the org first with\n// org-create-card, then pass its id to the editor.\n<OrgCreateCard onSuccess={(org) => setOrgId(org.id)} />\n{orgId && <OrgRolesEditor orgId={orgId} />}"
       },
       "relatedFlows": [
         "organization",

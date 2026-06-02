@@ -2,7 +2,7 @@
 
 # Flow catalog
 
-Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `a47970f72893f7483eb9ab844c3744a6403154ffa0a8c2b660980b87aafa631c`.
+Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `0a956c32d942088d59ebadeaa1d8b435abe1ceab2731f3bf98f35d07d1440f49`.
 
 Each flow is a backend-capability bundle: a preset to provision (resolved to a flat module list), the GraphQL operations it exposes, and the Blocks that wire the UI. GA-only.
 
@@ -87,17 +87,17 @@ npx shadcn@latest add auth-cross-origin-link
 
 ### Profile (`profile`)
 
-Let the signed-in user edit their display name and avatar, with a settings page and a security-posture summary.
+Let the signed-in user edit their display name and avatar against the auth:email user model.
 
 - **Preset:** `auth:email`
 - **Modules:** `users_module`, `membership_types_module`, `permissions_module:app`, `limits_module:app`, `levels_module:app`, `memberships_module:app`, `sessions_module`, `user_state_module`, `user_credentials_module`, `config_secrets_module`, `emails_module`, `rls_module`, `user_auth_module`
 - **Exposed ops:** `updateUser`, `currentUser`
-- **Blocks:** `auth-account-profile-card`, `auth-account-settings-page`, `auth-account-security-card`
+- **Blocks:** `auth-account-profile-card`
 
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-profile-card auth-account-settings-page auth-account-security-card
+npx shadcn@latest add auth-account-profile-card
 ```
 
 ### Account emails (`account-emails`)
@@ -228,7 +228,7 @@ List an organization's members with inline role changes and step-up-gated remova
 
 - **Preset:** `b2b`
 - **Modules:** `users_module`, `membership_types_module`, `memberships_module:app`, `memberships_module:org`, `sessions_module`, `user_state_module`, `user_credentials_module`, `config_secrets_module`, `emails_module`, `rls_module`, `user_auth_module`, `session_secrets_module`, `rate_limits_module`, `connected_accounts_module`, `identity_providers_module`, `webauthn_credentials_module`, `webauthn_auth_module`, `phone_numbers_module`, `permissions_module:app`, `permissions_module:org`, `limits_module:app`, `limits_module:org`, `levels_module:app`, `levels_module:org`, `profiles_module:app`, `profiles_module:org`, `hierarchy_module:org`, `invites_module:app`, `invites_module:org`, `devices_module`
-- **Exposed ops:** `updateOrgMembership`, `deleteOrgMembership`, `removeOrgMember`, `orgMemberships`
+- **Exposed ops:** `orgMemberships`, `updateOrgMembership`, `deleteOrgMembership`
 - **Blocks:** `org-members-list`
 
 Install:
@@ -244,12 +244,12 @@ Create, edit, and delete named org role profiles that bundle the org-scoped perm
 - **Preset:** `b2b`
 - **Modules:** `users_module`, `membership_types_module`, `memberships_module:app`, `memberships_module:org`, `sessions_module`, `user_state_module`, `user_credentials_module`, `config_secrets_module`, `emails_module`, `rls_module`, `user_auth_module`, `session_secrets_module`, `rate_limits_module`, `connected_accounts_module`, `identity_providers_module`, `webauthn_credentials_module`, `webauthn_auth_module`, `phone_numbers_module`, `permissions_module:app`, `permissions_module:org`, `limits_module:app`, `limits_module:org`, `levels_module:app`, `levels_module:org`, `profiles_module:app`, `profiles_module:org`, `hierarchy_module:org`, `invites_module:app`, `invites_module:org`, `devices_module`
 - **Exposed ops:** `createOrgProfile`, `updateOrgProfile`, `deleteOrgProfile`
-- **Blocks:** `org-roles-editor`
+- **Blocks:** `org-create-card`, `org-roles-editor`
 
 Install:
 
 ```bash
-npx shadcn@latest add org-roles-editor
+npx shadcn@latest add org-create-card org-roles-editor
 ```
 
 ### Org invites (`org-invites`)
