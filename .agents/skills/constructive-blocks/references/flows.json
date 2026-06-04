@@ -1,7 +1,7 @@
 {
   "generatedAt": null,
   "source": "apps/blocks/scripts/flows-content.mjs",
-  "sotHash": "0a956c32d942088d59ebadeaa1d8b435abe1ceab2731f3bf98f35d07d1440f49",
+  "sotHash": "db2c1caf05101d7d5d3a7f9c2ab64ac70debc1b991e87bb50e10858d6d70199b",
   "groups": [
     {
       "id": "authentication",
@@ -76,7 +76,7 @@
       ],
       "howto": {
         "provision": "# Provision the auth:email modules onto your database (see Backend below for the full list).\npgpm install   # or: provision via databaseProvisionModule.create({ data: { modules } })",
-        "install": "npx shadcn@latest add auth-sign-in-card auth-sign-up-card auth-sign-out-button auth-sign-in-page auth-sign-up-page",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-sign-in-card @constructive/auth-sign-up-card @constructive/auth-sign-out-button @constructive/auth-sign-in-page @constructive/auth-sign-up-page",
         "wire": "import { BlocksRuntime } from '@/blocks/runtime/blocks-runtime';\nimport { tokenManager } from '@/lib/auth/token-manager';\n\n// Mount once at the app root so every auth block resolves its hook.\n<BlocksRuntime namespaces={['auth']} getToken={() => tokenManager.getAccessToken()}>\n  {children}\n</BlocksRuntime>",
         "usage": "import { SignInCard } from '@/blocks/auth/sign-in-card/sign-in-card';\n\nexport function SignInRoute() {\n  const router = useRouter();\n  return (\n    <SignInCard\n      signUpHref=\"/auth/sign-up\"\n      forgotPasswordHref=\"/auth/forgot-password\"\n      onSuccess={() => router.push(\"/\")}\n    />\n  );\n}"
       },
@@ -141,7 +141,7 @@
       ],
       "howto": {
         "provision": "# auth:email already exposes verifyEmail / sendVerificationEmail — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-verify-email-banner auth-verify-email-page",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-verify-email-banner @constructive/auth-verify-email-page",
         "wire": "import { VerifyEmailBanner } from '@/blocks/auth/verify-email-banner/verify-email-banner';\n\n// Show the banner in your app header for signed-in, unverified users.\nexport function AppHeader({ user }) {\n  if (user.isVerified) return null;\n  return <VerifyEmailBanner email={user.primaryEmail} />;\n}",
         "usage": "// Mount the page at /auth/verify-email; it reads ?email_id= and ?token= from the URL.\nimport { VerifyEmailPage } from '@/blocks/auth/verify-email-page/verify-email-page';\n\nexport default function Page() {\n  return <VerifyEmailPage signInHref=\"/auth/sign-in\" dashboardHref=\"/dashboard\" />;\n}"
       },
@@ -206,7 +206,7 @@
       ],
       "howto": {
         "provision": "# forgotPassword / resetPassword ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-forgot-password-card auth-forgot-password-page auth-reset-password-card auth-reset-password-page",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-forgot-password-card @constructive/auth-forgot-password-page @constructive/auth-reset-password-card @constructive/auth-reset-password-page",
         "wire": "// Both pages are thin route wrappers — no extra wiring beyond BlocksRuntime.\n// forgot-password-page reads ?email=; reset-password-page reads ?token= and ?role_id=.",
         "usage": "import ForgotPasswordPage from '@/blocks/auth/forgot-password-page/forgot-password-page';\n\n// app/auth/forgot-password/page.tsx\nexport default function Page() {\n  return <ForgotPasswordPage />;\n}"
       },
@@ -272,7 +272,7 @@
       ],
       "howto": {
         "provision": "# auth:sso adds connected_accounts_module + identity_providers_module (see Backend below).\npgpm install",
-        "install": "npx shadcn@latest add auth-social-buttons auth-social-providers-grid",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-social-buttons @constructive/auth-social-providers-grid",
         "wire": "import { AuthSocialButtons } from '@/blocks/auth/social-buttons/social-buttons';\n\n// Omit `providers` to load enabled providers from the identity-providers API at runtime.\n<AuthSocialButtons mode=\"sign-in\" layout=\"stacked\" />",
         "usage": "import { AuthSocialProvidersGrid } from '@/blocks/auth/social-providers-grid/social-providers-grid';\n\nexport function SignInExtras() {\n  return <AuthSocialProvidersGrid mode=\"sign-in\" returnTo=\"/dashboard\" />;\n}"
       },
@@ -334,7 +334,7 @@
       ],
       "howto": {
         "provision": "# requestCrossOriginToken / signInCrossOrigin ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-cross-origin-link",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-cross-origin-link",
         "wire": "import { CrossOriginLink } from '@/blocks/auth/cross-origin-link/cross-origin-link';\n\n// Mount inside the same form that collected email/password.\n<CrossOriginLink\n  email={email}\n  password={password}\n  destinationOrigin=\"https://app.example.com\"\n  destinationPath=\"/auth/cross-origin\"\n>\n  Continue to app\n</CrossOriginLink>",
         "usage": "import { CrossOriginLink } from '@/blocks/auth/cross-origin-link/cross-origin-link';\n\n<CrossOriginLink email={email} password={password} destinationOrigin=\"https://app.example.com\" destinationPath=\"/auth/cross-origin\" />"
       },
@@ -395,7 +395,7 @@
       ],
       "howto": {
         "provision": "# updateUser / currentUser ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-profile-card",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-profile-card",
         "wire": "import { AccountProfileCard } from '@/blocks/auth/account-profile-card/account-profile-card';\n\n// The profile card binds to updateUser/currentUser — only BlocksRuntime is required.\n// NOTE: auth-account-security-card (passkeys) and the auth-account-settings-page\n// composite hard-import ops OUTSIDE auth:email (webauthnCredentials, phoneNumbers/SMS,\n// connectedAccounts/SSO). They belong to a richer preset (auth:sso / b2b), not this\n// minimal profile flow — install them only once those modules are provisioned.\nexport default function AccountPage() {\n  return <AccountProfileCard />;\n}",
         "usage": "import { AccountProfileCard } from '@/blocks/auth/account-profile-card/account-profile-card';\n\n<AccountProfileCard onSuccess={() => toast.success(\"Profile updated\")} />"
       },
@@ -460,7 +460,7 @@
       ],
       "howto": {
         "provision": "# emails_module + its CRUD ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-emails-list",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-emails-list",
         "wire": "import { AccountEmailsList } from '@/blocks/auth/account-emails-list/account-emails-list';\n\n<AccountEmailsList maxEmails={10} />",
         "usage": "import { AccountEmailsList } from '@/blocks/auth/account-emails-list/account-emails-list';\n\n<AccountEmailsList />"
       },
@@ -522,7 +522,7 @@
       ],
       "howto": {
         "provision": "# setPassword / checkPassword ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-change-password-form",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-change-password-form",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// The form runs a step-up re-verification, so a StepUpProvider must be an ancestor.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { ChangePasswordForm } from '@/blocks/auth/change-password-form/change-password-form';\n\n<ChangePasswordForm requireStepUp showPasswordStrength onSuccess={() => toast(\"Password updated\")} />"
       },
@@ -585,7 +585,7 @@
       ],
       "howto": {
         "provision": "# sessions_module + revokeSession ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-sessions-list",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-sessions-list",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Single revoke is step-up tier=medium; revoke-all-others is tier=high.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountSessionsList } from '@/blocks/auth/account-sessions-list/account-sessions-list';\n\n// The session list has no generated list hook — supply rows via the `sessions` prop.\n<AccountSessionsList sessions={sessions} onRevokeSubmit={revokeSession} />"
       },
@@ -649,7 +649,7 @@
       ],
       "howto": {
         "provision": "# API-key CRUD ships with auth:email (user_auth_module) — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-api-keys-list auth-api-key-create-dialog auth-api-key-created-modal",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-api-keys-list @constructive/auth-api-key-create-dialog @constructive/auth-api-key-created-modal",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Create is gated behind a high-severity step-up; mount the provider once.\n// The deployed create_api_key proc accepts ONLY:\n//   accessLevel ∈ { 'read_only', 'full_access' }   mfaLevel ∈ { 'none', 'verified' }\n// Any other value (read/write/admin, required) -> INVALID_ACCESS_LEVEL at runtime.\n// createApiKey also enforces STEP_UP_REQUIRED server-side: a verifyPassword on the\n// SAME session must precede the create. The dialog runs that step-up first; if you\n// call createApiKey directly, complete step-up (verifyPassword) before the mutation.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountApiKeysList } from '@/blocks/auth/account-api-keys-list/account-api-keys-list';\n\n// No generated list hook for user_api_keys — supply rows via the `keys` prop.\n// Valid create inputs: accessLevel 'read_only' | 'full_access'; mfaLevel 'none' | 'verified'.\n<AccountApiKeysList keys={keys} onKeyCreated={refetch} onKeyRevoked={refetch} />"
       },
@@ -712,7 +712,7 @@
       ],
       "howto": {
         "provision": "# delete_account flow ships with auth:email (user_auth_module) — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-account-danger-card auth-account-deletion-confirm-page",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-danger-card @constructive/auth-account-deletion-confirm-page",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// The danger card gates the deletion email behind a high-tier step-up.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountDeletionConfirmPage } from '@/blocks/auth/account-deletion-confirm-page/account-deletion-confirm-page';\n\n// app/auth/delete-account/page.tsx — reads ?token= and ?user_id= from the link.\n<AccountDeletionConfirmPage token={token} userId={userId} redirectTo=\"/auth/sign-in\" />"
       },
@@ -776,7 +776,7 @@
       ],
       "howto": {
         "provision": "# requireStepUp / verifyPassword ship with auth:email — no extra modules.\npgpm install",
-        "install": "npx shadcn@latest add auth-step-up-dialog use-step-up",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-step-up-dialog @constructive/use-step-up",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Mount the provider once near the app root; consumers call useStepUp() below it.\n// Step-up resolves a verifyPassword/verifyTotp on the CURRENT session — server-side\n// gated ops (e.g. createApiKey enforces STEP_UP_REQUIRED) must be preceded by it.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { useStepUp, StepUpError } from '@/blocks/auth/use-step-up/use-step-up';\n\nasync function onDangerousAction() {\n  const stepUp = useStepUp();\n  try {\n    await stepUp({ tier: 'high' });\n    await deleteAccount();\n  } catch (err) {\n    if (err instanceof StepUpError && err.reason === 'cancelled') return;\n    throw err;\n  }\n}"
       },
@@ -841,7 +841,7 @@
       ],
       "howto": {
         "provision": "# disconnectAccount + connected_accounts_module ship with auth:sso (see Backend below).\npgpm install",
-        "install": "npx shadcn@latest add auth-account-connected-accounts",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-connected-accounts",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Disconnect is gated behind a step-up (tier: medium).\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountConnectedAccounts } from '@/blocks/auth/account-connected-accounts/account-connected-accounts';\n\n// Connection types are not yet public — pass connectedAccounts + providers as props.\n<AccountConnectedAccounts connectedAccounts={linked} providers={configured} oauthRedirectBase=\"/auth/oauth\" />"
       },
@@ -967,7 +967,7 @@
       ],
       "howto": {
         "provision": "# Orgs require the full B2B stack (org-scoped memberships/permissions/invites/hierarchy).\n# There is no preset smaller than b2b for org flows — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-create-card org-settings-form",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/org-create-card @constructive/org-settings-form",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// org-settings-form gates danger-zone deletion behind a step-up.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { OrgCreateCard } from '@/blocks/org/create-card/create-card';\n\n// Creates a users row with type=2 (an organization).\n<OrgCreateCard onSuccess={(org) => router.push(`/orgs/${org.id}`)} />"
       },
@@ -1094,7 +1094,7 @@
       ],
       "howto": {
         "provision": "# Org membership CRUD requires the b2b org-scoped memberships module — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-members-list",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/org-members-list",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Sensitive member actions require a step-up before the mutation fires.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { MembersList } from '@/blocks/org/members-list/members-list';\n\n// GA path is updateOrgMembership (role change) + deleteOrgMembership (remove).\n// removeOrgMember / transferOrgOwnership are NOT deployed in the provisioned admin\n// schema yet — pending seams; do not call them.\n<MembersList orgId={orgId} />"
       },
@@ -1221,7 +1221,7 @@
       ],
       "howto": {
         "provision": "# Org role profiles require the b2b org-scoped profiles module — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-create-card org-roles-editor",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/org-create-card @constructive/org-roles-editor",
         "wire": "// Both blocks bind to the generated admin SDK hooks — only BlocksRuntime is required.",
         "usage": "import { OrgCreateCard } from '@/blocks/org/create-card/create-card';\nimport { OrgRolesEditor } from '@/blocks/org/roles-editor/roles-editor';\n\n// OrgRolesEditor needs an orgId (a User row with type=2). Create the org first with\n// org-create-card, then pass its id to the editor.\n<OrgCreateCard onSuccess={(org) => setOrgId(org.id)} />\n{orgId && <OrgRolesEditor orgId={orgId} />}"
       },
@@ -1349,7 +1349,7 @@
       ],
       "howto": {
         "provision": "# Invite flows require the b2b invites modules (app + org scope) — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-invite-dialog auth-invitation-acceptance-card auth-invitation-acceptance-page",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/org-invite-dialog @constructive/auth-invitation-acceptance-card @constructive/auth-invitation-acceptance-page",
         "wire": "import { OrgInviteDialog } from '@/blocks/org/invite-dialog/invite-dialog';\n\n// resendOrgInvite is pending — the dialog resends by cancel + re-create.\n<OrgInviteDialog orgId={orgId} open={open} onOpenChange={setOpen} />",
         "usage": "import InvitationAcceptancePage from '@/blocks/auth/invitation-acceptance-page/invitation-acceptance-page';\n\n// app/invite/page.tsx — reads ?token= and ?kind= from the URL.\nexport default function Page() {\n  return <InvitationAcceptancePage />;\n}"
       },
@@ -1475,7 +1475,7 @@
       ],
       "howto": {
         "provision": "# App membership management requires the b2b app-scoped memberships module — see Backend below.\npgpm install",
-        "install": "npx shadcn@latest add org-app-memberships",
+        "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/org-app-memberships",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Revoke is gated behind a confirmation dialog + step-up (tier: medium).\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { OrgAppMemberships } from '@/blocks/org/app-memberships/app-memberships';\n\n<OrgAppMemberships orgId={orgId} />"
       },

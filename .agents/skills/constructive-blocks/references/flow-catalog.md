@@ -2,7 +2,7 @@
 
 # Flow catalog
 
-Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `0a956c32d942088d59ebadeaa1d8b435abe1ceab2731f3bf98f35d07d1440f49`.
+Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `db2c1caf05101d7d5d3a7f9c2ab64ac70debc1b991e87bb50e10858d6d70199b`.
 
 Each flow is a backend-capability bundle: a preset to provision (resolved to a flat module list), the GraphQL operations it exposes, and the Blocks that wire the UI. GA-only.
 
@@ -20,7 +20,8 @@ The reference sign-in surface: register, sign in, sign out, and read the current
 Install:
 
 ```bash
-npx shadcn@latest add auth-sign-in-card auth-sign-up-card auth-sign-out-button auth-sign-in-page auth-sign-up-page
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-sign-in-card @constructive/auth-sign-up-card @constructive/auth-sign-out-button @constructive/auth-sign-in-page @constructive/auth-sign-up-page
 ```
 
 ### Email verification (`email-verification`)
@@ -35,7 +36,8 @@ Confirm a user owns their email: a verify-link landing page plus a resend banner
 Install:
 
 ```bash
-npx shadcn@latest add auth-verify-email-banner auth-verify-email-page
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-verify-email-banner @constructive/auth-verify-email-page
 ```
 
 ### Password reset (`password-reset`)
@@ -50,7 +52,8 @@ Forgot-password request plus the emailed reset-token landing — enumeration-saf
 Install:
 
 ```bash
-npx shadcn@latest add auth-forgot-password-card auth-forgot-password-page auth-reset-password-card auth-reset-password-page
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-forgot-password-card @constructive/auth-forgot-password-page @constructive/auth-reset-password-card @constructive/auth-reset-password-page
 ```
 
 ### Social / OAuth sign-in (`social-oauth`)
@@ -65,7 +68,8 @@ Sign in with configured identity providers (Google, GitHub, …) rendered as a b
 Install:
 
 ```bash
-npx shadcn@latest add auth-social-buttons auth-social-providers-grid
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-social-buttons @constructive/auth-social-providers-grid
 ```
 
 ### Cross-origin sign-in (`cross-origin`)
@@ -80,7 +84,8 @@ Hand an authenticated session to another origin via a short-lived one-time token
 Install:
 
 ```bash
-npx shadcn@latest add auth-cross-origin-link
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-cross-origin-link
 ```
 
 ## Account & session
@@ -97,7 +102,8 @@ Let the signed-in user edit their display name and avatar against the auth:email
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-profile-card
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-profile-card
 ```
 
 ### Account emails (`account-emails`)
@@ -112,7 +118,8 @@ Manage the signed-in user's email addresses: add, verify, set primary, and remov
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-emails-list
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-emails-list
 ```
 
 ### Change password (`change-password`)
@@ -127,7 +134,8 @@ An authenticated, step-up-gated form to set a new password with an inline streng
 Install:
 
 ```bash
-npx shadcn@latest add auth-change-password-form
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-change-password-form
 ```
 
 ### Sessions (`sessions`)
@@ -142,7 +150,8 @@ List the user's active sessions and revoke them individually or in bulk, gated b
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-sessions-list
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-sessions-list
 ```
 
 ### API keys (`api-keys`)
@@ -157,7 +166,8 @@ Create and revoke user-scoped API keys, with a one-time reveal modal and step-up
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-api-keys-list auth-api-key-create-dialog auth-api-key-created-modal
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-api-keys-list @constructive/auth-api-key-create-dialog @constructive/auth-api-key-created-modal
 ```
 
 ### Account deletion (`account-deletion`)
@@ -172,7 +182,8 @@ A danger-zone card that emails a deletion confirmation, plus the page that compl
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-danger-card auth-account-deletion-confirm-page
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-danger-card @constructive/auth-account-deletion-confirm-page
 ```
 
 ### Step-up verification (`step-up`)
@@ -187,7 +198,8 @@ Re-verify identity (password or TOTP) before a sensitive action, as a dialog or 
 Install:
 
 ```bash
-npx shadcn@latest add auth-step-up-dialog use-step-up
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-step-up-dialog @constructive/use-step-up
 ```
 
 ### Connected accounts (`connected-accounts`)
@@ -202,7 +214,8 @@ List linked OAuth providers and disconnect them (step-up gated); offer connect l
 Install:
 
 ```bash
-npx shadcn@latest add auth-account-connected-accounts
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/auth-account-connected-accounts
 ```
 
 ## Authorization
@@ -219,7 +232,8 @@ Create and configure organizations — first-class User records (type=2) in the 
 Install:
 
 ```bash
-npx shadcn@latest add org-create-card org-settings-form
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/org-create-card @constructive/org-settings-form
 ```
 
 ### Org members (`org-members`)
@@ -234,7 +248,8 @@ List an organization's members with inline role changes and step-up-gated remova
 Install:
 
 ```bash
-npx shadcn@latest add org-members-list
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/org-members-list
 ```
 
 ### Org roles (`org-roles`)
@@ -249,7 +264,8 @@ Create, edit, and delete named org role profiles that bundle the org-scoped perm
 Install:
 
 ```bash
-npx shadcn@latest add org-create-card org-roles-editor
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/org-create-card @constructive/org-roles-editor
 ```
 
 ### Org invites (`org-invites`)
@@ -264,7 +280,8 @@ Invite members to an org by email and let invitees accept app- or org-level invi
 Install:
 
 ```bash
-npx shadcn@latest add org-invite-dialog auth-invitation-acceptance-card auth-invitation-acceptance-page
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/org-invite-dialog @constructive/auth-invitation-acceptance-card @constructive/auth-invitation-acceptance-page
 ```
 
 ### App memberships (`app-memberships`)
@@ -279,5 +296,6 @@ Admin-manage an org's app-level memberships: approve, revoke (step-up gated), an
 Install:
 
 ```bash
-npx shadcn@latest add org-app-memberships
+# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh
+npx shadcn@latest add @constructive/org-app-memberships
 ```
