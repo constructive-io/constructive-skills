@@ -1,7 +1,7 @@
 {
   "generatedAt": null,
   "source": "apps/blocks/scripts/flows-content.mjs",
-  "sotHash": "db2c1caf05101d7d5d3a7f9c2ab64ac70debc1b991e87bb50e10858d6d70199b",
+  "sotHash": "e0e943259833ed66bc1649ebbccc0fce8e93d9e617607f3547849b4fc8853d22",
   "groups": [
     {
       "id": "authentication",
@@ -589,6 +589,15 @@
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Single revoke is step-up tier=medium; revoke-all-others is tier=high.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountSessionsList } from '@/blocks/auth/account-sessions-list/account-sessions-list';\n\n// The session list has no generated list hook — supply rows via the `sessions` prop.\n<AccountSessionsList sessions={sessions} onRevokeSubmit={revokeSession} />"
       },
+      "contract": {
+        "constraints": [
+          "Single revoke is step-up tier=medium; revoke-all-others is tier=high — both must complete a step-up before the mutation fires.",
+          "No generated list hook for sessions — supply rows via the `sessions` prop; the block lists but does not fetch."
+        ],
+        "knownBackendLimitations": [
+          "revokeSession is uncallable from the auth result: the id on a signUp/signIn result is a UUIDv5 identity/credential id, not the UUIDv7 sessions.id, and no field exposes the real session id — so revokeSession(authResult.id) returns SESSION_NOT_FOUND. Ship revoke-current-session as backend-pending; do NOT hand-craft a session id or fall back to SQL. (PLATFORM-GAPS GAP-2)"
+        ]
+      },
       "relatedFlows": [
         "step-up",
         "profile"
@@ -652,6 +661,15 @@
         "install": "# first register @constructive against your served registry — see blocks-onramp §4c / run scripts/serve-registry.sh\nnpx shadcn@latest add @constructive/auth-account-api-keys-list @constructive/auth-api-key-create-dialog @constructive/auth-api-key-created-modal",
         "wire": "import { StepUpProvider } from '@/blocks/auth/use-step-up/step-up-provider';\n\n// Create is gated behind a high-severity step-up; mount the provider once.\n// The deployed create_api_key proc accepts ONLY:\n//   accessLevel ∈ { 'read_only', 'full_access' }   mfaLevel ∈ { 'none', 'verified' }\n// Any other value (read/write/admin, required) -> INVALID_ACCESS_LEVEL at runtime.\n// createApiKey also enforces STEP_UP_REQUIRED server-side: a verifyPassword on the\n// SAME session must precede the create. The dialog runs that step-up first; if you\n// call createApiKey directly, complete step-up (verifyPassword) before the mutation.\n<StepUpProvider>{children}</StepUpProvider>",
         "usage": "import { AccountApiKeysList } from '@/blocks/auth/account-api-keys-list/account-api-keys-list';\n\n// No generated list hook for user_api_keys — supply rows via the `keys` prop.\n// Valid create inputs: accessLevel 'read_only' | 'full_access'; mfaLevel 'none' | 'verified'.\n<AccountApiKeysList keys={keys} onKeyCreated={refetch} onKeyRevoked={refetch} />"
+      },
+      "contract": {
+        "constraints": [
+          "createApiKey accessLevel accepts ONLY { 'read_only', 'full_access' } — any other value (read/write/admin, required) fails with INVALID_ACCESS_LEVEL at runtime; the auth-api-key-create-dialog block ships an accessLevelOptions list (read/write/admin) that does NOT match the deployed proc, so constrain the UI to the two valid values.",
+          "createApiKey enforces STEP_UP_REQUIRED server-side: a verifyPassword on the SAME session must precede the create (defense-in-depth beyond the client gate). The dialog runs that step-up first; a direct createApiKey call must complete step-up before the mutation."
+        ],
+        "knownBackendLimitations": [
+          "revokeApiKey returns true and writes an audit-log entry but never sets revoked_at — the key keeps working. Treat its true as a no-op, not proof of revocation; do not surface \"revoked\" as terminal state. (PLATFORM-GAPS GAP-3)"
+        ]
       },
       "relatedFlows": [
         "step-up",

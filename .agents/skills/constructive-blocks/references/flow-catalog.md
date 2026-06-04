@@ -2,7 +2,7 @@
 
 # Flow catalog
 
-Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `db2c1caf05101d7d5d3a7f9c2ab64ac70debc1b991e87bb50e10858d6d70199b`.
+Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `e0e943259833ed66bc1649ebbccc0fce8e93d9e617607f3547849b4fc8853d22`.
 
 Each flow is a backend-capability bundle: a preset to provision (resolved to a flat module list), the GraphQL operations it exposes, and the Blocks that wire the UI. GA-only.
 
@@ -146,6 +146,9 @@ List the user's active sessions and revoke them individually or in bulk, gated b
 - **Modules:** `users_module`, `membership_types_module`, `permissions_module:app`, `limits_module:app`, `levels_module:app`, `memberships_module:app`, `sessions_module`, `user_state_module`, `user_credentials_module`, `config_secrets_module`, `emails_module`, `rls_module`, `user_auth_module`
 - **Exposed ops:** `revokeSession`, `extendTokenExpires`
 - **Blocks:** `auth-account-sessions-list`
+- **Contract:** Single revoke is step-up tier=medium; revoke-all-others is tier=high — both must complete a step-up before the mutation fires.
+- **Contract:** No generated list hook for sessions — supply rows via the `sessions` prop; the block lists but does not fetch.
+- **Known backend limitation:** revokeSession is uncallable from the auth result: the id on a signUp/signIn result is a UUIDv5 identity/credential id, not the UUIDv7 sessions.id, and no field exposes the real session id — so revokeSession(authResult.id) returns SESSION_NOT_FOUND. Ship revoke-current-session as backend-pending; do NOT hand-craft a session id or fall back to SQL. (PLATFORM-GAPS GAP-2)
 
 Install:
 
@@ -162,6 +165,9 @@ Create and revoke user-scoped API keys, with a one-time reveal modal and step-up
 - **Modules:** `users_module`, `membership_types_module`, `permissions_module:app`, `limits_module:app`, `levels_module:app`, `memberships_module:app`, `sessions_module`, `user_state_module`, `user_credentials_module`, `config_secrets_module`, `emails_module`, `rls_module`, `user_auth_module`
 - **Exposed ops:** `createApiKey`, `revokeApiKey`
 - **Blocks:** `auth-account-api-keys-list`, `auth-api-key-create-dialog`, `auth-api-key-created-modal`
+- **Contract:** createApiKey accessLevel accepts ONLY { 'read_only', 'full_access' } — any other value (read/write/admin, required) fails with INVALID_ACCESS_LEVEL at runtime; the auth-api-key-create-dialog block ships an accessLevelOptions list (read/write/admin) that does NOT match the deployed proc, so constrain the UI to the two valid values.
+- **Contract:** createApiKey enforces STEP_UP_REQUIRED server-side: a verifyPassword on the SAME session must precede the create (defense-in-depth beyond the client gate). The dialog runs that step-up first; a direct createApiKey call must complete step-up before the mutation.
+- **Known backend limitation:** revokeApiKey returns true and writes an audit-log entry but never sets revoked_at — the key keeps working. Treat its true as a no-op, not proof of revocation; do not surface "revoked" as terminal state. (PLATFORM-GAPS GAP-3)
 
 Install:
 
