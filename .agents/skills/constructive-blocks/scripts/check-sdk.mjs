@@ -42,6 +42,14 @@
  *      reported but never fail. (A wholly-missing generated dir/alias still fails
  *      independently — see §1–2.)
  *   5. (advisory) `@constructive/blocks-runtime` appears mounted somewhere
+ *   6. (advisory, WARN-only) CONTRACT PREFLIGHT: when an installed block declares
+ *      or imports a known arg-domain or defective op, emit a WARN naming the axis,
+ *      the GAP-N, and the safe value — e.g. `createApiKey.accessLevel` only accepts
+ *      {read_only, full_access} (a block shipping {read,write,admin} → live
+ *      INVALID_ACCESS_LEVEL), or `sendVerificationEmail` aborts upstream (GAP-9).
+ *      These NEVER change the exit code (the op exists + type-checks; only its
+ *      runtime arg-domain/behavior is wrong) and are surfaced in --json as a
+ *      `warnings[]` array. The table mirrors SKILL.md "Known SDK gaps".
  *
  * Drift detection (§9.4) and generating a missing SDK (§9.6) require `cnc
  * codegen` + an endpoint + operator confirmation, so they are NOT run here —
@@ -396,6 +404,208 @@ function normalizeRequirements(raw) {
 }
 
 // ---------------------------------------------------------------------------
+// CONTRACT PREFLIGHT — known arg-domain + defective/RLS-blocked op advisories.
+//
+// A data-driven, WARN-only layer (NEVER a hard-fail) over the confirmed-live
+// platform facts in the harness's PLATFORM-GAPS.md + planning/upstream-gaps-
+// stress-test-2026-06-05.md. The import-presence binding gate above answers "does
+// the op EXIST in the SDK?"; this layer answers a different question the SDK can't
+// see: "this op exists and type-checks, but calling it the way a block ships it
+// fails at RUNTIME (wrong arg-domain) or no-ops (a known upstream defect)."
+//
+// Why WARN and not a new hard-fail class: every op below belongs to a **GA block**
+// whose SDK export is genuinely present — failing the check would false-fail blocks
+// that ship today and pass the binding gate. The harness reads `warnings[]` from
+// --json to surface the safe value / known defect at build time; a human run prints
+// them under a "contract advisories" heading. Exit code is unchanged by warnings.
+//
+// The table mirrors SKILL.md "Known SDK gaps" (the prose table is the human-facing
+// source; this is its executable twin). Keep them in sync: a new GAP-N row in
+// SKILL.md that has an op signature should gain an entry here.
+//
+// Each axis:
+//   kind        'arg-domain' (a field/enum has a constrained safe set the block
+//                violates) | 'defective' (the op exists but no-ops / RLS-denies /
+//                aborts at runtime).
+//   ops         GraphQL op name(s) (camelCase, pre-hook) this axis attaches to.
+//               A manifest matches when it DECLARES the op (mutations/queries) OR
+//               the host source IMPORTS the op's generated hook.
+//   gap         the PLATFORM-GAPS GAP-N id (the escalation channel).
+//   safe        for arg-domain: the values that actually work at runtime.
+//   bad         for arg-domain: the values a block is known to ship that fail.
+//   field       for arg-domain: the argument/enum the domain constrains.
+//   note        one-line operator-facing summary (symptom + safe action).
+//   sources     literal substrings searched in the host source to corroborate an
+//               arg-domain WARN (e.g. the bad enum values a block hard-codes). A
+//               source hit RAISES confidence ('confirmed') vs a name-only match
+//               ('declared'); never required to emit the WARN.
+// ---------------------------------------------------------------------------
+const KNOWN_AXES = [
+  {
+    id: 'createApiKey-accessLevel',
+    kind: 'arg-domain',
+    ops: ['createApiKey'],
+    gap: 'GAP (auth-api-key-create-dialog)',
+    field: 'accessLevel',
+    safe: ['read_only', 'full_access'],
+    bad: ['read', 'write', 'admin'],
+    sources: ['read_only', 'full_access', "'read'", "'write'", "'admin'", '"read"', '"write"', '"admin"', 'accessLevelOptions'],
+    note: "createApiKey.accessLevel only accepts {read_only, full_access}; the auth-api-key-create-dialog ships {read,write,admin} → live INVALID_ACCESS_LEVEL. Pass read_only or full_access. (createApiKey also enforces STEP_UP_REQUIRED server-side.)"
+  },
+  {
+    id: 'createUser-org-rls',
+    kind: 'defective',
+    ops: ['createUser', 'createOrganization'],
+    gap: 'GAP-6',
+    note: "createUser(type=2 Organization)/createOrganization is RLS-denied for an authenticated session (`new row violates row-level security policy for table \"users\"`) — no self-service org can be minted on the b2b tier. Confirmed live via both the block and the direct API. No app-side workaround; upstream (constructive-db)."
+  },
+  {
+    id: 'sessions-list',
+    kind: 'defective',
+    ops: ['userSessions', 'sessions'],
+    gap: 'GAP-2',
+    note: "No userSessions list query is exposed (user_sessions is private, no Connection) — the Sessions flow cannot enumerate sessions to revoke. auth-account-sessions-list is out of frontend scope until an API exposes a sessions Connection."
+  },
+  {
+    id: 'revokeSession-id',
+    kind: 'defective',
+    ops: ['revokeSession'],
+    gap: 'GAP-2',
+    note: "revokeSession(id) returns SESSION_NOT_FOUND for the id on a signIn/signUp result (auth-result id is a UUIDv5 identity id, not the sessions-row UUIDv7; revokeSession also reads user_sessions while signIn writes sessions). Treat sessions-revoke as backend-pending; do NOT hand-craft a session id."
+  },
+  {
+    id: 'revokeApiKey-noop',
+    kind: 'defective',
+    ops: ['revokeApiKey'],
+    gap: 'GAP-3',
+    note: "revokeApiKey returns true and writes an audit-log entry but never sets revoked_at — the key keeps working. Do NOT treat its `true` as a successful revoke (security footgun). Upstream defect."
+  },
+  {
+    id: 'sendVerificationEmail-abort',
+    kind: 'defective',
+    ops: ['sendVerificationEmail'],
+    gap: 'GAP-9',
+    note: "sendVerificationEmail aborts before any email enqueues (`user_secrets_del(uuid, text[]) does not exist` — signature/overload mismatch). Email-verification is unreachable on auth:email; the send raises server-side. No workaround (upstream constructive-db)."
+  },
+  {
+    id: 'sendAccountDeletionEmail-noop',
+    kind: 'defective',
+    ops: ['sendAccountDeletionEmail'],
+    gap: 'GAP-10',
+    note: "sendAccountDeletionEmail returns HTTP 200 but enqueues nothing (silent no-op) — the UI claims 'a confirmation email has been sent' while Mailpit stays empty, so deletion can never be confirmed. Do NOT hand-roll the deletion email. Upstream (constructive-db)."
+  },
+  {
+    id: 'forgotPassword-empty-selection',
+    kind: 'defective',
+    ops: ['forgotPassword', 'signOut'],
+    gap: 'GAP-11',
+    note: "forgot-password-card + sign-out-button (dashboard-blocks) ship an empty GraphQL selection (selection:{fields:{}}) that codegen rejects (`forgotPassword must have a selection of subfields`) — the block cannot issue its mutation. App-local fix: set the selection to { clientMutationId: true }. (signOut codegen is also broken per GAP-4.) Upstream owner is dashboard-blocks."
+  }
+  // NOTE — GAP-5 org-admin seams (`removeOrgMember` / `transferOrgOwnership` /
+  // `deleteOrg`) are deliberately NOT in this table. Those ops are *absent*
+  // (not-yet-deployed), which the BINDING gate's existing `pending`/import-presence
+  // mechanism already surfaces (declared-but-unimported → informational ◦, or a
+  // manifest `pending` entry). This contract layer covers the orthogonal class the
+  // binding gate cannot see: ops that EXIST + type-check but fail/no-op/abort at
+  // runtime (arg-domain, RLS-deny, silent no-op). Adding GAP-5 here would duplicate
+  // the binding gate and is intentionally left to it.
+];
+
+// Build an op → axis index once (an op may map to at most one axis here).
+const AXIS_BY_OP = new Map();
+for (const axis of KNOWN_AXES) for (const op of axis.ops) if (!AXIS_BY_OP.has(op)) AXIS_BY_OP.set(op, axis);
+
+// Does the host source literally contain any of the corroborating substrings?
+// Used only to upgrade an arg-domain WARN from 'declared' to 'confirmed' (the
+// block hard-codes a bad enum value). Scans the same src/ tree as the import
+// collector; best-effort and never required to emit a WARN.
+function sourceContainsAny(projectRoot, needles) {
+  if (!needles || !needles.length) return false;
+  const src = join(projectRoot, 'src');
+  const root = existsSync(src) ? src : projectRoot;
+  for (const file of walk(root)) {
+    let txt;
+    try {
+      txt = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    for (const n of needles) if (txt.includes(n)) return true;
+  }
+  return false;
+}
+
+// Walk the manifests' declared ops + the host's imported generated symbols and
+// collect a WARN for every known axis they touch. Returns a flat warnings[]:
+//   { id, kind, gap, op, block, namespace, field?, safe?, bad?, via, confidence, message }
+// `via` is 'declared' (named in a requires.json) or 'imported' (its hook is
+// imported from @/generated/*); `confidence` is 'confirmed' when corroborating
+// source text was found, else 'declared'/'imported'. WARNs NEVER affect exit code.
+function collectContractWarnings(report, importedSymbols, projectRoot) {
+  const warnings = [];
+  const seen = new Set(); // de-dupe (axis,block,namespace,op,via)
+
+  // helper: which import names corroborate this op? the op's mutation OR query hook.
+  const opImported = (op) => importedSymbols.has(mutationHook(op)) || importedSymbols.has(queryHook(op));
+
+  const push = (axis, op, block, namespace, via) => {
+    const key = `${axis.id}|${block}|${namespace}|${op}|${via}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    // Corroborate an arg-domain WARN by looking for the bad enum literals the
+    // block hard-codes (quoted both ways). A hit upgrades 'declared'/'imported'
+    // to 'confirmed'; otherwise confidence is just the discovery channel.
+    let confidence = via;
+    if (axis.kind === 'arg-domain' && Array.isArray(axis.bad)) {
+      const needles = axis.bad.flatMap((v) => [`'${v}'`, `"${v}"`]);
+      if (sourceContainsAny(projectRoot, needles)) confidence = 'confirmed';
+    }
+    const head =
+      axis.kind === 'arg-domain'
+        ? `arg-domain ${op}.${axis.field} — safe ${JSON.stringify(axis.safe)}, NOT ${JSON.stringify(axis.bad)}`
+        : `defective op ${op}`;
+    warnings.push({
+      id: axis.id,
+      kind: axis.kind,
+      gap: axis.gap,
+      op,
+      block,
+      namespace,
+      field: axis.field ?? null,
+      safe: axis.safe ?? null,
+      bad: axis.bad ?? null,
+      via,
+      confidence,
+      message: `[${axis.gap}] ${head}. ${axis.note}`
+    });
+  };
+
+  for (const b of report) {
+    for (const ns of b.namespaces) {
+      for (const o of ns.ops) {
+        const axis = AXIS_BY_OP.get(o.op);
+        if (!axis) continue;
+        // 'declared' — the op is named in this block's manifest (always true here,
+        // since ns.ops comes from the manifest). 'imported' takes precedence as the
+        // stronger signal (the block actually wires the hook).
+        const via = o.kind !== 'model' && opImported(o.op) ? 'imported' : 'declared';
+        push(axis, o.op, b.block, ns.namespace, via);
+      }
+    }
+  }
+  // Also flag axes whose hook the host IMPORTS but which no manifest declared
+  // (e.g. a block author calls createApiKey directly without a requires.json entry,
+  // or a presentational wrapper imports the hook). Attributed to '(imported)'.
+  for (const [op, axis] of AXIS_BY_OP) {
+    if (opImported(op)) {
+      const already = warnings.some((w) => w.id === axis.id && w.op === op);
+      if (!already) push(axis, op, '(imported)', '(host source)', 'imported');
+    }
+  }
+  return warnings;
+}
+
+// ---------------------------------------------------------------------------
 // advisory: is <BlocksRuntime …> mounted anywhere in the host source?
 // ---------------------------------------------------------------------------
 function runtimeMounted(projectRoot) {
@@ -493,8 +703,14 @@ Usage:
   [block]            a block name (auth-sign-in-card) or manifest path; omit to check all
   --project DIR      project root to check (default: cwd)
   --manifests-dir DIR  explicit .constructive/blocks dir (overrides auto-discovery)
-  --json             emit a machine-readable report
+  --json             emit a machine-readable report (includes a warnings[] array)
   --help             show this help
+
+In addition to the hard binding gate, the check emits WARN-only CONTRACT
+ADVISORIES for known arg-domain / defective ops an installed block touches
+(e.g. createApiKey.accessLevel ∈ {read_only, full_access}; sendVerificationEmail
+aborts upstream). Advisories never change the exit code; read them from
+warnings[] in --json. The advisory table mirrors SKILL.md "Known SDK gaps".
 
 Manifests are auto-discovered under both <project>/.constructive/blocks and
 <project>/src/.constructive/blocks (shadcn writes to the latter when the blocks
@@ -596,9 +812,12 @@ function main() {
   }
 
   const runtimeOk = runtimeMounted(opts.project);
+  // Contract-preflight advisories: known arg-domain + defective/RLS-blocked ops
+  // touched by the installed blocks. WARN-only — they NEVER change `failed`.
+  const warnings = collectContractWarnings(report, importedSymbols, opts.project);
 
   if (opts.json) {
-    console.log(JSON.stringify({ project: opts.project, aliasOk, runtimeMounted: runtimeOk, blocks: report, ok: !failed }, null, 2));
+    console.log(JSON.stringify({ project: opts.project, aliasOk, runtimeMounted: runtimeOk, blocks: report, warnings, ok: !failed }, null, 2));
     process.exit(failed ? 1 : 0);
   }
 
@@ -628,6 +847,18 @@ function main() {
     }
   }
   console.log(`\n${runtimeOk ? C.green('✓') : C.dim('•')} <BlocksRuntime> ${runtimeOk ? 'mounted' : 'not found (mount it once at the app root — advisory)'}`);
+
+  // Contract advisories (WARN, never a failure). These name an op that exists +
+  // type-checks but has a known runtime arg-domain or upstream defect, with the
+  // safe value / known behavior — so the build doesn't burn a round-trip on
+  // INVALID_ACCESS_LEVEL or a silent no-op. Mirrors SKILL.md "Known SDK gaps".
+  if (warnings.length) {
+    console.log(C.bold(`\n⚠ ${warnings.length} contract advisor${warnings.length === 1 ? 'y' : 'ies'} (WARN — not a failure):`));
+    for (const w of warnings) {
+      const where = w.block === '(imported)' ? C.dim('(imported in host source)') : `${C.bold(w.block)} ${C.dim(`/ ${w.namespace}`)}`;
+      console.log(`  ${C.bold('⚠')} ${where}\n    ${w.message}`);
+    }
+  }
 
   if (failed) {
     console.log(C.red('\n✗ Unsatisfied prerequisites.'));

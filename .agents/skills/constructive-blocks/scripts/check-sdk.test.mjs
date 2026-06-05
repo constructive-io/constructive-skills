@@ -109,19 +109,32 @@ test('declared-pending op is informational, not a failure (exit 0)', () => {
   try {
     const { code, out } = run(root);
     assert.equal(code, 0, out);
+    // Each declared-pending op is reported informationally (◦) as backend-pending,
+    // and the run summarises them as backend-pending seam(s) — but never fails.
     assert.match(out, /removeOrgMember.*backend-pending/);
-    assert.match(out, /declared backend-pending seam/);
+    assert.match(out, /backend-pending seam/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-test('a NON-pending missing op still fails (exit 1) — binding still protects', () => {
+test('a NON-pending missing op that IS IMPORTED still fails (exit 1) — binding still protects', () => {
+  // The import-presence gate (§9) hard-fails only on a missing op the block
+  // genuinely IMPORTS from @/generated/* (a real compile-against-a-missing-export);
+  // a declared-but-unimported op degrades (◦, exit 0). So to exercise the protection
+  // this fixture IMPORTS the missing hook in a source file.
   const root = makeApp({
     models: ['orgMembership'],
     hooks: GA_HOOKS,
     manifest: { namespace: 'admin', mutations: ['updateOrgMembership', 'totallyMissingOp'], queries: [], models: ['orgMembership'] }
   });
+  // add a source file that imports the missing op's hook (triggers the hard-fail)
+  const blocksDir = join(root, 'src/blocks');
+  mkdirSync(blocksDir, { recursive: true });
+  writeFileSync(
+    join(blocksDir, 'uses-missing.tsx'),
+    "import { useTotallyMissingOpMutation } from '@/generated/admin';\nexport function X() { useTotallyMissingOpMutation({}); return null; }\n"
+  );
   try {
     const { code, out } = run(root);
     assert.equal(code, 1, out);
@@ -142,6 +155,205 @@ test('a pending op that IS present reports ✓, not suppressed (exit 0)', () => 
     assert.equal(code, 0, out);
     assert.match(out, /✓ mutation removeOrgMember/);
     assert.doesNotMatch(out, /backend-pending/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// CONTRACT PREFLIGHT — known arg-domain + defective/RLS-blocked op advisories.
+//
+// These assert the WARN-only contract layer: an op that EXISTS (passes the
+// binding gate) but has a known runtime arg-domain (createApiKey.accessLevel) or
+// upstream defect (sendVerificationEmail GAP-9, revokeApiKey GAP-3, createUser
+// GAP-6, sessions GAP-2, …) must produce a `warnings[]` entry naming the GAP-N +
+// safe value, WITHOUT changing the exit code. The advisory table mirrors
+// SKILL.md "Known SDK gaps" and the harness PLATFORM-GAPS.md confirmed-live facts.
+//
+// `manifest` is written verbatim (so a test controls the namespace + declared
+// ops). `hooks` are generated hook identifiers that EXIST (so the binding gate
+// passes). `src` is an optional map of {relativePath: contents} written under
+// src/ — used to exercise import-presence + arg-domain corroboration.
+// ---------------------------------------------------------------------------
+function makeContractApp({ ns = 'auth', hooks = [], manifest, src = {} }) {
+  const root = mkdtempSync(join(tmpdir(), 'check-sdk-contract-'));
+  writeFileSync(
+    join(root, 'tsconfig.json'),
+    JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/generated/*': ['./src/generated/*'] } } })
+  );
+  const hooksDir = join(root, `src/generated/${ns}/hooks/mutations`);
+  mkdirSync(hooksDir, { recursive: true });
+  for (const h of hooks) writeFileSync(join(hooksDir, `${h}.ts`), `export function ${h}() {}\n`);
+  for (const [rel, contents] of Object.entries(src)) {
+    const p = join(root, 'src', rel);
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, contents);
+  }
+  const manifestDir = join(root, 'src/.constructive/blocks');
+  mkdirSync(manifestDir, { recursive: true });
+  writeFileSync(join(manifestDir, 'block.requires.json'), JSON.stringify(manifest));
+  return root;
+}
+
+// Run with --json and parse the report (so we can assert on warnings[] structurally).
+function runJson(root) {
+  const r = spawnSync(process.execPath, [SCRIPT, '--project', root, '--json'], { encoding: 'utf-8' });
+  let json = null;
+  try {
+    json = JSON.parse(r.stdout);
+  } catch {
+    /* leave null — the assertion will surface stderr */
+  }
+  return { code: r.status, json, out: r.stdout + r.stderr };
+}
+
+test('arg-domain: createApiKey accessLevel WARNs {read_only,full_access}, never fails (exit 0)', () => {
+  const root = makeContractApp({
+    ns: 'auth',
+    hooks: ['useCreateApiKeyMutation'], // op EXISTS → binding gate passes
+    manifest: { namespace: 'auth', mutations: ['createApiKey'], queries: [], models: [] },
+    src: {
+      // block hard-codes the BAD enum values → corroboration upgrades to 'confirmed'
+      'blocks/auth/api-key-create-dialog.tsx':
+        "import { useCreateApiKeyMutation } from '@/generated/auth';\nconst accessLevelOptions = ['read', 'write', 'admin'];\nexport function D() { useCreateApiKeyMutation({ selection: { fields: { clientMutationId: true } } }); return null; }\n"
+    }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out); // WARN, NOT a failure
+    assert.ok(json, out);
+    assert.equal(json.ok, true);
+    const w = json.warnings.find((x) => x.id === 'createApiKey-accessLevel');
+    assert.ok(w, `expected a createApiKey arg-domain warning, got ${JSON.stringify(json.warnings)}`);
+    assert.equal(w.kind, 'arg-domain');
+    assert.equal(w.field, 'accessLevel');
+    assert.deepEqual(w.safe, ['read_only', 'full_access']);
+    assert.deepEqual(w.bad, ['read', 'write', 'admin']);
+    assert.equal(w.confidence, 'confirmed'); // the bad literals were found in source
+    assert.match(w.message, /INVALID_ACCESS_LEVEL/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('defective: sendVerificationEmail WARNs GAP-9, exit 0 (op present, runtime aborts)', () => {
+  const root = makeContractApp({
+    ns: 'auth',
+    hooks: ['useSendVerificationEmailMutation'],
+    manifest: { namespace: 'auth', mutations: ['sendVerificationEmail'], queries: [], models: [] }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out);
+    const w = json.warnings.find((x) => x.id === 'sendVerificationEmail-abort');
+    assert.ok(w, out);
+    assert.equal(w.kind, 'defective');
+    assert.equal(w.gap, 'GAP-9');
+    assert.equal(w.via, 'declared'); // named in the manifest, hook not imported here
+    assert.match(w.message, /user_secrets_del/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('defective: createUser(type=2) / createOrganization WARN GAP-6 (RLS-denied)', () => {
+  const root = makeContractApp({
+    ns: 'admin',
+    hooks: ['useCreateUserMutation'],
+    manifest: { namespace: 'admin', mutations: ['createUser'], queries: [], models: [] }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out);
+    const w = json.warnings.find((x) => x.id === 'createUser-org-rls');
+    assert.ok(w, out);
+    assert.equal(w.gap, 'GAP-6');
+    assert.match(w.message, /row-level security/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('defective: revokeApiKey imported WITHOUT a manifest entry still WARNs GAP-3 (import-presence)', () => {
+  const root = makeContractApp({
+    ns: 'auth',
+    hooks: ['useRevokeApiKeyMutation', 'useSignInMutation'],
+    // manifest is for a DIFFERENT, clean op — revokeApiKey is only ever imported
+    manifest: { namespace: 'auth', mutations: ['signIn'], queries: [], models: [] },
+    src: {
+      'blocks/auth/keys.tsx':
+        "import { useRevokeApiKeyMutation } from '@/generated/auth';\nexport function K() { useRevokeApiKeyMutation({ selection: { fields: { clientMutationId: true } } }); return null; }\n"
+    }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out);
+    const w = json.warnings.find((x) => x.id === 'revokeApiKey-noop');
+    assert.ok(w, `expected revokeApiKey warning from an imported-only op, got ${JSON.stringify(json.warnings)}`);
+    assert.equal(w.via, 'imported');
+    assert.equal(w.block, '(imported)');
+    assert.equal(w.gap, 'GAP-3');
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('no false positives: a clean GA block (signIn) emits ZERO contract advisories', () => {
+  const root = makeContractApp({
+    ns: 'auth',
+    hooks: ['useSignInMutation'],
+    manifest: { namespace: 'auth', mutations: ['signIn'], queries: [], models: [] },
+    src: {
+      'blocks/auth/sign-in.tsx':
+        "import { useSignInMutation } from '@/generated/auth';\nexport function S() { useSignInMutation({ selection: { fields: { result: { select: { userId: true } } } } }); return null; }\n"
+    }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out);
+    assert.equal(json.warnings.length, 0, `expected no advisories for a clean GA app, got ${JSON.stringify(json.warnings)}`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('GAP-5 org-admin seams are NOT a contract advisory (left to the binding gate, no "backend-pending" WARN)', () => {
+  // removeOrgMember is an *absent* (not-deployed) op — the binding gate's
+  // pending/import-presence mechanism already surfaces it. The contract layer must
+  // NOT add a redundant WARN (which would also collide with the present-pending
+  // "doesNotMatch(/backend-pending/)" expectation when such an op IS deployed).
+  const root = makeContractApp({
+    ns: 'admin',
+    hooks: ['useRemoveOrgMemberMutation'], // present → binding gate clean
+    manifest: { namespace: 'admin', mutations: ['removeOrgMember'], queries: [], models: [], pending: ['removeOrgMember'] }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 0, out);
+    assert.equal(json.warnings.length, 0, `GAP-5 ops must not appear in contract warnings, got ${JSON.stringify(json.warnings)}`);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('a contract advisory does NOT mask a real binding failure (exit 1 still wins)', () => {
+  // createApiKey present (so its WARN fires) + a genuinely-missing imported op.
+  const root = makeContractApp({
+    ns: 'auth',
+    hooks: ['useCreateApiKeyMutation'], // present
+    manifest: { namespace: 'auth', mutations: ['createApiKey', 'reallyMissingOp'], queries: [], models: [] },
+    src: {
+      // import BOTH: createApiKey (warns) AND reallyMissingOp (hard-fail — imported but absent)
+      'blocks/auth/x.tsx':
+        "import { useCreateApiKeyMutation, useReallyMissingOpMutation } from '@/generated/auth';\nexport function X() { useCreateApiKeyMutation({}); useReallyMissingOpMutation({}); return null; }\n"
+    }
+  });
+  try {
+    const { code, json, out } = runJson(root);
+    assert.equal(code, 1, out); // binding failure dominates
+    assert.equal(json.ok, false);
+    // the WARN is still recorded (advisory layer runs regardless of failure)
+    assert.ok(json.warnings.some((x) => x.id === 'createApiKey-accessLevel'), out);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

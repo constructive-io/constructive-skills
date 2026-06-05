@@ -150,12 +150,14 @@ node scripts/check-sdk.mjs auth-sign-in-card  # check one block (name or manifes
 node scripts/check-sdk.mjs --project /path/app --json
 ```
 
-It (1) verifies the `@/generated/*` alias exists in `tsconfig.json`, (2) resolves and checks the generated dir for each block's namespace, (3) asserts every manifest op maps to a real SDK export (`signIn` → `useSignInMutation`), and (4) advises whether `<BlocksRuntime>` is mounted. **Exit codes: `0`** satisfied · **`1`** a prerequisite is missing · **`2`** the check couldn't run (no tsconfig / bad manifest).
+It (1) verifies the `@/generated/*` alias exists in `tsconfig.json`, (2) resolves and checks the generated dir for each block's namespace, (3) asserts every manifest op maps to a real SDK export (`signIn` → `useSignInMutation`), (4) advises whether `<BlocksRuntime>` is mounted, and (5) emits **contract advisories** (WARN-only) for known arg-domain / defective ops an installed block touches — see the **(B)** table under "Known SDK gaps". **Exit codes: `0`** satisfied · **`1`** a prerequisite is missing · **`2`** the check couldn't run (no tsconfig / bad manifest). **Contract advisories never change the exit code** — they're read from `warnings[]` in `--json`.
 
 On failure it prints the exact remediation:
 
 - **Alias or generated dir missing** → it prints the `cnc codegen --api-names <ns> --react-query --orm -o src/generated` to run, then re-check.
 - **SDK present but an op is absent** → the backend likely hasn't deployed that procedure, or the SDK is stale. Regenerate and drift-check with `cnc codegen … --dry-run`.
+
+It also prints **contract advisories** (WARN, exit code unchanged): a `⚠` line per known arg-domain / defective op an installed block touches (see the **(B)** table above). For an **arg-domain** WARN, pass the safe value (e.g. `createApiKey` → `read_only`/`full_access`, not `read`/`write`/`admin`). For a **defective** WARN (GAP-N), the op is upstream-broken — don't build a flow that depends on it succeeding; treat it as backend-pending. The harness reads these from `warnings[]` in `--json` (`node scripts/check-sdk.mjs --json`).
 
 **This script never runs `cnc codegen` itself** — generation needs an endpoint and operator confirmation. It *detects*; you *remediate*. If the SDK is genuinely missing, confirm the endpoint/api-names with the operator, run `cnc codegen`, then re-run the check.
 
@@ -197,13 +199,32 @@ await signIn.mutateAsync({ email, password, rememberMe });
 
 ## Known SDK gaps (consequences, not bugs)
 
+There are **two** distinct gap classes, surfaced by `check-sdk.mjs` in two different ways:
+
+**(A) Absent ops — caught by the binding gate (HARD-FAIL on import, ◦ when degraded).** The op isn't in the SDK at all (not-yet-deployed proc or no Connection type). A block that *imports* it fails the check; a block that *declares but degrades* (never imports it) reports `◦` and passes.
+
 | Capability | Status | Block handling |
 |---|---|---|
 | List active sessions | No Connection type (`user_sessions` is private) → no list hook | `auth-account-sessions-list` is **out of frontend scope** until an API exposes a sessions Connection. Only `revokeSession` exists. |
 | List API keys | Same — `user_api_keys` is private | `auth-account-api-keys-list` likewise out of scope; `createApiKey`/`revokeApiKey` exist. |
-| Passkeys / TOTP-enroll / magic-link / email-OTP / anonymous / context-switch / org transfer+delete | Procedures **not yet deployed** in any public schema | Blocks kept **backend-pending** with a "not buildable until proc ships" banner; their `requires.json` names the pending op so `check-sdk.mjs` fails clearly. |
+| Passkeys / TOTP-enroll / magic-link / email-OTP / anonymous / context-switch / org transfer+delete (`removeOrgMember` / `transferOrgOwnership` / `delete_org`) | Procedures **not yet deployed** in any public schema | Blocks kept **backend-pending** with a "not buildable until proc ships" banner; their `requires.json` names the pending op so `check-sdk.mjs` fails clearly (or marks it `◦` when degraded). Route member-remove through GA `deleteOrgMembership`. |
 
 A block whose required op is absent **fails the check with a precise message** rather than compiling against a guess — that is the gap surfacing honestly, not a defect.
+
+**(B) Present-but-defective ops — surfaced by the CONTRACT PREFLIGHT (WARN, never a failure).** These ops *exist* and type-check (they pass the binding gate), but calling them the way a block ships fails at **runtime**: a wrong **arg-domain** (a live `INVALID_ACCESS_LEVEL`) or a known **upstream defect** (silent no-op / RLS-deny / abort). The binding gate can't see this — the export is present — so `check-sdk.mjs` emits a **contract advisory** naming the op, the GAP-N, and the safe value. **This table is the source `check-sdk.mjs` mirrors** (the `KNOWN_AXES` table in the script); keep them in sync — a new row here with an op signature should gain a `KNOWN_AXES` entry. The advisories appear under "⚠ contract advisories" in the human report and as a `warnings[]` array in `--json`. Based on the harness's confirmed-live facts in **`PLATFORM-GAPS.md`** + **`planning/upstream-gaps-stress-test-2026-06-05.md`**.
+
+| Op(s) | Axis | GAP | Safe value / behavior |
+|---|---|---|---|
+| `createApiKey` | **arg-domain** `accessLevel ∈ {read_only, full_access}` | auth-api-key axis | The `auth-api-key-create-dialog` ships `{read, write, admin}` → live **`INVALID_ACCESS_LEVEL`**. Pass `read_only` or `full_access`. (`createApiKey` also enforces `STEP_UP_REQUIRED` server-side.) |
+| `createUser(type=2)` / `createOrganization` | **defective** (RLS-deny) | GAP-6 | RLS-denied for an authenticated session (`new row violates row-level security policy for table "users"`) — no self-service org can be minted on the b2b tier. Confirmed via both the block and the direct API. Upstream (constructive-db). |
+| `userSessions` / `sessions` (list) | **defective** (no Connection) | GAP-2 | No `userSessions` list query is exposed → the Sessions flow can't enumerate sessions to revoke. Out of frontend scope until a Connection ships. |
+| `revokeSession` | **defective** (id mismatch) | GAP-2 | Returns `SESSION_NOT_FOUND` for the id on a `signIn`/`signUp` result (UUIDv5 identity id ≠ `sessions`-row UUIDv7; reads `user_sessions` while `signIn` writes `sessions`). Treat sessions-revoke as backend-pending; don't hand-craft a session id. |
+| `revokeApiKey` | **defective** (silent partial write) | GAP-3 | Returns `true` + writes an audit-log entry but never sets `revoked_at` — the key keeps working. Don't trust its `true` as a revoke (security footgun). |
+| `sendVerificationEmail` | **defective** (aborts) | GAP-9 | Aborts before any email enqueues (`user_secrets_del(uuid, text[]) does not exist`). Email-verification unreachable on `auth:email`; the send raises server-side. No workaround. |
+| `sendAccountDeletionEmail` | **defective** (silent no-op) | GAP-10 | Returns HTTP 200 but enqueues nothing — the UI claims "a confirmation email has been sent" while Mailpit stays empty. Don't hand-roll the deletion email. |
+| `forgotPassword` / `signOut` | **defective** (empty selection) | GAP-11 | `forgot-password-card` + `sign-out-button` (dashboard-blocks) ship `selection:{fields:{}}` which codegen rejects (`… must have a selection of subfields`). App-local fix: set the selection to `{ clientMutationId: true }`. (`signOut` codegen is also broken per GAP-4.) |
+
+A contract advisory is **not** a failure — the block is installable and compiles. It is a heads-up so the build doesn't burn a round-trip on a runtime arg-domain error or a silent no-op. (GAP-5 absent ops live in table **(A)**, handled by the binding gate's pending mechanism — they are intentionally **not** duplicated as contract advisories.)
 
 ## The override seam (portability)
 
