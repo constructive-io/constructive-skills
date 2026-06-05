@@ -28,10 +28,19 @@
  *      Models are matched SINGULAR-insensitively: the ORM accessor (and its
  *      `models/<name>.ts` file) is always singular, so a manifest may declare a
  *      list model plural (`orgMemberships`) or singular (`orgMembership`) — both
- *      satisfy the on-disk `models/orgMembership.ts`. Op/model names listed in a
- *      manifest's optional `pending` array are reported but NEVER fail the check
- *      (a block may ship a seam for a not-yet-deployed proc; a missing op that is
- *      NOT declared pending still fails clearly).
+ *      satisfy the on-disk `models/orgMembership.ts`.
+ *
+ *      IMPORT-PRESENCE GATE: a missing op only HARD-FAILS when the block actually
+ *      IMPORTS the hook that op maps to (from `@/generated/*` in the host source)
+ *      — i.e. a genuine compile-against-a-missing-export. A manifest routinely
+ *      declares the full capability surface (so the catalog is honest), but a
+ *      block degrades when an op isn't deployed and simply never imports its hook
+ *      (e.g. `org-members-list` declares removeOrgMember/transferOrgOwnership yet
+ *      imports neither, referencing them only in comments/override seams). Such a
+ *      declared-but-unimported op is reported as backend-pending, NEVER a failure.
+ *      Op/model names listed in a manifest's optional `pending` array are likewise
+ *      reported but never fail. (A wholly-missing generated dir/alias still fails
+ *      independently — see §1–2.)
  *   5. (advisory) `@constructive/blocks-runtime` appears mounted somewhere
  *
  * Drift detection (§9.4) and generating a missing SDK (§9.6) require `cnc
@@ -403,6 +412,68 @@ function runtimeMounted(projectRoot) {
 }
 
 // ---------------------------------------------------------------------------
+// imported generated symbols: which `@/generated/*` identifiers does the host
+// source ACTUALLY import? (§9 import-presence gate.)
+//
+// The gate hard-fails only on ops a block genuinely IMPORTS — not ops merely
+// DECLARED in its requires.json. A correctly-wired block routinely declares the
+// full capability surface in its manifest yet degrades when an op isn't
+// deployed: `org-members-list` declares removeOrgMember + transferOrgOwnership
+// but imports only useUpdateOrgMembershipMutation / useDeleteOrgMembershipMutation,
+// referencing the absent procs solely in comments/override seams. Such a block
+// compiles and runs; failing it would be a false negative.
+//
+// So we scan for the bindings actually pulled from a `@/generated/...` module
+// and key the hard-fail on import-presence. Detection is STATEMENT-AWARE: only
+// the named/default/namespace bindings of a real `import … from '@/generated/…'`
+// are collected. A symbol that appears only in a comment or doc block (e.g.
+// "useTransferOrgOwnershipMutation does NOT exist yet") is NOT an import and is
+// never counted — otherwise the comment alone would re-introduce the false fail.
+//
+// We collect into one project-wide set (the SOURCE name, post-`as`-rename, so an
+// `import { useFooMutation as foo }` still registers `useFooMutation`). Keying by
+// the generated name rather than per-file keeps it robust to barrel re-exports
+// and is sufficient: the check asks "is the hook this op maps to imported from
+// the SDK anywhere?", which is exactly the compile-against-a-missing-export risk.
+const GEN_IMPORT_RE = /import\s+([^;'"]*?)\s+from\s+['"]@\/generated\/[^'"]*['"]/g;
+
+function collectGeneratedImports(projectRoot) {
+  const src = join(projectRoot, 'src');
+  const root = existsSync(src) ? src : projectRoot;
+  const imported = new Set();
+  for (const file of walk(root)) {
+    let txt;
+    try {
+      txt = readFileSync(file, 'utf-8');
+    } catch {
+      continue;
+    }
+    let m;
+    GEN_IMPORT_RE.lastIndex = 0;
+    while ((m = GEN_IMPORT_RE.exec(txt))) {
+      // clause = whatever sits between `import` and `from '@/generated/…'`:
+      //   { a, b as c, type D }  |  Foo  |  * as NS  |  Foo, { a }
+      let clause = m[1].trim();
+      const brace = clause.match(/\{([^}]*)\}/);
+      if (brace) {
+        for (let item of brace[1].split(',')) {
+          item = item.trim().replace(/^type\s+/, '');
+          if (!item) continue;
+          const as = item.split(/\s+as\s+/); // SOURCE name = before `as`
+          const name = (as[0] ?? '').trim();
+          if (/^[A-Za-z0-9_$]+$/.test(name)) imported.add(name);
+        }
+        clause = clause.replace(/\{[^}]*\}/, '').replace(/^\s*,|,\s*$/g, '').trim();
+      }
+      // default / namespace binding remnant (e.g. `Foo` or `* as NS`)
+      const def = clause.replace(/^\*\s+as\s+/, '').trim();
+      if (/^[A-Za-z0-9_$]+$/.test(def)) imported.add(def);
+    }
+  }
+  return imported;
+}
+
+// ---------------------------------------------------------------------------
 // reporting
 // ---------------------------------------------------------------------------
 const C = process.stdout.isTTY
@@ -450,6 +521,10 @@ function main() {
   }
 
   const aliasOk = hasGeneratedAlias(ts.paths);
+  // Which `@/generated/*` identifiers does the host source actually import? The
+  // hard-fail is gated on this set (import-presence, §9): an op a block declares
+  // but does not import is backend-pending, not a failure (it degrades).
+  const importedSymbols = collectGeneratedImports(opts.project);
   const sdkCache = new Map(); // ns -> { dir, sdk } | { dir:null }
   const report = [];
   let failed = false;
@@ -477,14 +552,34 @@ function main() {
       const cached = sdkCache.get(ns);
       nsEntry.generatedDir = cached.dir;
 
+      // A missing generated dir (alias unresolved or the resolved dir absent) is
+      // a fundamental, op-independent failure — the namespace's SDK doesn't exist
+      // at all, so nothing the block imports can resolve. Surface it as exit 1
+      // here so the import-presence op gate below (which would otherwise mark
+      // every op backend-pending for a block that imports none of them) cannot
+      // mask a wholly-missing SDK. The human report already names the missing
+      // namespace and prints the `cnc codegen` remediation.
+      if (!cached.sdk) failed = true;
+
       const checkOp = (op, kind, expected, present) => {
         const satisfied = !!cached.sdk && present;
-        const pending = req.pending.has(op);
-        // A declared-pending op is informational: reported, never a failure —
-        // even when the SDK is present and the op is genuinely absent. Only a
-        // NON-pending unsatisfied op flips `failed`.
-        if (!satisfied && !pending) failed = true;
-        nsEntry.ops.push({ op, kind, expects: expected, ok: satisfied, pending });
+        const declaredPending = req.pending.has(op);
+        // Import-presence gate (§9): is the symbol this op maps to actually
+        // imported from `@/generated/*` somewhere in the host source? Models map
+        // to an accessor object, not a hook — a list block imports the hook, not
+        // the model name — so only mutation/query hooks are import-gated; a
+        // declared-but-unimported model is treated the same (informational).
+        const imported = kind === 'model' ? false : importedSymbols.has(expected);
+        // A missing op that the block does NOT import is backend-pending: the
+        // block declared the full capability surface but degrades to the ops it
+        // wires (e.g. org-members-list declares removeOrgMember/transferOrgOwnership
+        // yet imports neither). Reported, never a failure. Only a missing op the
+        // block GENUINELY IMPORTS (a real compile-against-a-missing-export) — or
+        // a missing op when the SDK dir itself is absent — flips `failed`. An
+        // explicit `pending` declaration also suppresses the failure.
+        const pending = declaredPending || (!satisfied && !imported);
+        if (!satisfied && imported && !declaredPending) failed = true;
+        nsEntry.ops.push({ op, kind, expects: expected, ok: satisfied, pending, imported, declaredPending });
       };
 
       for (const op of req.mutations) checkOp(op, 'mutation', mutationHook(op), cached.sdk?.exports.has(mutationHook(op)));
@@ -522,7 +617,12 @@ function main() {
       for (const o of ns.ops) {
         // pending + absent → ◦ (informational); pending + present → ✓; else ✓/✗.
         const mark = o.ok ? C.green('✓') : o.pending ? C.dim('◦') : C.red('✗');
-        const note = o.pending && !o.ok ? C.dim(' (backend-pending — not yet deployed)') : '';
+        // Distinguish WHY an absent op is informational: an explicit `pending`
+        // declaration vs detected as declared-but-not-imported (the block
+        // degrades — it never imports this op's hook, so it cannot fail to
+        // compile against it).
+        const why = o.declaredPending ? 'backend-pending — not yet deployed' : 'declared, not imported — block degrades (backend-pending)';
+        const note = o.pending && !o.ok ? C.dim(` (${why})`) : '';
         console.log(`    ${mark} ${o.kind} ${C.bold(o.op)} ${C.dim(`→ ${o.expects}`)}${note}`);
       }
     }
@@ -548,7 +648,7 @@ function main() {
   const pendingSeams = report.flatMap((b) => b.namespaces.flatMap((n) => n.ops.filter((o) => o.pending && !o.ok).map((o) => o.op)));
   console.log(C.green('\n✓ All data-block prerequisites satisfied.'));
   if (pendingSeams.length) {
-    console.log(C.dim(`  (${pendingSeams.length} declared backend-pending seam(s): ${[...new Set(pendingSeams)].join(', ')} — the block's GA path stands alone until those procs ship.)`));
+    console.log(C.dim(`  (${pendingSeams.length} backend-pending seam(s): ${[...new Set(pendingSeams)].join(', ')} — declared or imported-degraded; the block's GA path stands alone until those procs ship.)`));
   }
   process.exit(0);
 }
