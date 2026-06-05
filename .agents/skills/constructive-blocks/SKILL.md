@@ -30,6 +30,8 @@ Use this skill when:
 - **Host wiring**: aliasing `@/generated/*`, mounting `<BlocksRuntime>`, adding a namespace to the runtime, generating a missing SDK with `cnc codegen`.
 - **Authoring a block**: writing a new block that calls a generated hook, choosing its namespace, declaring its `requires.json`, adding the override seam.
 
+**Scope boundary — Blocks are auth/account/org/shell ONLY.** The catalogued blocks and flows cover **auth, account, organization, and app-shell** capability bundles (sign-in, password reset, MFA, membership, invites, settings). They are **not** a general application-flow library. For your **domain-entity CRUD UI** — the React UI over your own business tables — use **`constructive-frontend`** (CRUD Stack cards + runtime-generic `_meta` meta-forms), **not** blocks; the harness automates that path via `scripts/scaffold-frontend.mjs`. A "flow" here answers *"which auth flow?"*, never *"which business workflow?"*.
+
 If the request is about generating the SDK itself, defer to the codegen skills — this skill *consumes* that SDK: **`constructive-codegen`** (codegen CLI/config flags), **`constructive-hooks`** / **`constructive-orm`** (generated hook/ORM output shapes, pagination), **`constructive-search`** (search).
 
 ## Host setup — three steps (once per app)
@@ -260,5 +262,5 @@ UI is built on `@constructive-io/ui` (consumed as an npm dependency — **never*
 ## Cross-References
 
 - `constructive-codegen` / `constructive-hooks` / `constructive-orm` / `constructive-search` — generating the SDK this skill consumes: `cnc codegen` flags, hook/ORM output shapes, selection/pagination/search.
-- `constructive-frontend` — the `@constructive-io/ui` component library blocks are built on.
+- `constructive-frontend` — the `@constructive-io/ui` component library blocks are built on, **and** the home of domain-entity CRUD UI (CRUD Stack + `_meta` meta-forms, scaffolded by `scaffold-frontend.mjs`). Reach for it for business-table UI; reach for blocks for auth/account/org/shell.
 - `constructive-platform` — CNC CLI, server config, API/endpoint deployment (what determines which ops a namespace exposes).

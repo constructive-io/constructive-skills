@@ -6,6 +6,8 @@ Source of truth: `apps/blocks/scripts/flows-content.mjs`. sotHash: `e0e943259833
 
 Each flow is a backend-capability bundle: a preset to provision (resolved to a flat module list), the GraphQL operations it exposes, and the Blocks that wire the UI. GA-only.
 
+**Scope:** Flows are auth, account, and organization capability bundles — the identity/membership surface. They are NOT general app flows and do NOT cover your domain data UI. For YOUR business-entity screens (list/create/edit/delete of your tables), build domain UI from the data model with constructive-frontend (CRUD Stack + _meta meta-forms) — automated by the harness’s scripts/scaffold-frontend.mjs (Phase 4).
+
 ## Authentication
 
 ### Email + password (`email-password`)
