@@ -99,22 +99,22 @@ Row-level security on every table, powered by the Safegres authorization protoco
 
 ### Permission Defaults
 
-Bitmask-based permission system that auto-initializes when modules are installed. Each module declares its default permissions — these are ORed into the entity's `permission_defaults` bitmask on module creation.
+When modules are installed, the platform automatically registers named permissions and sets default access levels for new members. No manual permission setup is needed — modules declare what permissions they require.
 
-| Module | Default Permissions |
-|--------|--------------------|
-| Agent | `invoke_agents` |
-| Function | `invoke_functions` |
-| Graph | `execute_graphs` |
-| Storage | `write_files`, `delete_files` |
-| Events, Billing, Hierarchy, Namespace, Notifications, Rate Limits, Usage | *(none — admin-only by default)* |
+| Module | Granted to All Members | Admin-Only |
+|--------|----------------------|------------|
+| Agent | `invoke_agents` | `manage_agents` |
+| Function | `invoke_functions` | `manage_functions` |
+| Graph | `execute_graphs` | `manage_graphs` |
+| Storage | `write_files`, `delete_files` | `manage_storage` |
+| Events, Billing, Hierarchy, Namespace, Notifications, Rate Limits, Usage | — | *(all admin-only)* |
 
-How it works:
+Key properties:
 
-- **Append-only audit tables** — `permission_default_permissions` (join table) and `permission_default_grants` (audit log) track all permission changes
-- **SECURITY DEFINER triggers** — bitmask columns cannot be directly UPDATEd; all mutations go through trigger functions fired by audit table INSERTs
-- **Automatic bitlen expansion** — when new permissions exceed the current bit width, the system automatically widens all bitmask columns (memberships, grants, SPRT, permission_defaults, profiles)
-- **Named permissions per module** — `manage_agents`, `invoke_agents`, `manage_storage`, `write_files`, `delete_files`, `invoke_functions`, `execute_graphs`, `manage_secrets`
+- **Automatic on module install** — permissions are registered and defaults applied when the module is provisioned via blueprint or `entityTypeProvision`
+- **Append-only audit** — permission changes are recorded as grant/revoke events, preserving full history
+- **ORM access** — query registered permissions via `db.appPermission` / `db.orgPermission`, view defaults via `db.appPermissionDefault` / `db.orgPermissionDefault`, and manage grants via `db.appGrant` / `db.orgGrant`
+- **Helper queries** — convert between permission names and bitmasks with `appPermissionsGetMaskByNames` and `appPermissionsGetByMask`
 
 ### GuardStepUp
 

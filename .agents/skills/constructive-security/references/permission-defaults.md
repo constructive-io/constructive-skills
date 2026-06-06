@@ -1,66 +1,119 @@
 # Permission Defaults
 
-Module-level bitmask permission system. When a module is installed (via entity type provisioning or blueprint), its default permissions are automatically ORed into the entity's `permission_defaults` bitmask.
+When modules are installed (via blueprint or entity type provisioning), the platform automatically registers named permissions and sets default access levels for new members. This removes the need to manually configure base permissions for each module.
 
-## How It Works
+## What Happens Automatically
 
-1. **Module installed** — e.g., `agent_module` INSERT trigger fires
-2. **`initialize_module_permissions`** called with the module's `default_permissions` array
-3. **Bitmask updated** — permission bits ORed into `permission_defaults.permissions`
-4. **Audit recorded** — INSERT into `permission_default_permissions` join table
-
-All bitmask mutations flow through SECURITY DEFINER trigger functions — the `authenticated` role has no direct UPDATE grant on bitmask columns.
+1. **Module installed** — e.g., `agent_module` added via blueprint or `entityTypeProvision`
+2. **Named permissions registered** — the module's permissions appear in the permissions table (e.g., `invoke_agents`, `manage_agents`)
+3. **Defaults applied** — member-facing permissions are enabled by default; admin permissions require explicit grants
 
 ## Module Default Permissions
 
-| Module | `default_permissions` | Named Permissions |
-|--------|----------------------|-------------------|
-| Agent | `['invoke_agents']` | `manage_agents`, `invoke_agents` |
-| Function | `['invoke_functions']` | `manage_functions`, `invoke_functions` |
-| Graph | `['execute_graphs']` | `manage_graphs`, `execute_graphs` |
-| Storage | `['write_files', 'delete_files']` | `manage_storage`, `write_files`, `delete_files` |
-| Events | `NULL` | *(admin-only)* |
-| Billing | `NULL` | *(admin-only)* |
-| Hierarchy | `NULL` | *(admin-only)* |
-| Namespace | `NULL` | *(admin-only)* |
-| Notifications | `NULL` | *(admin-only)* |
-| Rate Limits | `NULL` | *(admin-only)* |
-| Usage | `NULL` | *(admin-only)* |
+| Module | Granted to All Members | Admin-Only |
+|--------|----------------------|------------|
+| Agent | `invoke_agents` | `manage_agents` |
+| Function | `invoke_functions` | `manage_functions` |
+| Graph | `execute_graphs` | `manage_graphs` |
+| Storage | `write_files`, `delete_files` | `manage_storage` |
+| Events | — | *(all admin-only)* |
+| Billing | — | *(all admin-only)* |
+| Hierarchy | — | *(all admin-only)* |
+| Namespace | — | *(all admin-only)* |
+| Notifications | — | *(all admin-only)* |
+| Rate Limits | — | *(all admin-only)* |
+| Usage | — | *(all admin-only)* |
 
-Modules with `NULL` default permissions require explicit admin grants for non-admin users to access module features.
+## ORM Tables
 
-## Tables
+### Permission Definitions
 
-### `permission_default_permissions` (join table)
+Each scope has a permissions table listing all registered named permissions:
 
-Links permission definitions to entities. Triggers recompute the bitmask on INSERT.
+```typescript
+// List all registered permissions at app scope
+const perms = await db.appPermission.findMany({
+  select: { id: true, name: true, bitnum: true, description: true }
+}).execute();
 
-### `permission_default_grants` (audit log)
+// List all registered permissions at org scope
+const perms = await db.orgPermission.findMany({
+  select: { id: true, name: true, bitnum: true, description: true }
+}).execute();
+```
 
-Append-only log of permission grant operations. Triggers apply the grant to entity memberships.
+### Permission Defaults
 
-Both tables have RLS policies for app-scope and entity-scope access.
+The defaults table stores the bitmask applied to new members on join:
 
-## Bitmask Architecture
+```typescript
+// Read the current default permissions at app scope
+const defaults = await db.appPermissionDefault.findMany({
+  select: { id: true, permissions: true }
+}).execute();
 
-- Bitmask columns: `memberships.permissions`, `memberships.granted`, `permission_grants.permissions`, `sprt.permissions`, `permission_defaults.permissions`, `profiles.permissions`
-- All use `bit(N)` where N = current bitlen (auto-expands as permissions are added)
-- `get_padded_mask()` function handles width normalization during lookups
+// Read the current default permissions for a specific org
+const defaults = await db.orgPermissionDefault.findMany({
+  where: { entityId: orgId },
+  select: { id: true, permissions: true }
+}).execute();
+```
 
-### Bitlen Expansion
+### Grants (Audit Log)
 
-When a new named permission exceeds the current bit width:
+Grants are append-only records of permission changes for individual members:
 
-1. `update_bitlen_permissions` ALTERs all bitmask columns to the new width
-2. Dependent triggers on `profiles` are dropped and recreated around the ALTER (PostgreSQL restriction)
-3. `get_padded_mask` function is regenerated with the new width
+```typescript
+// Grant permissions to a member at app scope
+await db.appGrant.create({
+  data: {
+    permissions: mask,
+    isGrant: true,
+    actorId: memberId,
+    grantorId: adminId
+  },
+  select: { id: true }
+}).execute();
 
-## Security Properties
+// Revoke permissions
+await db.appGrant.create({
+  data: {
+    permissions: mask,
+    isGrant: false,
+    actorId: memberId,
+    grantorId: adminId
+  },
+  select: { id: true }
+}).execute();
+```
 
-- **No direct UPDATE** on `permission_defaults.permissions`, `memberships.granted`, or `profiles.permissions`
-- **SECURITY DEFINER** on all trigger functions that mutate bitmask columns
-- **SET NULL on delete** for grants FKs — audit records survive entity deletion
-- **`api_required: true`** on nullable audit FKs — GraphQL still enforces non-NULL on INSERT
+### Helper Queries
+
+Convert between permission names and bitmasks:
+
+```typescript
+// Get bitmask from permission names
+const mask = await db.query.appPermissionsGetMaskByNames({
+  names: 'invoke_agents,write_files'
+}).execute();
+
+// Get permission names from bitmask
+const perms = await db.query.appPermissionsGetByMask({
+  mask: '101'
+}).execute();
+
+// Org-scope equivalents
+const mask = await db.query.orgPermissionsGetMaskByNames({
+  names: 'invoke_agents'
+}).execute();
+```
+
+## Key Behaviors
+
+- **Automatic on module install** — no SDK calls needed to initialize default permissions; they are set when the module is provisioned
+- **Append-only grants** — permission changes are recorded as grant/revoke events, preserving full audit history
+- **Immutable defaults** — the default bitmask is managed by the platform; fine-grained overrides are done through grants and profiles
+- **Audit preservation** — deleting an entity does not destroy its grant history (references are nullified, not cascaded)
 
 ## Named Permissions Reference
 
@@ -74,11 +127,3 @@ When a new named permission exceeds the current bit width:
 | `invoke_functions` | Function | Execute registered functions |
 | `execute_graphs` | Graph | Run graph executions |
 | `manage_secrets` | Config | Manage encrypted secrets |
-
-## SDK Interaction
-
-Permission defaults are managed through module installation — there is no direct SDK mutation for the `permission_defaults` bitmask. The system is designed to be declarative:
-
-1. Define modules in your blueprint or entity type provisioning
-2. Default permissions are applied automatically
-3. Fine-grained grants are managed via profiles and the grants system

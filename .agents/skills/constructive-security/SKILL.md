@@ -118,24 +118,22 @@ await db.secureTableProvision.create({
 
 ## Permission Defaults
 
-Modules auto-register named permissions when installed. These are ORed into the entity’s `permission_defaults` bitmask.
+Modules auto-register named permissions when installed via blueprint or `entityTypeProvision`. Default access levels are applied automatically.
 
-| Module | Default Permissions |
-|--------|--------------------|
-| Agent | `invoke_agents` |
-| Function | `invoke_functions` |
-| Graph | `execute_graphs` |
-| Storage | `write_files`, `delete_files` |
+| Module | Granted to All Members | Admin-Only |
+|--------|----------------------|------------|
+| Agent | `invoke_agents` | `manage_agents` |
+| Function | `invoke_functions` | `manage_functions` |
+| Graph | `execute_graphs` | `manage_graphs` |
+| Storage | `write_files`, `delete_files` | `manage_storage` |
 
-Key properties:
-- **Append-only audit** — `permission_default_permissions` join table + `permission_default_grants` audit log
-- **Immutable bitmask** — no direct UPDATE on bitmask columns; SECURITY DEFINER triggers enforce all mutations
-- **Automatic bitlen expansion** — adding permissions beyond current bit width resizes all bitmask columns
-- **Audit preservation** — grants FKs use SET NULL on delete (not CASCADE), preserving audit history
+ORM access:
+- **Permissions registry** — `db.appPermission` / `db.orgPermission` (list registered named permissions)
+- **Defaults** — `db.appPermissionDefault` / `db.orgPermissionDefault` (current default bitmask for new members)
+- **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
+- **Helpers** — `appPermissionsGetMaskByNames` (names → bitmask) / `appPermissionsGetByMask` (bitmask → names)
 
-Named permissions available: `manage_agents`, `invoke_agents`, `manage_storage`, `write_files`, `delete_files`, `invoke_functions`, `execute_graphs`, `manage_secrets`.
-
-See [permission-defaults.md](./references/permission-defaults.md) for the full reference.
+See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
 
 ## GuardStepUp
 
@@ -161,7 +159,7 @@ See [storage-policies.md](./references/storage-policies.md) for typical combinat
 | File | Content |
 |------|---------|
 | [authz-types.md](./references/authz-types.md) | All 18 Authz* types with config shapes and examples |
-| [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults, bitmask system, audit tables |
+| [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 
 ## Cross-References
