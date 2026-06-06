@@ -92,4 +92,5 @@ Every entity type automatically gets a `permissions_module` and `memberships_mod
 - **Enforcement details:** [`constructive-security`](../constructive-security/SKILL.md) — how permissions translate into RLS policies
 - **Entity provisioning:** [`constructive-entities`](../constructive-entities/SKILL.md) — creating entity types that carry permissions
 - **Invite system:** [`constructive-entities` → invites.md](../constructive-entities/references/invites.md) — profile assignment on invite
+- **Read-only access:** [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md) — `isReadOnly` membership field and read-only API keys
 - **Billing/limits:** [`constructive-billing`](../constructive-billing/SKILL.md) — quota enforcement (separate from permission enforcement)

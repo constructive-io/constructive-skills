@@ -14,6 +14,7 @@ Memberships are the link between a user (actor) and an entity (app, org, custom)
 | `profileId` | UUID? | Assigned profile (nullable) |
 | `permissions` | string | Effective permissions (resolved from all sources) |
 | `granted` | string | Direct grants only |
+| `isReadOnly` | boolean | Read-only flag — blocks all mutations when `true` (see [read-only-access.md](../../constructive-security/references/read-only-access.md)) |
 | `isApproved` | boolean | Whether the membership is active (waitlist gate) |
 | `isVerified` | boolean | Whether the member's identity is verified |
 | `createdAt` | timestamp | When the membership was created |
