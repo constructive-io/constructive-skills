@@ -181,6 +181,21 @@ Configurable per-bucket RLS via `storage_config.policies[]` on entity_type_provi
 
 See [storage-policies.md](./references/storage-policies.md) for typical combinations.
 
+## Read-Only Access
+
+Two complementary mechanisms for restricting writes:
+
+| Mechanism | Scope | Enforced By | Use Case |
+|-----------|-------|-------------|----------|
+| `isReadOnly` membership field | Per-entity (org, group, etc.) | `AuthzNotReadOnly` restrictive RLS policy | Viewers, read-only contractors |
+| `accessLevel: 'read_only'` API key | Entire transaction | PostgreSQL read-only transaction | Safe integration keys, dashboards |
+
+- **Membership read-only:** update via `db.orgMembership.update({ where: { id: ... }, data: { isReadOnly: true } })`. Owners/admins cannot be set read-only (trigger guard).
+- **API key read-only:** create via `db.query.createApiKey({ input: { keyName: '...', accessLevel: 'read_only' } })`. PostgreSQL rejects all writes at the engine level.
+- Both layers enforce independently and can be stacked for defense in depth.
+
+See [read-only-access.md](./references/read-only-access.md) for full ORM/CLI usage, behavior tables, and composition patterns.
+
 ## Guard Nodes (Session-Level Enforcement)
 
 Guards are BEFORE triggers that check **session state** before allowing DML — distinct from Authz* (which checks row-level access via RLS). Guards compose with Authz policies: RLS → Guard → DML.
@@ -232,6 +247,7 @@ See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the 
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 | [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers |
+|| [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
 
 ## Cross-References
 

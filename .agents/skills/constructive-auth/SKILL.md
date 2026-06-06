@@ -107,3 +107,4 @@ See [service-settings.md](./references/service-settings.md) for the full service
 - **Module presets (which auth modules are included):** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
 - **Security policies (Authz* types):** [`constructive-security`](../constructive-security/SKILL.md)
 - **Entity memberships and invites:** [`constructive-entities`](../constructive-entities/SKILL.md)
+- **Read-only API keys (`accessLevel`):** [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md)
