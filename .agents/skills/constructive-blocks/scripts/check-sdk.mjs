@@ -13,8 +13,14 @@
  *
  *   node check-sdk.mjs                      # check every installed manifest
  *   node check-sdk.mjs auth-sign-in-card    # check one block (name or path)
- *   node check-sdk.mjs --project /path/app  # check a different project root
+ *   node check-sdk.mjs --project /path/ws   # check a workspace root (or app pkg)
  *   node check-sdk.mjs --json               # machine-readable report on stdout
+ *
+ * --project accepts EITHER the WORKSPACE ROOT (the dir holding packages/, the
+ * same <appDir> the scaffold-provision/scaffold-frontend/wire-app scripts take)
+ * OR the app package dir directly. Given a workspace root, the actual app package
+ * (`packages/app`, else a root-level `app/`) is derived internally — its tsconfig
+ * + src/.constructive/blocks are what get checked. See resolveAppRoot().
  *
  * Exit codes:
  *   0  every prerequisite satisfied (or nothing to check)
@@ -77,6 +83,73 @@ function parseArgs(argv) {
     else if (!a.startsWith('-')) opts.only = a; // block name or manifest path
   }
   return opts;
+}
+
+// ---------------------------------------------------------------------------
+// app-package locator — accept a WORKSPACE ROOT and derive the app PACKAGE.
+//
+// The harness scaffolders (scaffold-provision/scaffold-frontend/wire-app) all
+// take the WORKSPACE ROOT — the dir holding `packages/` — as their <appDir>
+// argument; the pgpm nextjs template unpacks the Next.js app one level down at
+// `<root>/packages/app` (an older layout uses a root-level `<root>/app`). But
+// this check consumes the app PACKAGE directly: it reads that package's
+// `tsconfig.json` for the `@/generated/*` alias and scans its
+// `src/.constructive/blocks` for manifests. So when `--project` is pointed at a
+// workspace root (the natural thing, matching the scaffolders) the manifests &
+// tsconfig sit under `packages/app`, NOT at the root — the symptom the 5-app run
+// hit: `check-sdk --project <workspace-root>` → "No data-block manifests".
+//
+// resolveAppRoot() reconciles the two: given the supplied `--project`, it returns
+// the app package dir it denotes. Resolution mirrors wire-app.mjs's appUnder():
+//   1. the project IS already the app package (holds tsconfig.json + src/) — used
+//      as-is, so an explicit package dir (or a flat/non-nested layout, incl. the
+//      test fixtures, whose root carries tsconfig.json + src/) keeps working
+//      unchanged. This is the back-compat path.
+//   2. else probe `<project>/packages/app` then `<project>/app` for that same
+//      marker and derive the package — the workspace-root path.
+//   3. else fall back to the project as-given ONLY when it at least carries a
+//      tsconfig.json (a degenerate layout we shouldn't second-guess); otherwise
+//      FAIL LOUDLY (exit 2) naming the root + the dirs probed, rather than
+//      silently proceeding against a root with no tsconfig/manifests (which would
+//      surface as the misleading "No data-block manifests" / "No tsconfig").
+//
+// The marker is `tsconfig.json` + `src/` (not package.json + src/ as wire-app
+// uses): tsconfig is what THIS check actually consumes, and a workspace root
+// carries package.json + tsconfig.json but crucially NO `src/`, so requiring
+// `src/` is exactly what distinguishes the app package from the workspace root.
+// `packages/app` is probed before `app` (template default first), matching the
+// scaffolders' own preference order.
+// ---------------------------------------------------------------------------
+function isAppPackage(dir) {
+  // The app package always carries a tsconfig.json (the alias source) AND a src/
+  // tree (where codegen + the .constructive/blocks manifests live). A workspace
+  // root has tsconfig.json + package.json but no src/, so it is NOT matched here.
+  return existsSync(join(dir, 'tsconfig.json')) && existsSync(join(dir, 'src'));
+}
+
+function resolveAppRoot(project) {
+  // 1) back-compat: the supplied dir IS already the app package (or a flat
+  //    fixture layout) — use it verbatim, no derivation.
+  if (isAppPackage(project)) return { dir: project, derivedFrom: null };
+  // 2) workspace root: derive the nested app package the template unpacks. Probe
+  //    packages/app first (template default), then a root-level app/.
+  for (const sub of ['packages/app', 'app']) {
+    const cand = join(project, sub);
+    if (isAppPackage(cand)) return { dir: cand, derivedFrom: project };
+  }
+  // 3) neither the root nor packages/app|app is an app package. If the root at
+  //    least has a tsconfig.json, defer to loadTsconfig() (a degenerate layout we
+  //    won't override — preserves the original "no manifests"/tsconfig messages).
+  //    Otherwise FAIL LOUDLY: a bare workspace root with no resolvable app.
+  if (existsSync(join(project, 'tsconfig.json'))) return { dir: project, derivedFrom: null };
+  const probed = ['packages/app', 'app'].map((s) => join(project, s)).join(', ');
+  fail(
+    2,
+    `No app package found at or under ${project}.\n` +
+      `  Looked for tsconfig.json + src/ at the project itself and under: ${probed}.\n` +
+      `  Pass the WORKSPACE ROOT (the dir holding packages/, the same <appDir> the scaffolders take) ` +
+      `or the app package dir directly (the dir with tsconfig.json + src/).`
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -701,7 +774,9 @@ Usage:
   node check-sdk.mjs [block] [--project DIR] [--manifests-dir DIR] [--json]
 
   [block]            a block name (auth-sign-in-card) or manifest path; omit to check all
-  --project DIR      project root to check (default: cwd)
+  --project DIR      workspace root OR app package dir to check (default: cwd).
+                     A workspace root (holding packages/, as the scaffolders take)
+                     resolves to its app package (packages/app | app) internally.
   --manifests-dir DIR  explicit .constructive/blocks dir (overrides auto-discovery)
   --json             emit a machine-readable report (includes a warnings[] array)
   --help             show this help
@@ -725,6 +800,17 @@ function main() {
     console.log(HELP);
     process.exit(0);
   }
+
+  // Accept a WORKSPACE ROOT for --project (the same <appDir> the scaffolders take)
+  // and derive the app PACKAGE (packages/app | app) it denotes; an explicit app
+  // package dir is used as-is (back-compat). Everything below (tsconfig, manifest
+  // discovery, source scans) then operates on the resolved package. Fails loudly
+  // when no app package resolves under the given root (see resolveAppRoot).
+  const resolved = resolveAppRoot(opts.project);
+  if (resolved.derivedFrom) {
+    console.error(`${C.dim('•')} resolved app package ${resolved.dir} (from workspace root ${resolved.derivedFrom})`);
+  }
+  opts.project = resolved.dir;
 
   const ts = loadTsconfig(opts.project);
   if (!ts) fail(2, `No tsconfig.json in ${opts.project}. Run from the host app root or pass --project.`);

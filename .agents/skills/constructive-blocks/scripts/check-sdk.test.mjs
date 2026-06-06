@@ -358,3 +358,103 @@ test('a contract advisory does NOT mask a real binding failure (exit 1 still win
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+// ---------------------------------------------------------------------------
+// WORKSPACE-ROOT RESOLUTION — --project accepts the workspace root (the dir
+// holding packages/, the same <appDir> the scaffolders take) and derives the
+// app package (packages/app | app) internally. The 5-app run hit
+// `check-sdk --project <workspace-root>` → "No data-block manifests" because
+// the manifests + tsconfig actually live under packages/app, not the root.
+//
+// Build a WORKSPACE ROOT whose app package sits one level down (`packages/app`
+// by default, or a root-level `app/`). The root itself carries package.json +
+// tsconfig.json but NO src/ — exactly the real pgpm/lerna workspace shape that
+// must NOT be mistaken for the app package.
+// ---------------------------------------------------------------------------
+function makeWorkspace({ appSub = 'packages/app', hooks = ['useSignInMutation'], manifest = { namespace: 'auth', mutations: ['signIn'], queries: [], models: [] } } = {}) {
+  const root = mkdtempSync(join(tmpdir(), 'check-sdk-ws-'));
+  // Workspace-root markers: a package.json + tsconfig.json but deliberately NO
+  // src/ (so isAppPackage() rejects the root and derives the nested package).
+  writeFileSync(join(root, 'package.json'), JSON.stringify({ name: 'ws-root', private: true }));
+  writeFileSync(join(root, 'tsconfig.json'), JSON.stringify({ files: [] }));
+  writeFileSync(join(root, 'pnpm-workspace.yaml'), "packages:\n  - 'packages/*'\n");
+  const appDir = join(root, appSub);
+  mkdirSync(appDir, { recursive: true });
+  writeFileSync(join(appDir, 'package.json'), JSON.stringify({ name: 'app' }));
+  writeFileSync(join(appDir, 'tsconfig.json'), JSON.stringify({ compilerOptions: { baseUrl: '.', paths: { '@/generated/*': ['./src/generated/*'] } } }));
+  const hooksDir = join(appDir, 'src/generated/auth/hooks/mutations');
+  mkdirSync(hooksDir, { recursive: true });
+  for (const h of hooks) writeFileSync(join(hooksDir, `${h}.ts`), `export function ${h}() {}\n`);
+  const manifestDir = join(appDir, 'src/.constructive/blocks');
+  mkdirSync(manifestDir, { recursive: true });
+  writeFileSync(join(manifestDir, 'block.requires.json'), JSON.stringify(manifest));
+  return { root, appDir };
+}
+
+test('workspace root --project resolves packages/app and finds manifests (exit 0)', () => {
+  const { root, appDir } = makeWorkspace();
+  try {
+    const { code, out } = run(root);
+    assert.equal(code, 0, out);
+    // the derivation notice (stderr) names the resolved app package + the root
+    assert.match(out, /resolved app package/);
+    assert.ok(out.includes(appDir), out);
+    // the manifest under packages/app/src was actually checked
+    assert.match(out, /✓ mutation signIn → useSignInMutation/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('workspace root --project with a root-level app/ layout also resolves (exit 0)', () => {
+  const { root, appDir } = makeWorkspace({ appSub: 'app' });
+  try {
+    const { code, out } = run(root);
+    assert.equal(code, 0, out);
+    assert.ok(out.includes(appDir), out);
+    assert.match(out, /✓ mutation signIn/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('--json on a workspace root keeps stdout PURE JSON (resolution notice → stderr)', () => {
+  const { root, appDir } = makeWorkspace();
+  try {
+    const r = spawnSync(process.execPath, [SCRIPT, '--project', root, '--json'], { encoding: 'utf-8' });
+    assert.equal(r.status, 0, r.stdout + r.stderr);
+    // stdout must parse cleanly — the "resolved app package" notice must NOT leak into it
+    const json = JSON.parse(r.stdout);
+    assert.equal(json.ok, true);
+    assert.equal(json.project, appDir); // report reflects the DERIVED package
+    assert.match(r.stderr, /resolved app package/); // notice went to stderr
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an explicit app package dir is still used as-is (no derivation, no notice)', () => {
+  // Back-compat: pointing --project AT the app package (not the workspace root)
+  // must behave exactly as before — used verbatim, with no resolution notice.
+  const { root, appDir } = makeWorkspace();
+  try {
+    const { code, out } = run(appDir);
+    assert.equal(code, 0, out);
+    assert.doesNotMatch(out, /resolved app package/);
+    assert.match(out, /✓ mutation signIn/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('an unresolvable --project (no app package, no tsconfig) fails loudly (exit 2)', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'check-sdk-bare-'));
+  try {
+    const { code, out } = run(dir);
+    assert.equal(code, 2, out);
+    assert.match(out, /No app package found at or under/);
+    assert.match(out, /packages\/app/); // names the dirs it probed
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
