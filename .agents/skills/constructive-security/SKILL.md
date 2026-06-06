@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', or when working with authorization in blueprints or the ORM."
+description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'bitmask', 'named permissions', or when working with authorization in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,6 +19,8 @@ Use this skill when:
 - Understanding permissive vs restrictive policy composition
 - Configuring storage bucket security policies
 - Working with read-only access (`AuthzNotReadOnly`)
+- Understanding permission defaults and module-level bitmask permissions
+- Adding step-up authentication guards (`GuardStepUp`)
 
 ## Core Vocabulary
 
@@ -114,6 +116,54 @@ await db.secureTableProvision.create({
 | `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` + policy |
 | `AuthzEntityMembership` | `DataEntityMembership` | `entity_id` + policy |
 
+## Permission Defaults
+
+Modules auto-register named permissions when installed via blueprint or `entityTypeProvision`. Default access levels are applied automatically.
+
+| Module | Granted to All Members | Admin-Only |
+|--------|----------------------|------------|
+| Agent | `invoke_agents` | `manage_agents` |
+| Function | `invoke_functions` | `manage_functions` |
+| Graph | `execute_graphs` | `manage_graphs` |
+| Storage | `write_files`, `delete_files` | `manage_storage` |
+
+ORM access:
+- **Permissions registry** — `db.appPermission` / `db.orgPermission` (list registered named permissions)
+- **Defaults** — `db.appPermissionDefault` / `db.orgPermissionDefault` (current default bitmask for new members)
+- **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
+- **Helpers** — `appPermissionsGetMaskByNames` (names → bitmask) / `appPermissionsGetByMask` (bitmask → names)
+
+**Profiles** (permission bundles) — enable via `hasProfiles: true` on `entityTypeProvision`. Profiles bundle named permissions into roles (e.g., Editor, Viewer). A member’s effective permissions = direct grants | profile permissions. Profiles are managed via scoped `profiles`, `profilePermissions`, `profileGrants`, and `profileDefinitionGrants` tables.
+
+**Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state for new members.
+
+See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
+
+## GuardStepUp
+
+Blueprint node (guard category) that enforces step-up authentication. Attaches a BEFORE trigger that calls `requireStepUp()` to verify recent password or MFA verification before allowing mutations.
+
+**Blueprint usage:**
+
+```json
+{ "$type": "GuardStepUp", "data": { "step_up_type": "password_or_mfa", "events": ["UPDATE", "DELETE"] } }
+```
+
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `step_up_type` | `"password"` \| `"mfa"` \| `"password_or_mfa"` | `"password_or_mfa"` | Which verification method satisfies the requirement |
+| `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["UPDATE", "DELETE"]` | Which DML events require step-up |
+
+**SDK query** — check whether the current session needs step-up before attempting a protected mutation:
+
+```typescript
+const result = await db.query.requireStepUp({ stepUpType: 'password' }).execute();
+```
+
+The `step_up_window` is configured in `appSettingsAuth` (default 30 minutes). After a successful `verifyPassword()` or `verifyTotp()`, mutations on guarded tables are allowed for the duration of the window.
+
 ## Storage Policies
 
 Configurable per-bucket RLS via `storage_config.policies[]` on entity_type_provision:
@@ -128,6 +178,7 @@ See [storage-policies.md](./references/storage-policies.md) for typical combinat
 | File | Content |
 |------|---------|
 | [authz-types.md](./references/authz-types.md) | All 18 Authz* types with config shapes and examples |
+| [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 
 ## Cross-References

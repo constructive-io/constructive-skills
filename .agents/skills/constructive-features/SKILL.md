@@ -50,11 +50,13 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
 | Row-level security on every table | `rls_module` + `secure_table_provision` | all | [`constructive-security`](../constructive-security/SKILL.md) |
-| 14 `Authz*` policy node types | Node Type Registry | — | [`constructive-security`](../constructive-security/SKILL.md) |
+| 18 `Authz*` policy node types | Node Type Registry | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
+| Permission defaults (module-level bitmask) | `permission_default_permissions` + module INSERT triggers | all (auto on module install) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permission levels | `levels_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
+| GuardStepUp (step-up auth gate) | `GuardStepUp` node type | — (blueprint node) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | "Users are organizations" identity | `membership_types_module` | all auth presets | [`constructive-security`](../constructive-security/SKILL.md) |
 
@@ -84,7 +86,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Merkle definition_hash | backend trigger | — | [`constructive-platform`](../constructive-blueprints/references/blueprints.md) |
 | Tables + fields | `secure_table_provision` | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | Relations (1:N, M:N junctions) | `relation_provision` | — | [`constructive-platform`](../constructive-blueprints/references/blueprints.md) |
-| Node type generators (11 categories: Data*, Search*, Authz*, Check*, Limit*, Billing*, Job*, Process*, Relation*, View*, Event*) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
+| Node type generators (12 categories: Data*, Search*, Authz*, Guard*, Check*, Limit*, Billing*, Job*, Process*, Relation*, View*, Event*) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataDirectOwner / DataEntityMembership / DataOwnershipInEntity | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataPeoplestamps (created_by / updated_by) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
@@ -152,6 +154,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |
+| Agent multiplayer mode (shared threads) | `["agent_module", {"shared": true}]` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
+| Multi-agent attribution (agent_id on messages) | `["agent_module", {"has_agents": true}]` | `full` | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | Agent plans + approval workflow | `["agent_module", {"has_plans": true}]` | — | [`constructive-entities`](../constructive-entities/SKILL.md) |
 | Agent resources (unified skills + knowledge) | `["agent_module", {"has_resources": true}]` | `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |
 | Agent registry + personas | `["agent_module", {"has_agents": true}]` | `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |

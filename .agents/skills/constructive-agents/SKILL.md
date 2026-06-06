@@ -1,6 +1,6 @@
 ---
 name: constructive-agents
-description: "AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit multi-provider client, Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks. Use when asked to 'add AI search', 'build RAG pipeline', 'embedding worker', 'agentic-kit', 'LLM integration', 'Ollama', 'Anthropic', 'OpenAI', 'file embedding', 'image embedding', 'chunking', 'SearchUnified', 'SearchVector', or when working with AI features in blueprints."
+description: "AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit multi-provider client, Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks. Use when asked to 'add AI search', 'build RAG pipeline', 'embedding worker', 'agentic-kit', 'LLM integration', 'Ollama', 'Anthropic', 'OpenAI', 'file embedding', 'image embedding', 'chunking', 'SearchUnified', 'SearchVector', 'multiplayer agents', 'shared agents', 'multi-agent', 'agent_id', or when working with AI features in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,6 +19,8 @@ Use this skill when:
 - Building RAG pipelines
 - Integrating LLM providers via agentic-kit (Ollama, Anthropic, OpenAI)
 - Understanding the embedding worker pipeline
+- Configuring multiplayer (shared) agent modules
+- Working with multi-agent attribution
 
 ## Architecture
 
@@ -122,6 +124,32 @@ const answer = await agent.generate({
 ```
 
 See [rag-pipeline.md](./references/rag-pipeline.md) for the full RAG reference.
+
+## Agent Module Access Modes
+
+The `agent_module` supports two access modes configured at provision time via the `shared` flag:
+
+| `shared` | Security Policy | Behavior |
+|----------|----------------|----------|
+| `false` (default) | `AuthzMemberOwner` | Private — only the thread creator sees their own threads/messages within the entity |
+| `true` | `AuthzEntityMembership` | Multiplayer — all entity members can see and contribute to all threads |
+
+### Multi-Agent Attribution
+
+When `has_agents` is enabled, `agent_messages` includes an `agent_id` FK. This allows multiple AI agents (each with their own persona) to participate in a single thread:
+
+- Messages are attributed via `actor_id` (the human user) and optionally `agent_id` (the AI agent)
+- Tasks are attributed via `actor_id`
+- Agent personas define system prompts, model config, and linked resources
+
+### Module Permissions
+
+The agent module auto-registers these permissions on install:
+
+| Permission | Default | Purpose |
+|-----------|---------|---------|
+| `invoke_agents` | Granted to all members | Use agent features (threads, messages, tasks) |
+| `manage_agents` | Admin-only | Administer agent infrastructure |
 
 ## References
 
