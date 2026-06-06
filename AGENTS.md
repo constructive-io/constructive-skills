@@ -14,6 +14,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
 | **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — Safegres, Authz* types, RLS, grants, storage policies |
+| **constructive-access-control** | *(standalone)* | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | constructive-sdk-entities | Multi-tenancy, memberships, invites, entity types, entity-scoped storage |
 | **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
 | **constructive-billing** | constructive-sdk-billing, constructive-sdk-limits | Billing, limits, plans, credits, feature flags, meters |
