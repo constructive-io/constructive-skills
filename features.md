@@ -112,13 +112,19 @@ When modules are installed, the platform automatically registers named permissio
 Key properties:
 
 - **Automatic on module install** — permissions are registered and defaults applied when the module is provisioned via blueprint or `entityTypeProvision`
-- **Append-only audit** — permission changes are recorded as grant/revoke events, preserving full history
-- **ORM access** — query registered permissions via `db.appPermission` / `db.orgPermission`, view defaults via `db.appPermissionDefault` / `db.orgPermissionDefault`, and manage grants via `db.appGrant` / `db.orgGrant`
+- **Admin management** — create/update defaults via `db.appPermissionDefault` / `db.orgPermissionDefault`, grant/revoke individual permissions via `db.appGrant` / `db.orgGrant`
+- **Profiles** — named permission bundles (e.g., Editor, Viewer, Manager) assigned to memberships; effective permissions = direct grants | profile permissions. Enable via `hasProfiles: true` on `entityTypeProvision`
+- **Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval and verification state for new members
 - **Helper queries** — convert between permission names and bitmasks with `appPermissionsGetMaskByNames` and `appPermissionsGetByMask`
 
 ### GuardStepUp
 
-`GuardStepUp` is a blueprint node (guard category) that enforces step-up authentication before sensitive operations. Add it to any table to require re-authentication or elevated auth level before writes proceed.
+Blueprint node (guard category) that enforces step-up authentication before sensitive mutations. Attaches a BEFORE trigger that calls `requireStepUp()` to verify recent password or MFA verification.
+
+- **`step_up_type`** — `"password"`, `"mfa"`, or `"password_or_mfa"` (default)
+- **`events`** — which DML events require step-up: `["UPDATE", "DELETE"]` (default)
+- **`step_up_window`** — configured in `appSettingsAuth` (default 30 minutes)
+- **SDK** — `db.query.requireStepUp({ stepUpType: 'password' })` checks whether the current session needs step-up before a protected mutation
 
 ---
 

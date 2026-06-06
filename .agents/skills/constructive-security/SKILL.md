@@ -133,17 +133,36 @@ ORM access:
 - **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
 - **Helpers** — `appPermissionsGetMaskByNames` (names → bitmask) / `appPermissionsGetByMask` (bitmask → names)
 
+**Profiles** (permission bundles) — enable via `hasProfiles: true` on `entityTypeProvision`. Profiles bundle named permissions into roles (e.g., Editor, Viewer). A member’s effective permissions = direct grants | profile permissions. Profiles are managed via scoped `profiles`, `profilePermissions`, `profileGrants`, and `profileDefinitionGrants` tables.
+
+**Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state for new members.
+
 See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
 
 ## GuardStepUp
 
-Blueprint node (guard category) that enforces step-up authentication. Add to any table to require re-authentication before sensitive writes.
+Blueprint node (guard category) that enforces step-up authentication. Attaches a BEFORE trigger that calls `requireStepUp()` to verify recent password or MFA verification before allowing mutations.
+
+**Blueprint usage:**
 
 ```json
-{ "$type": "GuardStepUp", "data": {} }
+{ "$type": "GuardStepUp", "data": { "step_up_type": "password_or_mfa", "events": ["UPDATE", "DELETE"] } }
 ```
 
-The trigger checks the session’s auth level and rejects mutations that don’t meet the step-up threshold.
+**Parameters:**
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `step_up_type` | `"password"` \| `"mfa"` \| `"password_or_mfa"` | `"password_or_mfa"` | Which verification method satisfies the requirement |
+| `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["UPDATE", "DELETE"]` | Which DML events require step-up |
+
+**SDK query** — check whether the current session needs step-up before attempting a protected mutation:
+
+```typescript
+const result = await db.query.requireStepUp({ stepUpType: 'password' }).execute();
+```
+
+The `step_up_window` is configured in `appSettingsAuth` (default 30 minutes). After a successful `verifyPassword()` or `verifyTotp()`, mutations on guarded tables are allowed for the duration of the window.
 
 ## Storage Policies
 
