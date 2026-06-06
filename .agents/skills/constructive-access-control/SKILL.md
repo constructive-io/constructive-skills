@@ -78,7 +78,8 @@ Every entity type automatically gets a `permissions_module` and `memberships_mod
 
 | File | Content |
 |------|---------|
-| [roles-hierarchy.md](./references/roles-hierarchy.md) | Admin, owner, and member role semantics — capabilities, bypass rules, escalation |
+| [admin-owner-member.md](./references/admin-owner-member.md) | Admin, owner, and member role semantics — grant tables, promotion/demotion, audit trail |
+| [roles-hierarchy.md](./references/roles-hierarchy.md) | Org hierarchy — chart edges, closure table traversal, AuthzOrgHierarchy policy, direction/depth |
 | [named-permissions.md](./references/named-permissions.md) | Named permission slots, module registration, discovering available permissions |
 | [profiles.md](./references/profiles.md) | Profile definitions, permission bundles, default profiles, system profiles |
 | [permission-defaults.md](./references/permission-defaults.md) | Automatic permissions for new members, module defaults, overriding |

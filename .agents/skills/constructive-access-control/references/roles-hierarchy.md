@@ -1,149 +1,282 @@
-# Roles & Hierarchy
+# Org Hierarchy
 
-Every membership in a Constructive app has a **role** — a built-in access level that determines base capabilities. Roles are orthogonal to permissions: they control structural privileges (who can manage the entity) while permissions control feature access (what actions are allowed).
+The hierarchy system provides organizational chart (org chart) capabilities — manager/subordinate relationships within an entity (org, team, etc.) that can drive access control via the `AuthzOrgHierarchy` policy. It's an optional module installed per entity type (typically at org scope via the `b2b` preset).
 
-## Built-in Roles
+## Concepts
 
-| Role | Field | Description |
-|------|-------|-------------|
-| **Owner** | `isOwner: true` | Creator of the entity. Full control, cannot be removed by admins. One owner per entity (transferable). |
-| **Admin** | `isAdmin: true` | Elevated management access. Can manage members, permissions, profiles. Multiple admins allowed. |
-| **Member** | (default) | Standard access. Governed by permissions (direct grants + profile). |
+| Concept | Description |
+|---------|-------------|
+| **Hierarchy Module** | Per-entity-type module that provisions the chart edges, grants, and traversal functions |
+| **Chart Edges** | Direct parent→child relationships in the org chart (one level) |
+| **Chart Edge Grants** | Append-only audit log of hierarchy changes (who added/removed whom, and when) |
+| **Closure Table** | Pre-computed transitive relationships — if A manages B and B manages C, the closure table stores A→C (enables $O(1)$ lookups for "all subordinates of X") |
+| **Direction** | Access direction: `down` = managers see subordinate data; `up` = subordinates see manager data |
+| **Rebuild** | After hierarchy changes, the closure table is rebuilt to reflect the new transitive paths |
 
-### Role Precedence
+## When to Use
 
-```
-Owner > Admin > Member
-```
+- **Reporting structures** — managers can view direct reports' documents, timesheets, reviews
+- **Cascading visibility** — directors see everything their entire sub-tree produces
+- **Approval chains** — route approvals up the hierarchy
+- **Scoped dashboards** — show aggregated metrics for the current user's sub-tree
 
-- **Owners** bypass all permission checks — they always have full access to all features within their entity.
-- **Admins** bypass all permission checks — they receive all named permissions implicitly, regardless of grants or profile.
-- **Members** are governed by the permission system — their effective access is determined by their profile + direct grants + defaults.
+## Enabling the Hierarchy
 
-### Key Difference: Owner vs Admin
-
-| Capability | Owner | Admin |
-|-----------|-------|-------|
-| All named permissions | Yes | Yes |
-| Manage other admins | Yes | No |
-| Transfer ownership | Yes | No |
-| Remove other admins | Yes | No |
-| Be removed by another admin | No | Yes |
-| Multiple per entity | No | Yes |
-
-## Reading Roles (ORM)
+The hierarchy module is installed per entity type. It's included automatically in the **`b2b` preset**:
 
 ```typescript
-// Check a member's role
-const membership = await db.appMembership.findOne({
-  where: { actorId: { equalTo: userId } },
-  select: {
-    id: true,
-    isAdmin: true,
-    isOwner: true,
-    permissions: true,
-    granted: true,
-    profileId: true
-  }
-}).execute();
+// The b2b preset includes hierarchy at org scope
+['hierarchy_module', { scope: 'org' }]
+```
 
-// Org-scope equivalent
-const orgMembership = await db.orgMembership.findOne({
-  where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
-  select: {
-    id: true,
-    isAdmin: true,
-    isOwner: true,
-    permissions: true,
-    granted: true,
-    profileId: true
+Or install it directly via the modules API:
+
+```typescript
+await db.query.installModule({
+  input: {
+    databaseId: dbId,
+    moduleName: 'hierarchy_module',
+    scope: 'org'
   }
 }).execute();
 ```
 
-## Promoting to Admin
+## Building the Org Chart
 
-Only owners (or existing admins at app scope) can promote a member to admin:
+Hierarchy relationships are managed through the **chart edge grants** table — an append-only audit log (same pattern as admin/owner grants). Each record places a user under a parent in the org chart.
+
+### Adding a User to the Hierarchy
 
 ```typescript
-// Promote a member to admin
-await db.orgMembership.update({
-  where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
-  data: { isAdmin: true }
+// Place a user under a manager in an org
+await db.orgChartEdgeGrant.create({
+  data: {
+    entityId: orgId,         // which org
+    childId: employeeId,     // user being placed
+    parentId: managerId,     // their manager (null = top of chart)
+    grantorId: currentUserId, // who made this change
+    isGrant: true            // true = add, false = remove
+  },
+  select: { id: true }
 }).execute();
 ```
 
 ```bash
 # CLI equivalent
-constructive public:org-membership update \
-  --where.actorId $USER_ID \
-  --where.entityId $ORG_ID \
-  --data.isAdmin true
+constructive public:org-chart-edge-grant create \
+  --data.entityId $ORG_ID \
+  --data.childId $EMPLOYEE_ID \
+  --data.parentId $MANAGER_ID \
+  --data.grantorId $CURRENT_USER_ID \
+  --data.isGrant true
 ```
 
-### Demotion
+### Top-Level Users (No Manager)
+
+Users at the top of the hierarchy have `parentId: null`:
 
 ```typescript
-// Demote an admin back to member
-await db.orgMembership.update({
-  where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
-  data: { isAdmin: false }
+// CEO / top-level — no parent
+await db.orgChartEdgeGrant.create({
+  data: {
+    entityId: orgId,
+    childId: ceoId,
+    parentId: null,           // top of chart
+    grantorId: currentUserId,
+    isGrant: true
+  },
+  select: { id: true }
 }).execute();
 ```
 
-## Transferring Ownership
+### Removing from Hierarchy
 
-Ownership transfer is a two-step operation — the current owner relinquishes and assigns:
+Insert a record with `isGrant: false` to remove a user from the chart:
 
 ```typescript
-// Transfer ownership (current user must be owner)
-await db.orgMembership.update({
-  where: { actorId: { equalTo: currentOwnerId }, entityId: { equalTo: orgId } },
-  data: { isOwner: false }
-}).execute();
-
-await db.orgMembership.update({
-  where: { actorId: { equalTo: newOwnerId }, entityId: { equalTo: orgId } },
-  data: { isOwner: true }
+await db.orgChartEdgeGrant.create({
+  data: {
+    entityId: orgId,
+    childId: employeeId,
+    parentId: managerId,
+    grantorId: currentUserId,
+    isGrant: false  // revoke the edge
+  },
+  select: { id: true }
 }).execute();
 ```
 
-## Role Semantics by Scope
-
-| Scope | Owner | Admin | Member |
-|-------|-------|-------|--------|
-| **App** | App creator (bootstrap user) | App-wide administrators | Regular app users |
-| **Org** | Organization creator | Organization administrators | Organization members |
-| **Custom** (channel, team, etc.) | Entity creator | Entity managers | Entity participants |
-
-## Blueprint: Initial Roles
-
-When bootstrapping a database, the first user is created as both owner and admin:
+### Example: Building an Org Chart
 
 ```typescript
-// Bootstrap the first user (from constructive-auth)
-await db.query.signUp({
-  input: {
-    targetDatabaseId: dbId,
-    password: 'initial-password',
-    isAdmin: true,
-    isOwner: true
+// Build a simple hierarchy:
+//   CEO
+//   ├── VP Engineering
+//   │   ├── Team Lead
+//   │   │   ├── Developer 1
+//   │   │   └── Developer 2
+//   │   └── Manager 2
+//   └── VP Sales
+
+const edges = [
+  { child: ceoId,       parent: null },
+  { child: vpEngId,     parent: ceoId },
+  { child: vpSalesId,   parent: ceoId },
+  { child: teamLeadId,  parent: vpEngId },
+  { child: manager2Id,  parent: vpEngId },
+  { child: dev1Id,      parent: teamLeadId },
+  { child: dev2Id,      parent: teamLeadId },
+];
+
+for (const edge of edges) {
+  await db.orgChartEdgeGrant.create({
+    data: {
+      entityId: orgId,
+      childId: edge.child,
+      parentId: edge.parent,
+      grantorId: adminUserId,
+      isGrant: true
+    },
+    select: { id: true }
+  }).execute();
+}
+```
+
+## AuthzOrgHierarchy Policy
+
+The `AuthzOrgHierarchy` RLS policy enforces visibility based on hierarchy position. Attach it to any table to restrict row access based on manager/subordinate relationships.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `direction` | `'up' \| 'down'` | Yes | `down` = managers see subordinate rows; `up` = subordinates see manager rows |
+| `anchor_field` | column ref | Yes | Field on the table that identifies the row's owner (e.g., `owner_id`) |
+| `entity_field` | column ref | No | Field referencing the entity (defaults to `entity_id`) |
+| `max_depth` | integer | No | Limit visibility to N levels deep in the hierarchy |
+
+### Direction: `down` (Most Common)
+
+Managers can see rows created by their subordinates (at any depth in their sub-tree):
+
+```jsonc
+// Blueprint node: managers see subordinate projects
+{
+  "$type": "AuthzOrgHierarchy",
+  "data": {
+    "direction": "down",
+    "anchor_field": "owner_id",
+    "entity_field": "entity_id"
   }
-}).execute();
+}
 ```
 
-Subsequent users join as regular members (via sign-up or invite) and are promoted as needed.
+**Access pattern:**
+- CEO sees all projects in the org
+- VP sees projects from their managers and developers
+- Team Lead sees projects from their direct reports
+- Developer sees only their own projects (no subordinates)
 
-## Admin-Only Actions
+### Direction: `up`
 
-Actions restricted to admins (and owners) include:
-- Managing other members' permissions (granting/revoking)
-- Assigning profiles to members
-- Creating and editing profile definitions
-- Viewing all members and their permission state
-- Managing entity settings (membership defaults, invite modes)
-- Accessing admin-only permissions (e.g., `manage_agents`, `manage_storage`)
+Subordinates can see rows owned by their managers (useful for published guidance, announcements):
 
-## When Roles Don't Apply
+```jsonc
+{
+  "$type": "AuthzOrgHierarchy",
+  "data": {
+    "direction": "up",
+    "anchor_field": "owner_id",
+    "entity_field": "entity_id"
+  }
+}
+```
 
-Roles apply to **memberships** (actor ↔ entity relationships). For tables secured with non-membership policies (e.g., `AuthzDirectOwner` for personal data), there's no role hierarchy — just ownership of the row.
+### Max Depth
+
+Limit visibility to a fixed number of levels:
+
+```jsonc
+// Only direct manager can see (1 level up)
+{
+  "$type": "AuthzOrgHierarchy",
+  "data": {
+    "direction": "down",
+    "anchor_field": "owner_id",
+    "max_depth": 1
+  }
+}
+```
+
+### Composing with Other Policies
+
+`AuthzOrgHierarchy` is typically combined with `AuthzDirectOwner` (so users always see their own rows) and scoped to an entity:
+
+```jsonc
+// Full pattern: own rows + hierarchy visibility
+{
+  "nodes": [
+    {
+      "$type": "AuthzOrgHierarchy",
+      "operations": ["select"],
+      "data": {
+        "direction": "down",
+        "anchor_field": "owner_id",
+        "entity_field": "entity_id"
+      }
+    },
+    {
+      "$type": "AuthzDirectOwner",
+      "operations": ["select", "update", "delete"],
+      "data": { "entity_field": "owner_id" }
+    },
+    {
+      "$type": "AuthzAllowAll",
+      "operations": ["insert"]
+    }
+  ]
+}
+```
+
+## Entity Isolation
+
+The hierarchy is **entity-scoped** — each org has its own independent hierarchy. Users in Org A cannot see data from Org B through hierarchy traversal, even if they share the same hierarchy structure.
+
+```
+Org A:                          Org B:
+  CEO-A                           CEO-B
+  └── Manager-A                   └── Manager-B
+      └── Dev-A                       └── Dev-B
+
+Dev-A's data is invisible to CEO-B (different entity_id)
+```
+
+## Membership Lifecycle Integration
+
+The hierarchy integrates with membership lifecycle:
+
+- **Adding to hierarchy** — a user must be an active member of the entity before they can be placed in its hierarchy
+- **Removing from hierarchy** — removing a user's hierarchy edge immediately revokes any hierarchy-derived visibility
+- **Deactivating membership** — removing a member from the org also removes their hierarchy-derived access (the closure table reflects active relationships only)
+
+## Hierarchy Module Resources
+
+When provisioned, the hierarchy module creates these resources per entity type:
+
+| Resource | Purpose |
+|----------|---------|
+| Chart Edges Table | Stores direct parent→child relationships |
+| Chart Edge Grants Table | Append-only audit log of hierarchy changes |
+| Closure Table | Pre-computed transitive ancestor/descendant paths |
+| `rebuildHierarchy()` | Rebuilds the closure table after edge changes |
+| `getSubordinates(entityId, userId)` | Returns all subordinate user IDs |
+| `getManagers(entityId, userId)` | Returns all manager user IDs (up the chain) |
+| `isManagerOf(entityId, managerId, subordinateId)` | Boolean check for a specific relationship |
+
+## Presets That Include Hierarchy
+
+| Preset | Hierarchy Scope | Description |
+|--------|----------------|-------------|
+| `b2b` | org | Full B2B SaaS with nested org structures |
+
+Other presets (`auth:email`, `auth:hardened`) do not include hierarchy — it's an opt-in module for apps that need organizational chart capabilities.
