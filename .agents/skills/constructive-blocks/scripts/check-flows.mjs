@@ -515,7 +515,7 @@ function main() {
   console.log(C.bold('\nConstructive Blocks — flow catalog drift guard\n'));
   console.log(`${C.dim('skill  ')} ${skillFlowsPath}`);
   console.log(`${C.dim('sot    ')} ${sotPath}`);
-  console.log(`${C.dim('harness')} ${harnessPath ? harnessPath : C.yellow('(not reachable — skipped)')}`);
+  console.log(`${C.dim('toolkit')} ${harnessPath ? harnessPath : C.yellow('(not reachable — skipped)')}`);
   console.log(`${C.dim('presets')} ${ntrRoot ? `${ntrRoot} ${C.dim(`(${presetResolver?.via ?? 'unresolved'})`)}` : C.yellow('(not reachable — modules⊆preset skipped)')}`);
   console.log(`${C.dim('sotHash')} ${sot.json.sotHash}\n`);
 
