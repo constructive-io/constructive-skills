@@ -59,6 +59,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | GuardStepUp (step-up auth gate) | `GuardStepUp` node type | — (blueprint node) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | "Users are organizations" identity | `membership_types_module` | all auth presets | [`constructive-security`](../constructive-security/SKILL.md) |
+| Guard: step-up auth before DML | `GuardStepUp` node + `sessions_module` | AUTH_EMAIL | [`constructive-security`](../constructive-security/SKILL.md) |
 
 ## 3. Multi-tenancy & Membership
 

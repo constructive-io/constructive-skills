@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'named permissions', or when working with authorization in blueprints or the ORM."
+description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -20,7 +20,7 @@ Use this skill when:
 - Configuring storage bucket security policies
 - Working with read-only access (`AuthzNotReadOnly`)
 - Understanding permission defaults and module-level permissions
-- Adding step-up authentication guards (`GuardStepUp`)
+- Adding session-level guards (GuardStepUp) that require MFA/password before DML
 
 ## Core Vocabulary
 
@@ -181,6 +181,48 @@ Configurable per-bucket RLS via `storage_config.policies[]` on entity_type_provi
 
 See [storage-policies.md](./references/storage-policies.md) for typical combinations.
 
+## Guard Nodes (Session-Level Enforcement)
+
+Guards are BEFORE triggers that check **session state** before allowing DML — distinct from Authz* (which checks row-level access via RLS). Guards compose with Authz policies: RLS → Guard → DML.
+
+### `GuardStepUp`
+
+Requires recent password/MFA verification before allowing mutations. Blueprint usage:
+
+```jsonc
+// Require step-up for all UPDATE/DELETE (default events)
+{ "$type": "GuardStepUp" }
+
+// Only for INSERT + DELETE with password-only verification
+{ "$type": "GuardStepUp", "data": { "events": ["INSERT", "DELETE"], "step_up_type": "password" } }
+
+// With watch_fields — only fires when specific columns change
+{ "$type": "GuardStepUp", "data": { "watch_fields": ["bitlen", "permissions"] } }
+
+// Compound conditions — require step-up only when role escalates to admin
+{ "$type": "GuardStepUp", "data": {
+    "events": ["UPDATE"],
+    "conditions": { "AND": [
+      { "field": "role", "op": "=", "value": "admin", "row": "NEW" },
+      { "field": "role", "op": "!=", "value": "admin", "row": "OLD" }
+    ]}
+}}
+```
+
+**Parameters:**
+| Param | Type | Default | Description |
+|-------|------|---------|-------------|
+| `step_up_type` | `'password' \| 'mfa' \| 'password_or_mfa'` | `'password_or_mfa'` | Which verification satisfies the requirement |
+| `events` | `('INSERT' \| 'UPDATE' \| 'DELETE')[]` | `['UPDATE', 'DELETE']` | DML events that require step-up |
+| `watch_fields` | `string[]` | — | Only fire when these fields change (DISTINCT FROM) |
+| `conditions` | `Condition` | — | Compound AND/OR/NOT conditions for WHEN clause |
+| `condition_field` | `string` | — | Simple leaf: fire only when field equals value |
+| `condition_value` | `string` | — | Value for `condition_field` comparison |
+
+**Requirements:** The target database must have `sessions_module` + `user_auth_module` provisioned (provides `require_step_up()` function). The `step_up_window` is read from `app_settings_auth` at runtime (default 30 minutes).
+
+See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the condition system.
+
 ## References
 
 | File | Content |
@@ -189,6 +231,7 @@ See [storage-policies.md](./references/storage-policies.md) for typical combinat
 | [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
+| [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers |
 
 ## Cross-References
 
