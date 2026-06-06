@@ -54,7 +54,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
-| Permission defaults (module-level bitmask) | `permission_default_permissions` + module INSERT triggers | all (auto on module install) | [`constructive-security`](../constructive-security/SKILL.md) |
+| Permission defaults (module-level) | `permission_default_permissions` + module INSERT triggers | all (auto on module install) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permission levels | `levels_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
 | GuardStepUp (step-up auth gate) | `GuardStepUp` node type | — (blueprint node) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-security`](../constructive-security/SKILL.md) |
