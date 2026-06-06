@@ -53,8 +53,11 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | 18 `Authz*` policy node types | Node Type Registry | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-security`](../constructive-security/SKILL.md) |
-| Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
-| Permission defaults (module-level) | `permission_default_permissions` + module INSERT triggers | all (auto on module install) | [`constructive-security`](../constructive-security/SKILL.md) |
+| Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
+| Named permissions (per-module) | `permissions_module` + module install | all (auto) | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
+| Permission defaults (module-level) | `permission_default_permissions` + module INSERT triggers | all (auto on module install) | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
+| Roles (admin/owner/member) | membership `isAdmin` / `isOwner` fields | all auth presets | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
+| Grants lifecycle (append-only audit) | `{prefix}_grants` table | `b2b`, `full` | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
 | Permission levels | `levels_module` | `b2b`, `full` | [`constructive-security`](../constructive-security/SKILL.md) |
 | GuardStepUp (step-up auth gate) | `GuardStepUp` node type | — (blueprint node) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Permissive + restrictive policy composition | `AuthzComposite` | — | [`constructive-security`](../constructive-security/SKILL.md) |
@@ -75,7 +78,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Cap tables (static config values) | `limits_module` → `limit_caps_defaults` + `limit_caps` | `b2b`, `full` | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | Feature flags (cap-based gating) | `LimitFeatureFlag` node + `limit_caps_defaults(max=0\|1)` | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | Credits (append-only ledger) | `limits_module` → `limit_credits` + `credit_codes` | `b2b`, `full` | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
-| Profiles per scope | `["profiles_module", {"scope": "app"}]` / `["profiles_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |
+| Profiles per scope (permission bundles) | `["profiles_module", {"scope": "app"}]` / `["profiles_module", {"scope": "org"}]` | `b2b`, `full` | [`constructive-access-control`](../constructive-access-control/SKILL.md) |
 | Hierarchy (entity_type tree) | `entity_type_hierarchy_module` | `b2b`, `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |
 
 ## 4. Data Modeling
