@@ -133,11 +133,19 @@ ORM access:
 - **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
 - **Helpers** — `appPermissionsGetMaskByNames` (names → bitmask) / `appPermissionsGetByMask` (bitmask → names)
 
-**Profiles** (permission bundles) — enable via `hasProfiles: true` on `entityTypeProvision`. Profiles bundle named permissions into roles (e.g., Editor, Viewer). A member’s effective permissions = direct grants | profile permissions. Profiles are managed via scoped `profiles`, `profilePermissions`, `profileGrants`, and `profileDefinitionGrants` tables.
-
-**Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state for new members.
-
 See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
+
+## Profiles
+
+Role-based access control via named permission bundles. Enable via `hasProfiles: true` on `entityTypeProvision`.
+
+- **Effective permissions** = `granted` (direct) | `profile.permissions` (from assigned profile)
+- **Default profile** — set `isDefault: true` on a profile; new memberships are automatically assigned it
+- **ORM tables** (created per scope): `profiles`, `profilePermissions`, `profileGrants`, `profileDefinitionGrants`
+- **Membership** — each membership carries a `profileId` (nullable); read via `db.appMembership` / `db.orgMembership`
+- **Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state
+
+See [profiles.md](./references/profiles.md) for the full reference with code examples.
 
 ## GuardStepUp
 
@@ -179,6 +187,7 @@ See [storage-policies.md](./references/storage-policies.md) for typical combinat
 |------|---------|
 | [authz-types.md](./references/authz-types.md) | All 18 Authz* types with config shapes and examples |
 | [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
+| [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 
 ## Cross-References
