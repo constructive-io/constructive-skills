@@ -97,6 +97,29 @@ Row-level security on every table, powered by the Safegres authorization protoco
 - Read-only access mode (API-level toggle or per-member restriction)
 - Granular permission levels per entity type
 
+### Permission Defaults
+
+Bitmask-based permission system that auto-initializes when modules are installed. Each module declares its default permissions — these are ORed into the entity's `permission_defaults` bitmask on module creation.
+
+| Module | Default Permissions |
+|--------|--------------------|
+| Agent | `invoke_agents` |
+| Function | `invoke_functions` |
+| Graph | `execute_graphs` |
+| Storage | `write_files`, `delete_files` |
+| Events, Billing, Hierarchy, Namespace, Notifications, Rate Limits, Usage | *(none — admin-only by default)* |
+
+How it works:
+
+- **Append-only audit tables** — `permission_default_permissions` (join table) and `permission_default_grants` (audit log) track all permission changes
+- **SECURITY DEFINER triggers** — bitmask columns cannot be directly UPDATEd; all mutations go through trigger functions fired by audit table INSERTs
+- **Automatic bitlen expansion** — when new permissions exceed the current bit width, the system automatically widens all bitmask columns (memberships, grants, SPRT, permission_defaults, profiles)
+- **Named permissions per module** — `manage_agents`, `invoke_agents`, `manage_storage`, `write_files`, `delete_files`, `invoke_functions`, `execute_graphs`, `manage_secrets`
+
+### GuardStepUp
+
+`GuardStepUp` is a blueprint node (guard category) that enforces step-up authentication before sensitive operations. Add it to any table to require re-authentication or elevated auth level before writes proceed.
+
 ---
 
 ## Multi-Tenancy & Memberships
@@ -110,6 +133,8 @@ Hierarchical entity type system. Every scope of access — app, org, channel, de
 | 1 | App | Single-tenant app-level membership |
 | 2 | Organization | Multi-tenant org-level membership |
 | 3+ | Dynamic | Custom entity types you define (channels, teams, departments, data rooms) |
+
+> **Internal scopes:** `platform` and `database` scopes also exist but are reserved for the Constructive platform itself. Application developers do not provision these directly.
 
 ### Entity Features
 
@@ -180,7 +205,7 @@ B-tree, GIN, GiST, BRIN, and hash access methods. Partial indexes, unique indexe
 
 ### Behavior Triggers (Node Types)
 
-78 declarative node types across 11 categories — add behavior to any table without writing SQL:
+79 declarative node types across 12 categories — add behavior to any table without writing SQL:
 
 | Category | Nodes | Examples |
 |----------|-------|---------|
@@ -193,6 +218,7 @@ B-tree, GIN, GiST, BRIN, and hash access methods. Partial indexes, unique indexe
 | **Job** (1) | Background jobs | Row-change triggers with compound conditions |
 | **Event** (2) | Analytics | Event tracking, referral attribution |
 | **Limit** (8) | Usage enforcement | Per-user counters, per-entity aggregates, feature flags, rate limits, usage tracking, threshold warnings |
+| **Guard** (1) | Auth enforcement | Step-up re-authentication gate |
 | **Check** (4) | Constraints | Greater-than, less-than, not-equal, one-of |
 
 ### Module Presets
@@ -294,8 +320,8 @@ Per-entity AI infrastructure provisioned via the `agent_module`. Core tables (al
 | Table | Purpose |
 |-------|---------|
 | `agent_threads` | Conversation threads |
-| `agent_messages` | Messages within threads |
-| `agent_tasks` | Actionable tasks |
+| `agent_messages` | Messages within threads (attributed via `actor_id`) |
+| `agent_tasks` | Actionable tasks (attributed via `actor_id`) |
 | `agent_prompts` | Prompt templates |
 
 Optional extensions via flags:
@@ -306,7 +332,18 @@ Optional extensions via flags:
 | `has_resources` | `agent_resources` + `agent_resource_chunks` | Unified skills + knowledge with full-text search, vector embeddings (HNSW), and automatic text chunking for RAG retrieval |
 | `has_agents` | `agent_personas` + `agents` | Agent registry with persona templates (system prompts, linked resources, model config) and agent instances (with sub-agent hierarchy via `parent_id`) |
 
-`has_agents` implies `has_resources` (agents need resources to reference). All tables secured with `AuthzMemberOwner` (private to creator within entity).
+`has_agents` implies `has_resources` (agents need resources to reference).
+
+#### Access Modes
+
+| `shared` Flag | Security Policy | Behavior |
+|---------------|----------------|----------|
+| `false` (default) | `AuthzMemberOwner` | Private — only the thread creator sees their threads/messages within the entity |
+| `true` | `AuthzEntityMembership` | Multiplayer — all entity members can see and contribute to all threads |
+
+#### Multi-Agent Attribution
+
+When `has_agents` is enabled, `agent_messages` includes an `agent_id` FK for attributing messages to specific AI agents. This allows multiple agents to participate in a single thread, each identified by their persona.
 
 ### RAG Patterns
 

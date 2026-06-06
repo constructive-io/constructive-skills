@@ -84,12 +84,19 @@ Set `has_storage: true` on entity type provisioning to create per-entity buckets
 
 Set `has_agents: true` to provision agent infrastructure per entity:
 - `{prefix}_agent_threads` — conversation threads
-- `{prefix}_agent_messages` — messages within threads
-- `{prefix}_agent_tasks` — actionable tasks
+- `{prefix}_agent_messages` — messages within threads (attributed via `actor_id`, optional `agent_id` for multi-agent)
+- `{prefix}_agent_tasks` — actionable tasks (attributed via `actor_id`)
 - `{prefix}_agent_prompts` — prompt templates
 - `{prefix}_agent_knowledge` — knowledge base entries
 
-All secured with `AuthzMemberOwner` (private to thread creator within entity).
+### Access Modes
+
+| `shared` Flag | Security | Behavior |
+|---------------|----------|----------|
+| `false` (default) | `AuthzMemberOwner` | Private — only the thread creator sees their threads within the entity |
+| `true` | `AuthzEntityMembership` | Multiplayer — all entity members see and contribute to all threads |
+
+Auto-registers permissions: `invoke_agents` (default for all members), `manage_agents` (admin-only).
 
 ## Namespace Module
 
