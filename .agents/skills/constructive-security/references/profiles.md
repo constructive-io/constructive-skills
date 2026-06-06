@@ -4,9 +4,9 @@ Role-based access control via named permission bundles. Profiles let admins defi
 
 ## How Profiles Work
 
-- Each profile has a `permissions` bitmask that bundles multiple named permissions
-- When a profile is assigned to a membership, its permissions are ORed with the member's direct grants
-- **Effective permissions** = `granted` (direct) | `profile.permissions` (from assigned profile)
+- Each profile contains a set of named permissions
+- When a profile is assigned to a membership, its permissions are combined with the member's direct grants
+- **Effective permissions** = `granted` (direct) + `profile.permissions` (from assigned profile)
 - Admins and owners always get all permissions regardless of profile
 
 ## Enabling Profiles
@@ -98,7 +98,7 @@ const membership = await db.appMembership.findOne({
   id: membershipId,
   select: {
     id: true,
-    permissions: true,   // effective permissions (granted | profile.permissions)
+    permissions: true,   // effective permissions (direct + profile)
     granted: true,        // direct grants only
     profileId: true,      // assigned profile (nullable)
     isAdmin: true,

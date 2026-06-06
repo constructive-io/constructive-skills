@@ -33,18 +33,18 @@ Each scope has a permissions table listing all registered named permissions:
 ```typescript
 // List all registered permissions at app scope
 const perms = await db.appPermission.findMany({
-  select: { id: true, name: true, bitnum: true, description: true }
+  select: { id: true, name: true, description: true }
 }).execute();
 
 // List all registered permissions at org scope
 const perms = await db.orgPermission.findMany({
-  select: { id: true, name: true, bitnum: true, description: true }
+  select: { id: true, name: true, description: true }
 }).execute();
 ```
 
 ### Permission Defaults
 
-The defaults table stores the bitmask applied to new members on join:
+The defaults table stores the default permissions applied to new members on join:
 
 ```typescript
 // Read the current default permissions at app scope
@@ -64,20 +64,20 @@ Admins can create or update default permissions:
 ```typescript
 // Set default permissions for the app
 await db.appPermissionDefault.create({
-  data: { permissions: mask },
+  data: { permissions: permissionValue },
   select: { id: true }
 }).execute();
 
 // Set default permissions for a specific org
 await db.orgPermissionDefault.create({
-  data: { permissions: mask, entityId: orgId },
+  data: { permissions: permissionValue, entityId: orgId },
   select: { id: true }
 }).execute();
 
 // Update existing defaults
 await db.appPermissionDefault.update({
   where: { id: defaultId },
-  data: { permissions: newMask },
+  data: { permissions: newPermissionValue },
   select: { id: true }
 }).execute();
 ```
@@ -90,7 +90,7 @@ Grants are append-only records of permission changes for individual members:
 // Grant permissions to a member at app scope
 await db.appGrant.create({
   data: {
-    permissions: mask,
+    permissions: permissionValue,
     isGrant: true,
     actorId: memberId,
     grantorId: adminId
@@ -101,7 +101,7 @@ await db.appGrant.create({
 // Revoke permissions
 await db.appGrant.create({
   data: {
-    permissions: mask,
+    permissions: permissionValue,
     isGrant: false,
     actorId: memberId,
     grantorId: adminId
@@ -112,7 +112,7 @@ await db.appGrant.create({
 // Org-scope grant (requires entityId)
 await db.orgGrant.create({
   data: {
-    permissions: mask,
+    permissions: permissionValue,
     isGrant: true,
     actorId: memberId,
     entityId: orgId,
@@ -124,21 +124,21 @@ await db.orgGrant.create({
 
 ### Helper Queries
 
-Convert between permission names and bitmasks:
+Look up permissions by name, or resolve a permission value back to names:
 
 ```typescript
-// Get bitmask from permission names
-const mask = await db.query.appPermissionsGetMaskByNames({
+// Get a permission value from names
+const permissions = await db.query.appPermissionsGetMaskByNames({
   names: 'invoke_agents,write_files'
 }).execute();
 
-// Get permission names from bitmask
+// Get permission names from a value
 const perms = await db.query.appPermissionsGetByMask({
   mask: '101'
 }).execute();
 
 // Org-scope equivalents
-const mask = await db.query.orgPermissionsGetMaskByNames({
+const permissions = await db.query.orgPermissionsGetMaskByNames({
   names: 'invoke_agents'
 }).execute();
 ```

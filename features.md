@@ -114,14 +114,14 @@ Key properties:
 - **Automatic on module install** — permissions are registered and defaults applied when the module is provisioned via blueprint or `entityTypeProvision`
 - **Admin management** — create/update defaults via `db.appPermissionDefault` / `db.orgPermissionDefault`, grant/revoke individual permissions via `db.appGrant` / `db.orgGrant`
 - **Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval and verification state for new members
-- **Helper queries** — convert between permission names and bitmasks with `appPermissionsGetMaskByNames` and `appPermissionsGetByMask`
+- **Helper queries** — look up permissions by name with `appPermissionsGetMaskByNames`, or resolve back to names with `appPermissionsGetByMask`
 
 ### Profiles
 
 Role-based access control via named permission bundles. Profiles let admins define roles (e.g., Editor, Viewer, Manager) as reusable permission sets that can be assigned to memberships.
 
 - **Enable** — `hasProfiles: true` on `entityTypeProvision`
-- **Effective permissions** — `granted` (direct) | `profile.permissions` (from assigned profile). Admins and owners always get all permissions regardless of profile
+- **Effective permissions** — `granted` (direct) + `profile.permissions` (from assigned profile). Admins and owners always get all permissions regardless of profile
 - **Default profile** — set `isDefault: true` on a profile; new memberships are automatically assigned it
 - **ORM tables** (created per scope when profiles are enabled):
 

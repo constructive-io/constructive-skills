@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'bitmask', 'named permissions', or when working with authorization in blueprints or the ORM."
+description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'named permissions', or when working with authorization in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,7 +19,7 @@ Use this skill when:
 - Understanding permissive vs restrictive policy composition
 - Configuring storage bucket security policies
 - Working with read-only access (`AuthzNotReadOnly`)
-- Understanding permission defaults and module-level bitmask permissions
+- Understanding permission defaults and module-level permissions
 - Adding step-up authentication guards (`GuardStepUp`)
 
 ## Core Vocabulary
@@ -129,9 +129,9 @@ Modules auto-register named permissions when installed via blueprint or `entityT
 
 ORM access:
 - **Permissions registry** — `db.appPermission` / `db.orgPermission` (list registered named permissions)
-- **Defaults** — `db.appPermissionDefault` / `db.orgPermissionDefault` (current default bitmask for new members)
+- **Defaults** — `db.appPermissionDefault` / `db.orgPermissionDefault` (current default permissions for new members)
 - **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
-- **Helpers** — `appPermissionsGetMaskByNames` (names → bitmask) / `appPermissionsGetByMask` (bitmask → names)
+- **Helpers** — `appPermissionsGetMaskByNames` (names → permission value) / `appPermissionsGetByMask` (permission value → names)
 
 See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
 
@@ -139,7 +139,7 @@ See [permission-defaults.md](./references/permission-defaults.md) for the full O
 
 Role-based access control via named permission bundles. Enable via `hasProfiles: true` on `entityTypeProvision`.
 
-- **Effective permissions** = `granted` (direct) | `profile.permissions` (from assigned profile)
+- **Effective permissions** = `granted` (direct) + `profile.permissions` (from assigned profile)
 - **Default profile** — set `isDefault: true` on a profile; new memberships are automatically assigned it
 - **ORM tables** (created per scope): `profiles`, `profilePermissions`, `profileGrants`, `profileDefinitionGrants`
 - **Membership** — each membership carries a `profileId` (nullable); read via `db.appMembership` / `db.orgMembership`
