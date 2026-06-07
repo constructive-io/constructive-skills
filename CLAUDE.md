@@ -22,7 +22,8 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-search** | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified composite |
 | **constructive-agents** | AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit |
 | **constructive-events** | EventTracker, achievements, referrals, invite virality, gamification |
-| **constructive-realtime** | Subscriptions, notifications, change_log, CursorTracker |
+| **constructive-notifications** | Notifications — inbox, delivery, channels, preferences, bounce/complaint handling, suppression list |
+| **constructive-realtime** | Subscriptions, change_log, CursorTracker |
 | **constructive-jobs** | Background jobs — JobTrigger, Process* wrappers, Knative worker, scheduling |
 | **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
