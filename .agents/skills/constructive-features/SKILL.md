@@ -218,7 +218,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Deterministic DB migrations | `pgpm deploy / verify / revert` | — | [`pgpm`](../pgpm/SKILL.md) |
 | Module provisioning | `metaschema_generators.provision_database_modules` | — | [`constructive-platform`](../constructive-blueprints/references/module-presets.md) |
 | DB introspection → SDK | `cnc codegen` | — | [`constructive-codegen`](../constructive-codegen/SKILL.md) |
-| Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| Notifications (email/push/webhook) | `notifications_module` | `b2b`, `full` | [`constructive-notifications`](../constructive-notifications/SKILL.md) |
 | Internationalization (multilingual search + translations) | `i18n_module` + `DataI18n` + `lang_column` | `full` | [`constructive-i18n`](../constructive-i18n/SKILL.md) |
 
 ## 14. Module Presets (starting points, not features)
