@@ -39,9 +39,11 @@ The `change_log` system records row-level changes (INSERT, UPDATE, DELETE) that 
 | File | Content |
 |------|---------|
 | [realtime-subscriptions.md](./references/realtime-subscriptions.md) | Full subscription setup, WebSocket config, and patterns |
+| [notifications-deliverability.md](./references/notifications-deliverability.md) | Delivery lifecycle, bounce/complaint handling, SES/SendGrid webhook setup, suppression list, channel auto-deactivation, monitoring queries |
 
 ## Cross-References
 
+- **SQL-level notification internals:** `constructive-db-notifications` skill in constructive-db (generator source, table DDL, indexes)
 - **Server configuration:** [`constructive-platform`](../constructive-platform/SKILL.md)
 - **Generated hooks (React Query):** [`constructive-hooks`](../constructive-hooks/SKILL.md)
 - **Events and tracking:** [`constructive-events`](../constructive-events/SKILL.md)
