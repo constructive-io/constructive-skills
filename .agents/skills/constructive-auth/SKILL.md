@@ -1,6 +1,6 @@
 ---
 name: constructive-auth
-description: "Identity, login, sessions, MFA, devices — auth flow (sign-up/sign-in/JWT), auth settings (MFA, anonymous sessions, CAPTCHA, cookie auth, rate limits), device settings (tracking, trusted devices, approval gate), and service-level auth config. Use when asked to 'sign up', 'sign in', 'auth flow', 'MFA', 'magic link', 'passkeys', 'device approval', 'trusted devices', 'session management', 'cookie auth', 'anonymous sessions', 'CAPTCHA', 'rate limits', 'bootstrap user', 'JWT', or when working with authentication."
+description: "Identity, login, sessions, MFA, devices, identity linking — auth flow (sign-up/sign-in/JWT), auth settings (MFA, anonymous sessions, CAPTCHA, cookie auth, rate limits), device settings (tracking, trusted devices, approval gate), identity linking (link_identity, account collision resolution, allow_link_by_email, primary auth method), and service-level auth config. Use when asked to 'sign up', 'sign in', 'auth flow', 'MFA', 'magic link', 'passkeys', 'device approval', 'trusted devices', 'session management', 'cookie auth', 'anonymous sessions', 'CAPTCHA', 'rate limits', 'bootstrap user', 'JWT', 'link identity', 'identity linking', 'account collision', 'allow_link_by_email', 'primary auth method', 'connected accounts', or when working with authentication."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,6 +19,8 @@ Use this skill when:
 - Configuring session behavior (cookie auth, cross-origin tokens, expiry)
 - Setting up rate limiting and CAPTCHA
 - Understanding the JWT structure and auth endpoints
+- Linking multiple identity providers to a single account
+- Handling account collision (OAuth email matches existing user)
 
 ## Auth Flow
 
@@ -93,6 +95,16 @@ See [service-settings.md](./references/service-settings.md) for the full service
 | Passkeys (WebAuthn) | `webauthn_credentials_module` + `webauthn_auth_module` |
 | Phone / SMS | `phone_numbers_module` |
 
+## Identity Linking
+
+Users can **link** multiple auth providers (Google, Facebook, password, phone) to one account. One method is **primary** (signs in by default); others are linked for identity purposes.
+
+Two toggles control the system:
+- **`allow_link_by_email`** (per provider) — offer linking when OAuth email matches an existing account
+- **`enforce_primary_auth_method`** (app-wide) — lock sign-in to the user's primary method
+
+See [identity-linking.md](./references/identity-linking.md) for the full flow diagrams, error codes, data model, and SDK usage.
+
 ## References
 
 | File | Content |
@@ -101,6 +113,7 @@ See [service-settings.md](./references/service-settings.md) for the full service
 | [auth-settings.md](./references/auth-settings.md) | MFA, anonymous sessions, CAPTCHA, cookie auth, rate limits |
 | [device-settings.md](./references/device-settings.md) | Device tracking, trusted devices, approval gate |
 | [service-settings.md](./references/service-settings.md) | CORS, database, API, RLS, WebAuthn, pubkey settings |
+| [identity-linking.md](./references/identity-linking.md) | Identity linking flow diagrams, account collision resolution, toggles, data model |
 
 ## Cross-References
 
