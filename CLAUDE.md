@@ -28,6 +28,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
 | **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
+| **constructive-blocks** | Copy-in UI blocks (shadcn registry, `@constructive/<block>`) that bind to the host's per-app generated GraphQL SDK — install/wire/author flow, `blocks-runtime`, `requires.json` manifests, bundled `check-sdk.mjs` preflight |
 | **constructive-codegen** | Code generation pipeline — config, templates, AST transforms, introspection |
 | **constructive-orm** | Generated ORM — query patterns, mutations, relations, pagination, _meta |
 | **constructive-hooks** | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |

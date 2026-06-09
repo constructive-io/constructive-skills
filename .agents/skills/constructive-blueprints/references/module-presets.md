@@ -74,7 +74,7 @@ Provisions shared infrastructure for realtime subscriptions:
 - **Partitioned `change_log` table** — durable, time-partitioned event stream for change tracking. Uses PostgreSQL native range partitioning with automatic partition lifecycle management (creation, rotation, cleanup)
 - **`emit_change()` trigger function** — called by statement-level triggers on source tables to record changes and emit NOTIFY signals
 
-**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'realtime_module'` to your module list to enable.
+**Included in:** the `full` preset's explicit module list. Not included in other presets by default — add `'realtime_module'` to your module list to enable. (There is no `['all']` sentinel; `full` is itself an explicit list.)
 
 **Runtime toggle:** `database_settings.enable_realtime` and `api_settings.enable_realtime` control whether the server activates realtime processing. API setting takes precedence over database setting.
 
@@ -88,7 +88,7 @@ Provisions device tracking, trusted device MFA bypass, and device approval gate:
 - **`auth_user_devices` table** — per-user device records (token hash, IP, user agent, trust/approval status)
 - **`approve_device` procedure** — validates email approval tokens for the device approval flow
 
-**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add `'devices_module'` to your module list to enable.
+**Included in:** the `b2b` and `full` presets' explicit module lists. Not included in other presets by default — add `'devices_module'` to your module list to enable. (There is no `['all']` sentinel.)
 
 **Settings toggles:** All features are off by default (`enable_device_tracking = true` enables passive tracking only). Enable `enable_trusted_devices` for MFA bypass, `require_device_approval` for email approval gate, `require_mfa_new_device` to force MFA on new devices.
 
@@ -114,7 +114,7 @@ Defaults: 768 dimensions, 1000 chunk_size, 200 chunk_overlap, `"paragraph"` stra
 
 **Scoping:** Supports `scope` option (`"app"`, `"org"`, etc.) for entity-level provisioning. The `generate:constructive` reference DB uses `["agent_module", {"has_plans": true, "has_resources": true, "has_agents": true, "scope": "org"}]`.
 
-**Included in:** `full` preset (via `['all']` sentinel). Not included in other presets by default — add the desired variant to your module list.
+**Included in:** the `full` preset's explicit module list. Not included in other presets by default — add the desired variant to your module list. (There is no `['all']` sentinel; `full` is itself an explicit list.)
 
 **Note:** The old `has_knowledge` and `has_skills` flags are replaced by `has_resources`. The unified `agent_resource` table covers both via the `kind` column.
 

@@ -22,7 +22,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-security
 
 ## Available Skills
 
-Skills are organized into 20 umbrella skills. Each has a `SKILL.md` and a `references/` directory with detailed documentation.
+Skills are organized into 21 umbrella skills. Each has a `SKILL.md` and a `references/` directory with detailed documentation.
 
 | Skill | Description |
 |-------|-------------|
@@ -42,6 +42,7 @@ Skills are organized into 20 umbrella skills. Each has a `SKILL.md` and a `refer
 | `constructive-flow-graphs` | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | `constructive-i18n` | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
 | `constructive-frontend` | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
+| `constructive-blocks` | Copy-in UI blocks distributed via a shadcn registry (`@constructive/<block>`) that bind to the host app's per-application generated GraphQL SDK. Install/wire/author flow, `blocks-runtime`, `requires.json` manifests, and a bundled `check-sdk.mjs` preflight that proves the host SDK exports every operation a block needs. |
 | `constructive-codegen` | Code generation pipeline — config, templates, AST transforms, introspection |
 | `constructive-orm` | Generated ORM — query patterns, mutations, relations, pagination, _meta |
 | `constructive-hooks` | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |
