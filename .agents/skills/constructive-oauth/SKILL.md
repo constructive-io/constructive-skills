@@ -308,30 +308,6 @@ const cache = new LRUCache({
 | `packages/express-context/src/loaders/create-loader.ts` | Loader factory |
 | `constructive-db/.../identity_providers_module.sql` | DB schema generator |
 
-## Known Issues
-
-### rotate_identity_provider_platform_secret Function Bug
-
-**Problem**: INSERT to platform_secrets missing `database_id` column
-
-**Workaround**: Use direct SQL to insert secret
-
-```sql
-INSERT INTO constructive_store_private.platform_secrets 
-  (database_id, namespace_id, algo, key_id, value)
-VALUES (
-  '<DATABASE_ID>',
-  '<NAMESPACE_ID>',
-  'pgp',
-  '<KEY_ID>',
-  pgp_sym_encrypt(encode('<CLIENT_SECRET>', 'hex'), '<KEY_ID>')
-);
-
-UPDATE <private_schema>.identity_providers
-SET client_secret_id = '<SECRET_ID>'
-WHERE slug = 'github';
-```
-
 ## Login Flow
 
 ```
