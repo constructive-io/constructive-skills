@@ -328,16 +328,7 @@ Blueprint node (SearchUnified / SearchVector / ProcessFileEmbedding)
 | `ProcessExtraction` | Extract structured data from files |
 | `ProcessImageVersions` | Generate image variants (thumbnails, resized versions) |
 
-### Server-Side LLM Integration
-
-Two server-side packages for embedding and chat:
-
-| Package | Runtime | Purpose |
-|---------|---------|---------|
-| `graphile-llm` | PostGraphile plugin | Server-side text→vector embedding, `text` field on `VectorNearbyInput` for auto-embed search, `{column}Text` mutation companions, RAG queries, billing metering |
-| `agentic-server` | Express router | Standalone agent threads, streaming chat (SSE), embeddings, billing — same capabilities without PostGraphile |
-
-### LLM Client (agentic-kit)
+### LLM Integration (agentic-kit)
 
 Multi-provider LLM client supporting:
 
