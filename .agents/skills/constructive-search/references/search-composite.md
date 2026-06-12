@@ -4,9 +4,20 @@ Combine multiple search algorithms in a single query using composite fields (`se
 
 ---
 
-## searchScore — Composite Relevance
+## searchScore — Composite Relevance (Reciprocal Rank Fusion)
 
-A normalized 0..1 field that combines all active search signals into a single relevance number. Returns `null` when no search filters are active.
+A normalized 0..1 field that fuses all active search signals via **Reciprocal Rank Fusion (RRF)**. Returns `null` when no search filters are active.
+
+RRF uses rank positions (not raw scores) to combine results from different algorithms fairly — solving the problem of BM25/pgvector producing unbounded scores that can't be meaningfully normalized:
+
+```
+searchScore = Σ(weight_i / (rrfK + rank_i)) / max_possible_rrf
+```
+
+- `rrfK` (default 60) — smoothing constant; lower values amplify rank-1 advantage
+- `weight_i` — per-adapter weight from `@searchConfig` (default 1.0 each)
+- `rank_i` — this document's position in adapter i's result list (1 = best)
+- Score = 1.0 means ranked #1 by every active adapter
 
 ```typescript
 const result = await db.article.findMany({
@@ -39,7 +50,7 @@ A `String` filter field that fans the same text query to all **text-compatible**
 | Trigram | Yes | Text-based query |
 | pgvector | **No** | Requires vector array, not text |
 
-When you filter with `unifiedSearch: "machine learning"`, all matching rows from ANY text algorithm are included. The `searchScore` then ranks them by a composite of whichever algorithms matched.
+When you filter with `unifiedSearch: "machine learning"`, all matching rows from ANY text algorithm are included. The `searchScore` then ranks them via RRF — each adapter independently ranks its results, and RRF fuses those rank positions into a fair composite score regardless of each algorithm's raw score scale.
 
 ### Combining unifiedSearch with Per-Algorithm Filters
 

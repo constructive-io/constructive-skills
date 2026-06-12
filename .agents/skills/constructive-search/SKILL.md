@@ -29,7 +29,7 @@ Use this skill when:
 | **Trigram** | Fuzzy / typo-tolerant matching | `pg_trgm` extension | Lower = better (distance) |
 | **pgvector** | Semantic / embedding similarity | `pgvector` HNSW | Lower = better (distance) |
 | **PostGIS** | Spatial / geographic search | `postgis` extension | Lower = better (distance) |
-| **Unified** | Fan-out across all strategies | Composite `searchScore` | Normalized 0–1 |
+| **Unified** | Fan-out across all strategies | Composite `searchScore` via RRF | Normalized 0–1 |
 
 ## Quick Start: Unified Search
 
