@@ -140,7 +140,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 |---|---|---|---|
 | SearchUnified (orchestrated multi-algorithm) | `SearchUnified` blueprint node | — | [`constructive-agents`](../constructive-agents/SKILL.md) + [`constructive-search`](../constructive-search/SKILL.md) |
 | SearchFullText (tsvector + GIN) | `SearchFullText` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
-| SearchBm25 (ParadeDB / pg_search) | `SearchBm25` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
+| SearchBm25 (pg_textsearch) | `SearchBm25` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | SearchTrgm (trigram fuzzy) | `SearchTrgm` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | SearchVector (pgvector embeddings) | `SearchVector` blueprint node | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | SearchSpatial (PostGIS geometry) | `SearchSpatial` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |

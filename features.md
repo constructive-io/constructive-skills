@@ -271,11 +271,11 @@ Six search strategies, from keyword matching to semantic vector similarity, unif
 | Strategy | Technology | Best For |
 |----------|------------|----------|
 | **Full-text (tsvector)** | PostgreSQL `tsvector` + GIN index | Keyword search with language-aware stemming |
-| **BM25** | ParadeDB `pg_search` extension | Relevance-ranked full-text retrieval |
+| **BM25** | `pg_textsearch` extension (BM25 scoring via `<@>` operator) | Relevance-ranked full-text retrieval |
 | **Trigram** | `pg_trgm` extension + GIN index | Fuzzy matching, typo tolerance, autocomplete |
 | **Vector (pgvector)** | `pgvector` extension + HNSW index | Semantic similarity, embeddings, RAG |
 | **Spatial (PostGIS)** | `postgis` extension + GiST index | Geographic proximity, geofencing, spatial containment |
-| **Unified** | Composite of all above | Fan-out a single query across multiple algorithms with normalized scoring |
+| **Unified** | Composite of all above | Fan-out a single query across multiple algorithms with RRF (Reciprocal Rank Fusion) scoring |
 
 ### Vector Search Details
 
@@ -300,7 +300,7 @@ Custom PostgreSQL text search configurations are also supported.
 
 ### Unified Search
 
-`SearchUnified` orchestrates multiple algorithms in a single declaration — embedding + BM25 + optional full-text + optional trigram. Results are normalized to a 0–1 `searchScore` and accessible via a single `unifiedSearch` filter.
+`SearchUnified` orchestrates multiple algorithms in a single declaration — embedding + BM25 + optional full-text + optional trigram. Results are fused via Reciprocal Rank Fusion (RRF) — rank-based scoring that handles incompatible score scales (e.g. BM25 unbounded negatives vs tsvector [0,1]) by comparing rank positions, not raw scores. The composite `searchScore` (0–1) and `unifiedSearch` filter provide a single API for cross-algorithm search.
 
 ---
 

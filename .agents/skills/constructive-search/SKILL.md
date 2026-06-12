@@ -25,7 +25,7 @@ Use this skill when:
 | Strategy | Best For | Technology | Score |
 |----------|----------|------------|-------|
 | **TSVector** | Keyword search with stemming | PostgreSQL `tsvector` + GIN | Higher = better |
-| **BM25** | Relevance-ranked text search | ParadeDB `pg_search` | Higher = better |
+| **BM25** | Relevance-ranked text search | `pg_textsearch` (`<@>` operator) | Higher = better |
 | **Trigram** | Fuzzy / typo-tolerant matching | `pg_trgm` extension | Lower = better (distance) |
 | **pgvector** | Semantic / embedding similarity | `pgvector` HNSW | Lower = better (distance) |
 | **PostGIS** | Spatial / geographic search | `postgis` extension | Lower = better (distance) |
@@ -88,7 +88,7 @@ For tables needing only full-text search:
 Unified PostGraphile v5 search plugin that consolidates all strategies into a single adapter-based architecture. Each strategy is a `SearchAdapter`:
 
 - `TsvectorAdapter` — PostgreSQL full-text search
-- `Bm25Adapter` — ParadeDB BM25 ranking
+- `Bm25Adapter` — pg_textsearch BM25 ranking
 - `TrgmAdapter` — pg_trgm fuzzy matching
 - `PgvectorAdapter` — HNSW vector similarity
 - `PostgisAdapter` — spatial distance queries
