@@ -1,6 +1,6 @@
 ---
 name: constructive-agents
-description: "AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit multi-provider client, Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks. Use when asked to 'add AI search', 'build RAG pipeline', 'embedding worker', 'agentic-kit', 'LLM integration', 'Ollama', 'Anthropic', 'OpenAI', 'file embedding', 'image embedding', 'chunking', 'SearchUnified', 'SearchVector', 'multiplayer agents', 'shared agents', 'multi-agent', 'agent_id', or when working with AI features in blueprints."
+description: "AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit multi-provider client, graphile-llm PostGraphile plugin, agentic-server Express router, Search* blueprint nodes (SearchUnified, SearchVector), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks. Use when asked to 'add AI search', 'build RAG pipeline', 'embedding worker', 'agentic-kit', 'graphile-llm', 'agentic-server', 'LLM integration', 'text-to-vector', 'auto-embed', 'Ollama', 'Anthropic', 'OpenAI', 'file embedding', 'image embedding', 'chunking', 'SearchUnified', 'SearchVector', 'multiplayer agents', 'shared agents', 'multi-agent', 'agent_id', or when working with AI features in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -150,6 +150,89 @@ The agent module auto-registers these permissions on install:
 |-----------|---------|---------|
 | `invoke_agents` | Granted to all members | Use agent features (threads, messages, tasks) |
 | `manage_agents` | Admin-only | Administer agent infrastructure |
+
+## graphile-llm (PostGraphile LLM Plugin)
+
+Server-side LLM integration for PostGraphile v5 — moves embedding logic from the client into the Graphile server layer so clients work with text/prompts instead of raw float vectors.
+
+### Preset
+
+```typescript
+import { GraphileLlmPreset } from 'graphile-llm';
+
+const preset = {
+  extends: [
+    ConstructivePreset,
+    GraphileLlmPreset({
+      defaultEmbedder: { provider: 'ollama', model: 'nomic-embed-text' },
+      defaultChatCompleter: { provider: 'ollama', model: 'llama3' },
+      enableRag: true,
+      metering: true,  // opt-in billing integration
+    }),
+  ],
+};
+```
+
+### Plugins
+
+| Plugin | Purpose |
+|--------|---------|
+| `LlmModulePlugin` | Resolves embedder + chat completer from `llm_module` config, env vars, or preset options |
+| `LlmTextSearchPlugin` | Adds `text: String` field to `VectorNearbyInput` — auto-embeds text queries for pgvector search |
+| `LlmTextMutationPlugin` | Adds `{column}Text: String` companion fields on mutation inputs — auto-embeds on write |
+| `LlmRagPlugin` | Discovers `@hasChunks` tables, adds `ragQuery` field for retrieval-augmented generation |
+| `LlmMeteringPlugin` | Opt-in billing: quota checks + usage recording per embedding/chat call via billing module |
+
+### Key: text-to-vector in unifiedSearch
+
+`LlmTextSearchPlugin` enables pgvector to participate in `unifiedSearch` by intercepting the text input, calling the configured embedder to convert it to a vector, then passing that vector to the pgvector adapter. Without graphile-llm, pgvector requires a raw vector array and is excluded from `unifiedSearch` text fan-out.
+
+### Embedder Resolution (priority order)
+
+1. Per-database `llm_module` row in `services_public.api_modules`
+2. Environment variables (`EMBEDDER_PROVIDER`, `EMBEDDER_MODEL`, `EMBEDDER_BASE_URL`)
+3. Preset options (`defaultEmbedder`)
+
+### Providers
+
+| Provider | Embeddings | Chat | Package |
+|----------|-----------|------|---------|
+| Ollama | `nomic-embed-text`, etc. | `llama3`, etc. | built-in |
+| OpenAI | `text-embedding-3-small`, etc. | `gpt-4o`, etc. | built-in |
+| Custom | any | any | bring your own function |
+
+## agentic-server (Standalone Express LLM Service)
+
+Express-only equivalent of `graphile-llm` — provides agent threads, chat streaming, billing metering, and inference logging as a standalone Express router. Uses `@constructive-io/express-context` for tenant-scoped database access.
+
+```typescript
+import express from 'express';
+import { createContextMiddleware } from '@constructive-io/express-context';
+import { createAgenticRouter } from 'agentic-server';
+
+const app = express();
+app.use(createContextMiddleware());
+app.use(createAgenticRouter());
+app.listen(3001);
+```
+
+### Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/v1/threads` | Create a new conversation thread |
+| POST | `/v1/threads/:thread_id/messages` | Send messages + get AI response (streaming SSE) |
+| POST | `/v1/orgs/:entity_id/threads` | Create thread (entity-scoped) |
+| POST | `/v1/orgs/:entity_id/threads/:thread_id/messages` | Send message (entity-scoped) |
+| POST | `/v1/embed` | Generate embeddings |
+
+### When to use which
+
+| Scenario | Use |
+|----------|-----|
+| PostGraphile app (GraphQL API) | `graphile-llm` — runs as PostGraphile plugins, shares the GraphQL schema |
+| Standalone Express service / cloud function | `agentic-server` — independent router, no PostGraphile dependency |
+| Client-side LLM calls | `agentic-kit` — direct provider SDK (Ollama, Anthropic, OpenAI) |
 
 ## References
 

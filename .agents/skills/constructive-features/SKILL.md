@@ -140,7 +140,7 @@ When a feature is gated by a module, installing / omitting the module from a pre
 |---|---|---|---|
 | SearchUnified (orchestrated multi-algorithm) | `SearchUnified` blueprint node | — | [`constructive-agents`](../constructive-agents/SKILL.md) + [`constructive-search`](../constructive-search/SKILL.md) |
 | SearchFullText (tsvector + GIN) | `SearchFullText` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
-| SearchBm25 (ParadeDB / pg_search) | `SearchBm25` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
+| SearchBm25 (pg_textsearch) | `SearchBm25` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | SearchTrgm (trigram fuzzy) | `SearchTrgm` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | SearchVector (pgvector embeddings) | `SearchVector` blueprint node | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | SearchSpatial (PostGIS geometry) | `SearchSpatial` blueprint node | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
@@ -155,6 +155,8 @@ When a feature is gated by a module, installing / omitting the module from a pre
 | Embedding stale tracking + job enqueue | `SearchVector` `include_updated_at` + `enqueue_job` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | Chunk tables (long text splitting) | `SearchVector` `chunks_config` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | Embedding worker pipeline | Graphile Worker + `generate_embedding` task | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
+| graphile-llm (server-side text→vector, RAG, metering) | `GraphileLlmPreset` in PostGraphile preset | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
+| agentic-server (standalone Express LLM service) | `createAgenticRouter()` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | agentic-kit LLM client (multi-provider) | `@agentic-kit/ollama`, `@agentic-kit/anthropic`, `@agentic-kit/openai` | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | RAG pipelines (blueprint → embed → retrieve → generate) | app code + ORM | — | [`constructive-agents`](../constructive-agents/SKILL.md) |
 | Agent threads + messages | `agent_module` | `full` | [`constructive-entities`](../constructive-entities/SKILL.md) |
