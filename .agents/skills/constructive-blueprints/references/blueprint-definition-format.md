@@ -285,7 +285,7 @@ All 28 node types from the `node_type_registry`:
 | `LimitCounter` | Attaches increment/decrement triggers to track metered usage against configurable maximums. On INSERT the named limit is incremented; on DELETE it is decremented. | `limit_name` (required — must match a `limit_defaults` entry, e.g. `'projects'`, `'members'`), `scope` (default `'app'` — `'app'` for membership_type=1 or `'org'` for membership_type=2), `actor_field` (default `'owner_id'` — column-ref, field on target table holding the actor/entity ID), `events` (default `['INSERT','DELETE']` — which DML events to attach triggers for) |
 | `LimitFeatureFlag` | Gates a table behind a feature flag backed by cap tables. Attaches a BEFORE INSERT trigger that checks `resolve_cap(feature_name) > 0`. Features are modeled as caps with `max=0` (disabled) or `max=1` (enabled) in `limit_caps_defaults`. | `feature_name` (required — cap name, must match a `limit_caps_defaults` entry), `scope` (default `'app'` — `'app'` or `'org'`), `entity_field` (default `'entity_id'` — column-ref, used for org-scope only to resolve per-entity cap overrides) |
 
-**Prerequisites:** Both require `limits_module` to be provisioned for the target scope. Enable via `modules:['all']` or the `b2b`/`full` presets, or via `has_limits: true` on entity types.
+**Prerequisites:** Both require `limits_module` to be provisioned for the target scope. Add `'limits_module:app'` (and/or `'limits_module:org'`) to your explicit module list — it ships in the `auth:email`, `b2b`, and `full` preset lists — or set `has_limits: true` on entity types. (Do not use `modules:['all']`; it is not a sentinel and installs nothing.)
 
 **Example — limit projects per org:**
 ```json
@@ -325,7 +325,7 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 |-----------|---------|----------------|
 | `DataI18n` | Creates a `{table}_translations` table with FK, `lang_code`, and copies of translatable fields. Unique constraint on `(parent_fk, lang_code)`. When `search` is provided, creates a SearchFullText tsvector on the translations table with dynamic per-row language stemming (30+ languages out of the box). | `fields` (required — array of field names to make translatable), `search` (optional — SearchFullText config, auto-sets `lang_column: 'lang_code'` for dynamic stemming) |
 
-**Prerequisites:** Requires `i18n_module` to be provisioned. Install via `modules:['all']`, the `full` preset, or add `'i18n_module'` to your module list.
+**Prerequisites:** Requires `i18n_module` to be provisioned. Add `'i18n_module'` to your explicit module list — it ships in the `full` preset list. (Do not use `modules:['all']`; it is not a sentinel and installs nothing.)
 
 For full documentation including ORM queries, GraphQL localeStrings, and SQL search patterns, see [`constructive-i18n`](../constructive-i18n/SKILL.md).
 
@@ -370,7 +370,7 @@ Each translation row is stemmed in its own language — insert with `lang_code =
 |-----------|---------|----------------|
 | `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. | `operations` (default `['INSERT', 'UPDATE', 'DELETE']` — which DML operations to track), `subscriber_table_name` (default `'{source_table}_subscriber'`) |
 
-**Prerequisites:** Requires `realtime_module` to be provisioned. Enable via `modules:['all']` or the `full` preset, or add `'realtime_module'` to your module list.
+**Prerequisites:** Requires `realtime_module` to be provisioned. Add `'realtime_module'` to your explicit module list. (No shipped preset includes it by default, and there is no `modules:['all']` sentinel — it installs nothing.)
 
 **Example — enable realtime on a messages table:**
 ```json

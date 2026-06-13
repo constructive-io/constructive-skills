@@ -23,8 +23,8 @@ Use this skill when:
 ## The Composition Flow
 
 ```
-1. Provision database  → db.databaseProvisionModule.create({ modules: ['all'] })
-2. Create table        → db.secureTableProvision.create({ tableName, nodeType, ... })
+1. Provision database  → db.databaseProvisionModule.create({ modules: [...explicit list] })
+2. Create table        → db.secureTableProvision.create({ tableName, nodes:[...], grants:[...], policies:[...] })
 3. Add fields          → db.field.create({ tableId, name, type, ... })
 4. Add constraints     → db.checkConstraint.create / db.foreignKeyConstraint.create
 5. Add indexes         → db.index.create({ tableId, fieldIds, ... })
@@ -34,38 +34,56 @@ Use this skill when:
 
 ## Database Provisioning
 
+Pass an **explicit module list** (never `modules: ['all']` — `'all'` is not a sentinel; it matches zero branches in `provision_database_modules` and installs nothing, silently breaking auth + RLS). The list below is the verified `auth:email` default for a basic auth app.
+
 ```typescript
+// auth:email preset. Source: node-type-registry/src/module-presets/auth-email.ts
+const modules = [
+  'users_module', 'membership_types_module',
+  'permissions_module:app', 'limits_module:app', 'levels_module:app',
+  'memberships_module:app', 'sessions_module', 'user_state_module',
+  'config_secrets_user_module', 'emails_module', 'rls_module', 'user_auth_module',
+];
+
 const result = await db.databaseProvisionModule.create({
   data: {
     databaseName: 'my-app',
     ownerId: userId,
     subdomain: 'my-app',
     domain: 'localhost',
-    modules: ['all'],
+    modules,
     bootstrapUser: true,
   },
   select: { id: true, databaseId: true, status: true },
 }).execute();
 ```
 
-See [provisioning.md](./references/provisioning.md) for the full provisioning flow.
+See [provisioning.md](./references/provisioning.md) for the full provisioning flow, the `b2b`/`full` lists, and why `['all']` is wrong.
 
 ## Tables
 
-Create tables via `secureTableProvision` (recommended) or `db.table.create`:
+Create tables via `secureTableProvision` (recommended) or `db.table.create`. The input is the **Blueprint shape** — independent `nodes[]` / `fields[]` / `grants[]` / `policies[]` arrays (each entry discriminated by `$type`), **not** the flat `nodeType` / `grantRoles` / `policyType` shape (that is stale and no longer matches the live platform). See [`constructive-security`](../constructive-security/SKILL.md) for the full reference.
 
 ```typescript
 await db.secureTableProvision.create({
   data: {
     databaseId,
     tableName: 'projects',
-    nodeType: 'DataEntityMembership',
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']] as unknown as Record<string, unknown>,
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: { entity_field: 'entity_id', membership_type: 2 },
+    nodes: [
+      { $type: 'DataEntityMembership' },
+    ] as unknown as Record<string, unknown>,
+    grants: [
+      { roles: ['authenticated'], privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']] },
+    ] as unknown as Record<string, unknown>,
+    policies: [
+      {
+        $type: 'AuthzEntityMembership',
+        permissive: true,
+        privileges: ['select', 'insert', 'update', 'delete'],
+        data: { entity_field: 'entity_id', membership_type: 2 },
+      },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true, tableId: true, outFields: true },
 }).execute();

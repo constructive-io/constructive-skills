@@ -20,6 +20,8 @@ Use this skill when:
 - Setting up theming, dark mode, OKLCH tokens
 - Using the shadcn registry for Constructive components
 
+This skill is for **YOUR domain-entity CRUD** — UI over any business table, via CRUD Stack + `_meta` meta-forms. For **auth/account/org/shell** capability UI (sign-in, password reset, MFA, membership, invites) use **`constructive-blocks`** (the flow catalog) instead.
+
 ## UI Components
 
 50+ components on Base UI + Tailwind CSS v4 with cva variants and data-slot architecture.
@@ -80,6 +82,7 @@ See [meta-forms.md](./references/meta-forms.md) for DynamicFormCard, locked FK p
 
 ## Cross-References
 
+- `constructive-blocks` — auth/account/org/shell capability UI (copy-in blocks + flow catalog); use it for those bundles, this skill for domain-entity CRUD over any table.
 - `constructive-codegen` — Code generation and SDK usage (data fetching for components)
 - `pgpm` — Starter kits and Next.js app boilerplate (uses these UI components) — in [constructive-io/constructive](https://github.com/constructive-io/constructive)
 - `constructive-platform` — Platform core, server configuration
