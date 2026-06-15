@@ -22,22 +22,37 @@ query GetMeta {
   _meta {
     tables {
       name
-      fields { name isNotNull hasDefault type { pgType gqlType isArray } }
+      fields {
+        name isNotNull hasDefault isPrimaryKey isForeignKey description
+        type { pgType gqlType isArray subtype }
+        enumValues { name values }
+      }
       inflection { tableType createInputType patchType filterType orderByType }
       query { all one create update delete }
       primaryKeyConstraints { name fields { name } }
       foreignKeyConstraints { name fields { name } referencedTable referencedFields }
       uniqueConstraints { name fields { name } }
+      storage { isFilesTable isBucketsTable }
+      search { algorithms columns { name algorithm } hasUnifiedSearch }
+      i18n { translationTable translatableFields { name type } }
+      realtime { subscriptionFieldName }
     }
   }
 }
 ```
 
 - `fields` → names, types, nullability, defaults — enough to render any input
+- `fields.enumValues` → allowed values for enum fields — auto-render `<select>` dropdowns
 - `inflection` → exact GraphQL type names for mutations (`CreateContactInput`, `ContactPatch`)
 - `query` → exact mutation/query resolver names (`createContact`, `updateContact`, `deleteContact`)
 - `foreignKeyConstraints` → which fields are FKs and what table they reference
+- `storage` → detect file/bucket tables — render file upload UIs
+- `search` → which algorithms are active — render appropriate search UX
+- `i18n` → which fields are translatable — render language switchers
+- `realtime` → subscription field name — auto-subscribe to changes
 - **Fetch once with `staleTime: Infinity`** — schema never changes at runtime
+
+> **Full `_meta` reference:** See [`constructive-orm/references/query-meta-introspection.md`](../../constructive-orm/references/query-meta-introspection.md) for complete TypeScript types, all fields, and smart tag detection details.
 
 ---
 
