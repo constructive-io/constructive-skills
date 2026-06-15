@@ -1,6 +1,6 @@
 # `_meta` Introspection Endpoint
 
-Every Constructive PostGraphile API (using `graphile-settings` with `MetaSchemaPreset`) exposes a `_meta` root query field that provides runtime schema metadata. This is richer than standard GraphQL introspection — it includes PostgreSQL-specific information like `isNotNull`, `hasDefault`, FK constraints, indexes, and server-side inflection names.
+Every Constructive PostGraphile API (using `graphile-settings` with `MetaSchemaPreset`) exposes a `_meta` root query field that provides runtime schema metadata. This is richer than standard GraphQL introspection — it includes PostgreSQL-specific information like `isNotNull`, `hasDefault`, FK constraints, indexes, server-side inflection names, storage buckets, search configuration, enum values, i18n configuration, and realtime subscription info.
 
 ## When to Use `_meta` vs Standard Introspection
 
@@ -12,9 +12,14 @@ Every Constructive PostGraphile API (using `graphile-settings` with `MetaSchemaP
 | PK / unique constraints | Yes (direct) | Not available |
 | Server inflection names | Yes (direct) | Inferred from type/query names |
 | Relation metadata (belongsTo, hasMany, manyToMany) | Yes (direct) | Must be reverse-engineered |
+| Enum allowed values | Yes (direct) | Available via `__type` introspection |
+| Storage bucket detection | Yes (direct) | Not available |
+| Search algorithm configuration | Yes (direct) | Not available |
+| i18n translatable fields | Yes (direct) | Not available |
+| Realtime subscription field names | Yes (direct) | Not available |
 | Works with any GraphQL endpoint | No (PostGraphile only) | Yes |
 
-**Use `_meta`** when you need constraint information, relation metadata, or richer field metadata at runtime (e.g., building dynamic forms or CRUD UIs).
+**Use `_meta`** when you need constraint information, relation metadata, enum values, feature detection, or richer field metadata at runtime (e.g., building dynamic forms or CRUD UIs).
 
 **Use standard introspection** when working with non-PostGraphile endpoints or when constraint data isn't needed.
 
@@ -30,10 +35,18 @@ query GetMeta {
         name
         isNotNull
         hasDefault
+        isPrimaryKey
+        isForeignKey
+        description
         type {
           pgType
           gqlType
           isArray
+          subtype
+        }
+        enumValues {
+          name
+          values
         }
       }
       inflection {
@@ -60,7 +73,20 @@ query GetMeta {
       indexes {
         name
         isUnique
+        isPrimary
+        columns
         fields { name }
+      }
+      constraints {
+        primaryKey { name fields { name } }
+        unique { name fields { name } }
+        foreignKey {
+          name
+          referencedTable
+          referencedFields
+          fields { name }
+          refFields { name }
+        }
       }
       primaryKeyConstraints {
         name
@@ -69,14 +95,12 @@ query GetMeta {
       foreignKeyConstraints {
         name
         fields { name }
+        referencedTable
+        referencedFields
         refTable { name }
         refFields { name }
       }
       uniqueConstraints {
-        name
-        fields { name }
-      }
-      checkConstraints {
         name
         fields { name }
       }
@@ -88,7 +112,7 @@ query GetMeta {
           keys { name }
           references { name }
         }
-        hasMany {
+        has {
           fieldName
           isUnique
           type
@@ -102,6 +126,13 @@ query GetMeta {
           keys { name }
           referencedBy { name }
         }
+        hasMany {
+          fieldName
+          isUnique
+          type
+          keys { name }
+          referencedBy { name }
+        }
         manyToMany {
           fieldName
           type
@@ -109,9 +140,45 @@ query GetMeta {
           junctionTable { name }
           leftKeyAttributes { name }
           rightKeyAttributes { name }
-          junctionLeftKeyFields { name }
-          junctionRightKeyFields { name }
+          junctionLeftConstraint {
+            name
+            referencedTable
+            referencedFields
+            fields { name }
+            refFields { name }
+          }
+          junctionRightConstraint {
+            name
+            referencedTable
+            referencedFields
+            fields { name }
+            refFields { name }
+          }
+          junctionLeftKeyAttributes { name }
+          junctionRightKeyAttributes { name }
         }
+      }
+      storage {
+        isFilesTable
+        isBucketsTable
+      }
+      search {
+        algorithms
+        columns { name algorithm }
+        hasUnifiedSearch
+        config {
+          weights
+          boostRecent
+          boostRecencyField
+          boostRecencyDecay
+        }
+      }
+      i18n {
+        translationTable
+        translatableFields { name type }
+      }
+      realtime {
+        subscriptionFieldName
       }
     }
   }
@@ -125,13 +192,13 @@ The `_meta` response follows these TypeScript types:
 ```ts
 interface MetaQuery {
   _meta?: {
-    tables?: MetaschemaTable[];
+    tables?: MetaTable[];
   };
 }
 
-interface MetaschemaTable {
+interface MetaTable {
   name: string;
-  schemaName?: string;
+  schemaName: string;
   query: {
     all: string;          // e.g. "contacts" — the root query field for listing
     one?: string | null;  // e.g. "contact" — single-row lookup (see caveat below)
@@ -139,50 +206,220 @@ interface MetaschemaTable {
     update?: string;      // e.g. "updateContact"
     delete?: string;      // e.g. "deleteContact"
   };
-  fields?: MetaschemaField[];
-  inflection: MetaschemaTableInflection;
-  indexes?: MetaschemaIndex[];
-  primaryKeyConstraints?: MetaschemaPrimaryKeyConstraint[];
-  foreignKeyConstraints?: MetaschemaForeignKeyConstraint[];
-  uniqueConstraints?: MetaschemaUniqueConstraint[];
-  checkConstraints?: MetaschemaCheckConstraint[];
-  relations?: {
-    belongsTo?: MetaschemaBelongsToRelation[];
-    hasMany?: MetaschemaHasManyRelation[];
-    hasOne?: MetaschemaHasOneRelation[];
-    manyToMany?: MetaschemaManyToManyRelation[];
-    // junctionLeftKeyFields and junctionRightKeyFields provide FK column
-    // names on the junction table, enabling codegen to generate type-safe
-    // add<Relation>()/remove<Relation>() methods with correct PK types.
-  };
+  fields: MetaField[];
+  inflection: MetaInflection;
+  indexes: MetaIndex[];
+  constraints: MetaConstraints;
+  primaryKeyConstraints: MetaPrimaryKeyConstraint[];
+  foreignKeyConstraints: MetaForeignKeyConstraint[];
+  uniqueConstraints: MetaUniqueConstraint[];
+  relations: MetaRelations;
+  storage: MetaStorage | null;
+  search: MetaSearch | null;
+  i18n: MetaI18n | null;
+  realtime: MetaRealtime | null;
 }
 
-interface MetaschemaField {
-  name: string;              // snake_case column name from PostgreSQL
-  isNotNull?: boolean;       // NOT NULL constraint
-  hasDefault?: boolean;      // has a DEFAULT value (auto-generated)
+interface MetaField {
+  name: string;              // camelCase inflected field name
+  isNotNull: boolean;
+  hasDefault: boolean;
+  isPrimaryKey: boolean;
+  isForeignKey: boolean;
+  description: string | null;
   type: {
     pgType: string;          // e.g. "uuid", "text", "int4", "timestamptz"
     gqlType: string;         // e.g. "UUID", "String", "Int", "Datetime"
-    isArray: boolean;        // PostgreSQL array column
+    isArray: boolean;
+    subtype?: string | null;
   };
+  enumValues: MetaEnum | null;
 }
 
-interface MetaschemaTableInflection {
-  tableType?: string;        // e.g. "Contact"
-  allRows?: string;          // e.g. "contacts"
-  conditionType?: string;    // e.g. "ContactCondition"
-  connection?: string;       // e.g. "ContactsConnection"
-  edge?: string;             // e.g. "ContactsEdge"
-  createInputType?: string;  // e.g. "CreateContactInput"
-  createPayloadType?: string;
-  deletePayloadType?: string;
-  filterType?: string;       // e.g. "ContactFilter"
-  orderByType?: string;      // e.g. "ContactsOrderBy"
-  patchType?: string;        // e.g. "ContactPatch"
-  updatePayloadType?: string;
+interface MetaEnum {
+  name: string;              // PostgreSQL enum type name (e.g. "status_enum")
+  values: string[];          // Allowed values (e.g. ["active", "inactive", "pending"])
+}
+
+interface MetaInflection {
+  tableType: string;         // e.g. "Contact"
+  allRows: string;           // e.g. "contacts"
+  conditionType: string;     // e.g. "ContactCondition"
+  connection: string;        // e.g. "ContactsConnection"
+  edge: string;              // e.g. "ContactsEdge"
+  createInputType: string;   // e.g. "CreateContactInput"
+  createPayloadType: string;
+  deletePayloadType: string;
+  filterType: string | null; // e.g. "ContactFilter"
+  orderByType: string;       // e.g. "ContactsOrderBy"
+  patchType: string | null;  // e.g. "ContactPatch"
+  updatePayloadType: string | null;
+}
+
+interface MetaIndex {
+  name: string;
+  isUnique: boolean;
+  isPrimary: boolean;
+  columns: string[];
+  fields: { name: string }[];
+}
+
+interface MetaConstraints {
+  primaryKey: { name: string; fields: { name: string }[] } | null;
+  unique: { name: string; fields: { name: string }[] }[];
+  foreignKey: MetaForeignKeyConstraint[];
+}
+
+interface MetaForeignKeyConstraint {
+  name: string;
+  fields: { name: string }[];
+  referencedTable: string;
+  referencedFields: string[];
+  refTable: { name: string };
+  refFields: { name: string }[];
+}
+
+interface MetaPrimaryKeyConstraint {
+  name: string;
+  fields: { name: string }[];
+}
+
+interface MetaUniqueConstraint {
+  name: string;
+  fields: { name: string }[];
+}
+
+interface MetaRelations {
+  belongsTo: MetaBelongsToRelation[];
+  has: MetaHasRelation[];
+  hasOne: MetaHasRelation[];
+  hasMany: MetaHasRelation[];
+  manyToMany: MetaManyToManyRelation[];
+}
+
+interface MetaBelongsToRelation {
+  fieldName: string | null;
+  isUnique: boolean;
+  type: string | null;
+  keys: { name: string }[];
+  references: { name: string };
+}
+
+interface MetaHasRelation {
+  fieldName: string | null;
+  isUnique: boolean;
+  type: string | null;
+  keys: { name: string }[];
+  referencedBy: { name: string };
+}
+
+interface MetaManyToManyRelation {
+  fieldName: string | null;
+  type: string | null;
+  junctionTable: { name: string };
+  junctionLeftConstraint: MetaForeignKeyConstraint;
+  junctionLeftKeyAttributes: { name: string }[];
+  junctionRightConstraint: MetaForeignKeyConstraint;
+  junctionRightKeyAttributes: { name: string }[];
+  leftKeyAttributes: { name: string }[];
+  rightKeyAttributes: { name: string }[];
+  rightTable: { name: string };
 }
 ```
+
+## Feature Metadata
+
+### Storage (`storage`)
+
+Identifies tables that are part of the Constructive storage system:
+
+```ts
+interface MetaStorage {
+  isFilesTable: boolean;     // Table tagged with @storageFiles
+  isBucketsTable: boolean;   // Table tagged with @storageBuckets
+}
+```
+
+Returns `null` for tables without storage tags. When `isFilesTable: true`, the table manages uploaded files; use this to render file-picker UIs or show upload controls.
+
+### Search (`search`)
+
+Exposes which search algorithms are active on a table:
+
+```ts
+interface MetaSearch {
+  algorithms: string[];      // e.g. ["bm25", "tsvector", "vector"]
+  columns: { name: string; algorithm: string }[];  // Per-column search config
+  hasUnifiedSearch: boolean; // Whether unifiedSearch composite filter is available
+  config: MetaSearchConfig | null;
+}
+
+interface MetaSearchConfig {
+  weights: string | null;    // JSON-encoded per-adapter weights
+  boostRecent: boolean;      // Whether recency boosting is enabled
+  boostRecencyField: string | null;
+  boostRecencyDecay: number | null;
+}
+```
+
+Returns `null` for tables without search. Use this to:
+- Auto-render search bars with appropriate UX (fuzzy vs semantic toggle)
+- Know which columns support which algorithm
+- Determine if unified search is available for composite queries
+
+### Enum Values (`enumValues` on fields)
+
+Exposes PostgreSQL enum types and their allowed values per field:
+
+```ts
+interface MetaEnum {
+  name: string;     // e.g. "status_enum"
+  values: string[]; // e.g. ["active", "inactive", "pending"]
+}
+```
+
+Returns `null` for non-enum fields. Detects:
+- Direct enum types
+- Domain-wrapped enums (domain → inner enum)
+- Array-of-enum types
+
+Use this to auto-generate `<select>` dropdowns or radio groups without hardcoding allowed values.
+
+### i18n (`i18n`)
+
+Identifies tables with internationalization via the `@i18n` smart tag:
+
+```ts
+interface MetaI18n {
+  translationTable: string;             // e.g. "post_translations"
+  translatableFields: MetaI18nField[];  // Fields that have translation overlays
+}
+
+interface MetaI18nField {
+  name: string;   // GraphQL field name (e.g. "title")
+  type: string;   // PostgreSQL type ("text" or "citext")
+}
+```
+
+Returns `null` for non-i18n tables. Use this to:
+- Auto-render language switchers in edit forms
+- Show "translatable" badges on fields
+- Build bulk translation workflows knowing which fields need localization
+
+### Realtime (`realtime`)
+
+Identifies tables with real-time subscription support via the `@realtime` smart tag:
+
+```ts
+interface MetaRealtime {
+  subscriptionFieldName: string;  // e.g. "onPostChanged"
+}
+```
+
+Returns `null` for non-realtime tables. Use this to:
+- Auto-subscribe to changes without hardcoding subscription field names
+- Show "live" indicators on tables/views that support real-time updates
+- Build generic subscription wrappers that work with any realtime table
 
 ## The `cleanTable()` Adapter
 
@@ -206,44 +443,9 @@ const query = buildSelect(tables[0], tables);
 
 1. **Converts field names** from PostgreSQL `snake_case` to `camelCase` (e.g., `created_at` → `createdAt`)
 2. **Normalizes nullability** — extracts `isNotNull` and `hasDefault` from either the field or its type (v4 vs v5 compat)
-3. **Maps inflection** from `MetaschemaTableInflection` to `TableInflection`
-4. **Maps query names** from `MetaschemaTableQuery` to `TableQueryNames`
+3. **Maps inflection** from `MetaInflection` to `TableInflection`
+4. **Maps query names** from `MetaQuery` to `TableQueryNames`
 5. **Flattens relations** into `belongsTo`, `hasOne`, `hasMany`, `manyToMany` arrays with normalized key references
-
-### Dashboard `cleanTable()` Implementation
-
-Located at `packages/data/src/data.types.ts`:
-
-```ts
-import type { CleanTable, TableInflection, TableQueryNames } from '@constructive-io/graphql-query/types/schema';
-
-export function cleanTable(metaTable: MetaTable): CleanTable {
-  return {
-    name: metaTable.name,
-    inflection: convertInflection(metaTable.inflection),
-    query: convertQueryNames(metaTable.query),
-    fields: (metaTable.fields || [])
-      .filter(f => f != null)
-      .map(field => ({
-        name: pgFieldToCamelCase(field.name),  // snake_case → camelCase
-        type: {
-          gqlType: field.type.gqlType,
-          isArray: field.type.isArray,
-          pgType: field.type.pgType,
-          // ...additional v4 fields (modifier, pgAlias, subtype, typmod)
-        },
-        isNotNull: field.isNotNull ?? field.type.isNotNull ?? null,
-        hasDefault: field.hasDefault ?? field.type.hasDefault ?? null,
-      })),
-    relations: {
-      belongsTo: /* ... map from _meta belongsTo relations ... */,
-      hasOne:    /* ... map from _meta hasOne relations ... */,
-      hasMany:   /* ... map from _meta hasMany relations ... */,
-      manyToMany: /* ... map from _meta manyToMany relations ... */,
-    },
-  };
-}
-```
 
 ## `_meta` Platform Caveats
 
@@ -303,3 +505,20 @@ const preset = {
   pgServices: [/* ... */],
 };
 ```
+
+## Smart Tag Detection
+
+The `_meta` plugin detects features via PostGraphile smart tags on table codecs:
+
+| Feature | Smart Tag | Value | Detection |
+|---------|-----------|-------|-----------|
+| Storage (files) | `@storageFiles` | `true` | Table-level tag |
+| Storage (buckets) | `@storageBuckets` | `true` | Table-level tag |
+| Search (tsvector) | — | — | Column type `tsvector` |
+| Search (BM25) | `@bm25Index` | `true` | Column-level tag |
+| Search (trigram) | `@trgmSearch` | `true` | Table/column-level tag |
+| Search (vector) | — | — | Column type `vector` |
+| Search config | `@searchConfig` | JSON | Table-level tag |
+| Enum values | — | — | Field codec type with `values` property |
+| i18n | `@i18n` | `<translation_table>` | Table-level tag |
+| Realtime | `@realtime` | `true` | Table-level tag |
