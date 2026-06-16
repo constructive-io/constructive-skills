@@ -11,6 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
 | **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
+| **constructive-builder** | agentic-flow harness | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, Chrome-verify a working CRUD app in under 10 minutes (4 phases, 3 policy tiers) |
 | **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
 | **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — Safegres, Authz* types, RLS, grants, storage policies |

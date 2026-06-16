@@ -1,0 +1,17 @@
+{
+  "name": "@constructive-skills/constructive-builder",
+  "version": "0.0.0",
+  "private": true,
+  "description": "constructive-builder agent skill — self-contained build engine (scaffold, provision, wire Blocks + flows, verify) for Constructive apps. Docs in references/, frozen inputs in fixtures/, harness scripts in scripts/.",
+  "scripts": {
+    "scaffold": "node scripts/scaffold-app.mjs",
+    "scaffold:provision": "node scripts/scaffold-provision.mjs",
+    "scaffold:frontend": "node scripts/scaffold-frontend.mjs",
+    "check:scaffold": "node scripts/check-scaffold.mjs && node scripts/check-flow-surfaces.mjs && node scripts/check-frontend-scaffold.mjs",
+    "check:flow-surfaces": "node scripts/check-flow-surfaces.mjs",
+    "check:frontend-scaffold": "node scripts/check-frontend-scaffold.mjs",
+    "check:flows": "node scripts/check-flows.mjs --harness-flows references/flows.json; s=$?; if [ \"$s\" = \"2\" ]; then echo 'check:flows SKIP — the apps/blocks SoT flows.json is not reachable from this self-contained skill (set FLOWS_SOT=/abs/.../apps/blocks/src/flows/flows.json to run the drift check).'; exit 0; fi; exit $s",
+    "check:fix-hints": "bad=$(grep -nE 'fail \"[^\"]*\"[[:space:]]*$' scripts/verify-phase.sh | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*#'); if [ -n \"$bad\" ]; then echo 'check:fix-hints FAIL — fail() call-site(s) missing a 2nd-arg FIX hint (every fail() must self-correct: cite the gotcha CODE + the one-liner/SKILL anchor):'; echo \"$bad\"; exit 1; fi; n=$(grep -cE 'fail \"[^\"]*\" \"' scripts/verify-phase.sh); echo \"check:fix-hints PASS — every fail() call-site in scripts/verify-phase.sh carries a 2nd-arg FIX hint ($n with hint).\"",
+    "check:sdk": "node scripts/check-sdk.mjs"
+  }
+}

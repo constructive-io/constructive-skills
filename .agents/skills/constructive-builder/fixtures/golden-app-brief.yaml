@@ -1,0 +1,123 @@
+version: 1
+
+# ════════════════════════════════════════════════════════════════════════════
+# GOLDEN APP BRIEF — the FROZEN harness-rot canary.
+#
+# This is the tiniest real app the harness can build end-to-end, and the input
+# to scripts/golden-path.sh (the post-edit "is the harness still green?" check).
+# DO NOT grow it — its whole value is being small, deterministic, and FROZEN:
+#   • ONE owner-scoped table `todos` (policy: owner → DataDirectOwner +
+#     AuthzDirectOwner). scaffold-provision.mjs must regenerate the byte-equal
+#     schemas/core.ts the working app ships.
+#   • modules.preset: auth:email + flows: [email-password] → acceptance.required_flows:
+#     ['email-password'], which is EMAIL-FREE, so it runs on a bare warm hub (no
+#     Mailpit / OAuth / org modules).
+#   • frontend_port 3081 (canonical app port; see scripts/check-harness-drift.mjs).
+#
+# A drift in any harness doc/script that breaks the happy path shows up as a RED
+# golden-path run. If you must touch the data model here, you are probably
+# building a real app — copy build/app-brief.template.yaml instead and leave this
+# canary frozen. Field/grant/policy shapes mirror SKILL.md F5 + gotchas F3 exactly.
+# ════════════════════════════════════════════════════════════════════════════
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: golden-app
+  label: Golden App
+  description: Frozen one-table owner-scoped todo app — the harness-rot canary.
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+# Downstream phases derive every package name from this block. db_name is plain
+# lowercase (no hyphens, no underscores) — per-DB schema names dash-collapse from it.
+naming:
+  db_name: goldenapp
+  package_scope: "@golden-app"
+  provision_package: "@golden-app/provision"
+  schema_package: "@golden-app/schema"
+  sdk_package: "@golden-app/sdk"
+  cli_package: "@golden-app/cli"
+  app_package: "@golden-app/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# auth:email ONLY — no SSO, no org/b2b. Unioned with the `email-password` flow's
+# backend.modules (references/flow-catalog.md), the scaffolder emits exactly the
+# auth:email native-tuple module list (NEVER ['all']). Keeps the canary runnable
+# on a bare warm hub with zero extra services.
+modules:
+  preset: auth:email
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+# The single reference sign-in surface (register / sign-in / sign-out /
+# currentUser). Email-free; its blocks are auth-sign-in/up-card etc.
+flows:
+  - email-password
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+# The seed account the provisioner signs up. Capabilities come from
+# modules.preset + flows above.
+auth:
+  admin_email: admin@golden-app.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+# pgpm template nextjs/constructive-app unpacks the app into a NESTED packages/app
+# (package 'constructive-boilerplate'); workspace_root (above) stays '.' (the pnpm
+# workspace root), and the app lives under packages/app. The harness auto-detects
+# packages/app OR a root-level app (verify-phase.sh app_rel()), so app_path is
+# documentation only. env_file is left UNSET on purpose so the Phase-3 gate resolves
+# it against the AUTO-DETECTED app dir (<app>/.env.local) — keeping the canary green
+# whether the app landed at packages/app or the repo root. Canonical port 3081.
+generated:
+  frontend_port: 3081
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# ONE owner-only table. policy: owner → the scaffolder emits nodes
+# [DataId, DataDirectOwner, DataTimestamps] (DataDirectOwner adds owner_id; DataId
+# gives the id PK for update/delete, F18) and policies [AuthzDirectOwner all-CRUD
+# permissive, entity_field=owner_id]. Field shapes are OBJECTS (FIELD-TYPE-001 /
+# F5): type = { name: <type> }, default = { value: <literal> } — never bare
+# strings; boolean type name is `boolean`, not `bool`.
+data_model:
+  tables:
+    - name: todos
+      policy: owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: notes, type: { name: text } }
+        - { name: is_done, type: { name: boolean }, default: { value: false } }
+
+  relations: []
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD route. kind: crud → a typed list + DynamicFormCard bound to the todo
+# SDK hooks; entity: todo emits the `todo-*` testids the live-QA driver
+# (scripts/live-qa.mjs) asserts on /todos. Keep the path in sync if you ever
+# rename it (it is also the LIVE_QA_CRUD_PATH default for the email-password flow).
+ui:
+  routes:
+    - { path: /todos, label: Todos, kind: crud, entity: todo }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# Email-free, single flow → runs on a bare warm hub. scripts/live-qa.mjs has a
+# FULLY-implemented QA script for 'email-password' (signup → create → reload →
+# assert persisted + auth). This enables the live-QA gate in verify-phase.sh 3.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend is already up on :3000 (golden-path.sh smokes it first; Phase 1 is skipped).
+  - agent-browser is installed (npm i -g agent-browser && agent-browser install) so the live-QA gate can drive Chrome.

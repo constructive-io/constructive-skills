@@ -19,6 +19,10 @@ A feature-level index of what a Constructive app can do. Each row is a pointer â
 
 When a feature is gated by a module, installing / omitting the module from a preset turns it on / off. When it's gated by a toggle, it's on all the time but can be flipped via a settings row.
 
+## Build an App End-to-End
+
+Want to assemble these features into a working app rather than look one up? Use [`constructive-builder`](../constructive-builder/SKILL.md) â€” the end-to-end builder that scaffolds, provisions the data model + RLS, wires Blocks + auth flows, and Chrome-verifies a working CRUD app in under 10 minutes (4 phases, 3 policy tiers). Come back to this catalog to decide *which* features (modules / presets / Authz\* nodes) the build should turn on.
+
 ## 1. Identity & Authentication
 
 | Feature | Gate | In preset | Skill |

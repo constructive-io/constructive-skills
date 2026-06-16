@@ -1,0 +1,121 @@
+# GENERICITY FIXTURE — multi-table + FK + org-membership; the generator has never seen this.
+#
+# Wave-3 genericity proof input #1. A B2B CRM the scaffolders were NOT tuned against:
+# TWO org-scoped tables joined by a real FK. It exercises, in one brief, the parts of
+# the grammar the todos canary never touches — modules.preset: b2b, two AuthzEntityMembership
+# tables, a RelationBelongsTo, full-text search, and two CRUD surfaces. Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-crm-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-crm-brief.yaml <app>   # companies + contacts CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-crm
+  label: Test CRM
+  description: A B2B CRM — companies and their contacts, scoped to the owning org.
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testcrm
+  package_scope: "@test-crm"
+  provision_package: "@test-crm/provision"
+  schema_package: "@test-crm/schema"
+  sdk_package: "@test-crm/sdk"
+  cli_package: "@test-crm/cli"
+  app_package: "@test-crm/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# b2b — the org-scoped memberships/permissions/invites surface that backs the
+# AuthzEntityMembership policy on both tables. Unioned with the email-password +
+# organization + org-members flows below into the native-tuple module closure.
+modules:
+  preset: b2b
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - organization             # create/configure orgs (requires modules.preset: b2b)
+  - org-members              # invite + manage org members
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-crm.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3082
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# Two org-membership tables. policy: org-membership → the scaffolder emits
+# nodes [DataId, DataEntityMembership, DataTimestamps] + policies
+# [AuthzEntityMembership all-CRUD permissive, entity_field=entity_id, membership_type=2]
+# on EACH. contacts adds full-text search over its text fields and belongs-to companies.
+data_model:
+  tables:
+    - name: companies
+      policy: org-membership
+      fields:
+        - { name: name, type: { name: text }, required: true }
+        - { name: domain, type: { name: text } }
+
+    - name: contacts
+      policy: org-membership
+      features: [fts]
+      fields:
+        - { name: first_name, type: { name: text }, required: true }
+        - { name: last_name, type: { name: text } }
+        - { name: email, type: { name: text } }
+
+  # ─── Relations ─────────────────────────────────────────────
+  # The common FK: each contact belongs to one company. $type / source_table /
+  # target_table / field_name mirror the blueprint relation shape 1:1 (the brief
+  # passes relations through verbatim). field_name company_id is the FK column on
+  # contacts; SET NULL keeps a contact when its company is deleted.
+  relations:
+    - $type: RelationBelongsTo
+      source_table: contacts
+      target_table: companies
+      field_name: company_id
+      delete_action: SET NULL
+      is_required: false
+
+# ─── UI ─────────────────────────────────────────────────────────
+# Two CRUD surfaces (typed list + DynamicFormCard meta-forms). entity is the
+# singular of each table so the generated `<entity>-*` testids fall out (company-* /
+# contact-*). Org-membership tables need a non-null entity_id on create — the
+# quick-add emits a `// TODO entityId: activeOrgId` SEAM (the active org can't be
+# inferred from the form); the detailed-create DynamicFormCard prompts for it.
+ui:
+  routes:
+    - { path: /companies, label: Companies, kind: crud, entity: company }
+    - { path: /contacts, label: Contacts, kind: crud, entity: contact }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: it is the single flow with a FULLY-implemented Chrome QA
+# script in scripts/live-qa.mjs (signup → create → reload → assert persisted + auth),
+# and it is email-free so it runs on a bare warm hub. The driver exercises this app's
+# OWN entity via LIVE_QA_CRUD_PATH + the generated company-*/contact-* testids.
+# organization / org-members are PROVISIONED (above) but have no live-QA driver yet —
+# listing them here would be a hard coverage-gap FAIL, not a pass; they are verified
+# structurally by the Phase-2 gates (schema + AuthzEntityMembership + grants).
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend with the b2b/org modules is up on :3000.
+  - Org policies (AuthzEntityMembership) require the b2b preset's memberships module — provided here.

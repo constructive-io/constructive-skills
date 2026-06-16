@@ -22,11 +22,12 @@ npx skills add constructive-io/constructive-skills --skill constructive-security
 
 ## Available Skills
 
-Skills are organized into 20 umbrella skills. Each has a `SKILL.md` and a `references/` directory with detailed documentation.
+Skills are organized into 21 umbrella skills. Each has a `SKILL.md` and a `references/` directory with detailed documentation.
 
 | Skill | Description |
 |-------|-------------|
 | `constructive-features` | Feature catalog — router mapping every capability to the authoritative skill |
+| `constructive-builder` | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, and Chrome-verify a working CRUD app on Constructive in under 10 minutes (4 phases, 3 policy tiers) |
 | `constructive-blueprints` | Declarative schema definition — blueprints, node type registry, presets |
 | `constructive-auth` | Identity, login, sessions, MFA, devices, auth settings |
 | `constructive-security` | Authorization — Safegres protocol, Authz* types, RLS, grants, storage policies. See [safegres.com](https://safegres.com) |
