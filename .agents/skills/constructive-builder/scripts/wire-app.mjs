@@ -5,7 +5,16 @@
  * + Blocks provider wiring (S5) the agent used to do by hand. Collapses ~5 trial-and-error
  * edits into a single `node scripts/wire-app.mjs` call so a build NEVER debugs them.
  *
- * It does SEVEN things, each independently idempotent (re-running is a safe no-op):
+ * It does EIGHT things, each independently idempotent (re-running is a safe no-op):
+ *   (0) SINGLE-WORKSPACE NORMALIZE — strips any NESTED `pnpm-workspace.yaml` + `pnpm-lock.yaml`
+ *       that the `nextjs/constructive-app` boilerplate ships at its package root (pgpm init unpacks
+ *       it to `packages/app`, so they land as a SECOND workspace inside the app package). Two
+ *       workspace markers ⇒ pnpm resolves the tree twice and the two lockfiles pin DIFFERENT Next
+ *       versions → the dev server intermittently dies with a `global-error.js` module-instantiation
+ *       error (two Next copies instantiated). Detect-and-remove is STRUCTURAL: find the OUTERMOST
+ *       ancestor with a `pnpm-workspace.yaml` (the canonical root) and delete the marker+lockfile in
+ *       every `<root>/packages/*` sub-package. No version/app/entity literal — leaves ONE root
+ *       workspace + ONE lockfile so a single Next resolves. Always runs (independent of --no-blocks).
  *   (a) ENV — writes the per-DB endpoint block to BOTH `.env` and `.env.local` (codegen reads
  *       `.env`; `pnpm dev` reads `.env.local`; they must stay identical), with `<sub>` filled in.
  *       Every value comes from constructive.config.json (scheme/host/port/host-pattern) — no
@@ -85,7 +94,7 @@
  *       (with a manual-fallback pointer). Never leaves a half-applied file.
  */
 
-import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, readdirSync, statSync, mkdirSync, rmSync } from 'node:fs';
 import { resolve, dirname, join, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getConfig, getEndpoint, getEndpointHost, getPlatformEndpoint, getHubPort } from './lib/config.mjs';
@@ -268,6 +277,83 @@ if (!SUB) {
 info(`subdomain: ${SUB}`);
 
 let changed = 0;
+
+// ── (0) SINGLE-WORKSPACE NORMALIZE — strip any NESTED pnpm workspace marker + lockfile ──
+// The `nextjs/constructive-app` boilerplate ships its OWN `pnpm-workspace.yaml` + `pnpm-lock.yaml`
+// at its package root. `pgpm init` unpacks that boilerplate into the generated repo UNDER
+// `<workspaceRoot>/packages/app/`, so those two files land as a NESTED workspace inside the app
+// package — while the repo root already carries the canonical `pnpm-workspace.yaml` (+ lockfile).
+// Two workspace markers ⇒ pnpm resolves the dependency tree TWICE, and the two lockfiles pin
+// DIFFERENT Next versions (the nested boilerplate lock vs. whatever the root resolves). The dev
+// server then intermittently dies with a `global-error.js` module-instantiation error because two
+// copies of Next get instantiated. The fix is structural: leave exactly ONE workspace (the root)
+// and ONE lockfile, so a single Next resolves.
+//
+// GENERIC + STRUCTURAL (no literals): we find the canonical ROOT workspace = the OUTERMOST ancestor
+// of the app dir that carries a `pnpm-workspace.yaml`, then DELETE every `pnpm-workspace.yaml` /
+// `pnpm-lock.yaml` that sits in a sub-package directly under `<root>/packages/*` (one level — the
+// boilerplate unpacks there). No app name, no entity name, no Next version is referenced — we detect
+// the duplication by shape and remove it. The root's own marker + lockfile are NEVER touched, and a
+// repo that already has a single workspace (re-run, or a future boilerplate that drops the nested
+// files) is a clean no-op. We deliberately do NOT scan `node_modules` (pnpm's own nested locks live
+// there and must stay) — only the source sub-packages.
+{
+  const WS_MARKER = 'pnpm-workspace.yaml';
+  const LOCKFILE = 'pnpm-lock.yaml';
+
+  // Canonical root = outermost ancestor of APP_DIR (inclusive) that holds a pnpm-workspace.yaml.
+  // Walking to the OUTERMOST (not nearest) marker means a NESTED app-level marker can never be
+  // mistaken for the root: the root is the top of the marker chain. Fall back to the caller's
+  // resolved workspace root, else APP_DIR, when no marker exists upward yet.
+  function findRootWorkspace(startDir) {
+    let outermost = '';
+    let d = startDir;
+    // Bounded climb to the filesystem root.
+    for (let guard = 0; guard < 64; guard++) {
+      if (existsSync(join(d, WS_MARKER))) outermost = d;
+      const parent = dirname(d);
+      if (parent === d) break;
+      d = parent;
+    }
+    return outermost;
+  }
+
+  const wsRoot = findRootWorkspace(APP_DIR) || RESOLVED.root || APP_DIR;
+  const pkgsDir = join(wsRoot, 'packages');
+
+  // Collect every nested marker/lockfile under <root>/packages/*/ (immediate sub-package dirs).
+  // The app unpacks to packages/app, so this covers it generically; any sibling sub-package that
+  // also shipped a stray marker is normalized the same way.
+  const nestedHits = [];
+  if (existsSync(pkgsDir) && statSync(pkgsDir).isDirectory()) {
+    for (const ent of readdirSync(pkgsDir, { withFileTypes: true })) {
+      if (!ent.isDirectory()) continue;
+      const subPkg = join(pkgsDir, ent.name);
+      // Guard: never treat the root itself as a nested package (it isn't under packages/, so this
+      // is belt-and-suspenders) — a nested marker is one that lives BELOW the root, never AT it.
+      if (subPkg === wsRoot) continue;
+      for (const fname of [WS_MARKER, LOCKFILE]) {
+        const fpath = join(subPkg, fname);
+        if (existsSync(fpath)) nestedHits.push(fpath);
+      }
+    }
+  }
+
+  if (nestedHits.length === 0) {
+    info(`single-workspace: no nested ${WS_MARKER}/${LOCKFILE} under ${rel(pkgsDir)} (one root workspace + one Next — no change)`);
+  } else {
+    for (const fpath of nestedHits) {
+      if (dryRun) {
+        info(`[dry-run] would remove nested ${rel(fpath)} (collapses to the single root workspace → one Next)`);
+      } else {
+        rmSync(fpath);
+        pass(`removed nested ${rel(fpath)} — single root workspace + lockfile (one Next resolves)`);
+      }
+    }
+    changed++;
+    if (!dryRun) info(`single-workspace: stripped ${nestedHits.length} nested marker/lockfile file(s); root workspace = ${rel(wsRoot)}`);
+  }
+}
 
 // ── dynamic free dev-server PORT (so two concurrent apps never collide) ─────────
 // The brief's frontend_port is only a BASE: allocateAppPort() walks UP from it (or the config

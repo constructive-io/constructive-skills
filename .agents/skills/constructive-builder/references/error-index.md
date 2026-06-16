@@ -68,6 +68,7 @@ normal failure protocol (AGENTS.md → Error Handling: `grep "Phase X" troublesh
 | Shared `:3000` returns **`000`** / non-200 / hangs even when "told it's running" (prior runs lost 240–300s here) | The warm hub is down or heap-fragile (often the GAP-7 OOM) | → SKILL.md **S0** (smoke `:3000` first; restart-once with the 8 GB heap, then re-curl) |
 | `curl` to the GraphQL server returns `000` or hangs (connection failure / timeout), DB-side | Backend not deployed / Postgres container down | → troubleshooting **Phase 1: GraphQL Server not responding** + **General: Docker Postgres issues** |
 | GraphQL server returns HTML **"Not Found"** | Wrong endpoint/Host — the live DATA env must target `api-<sub>` | → troubleshooting **Phase 1: GraphQL Server returns HTML "Not Found"** (and SKILL.md S3 api-`<sub>` endpoints) |
+| `pnpm dev` server intermittently 500s with a **`global-error.js`** module-instantiation error (works on a fresh `pnpm install`, then breaks) | **Dual Next from a nested workspace:** the `nextjs/constructive-app` template ships its own `pnpm-workspace.yaml` + `pnpm-lock.yaml` that `pgpm init` unpacks under `packages/app`; the nested lockfile pins a **second** Next, so two Next copies get instantiated | → SKILL.md **S3** — `wire-app.mjs` (step 0) strips any nested `packages/*/pnpm-workspace.yaml` + `pnpm-lock.yaml` so ONE root workspace + ONE Next resolve. Re-run `node scripts/wire-app.mjs --app <app> --sub <sub>`, then a single root `pnpm install`. Full note: `references/phase-3-frontend-sdk.md` step 2 (Workspace registration). |
 
 ---
 

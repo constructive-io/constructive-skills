@@ -86,6 +86,16 @@ packages:
   - 'packages/*'   # registers packages/app (the app) AND packages/provision
 ```
 
+> **Single workspace — `wire-app.mjs` strips the nested boilerplate one (step 0).** The
+> `nextjs/constructive-app` template carries its **own** `pnpm-workspace.yaml` + `pnpm-lock.yaml`
+> at the app-package root; `pgpm init` unpacks them under `packages/app`, leaving a **nested**
+> workspace inside the app. Two workspace markers ⇒ pnpm resolves the tree twice and the nested
+> lockfile pins a **second** Next version, which intermittently breaks the long-running dev server
+> with a `global-error.js` module-instantiation error. `wire-app.mjs` (step 0) detects-and-removes
+> any nested `packages/*/pnpm-workspace.yaml` + `pnpm-lock.yaml` (structural, no version/app literal)
+> so only the **root** workspace + **root** lockfile remain and a single Next resolves. Idempotent —
+> a re-run (or a future boilerplate that drops the nested files) is a clean no-op.
+
 **3. Write Environment Configuration** — write `NEXT_PUBLIC_DB_NAME` to **BOTH `<app>/.env` and
 `<app>/.env.local`** (copy the shipped `<app>/.env.example` → `<app>/.env.local` first). The single
 scripted command `node scripts/wire-app.mjs --app <app> --sub <db>` writes the full per-DB env block to
