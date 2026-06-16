@@ -150,6 +150,114 @@ function entityIdentifiers(entity) {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
+// CODEGEN-ACTUAL COLUMN NAMES (SG-A for COLUMNS) — derive every emitted column field
+// name from what CODEGEN produced, not from the brief.
+//
+// SG-A already derives the TABLE-facing identifiers (hooks / data accessor / `_meta`
+// tableName) from the table NAME so the page imports the REAL codegen'd hooks. The
+// SAME hazard exists one level down, on COLUMNS: the platform's construct_blueprint can
+// emit a column under a name that does NOT equal the brief's `camel(field_name)` — e.g.
+// it strips the `_` before a single-char trailing segment, so the brief column
+// `elevation_m` deploys (and codegens) as `elevationm`, `temperature_c` as
+// `temperaturec`, while a multi-char trailing segment (`area_sqm`) survives as `areaSqm`.
+// Emitting the brief-derived camelCase (`elevationM` / `temperatureC`) then breaks tsc
+// (the SDK row/input type has no such member). The fix MIRRORS SG-A: read the names
+// codegen ACTUALLY produced and use those — for EVERY column — so ANY platform name
+// transformation is transparent. There is NO mangling rule encoded here; we never
+// special-case `_<char>` — we just adopt whatever codegen wrote.
+//
+// SOURCE = the generated SDK row interfaces in `@sdk/app`'s types.ts
+// (<src>/graphql/sdk/app/types.ts), which codegen emits at Phase 3 — BEFORE this
+// scaffolder runs at Phase 4. Each table is one `export interface <EntityPascal> { … }`
+// whose members are the codegen-actual camelCase column names (the SAME EntityPascal the
+// page already uses for the `_meta` tableName, so the lookup key is free). When that file
+// is ABSENT (the codegen-free dry-run / the rot-canaries, which scaffold into a bare temp
+// src/ with no SDK) the resolver returns null and EVERY caller falls back to the
+// brief-derived `camel()` name — so a non-mangled brief (every canary fixture) stamps
+// BYTE-IDENTICALLY and the genericity proof holds.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Normalize a camel/identifier to its mangling-insensitive key: lowercase, alnum only.
+ *  `elevationM` → `elevationm`, codegen `elevationm` → `elevationm` (they collapse to the
+ *  same key); `areaSqm` ↔ `areaSqm` likewise. This is what lets a brief-derived name match
+ *  whatever codegen wrote WITHOUT encoding the platform's transform. */
+function normalizeColKey(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Parse the generated SDK `types.ts` once → Map<EntityPascal, string[] memberNames>.
+ *  Each `export interface <Name> { a: …; b: …; }` block contributes its member identifiers
+ *  (the codegen-actual column names). Tolerant: a missing/unreadable file → empty Map (every
+ *  caller then falls back to the brief name). Cached on `ctx` so we read the file at most once
+ *  per scaffold run. */
+function codegenInterfaces(srcDir, ctx) {
+  if (ctx && ctx._codegenIfaces) return ctx._codegenIfaces;
+  const map = new Map();
+  // @sdk/app → <src>/graphql/sdk/app (see the app tsconfig `paths`); types.ts holds the rows.
+  const typesPath = path.join(srcDir, 'graphql', 'sdk', 'app', 'types.ts');
+  let text = '';
+  try {
+    text = fs.readFileSync(typesPath, 'utf8');
+  } catch {
+    if (ctx) ctx._codegenIfaces = map;
+    return map; // no SDK yet (dry-run / canary) — callers fall back to the brief name.
+  }
+  // Match each `export interface <Name> { … }` body, then pull the `member:` identifiers.
+  const ifaceRe = /export\s+interface\s+([A-Za-z0-9_]+)\s*\{([\s\S]*?)\n\}/g;
+  let m;
+  while ((m = ifaceRe.exec(text)) !== null) {
+    const name = m[1];
+    const body = m[2];
+    const members = [];
+    const memRe = /(?:^|\n)\s*([A-Za-z_][A-Za-z0-9_]*)\??\s*:/g;
+    let mm;
+    while ((mm = memRe.exec(body)) !== null) members.push(mm[1]);
+    if (members.length) map.set(name, members);
+  }
+  if (ctx) ctx._codegenIfaces = map;
+  return map;
+}
+
+/**
+ * A per-table column remapper: given the codegen interface for `EntityPascal`, return a
+ * function naive→actual that maps a brief-derived camelCase column name to the name codegen
+ * ACTUALLY emitted. Resolution:
+ *   • exact hit  — the naive name IS a codegen member (the common, non-mangled case) → unchanged.
+ *   • unique normalized hit — exactly ONE codegen member shares the naive name's
+ *     mangling-insensitive key (normalizeColKey) → adopt that codegen member (e.g. naive
+ *     `elevationM` → codegen `elevationm`). The single-match guard means we never guess when a
+ *     normalization is ambiguous.
+ *   • otherwise   — return the naive name unchanged (no SDK / unknown column / ambiguous) so
+ *     behavior degrades to today's brief-derived name (canary byte-identical).
+ * GENERIC: derives purely from the codegen output; encodes no entity/column literal and no
+ * `_<char>` mangling rule — it adopts whatever codegen wrote, so any platform name transform
+ * (this one or a future one) is handled the same way.
+ */
+function makeColMapper(srcDir, EntityPascal, ctx) {
+  const ifaces = codegenInterfaces(srcDir, ctx);
+  const members = ifaces.get(EntityPascal) || null;
+  if (!members || members.length === 0) {
+    return (naive) => naive; // codegen-free (dry-run/canary) or table not in the SDK → brief name.
+  }
+  const exact = new Set(members);
+  // Build the normalized index, but only keep keys that map to a UNIQUE member (so an
+  // ambiguous normalization never silently rewrites to the wrong column).
+  const byNorm = new Map();
+  const ambiguous = new Set();
+  for (const mem of members) {
+    const k = normalizeColKey(mem);
+    if (byNorm.has(k)) ambiguous.add(k);
+    else byNorm.set(k, mem);
+  }
+  return (naive) => {
+    if (exact.has(naive)) return naive; // codegen has this exact name — nothing to remap.
+    const k = normalizeColKey(naive);
+    if (!ambiguous.has(k) && byNorm.has(k)) return byNorm.get(k); // adopt the codegen-actual name.
+    return naive; // unknown/ambiguous — fall back to the brief name (unchanged behavior).
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
 // FLOW SURFACES — the flow → block-mount map (step (f), the flow-block mounting).
 //
 // scaffold-frontend ONLY owns the domain-entity surface (steps a–e). The Blocks
@@ -679,15 +787,15 @@ function rewireEndpoint(body) {
  * GENERIC: this is the same priority pickTitleField uses for the OWN row label, applied to
  * the PARENT — no entity/column is hard-coded.
  */
-function labelFieldFor(parentTable) {
+function labelFieldFor(parentTable, mapCol = (n) => n) {
   const fields = parentTable?.fields ?? [];
   const isText = (f) => !f.type || f.type.name === 'text' || f.type.name === 'citext';
   const requiredText = fields.find((f) => f.required && isText(f) && f.name !== 'slug');
-  if (requiredText) return camel(requiredText.name);
+  if (requiredText) return mapCol(camel(requiredText.name));
   const conventional = fields.find((f) => isText(f) && ['slug', 'name', 'title', 'label'].includes(camel(f.name)));
-  if (conventional) return camel(conventional.name);
+  if (conventional) return mapCol(camel(conventional.name));
   const anyText = fields.find((f) => isText(f) && f.name !== 'slug');
-  if (anyText) return camel(anyText.name);
+  if (anyText) return mapCol(camel(anyText.name));
   return null;
 }
 
@@ -699,9 +807,12 @@ function labelFieldFor(parentTable) {
  * Now all render the SAME <select> picker (optional ones simply allow the empty choice and
  * stay out of the submit guard).
  * Each result describes one FK select:
- *   fkKey       — the camelCase FK input key (field_name `topic_id` → `topicId`); the key
- *                 spread into the create AND the base for every per-FK var name (unique
- *                 because a column name is unique on the table).
+ *   fkKey       — the FK input key (field_name `topic_id` → `topicId`), MAPPED to the
+ *                 codegen-actual column name (a mangled FK column → its real SDK member); the
+ *                 key spread into the create AND the base for every per-FK var name (unique
+ *                 because a column name is unique on the table). The common `<parent>_id` shape
+ *                 is multi-char so it is never mangled (childfk canary unchanged), but deriving
+ *                 it from codegen keeps it correct for ANY FK column name.
  *   FkKeyPascal — PascalCase fkKey (`TopicId`) → the setter name `set<FkKeyPascal>`.
  *   fkKebab     — FK-column kebab (field_name minus a trailing _id, underscores → dashes):
  *                 the UNIQUE <fkColumn> half of the testid <entity>-<fkColumn>-select. Keyed
@@ -718,24 +829,36 @@ function labelFieldFor(parentTable) {
  *                 prefix (<entityKebab>, the <parentEntity> half of the testid).
  * Returns [] when the table has no belongs-to FK (the canary path).
  */
-function belongsToFks(brief, table) {
+function belongsToFks(brief, table, srcDir = null, ctx = null) {
   const relations = brief?.data_model?.relations ?? [];
   const tables = brief?.data_model?.tables ?? [];
+  // Codegen-actual column mapper for THIS (child) table — used for the FK input key.
+  const childEntity = singularFromTable(table?.name) || kebab(table?.name || '');
+  const childMapCol = srcDir
+    ? makeColMapper(srcDir, entityIdentifiers(childEntity).EntityPascal, ctx)
+    : (n) => n;
   const out = [];
   for (const r of relations) {
     if (r?.$type !== 'RelationBelongsTo') continue;
     if (r.source_table !== table?.name) continue;
     if (!r.field_name || !r.target_table) continue;
-    const fkKey = camel(r.field_name);
+    // FK input key → the codegen-actual name (SG-A for columns). The setter/var names derive
+    // from the SAME (possibly remapped) key so they stay consistent JS identifiers.
+    const fkKey = childMapCol(camel(r.field_name));
     const parentSingular = singularFromTable(r.target_table) || kebab(r.target_table);
     const parentTable = tables.find((t) => t.name === r.target_table) || null;
+    // The parent's label field must be selected by ITS codegen-actual name → the parent table's
+    // own mapper (a different interface than the child's).
+    const parentMapCol = srcDir
+      ? makeColMapper(srcDir, entityIdentifiers(parentSingular).EntityPascal, ctx)
+      : (n) => n;
     out.push({
       fkKey,
-      FkKeyPascal: pascal(r.field_name),
+      FkKeyPascal: pascal(fkKey),
       fkKebab: r.field_name.replace(/_id$/, '').replace(/_/g, '-'),
       required: r.is_required === true,
       selfRef: r.target_table === r.source_table,
-      labelField: labelFieldFor(parentTable),
+      labelField: labelFieldFor(parentTable, parentMapCol),
       parentLabel: titleCase(parentSingular),
       ids: entityIdentifiers(parentSingular),
     });
@@ -950,7 +1073,7 @@ function junctionOrgScoped(rel) {
  *                   create needs `entityId: activeOrgId`.
  * Returns [] when the table owns no N:M relation (the canary path — emits NOTHING new).
  */
-function manyToManyRelations(brief, table) {
+function manyToManyRelations(brief, table, srcDir = null, ctx = null) {
   const relations = brief?.data_model?.relations ?? [];
   const tables = brief?.data_model?.tables ?? [];
   const out = [];
@@ -963,15 +1086,20 @@ function manyToManyRelations(brief, table) {
     const sourceSingular = singularFromTable(r.source_table) || kebab(r.source_table);
     const targetSingular = singularFromTable(r.target_table) || kebab(r.target_table);
     const targetTable = tables.find((t) => t.name === r.target_table) || null;
+    // The linked (target) table's label column must be selected by ITS codegen-actual name.
+    const targetMapCol = srcDir
+      ? makeColMapper(srcDir, entityIdentifiers(targetSingular).EntityPascal, ctx)
+      : (n) => n;
     out.push({
       junctionName,
       junctionIds: entityIdentifiers(singularFromTable(junctionName) || kebab(junctionName)),
       // The junction FK columns the platform generates: <singular(table)>Id, camelCased
       // (verified against the codegen'd Create<Junction>Input — fieldGuideId/observationId).
+      // These are structurally <entity>Id (multi-char tail) so the platform never mangles them.
       ownFkKey: camel(sourceSingular) + 'Id',
       otherFkKey: camel(targetSingular) + 'Id',
       otherIds: entityIdentifiers(targetSingular),
-      otherLabelField: labelFieldFor(targetTable),
+      otherLabelField: labelFieldFor(targetTable, targetMapCol),
       otherLabel: titleCase(pluralizeWords(targetSingular).join('-')),
       relLabel: titleCase(pluralizeWords(singularFromTable(junctionName) || junctionName).join('-')),
       relKebab: kebab(singularFromTable(junctionName) || junctionName),
@@ -1116,10 +1244,17 @@ function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []) {
   const sdkIds = entityIdentifiers(tableEntity); // SDK/_meta-facing identifiers (from the table)
   const ids = entityIdentifiers(entity); // UI/testid-facing identifiers (from the route entity)
   const label = route.label || titleCase(entity);
-  const titleField = pickTitleField(table);
-  const createExtra = pickCreateExtra(table, titleField);
+  // SG-A for COLUMNS — remap every brief-derived column name to the name codegen ACTUALLY
+  // emitted for THIS table's SDK row interface (sdkIds.EntityPascal, the same `_meta` type the
+  // page already names). When the SDK isn't present (dry-run / canary) this is the identity, so
+  // the brief-derived name is used unchanged (canary byte-identical). Threaded into every
+  // column-emitting helper below so a platform-mangled column (e.g. elevation_m → elevationm) is
+  // referenced by its real codegen name in the selection AND the create mutate — not the brief's.
+  const mapCol = makeColMapper(srcDir, sdkIds.EntityPascal, ctx);
+  const titleField = pickTitleField(table, mapCol);
+  const createExtra = pickCreateExtra(table, titleField, mapCol);
   const scoping = scopingSeams(table);
-  const selectionFields = buildSelectionFields(table, titleField);
+  const selectionFields = buildSelectionFields(table, titleField, mapCol);
   const createSelection = buildCreateSelection(titleField);
   const listWhere = buildListWhere(table);
   // The page's OWN list hook (table-derived) — passed so a self-ref FK doesn't re-import it.
@@ -1213,17 +1348,20 @@ function singularFromTable(tableName) {
  * The field shown as each row's label + bound to the quick-add input. The
  * generator prefers, in order: the first REQUIRED text field, the first text
  * field, a conventional name (title/name/label), else 'title'. Emitted camelCase
- * because the SDK/_meta inflect snake → camel.
+ * because the SDK/_meta inflect snake → camel, then mapped through `mapCol` to the
+ * codegen-actual name (the title is BOTH a selection key and the create mutate key, so a
+ * mangled text column must use its real codegen name). `mapCol` defaults to identity so
+ * existing callers (codegen-free) are unchanged.
  */
-function pickTitleField(table) {
+function pickTitleField(table, mapCol = (n) => n) {
   const fields = table?.fields ?? [];
   const isText = (f) => !f.type || f.type.name === 'text' || f.type.name === 'citext';
   const requiredText = fields.find((f) => f.required && isText(f) && f.name !== 'slug');
-  if (requiredText) return camel(requiredText.name);
+  if (requiredText) return mapCol(camel(requiredText.name));
   const anyText = fields.find((f) => isText(f) && f.name !== 'slug');
-  if (anyText) return camel(anyText.name);
+  if (anyText) return mapCol(camel(anyText.name));
   const conventional = fields.find((f) => ['title', 'name', 'label'].includes(camel(f.name)));
-  if (conventional) return camel(conventional.name);
+  if (conventional) return mapCol(camel(conventional.name));
   return 'title';
 }
 
@@ -1238,13 +1376,13 @@ function pickTitleField(table) {
  * actor id (a self-default — the actor owns the row it creates). Returns [] for a table with
  * no policies_raw owner fields (every mapped-policy table → unchanged).
  */
-function policiesRawOwnerFields(table) {
+function policiesRawOwnerFields(table, mapCol = (n) => n) {
   const raw = Array.isArray(table?.policies_raw) ? table.policies_raw : [];
   const cols = [];
   for (const p of raw) {
     const ef = p?.data?.entity_fields;
     if (Array.isArray(ef)) {
-      for (const c of ef) if (c) cols.push(camel(c));
+      for (const c of ef) if (c) cols.push(mapCol(camel(c))); // codegen-actual owner-uuid column name
     }
   }
   return [...new Set(cols)];
@@ -1267,13 +1405,13 @@ function policiesRawOwnerFields(table) {
  * type, no entity/column hard-coding — exactly how the backend builder reads field types.
  * Each fragment includes its own leading `, ` so it splices into the mutate after the title.
  */
-function requiredNonTextDefaults(table, titleField) {
+function requiredNonTextDefaults(table, titleField, mapCol = (n) => n) {
   const fields = table?.fields ?? [];
   const out = [];
   for (const f of fields) {
     if (f.required !== true) continue;
     if (f.default !== undefined) continue; // a DB default fills it — don't override
-    const key = camel(f.name);
+    const key = mapCol(camel(f.name)); // codegen-actual name (a mangled column → its real SDK key)
     if (key === titleField) continue; // already bound to the quick-add input
     const type = f.type?.name || 'text';
     if (type === 'text' || type === 'citext') continue; // title or optional text
@@ -1336,7 +1474,7 @@ function isTemporalTable(table) {
  * collapses cleanly to `mutate({ title: t })`. It is NEVER injected into the JSDoc
  * header: a `/* … *​/` fragment there would prematurely close the doc-comment (gap #2).
  */
-function pickCreateExtra(table, titleField) {
+function pickCreateExtra(table, titleField, mapCol = (n) => n) {
   const policy = table?.policy;
   let extra = '';
   if (policy === 'owner' || policy === 'public-read+owner-write') extra += ', ownerId';
@@ -1344,9 +1482,9 @@ function pickCreateExtra(table, titleField) {
   // SG-C — member-owner needs BOTH owner_id (NOT NULL) AND entity_id.
   else if (policy === 'member-owner') extra += ', ownerId, entityId: activeOrgId';
   // SG-2 — policies_raw owner entity_fields: set each declared owner uuid column to the actor id.
-  for (const col of policiesRawOwnerFields(table)) extra += `, ${col}: ownerId`;
+  for (const col of policiesRawOwnerFields(table, mapCol)) extra += `, ${col}: ownerId`;
   // SG-B — required non-text columns the title binding can't fill (date/int/bool/timestamp).
-  extra += requiredNonTextDefaults(table, titleField);
+  extra += requiredNonTextDefaults(table, titleField, mapCol);
   // Temporal window: land the row IN-window so the RESTRICTIVE AuthzTemporal WITH-CHECK
   // passes AND the row is immediately visible (valid_from = now ≤ now; valid_until NULL).
   if (isTemporalTable(table)) extra += ', validFrom: new Date().toISOString()';
@@ -1460,15 +1598,20 @@ function scopingSeams(table) {
 /**
  * The list-query `selection.fields` object body (codegen 4.45.1+ HookStrictSelect
  * mandates a non-empty fields set). Always includes `id` + the label field, then every
- * brief field on the table (camelCase — the SDK/_meta inflect snake → camel). Derived
- * ONLY from `data_model.tables[].fields` so every key is a guaranteed-real column.
+ * brief field on the table. Each field name is the brief camelCase (the SDK/_meta inflect
+ * snake → camel) MAPPED through `mapCol` to the codegen-actual name, so a platform-mangled
+ * column (e.g. brief `elevation_m` → codegen `elevationm`) is selected by its real SDK
+ * member instead of the brief-derived `elevationM` (which the SDK row type lacks → tsc
+ * break). Derived ONLY from `data_model.tables[].fields` (every key is a real column) +
+ * the codegen interface; `mapCol` defaults to identity so a codegen-free caller is
+ * unchanged. The passed `titleField` is already mapped by the caller.
  * Returned as the indented body lines that fill the __SELECTION_FIELDS__ seam (which
  * sits at 8-space indent inside `fields: { … }`).
  */
-function buildSelectionFields(table, titleField) {
+function buildSelectionFields(table, titleField, mapCol = (n) => n) {
   const keys = ['id', titleField];
   for (const f of table?.fields ?? []) {
-    const k = camel(f.name);
+    const k = mapCol(camel(f.name));
     if (!keys.includes(k)) keys.push(k);
   }
   return keys.map((k, i) => `${i === 0 ? '' : '        '}${k}: true,`).join('\n');
@@ -2506,10 +2649,13 @@ function main() {
     if (kind === 'crud') {
       const table = tableFor(brief, route, consumedTables);
       if (table?.name) consumedTables.add(table.name);
-      const fks = belongsToFks(brief, table);
+      // Pass srcDir + ctx so the FK input key + the parent label field derive from the
+      // codegen-actual SDK column names (SG-A for columns), not the brief-derived camelCase.
+      const fks = belongsToFks(brief, table, srcDir, ctx);
       // The N:M relations THIS table owns (source side) → a relation-manager section per
       // junction. [] for a non-N:M table → the page emits no manager (byte-identical canary).
-      const m2mRels = manyToManyRelations(brief, table);
+      // srcDir + ctx so the linked table's label column resolves to its codegen-actual name.
+      const m2mRels = manyToManyRelations(brief, table, srcDir, ctx);
       const { label } = emitEntityPage(srcDir, route, table, ctx, fks, m2mRels);
       appendRoute(srcDir, route, ctx, { context: 'app', access: 'protected' });
       appendNavItem(srcDir, route, label, ctx);
