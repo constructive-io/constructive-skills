@@ -12,11 +12,16 @@
  *                      'full', or 'minimal'). The auth-appendix below
  *                      (membership defaults + email-verify + users self_update +
  *                      public-read anon SELECT) is GATED on this — a non-auth app uses
- *                      'minimal' and the whole appendix is skipped. The b2b org membership
- *                      (personal-org sprt row + create_entity bit + org-table grants) is now
- *                      provisioned NATIVELY by the platform (PLATFORM-GAPS.md GAP-1b/1c,
- *                      CLOSED), so there is no org-reconcile step here. This is preset-keyed
- *                      boilerplate, not domain code; the generic orchestration loop stays intact.
+ *                      'minimal' and the whole appendix is skipped. For an org preset
+ *                      ('b2b' | 'b2b:storage' | 'full') the appendix ALSO grants the
+ *                      org-member-management tables (org_memberships INSERT/UPDATE +
+ *                      org_member_profiles SELECT) to `authenticated` — the privileges the
+ *                      provisioner omits, which the org-member invite/role-change flow needs
+ *                      (PLATFORM-GAPS.md "org-member-management grants"). The personal-org
+ *                      sprt row + create_entity bit are now provisioned NATIVELY by the
+ *                      platform (PLATFORM-GAPS.md GAP-1b/1c, CLOSED), so there is no
+ *                      personal-org seed step here. This is preset-keyed boilerplate, not
+ *                      domain code; the generic orchestration loop stays intact.
  *   __SITE_DOMAIN__  ← boolean: whether to backfill the per-app site-domain row that
  *                      send-email-link needs (else "Missing site configuration for
  *                      email"). True for email-capable presets / when email flows are
@@ -70,8 +75,8 @@ async function main() {
     // is obvious rather than masked behind "success".
     console.warn(
       '\n  ⚠️  PGHOST unset — the AUTH APPENDIX (membership approval, email-verify, users self-update,' +
-        ' public-read reconcile) will be SKIPPED → the app is only PARTIALLY provisioned.' +
-        ' Re-run with PG env exported (eval "$(pgpm env)"). This is NOT a clean provision.\n',
+        ' public-read reconcile, org-member-management grants) will be SKIPPED → the app is only' +
+        ' PARTIALLY provisioned. Re-run with PG env exported (eval "$(pgpm env)"). This is NOT a clean provision.\n',
     );
   }
 
@@ -337,15 +342,99 @@ async function main() {
       }
     }
 
-    // --- B2B ORG MEMBERSHIP: now PLATFORM-NATIVE (no reconcile step) ----------------------
-    // On the b2b/org tier a fresh email-password signup needs a personal-org row in the PRIVATE
-    // `org_memberships_sprt` (the row every AuthzEntityMembership RLS reads), the `create_entity`
-    // permission bit, and org-table grants to `authenticated` — or createCompany / org-member
-    // writes RLS-reject. The platform now provisions the org grants + create_entity bit and
-    // SELF-SEEDS the personal-org sprt row (actor = entity, is_owner, create_entity set) on signup
-    // (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15). The former inline org-reconcile block here
-    // was a workaround for that gap and is now a redundant no-op, so it is removed; org-scoped
-    // writes work natively after signup. Phase 2.2 (verify-phase.sh) asserts this platform outcome.
+    // --- B2B ORG-MEMBER-MANAGEMENT table grants (org/b2b presets only) --------------------
+    // SPLIT of the former b2b org-reconcile into the two halves the platform handles differently:
+    //   • personal-org SEED + create_entity bit — now PLATFORM-NATIVE. On the b2b/org tier the
+    //     platform provisions the create_entity bit and SELF-SEEDS the personal-org row in the
+    //     PRIVATE org_memberships_sprt (actor = entity, is_owner, bit set) on signup, so a fresh
+    //     signup's first AuthzEntityMembership write (createCompany etc.) passes RLS with no help.
+    //     (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15.) We do NOT re-seed it here.
+    //   • org-MEMBER-MANAGEMENT table GRANTs — NOT platform-native on this hub. The dynamic
+    //     per-tenant provisioner ships org_memberships with only SELECT,DELETE for `authenticated`
+    //     (MISSING INSERT,UPDATE) and grants org_member_profiles NOTHING. The AuthzEntityMembership
+    //     RLS POLICIES on these tables already exist from provision; without the table-level GRANTs
+    //     the policy can't even be evaluated, so the org-member INVITE / ROLE-CHANGE / member-profile
+    //     read flow is under-granted — invite (INSERT) + role-change (UPDATE) + members-list/profile
+    //     (SELECT on org_member_profiles) 403 with "permission denied for table …".
+    // This block backfills ONLY the missing org-member-management GRANTs, idempotently and
+    // GENERICALLY. It is the org analogue of the users-self-update step above: a targeted privilege
+    // reconcile, NOT a data seed. The durable fix is upstream (the provisioner should grant these
+    // org-member-management tables natively — PLATFORM-GAPS.md "org-member-management grants"); this
+    // applier is the skill-side handling until then. Gated on the org presets so an owner-only /
+    // public-read app skips it cleanly (no org_memberships table there).
+    const isOrgPreset = AUTH_PRESET === 'b2b' || AUTH_PRESET === 'b2b:storage' || AUTH_PRESET === 'full';
+    if (pgAvailable && isOrgPreset) {
+      console.log('\n  Granting org-member-management tables to authenticated (invite / role-change / member-profile reads)...');
+      const orgPool = new Pool({ database: config.pgDatabase });
+      try {
+        // Resolve THIS tenant's memberships-PUBLIC schema (org_memberships / org_member_profiles
+        // live here). Prefer DATABASE_ID (the exact live tenant — a shared hub can hold same-name
+        // sibling tenants, gotchas SUBDOMAIN-001); fall back to an anchored, separator-tolerant name
+        // match (NO leading %, tolerant of '<db>-…-memberships-public' AND '<db>_memberships_public').
+        // Logical schema name 'memberships_public' — never a hard-coded physical schema / table literal.
+        let memSchema: string | undefined;
+        const byId = await orgPool.query(
+          `SELECT schema_name FROM metaschema_public.schema
+           WHERE database_id = $1 AND name = 'memberships_public' LIMIT 1`,
+          [config.databaseId]
+        );
+        memSchema = byId.rows[0]?.schema_name as string | undefined;
+        if (!memSchema) {
+          const dbLike = config.databaseName.replace(/_/g, '%').replace(/-/g, '%') + '%';
+          const byName = await orgPool.query(
+            `SELECT table_schema FROM information_schema.tables
+             WHERE table_name = 'org_memberships' AND table_schema LIKE $1
+             ORDER BY length(table_schema), table_schema LIMIT 1`,
+            [dbLike + 'memberships%public']
+          );
+          memSchema = byName.rows[0]?.table_schema as string | undefined;
+        }
+
+        if (!memSchema) {
+          // No memberships-public schema resolved — the b2b modules aren't provisioned. Surface it;
+          // org-member flows will 403 until the b2b preset is provisioned.
+          console.warn('   ⚠️  Could not resolve the memberships-public schema (table org_memberships) — ' +
+            'org-member-management grants NOT applied. The org-member invite/role-change flow may 403 ' +
+            '("permission denied"). Confirm the app was provisioned with the b2b preset (gotchas RLS-ORG-RECONCILE-001).');
+        } else {
+          // GRANT the missing org-member-management privileges to `authenticated`. The full SELECT/
+          // INSERT/UPDATE/DELETE set on org_memberships is idempotent (SELECT,DELETE already present;
+          // re-granting them is a no-op) and re-runnable. org_member_profiles gets the SELECT the
+          // provisioner omits. USAGE on the schema is required for the table grants to take effect.
+          await orgPool.query(`GRANT USAGE ON SCHEMA "${memSchema}" TO authenticated`);
+          await orgPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON "${memSchema}".org_memberships TO authenticated`);
+          await orgPool.query(`GRANT SELECT ON "${memSchema}".org_member_profiles TO authenticated`);
+          // Verify the OUTCOME verify-phase 2.3 asserts (org_memberships ≥4 privs, org_member_profiles SELECT).
+          const gm = await orgPool.query(
+            `SELECT count(DISTINCT privilege_type)::int AS n FROM information_schema.role_table_grants
+             WHERE table_schema = $1 AND table_name = 'org_memberships' AND grantee = 'authenticated'
+               AND privilege_type IN ('SELECT','INSERT','UPDATE','DELETE')`,
+            [memSchema]
+          );
+          const omp = await orgPool.query(
+            `SELECT count(*)::int AS n FROM information_schema.role_table_grants
+             WHERE table_schema = $1 AND table_name = 'org_member_profiles' AND grantee = 'authenticated'
+               AND privilege_type = 'SELECT'`,
+            [memSchema]
+          );
+          const gmN = (gm.rows[0]?.n as number) ?? 0;
+          const ompN = (omp.rows[0]?.n as number) ?? 0;
+          if (gmN >= 4 && ompN >= 1) {
+            console.log(`   org-member-management grants applied: ${memSchema} (org_memberships ${gmN}/4 + org_member_profiles SELECT) — invite / role-change / member reads will round-trip`);
+          } else {
+            console.warn(`   ⚠️  org grants ran but are still incomplete in ${memSchema} ` +
+              `(org_memberships ${gmN}/4, org_member_profiles SELECT=${ompN}). The org-member invite/role-change flow may 403. ` +
+              'Check the schema has these tables (provision incomplete?) or a default-privileges/ownership issue (gotchas RLS-ORG-RECONCILE-001).');
+          }
+        }
+      } catch (err) {
+        console.warn(`   ⚠️  org-member-management grant step failed: ${(err as Error).message?.slice(0, 160)}. ` +
+          'The org-member invite/role-change flow may 403 with "permission denied" — re-run provision with PG env exported, ' +
+          'or GRANT SELECT,INSERT,UPDATE,DELETE on <mem>.org_memberships + SELECT on <mem>.org_member_profiles to authenticated by hand (gotchas RLS-ORG-RECONCILE-001).');
+      } finally {
+        await orgPool.end();
+      }
+    }
   }
 
   console.log('\n  All schemas provisioned successfully!\n');

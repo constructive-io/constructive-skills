@@ -402,7 +402,7 @@ function needsSiteDomain(brief, preset) {
 const PROVISION_SCRIPTS = {
   'create-db': 'tsx src/create-db.ts',
   // `provision` self-sources `pgpm env` so the PG-appendix (membership approval, email-verify,
-  // users self-update, org/public-read reconcile) ALWAYS has PGHOST — regardless of the caller's
+  // users self-update, public-read reconcile, org-member-management grants) ALWAYS has PGHOST — regardless of the caller's
   // env. Bash resets env between calls, so a bare `pnpm run provision` would otherwise leave PGHOST
   // unset and SILENTLY skip the whole appendix while still printing success (leaves the app only
   // partially provisioned). Caller-independent + hands-free; PGDATABASE=postgres from pgpm env is

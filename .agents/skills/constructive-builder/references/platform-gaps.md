@@ -87,16 +87,19 @@ Three concrete faces of the same gap:
      every `AuthzEntityMembership(membership_type:2)` write (the b2b business-table INSERT path) has no
      membership to satisfy and is RLS-denied. This is the root cause that makes the whole b2b tier
      unreachable from a clean signup — distinct from, and on top of, the grant/policy gap in (1).
-- **Status — CLOSED (2026-06-15):** the platform now, on the b2b/org tier, **(a)** grants the `create_entity`
-  app-permission bit to the actor, **(b)** provisions the `org_memberships` / `org_member_profiles` grants +
-  write policies, and **(c)** self-seeds the per-user personal-org row in
+- **Status — PARTIALLY CLOSED (2026-06-15):** the platform now, on the b2b/org tier, **(a)** grants the
+  `create_entity` app-permission bit to the actor, and **(c)** self-seeds the per-user personal-org row in
   `<db>-memberships-private.org_memberships_sprt` (`actor_id = entity_id = user_id`) on `sign_up` — so a fresh
   email-password signup is a member of its personal org and `AuthzEntityMembership(membership_type:2)` writes
-  persist immediately. Documented as gotchas **RLS-ORG-RECONCILE-001** + the recipe in skill-supplements.md
-  "Org-flow extension" (kept as the historical control-plane form). The former harness-side stopgap (an
-  org-reconcile script auto-applied by the build, plus the after-signup live-QA hook) is therefore **removed** —
-  org-scoped writes work natively after signup, and a real RLS denial now surfaces directly at the create
-  assertion.
+  persist immediately. The write **policies** in **(b)** also land. **BUT the org-table `GRANT`s in (b) do NOT
+  land deterministically** — see the **2026-06-17 re-confirmation in §1d below**: ~6/7 fresh b2b tenants come up
+  with `org_memberships` granted only `SELECT,DELETE` and `org_member_profiles` granted nothing, so the
+  org-member-management surface 403s. Documented as gotchas **RLS-ORG-RECONCILE-001** + the recipe in
+  skill-supplements.md "Org-flow extension" (kept as the historical control-plane form). The former harness-side
+  **personal-org-seed** stopgap (an org-reconcile script's seed half, plus the after-signup live-QA hook) is
+  **removed** — org-scoped writes work natively after signup, and a real RLS denial now surfaces directly at the
+  create assertion — but the **org-member-management GRANT** half is **RE-INSTATED** (targeted, in the
+  `provision.ts` b2b/full appendix; see §1d).
 
 ### 1c. `app_permission_defaults` ships all-zeros → no self-service org creation
 - **Symptom:** a freshly provisioned tenant has **no actor who can create an org**. Org creation requires
@@ -121,26 +124,45 @@ Three concrete faces of the same gap:
   pass that should be unnecessary.
 
 > **Re-confirmed STILL-OPEN 2026-06-17 (org-table grants are NON-deterministic post-2026-06-15-fix) — this
-> is the root cause of the b2b Gate-2.3 `org-table grants incomplete` PARTIAL.** The 2026-06-15 platform fix
-> (GAP-1b/1c, below) closed the grant *emission* and the personal-org *seed*, but did **not** make the org-table
-> grant emission *deterministic* — exactly the §1d symptom. Live evidence on the shared hub:
-> **6 of 7** provisioned `b2b` tenants are missing the org-table grants the static seed schema has —
-> `org_memberships` is granted only `SELECT,DELETE` (INSERT/UPDATE omitted) and `org_member_profiles` is
-> granted **nothing** — while the same `modules.preset: b2b` input on tenant `testcrm` got the full
-> `SELECT,INSERT,UPDATE,DELETE` + `org_member_profiles SELECT`. All 6 partial tenants were provisioned
-> **after** the 2026-06-15 fix (so this is *not* a stale pre-fix tenant), and on a partial tenant the RLS
-> **policies are complete** (`auth_ins_ent_mem` / `auth_upd_ent_mem` / `auth_sel_ent_mem` all present) — only
-> the table-level `GRANT`s are missing, the classic GAP-1 "RLS-on, policies present, DML grants omitted"
-> silent-deny shape. Net: member-list / role-change / `org_member_profiles` reads (the org member-management
-> surface) 403 on ~6/7 b2b builds. **This is upstream-only — the harness is consume-only over constructive-db
-> and cannot durably fix non-deterministic provisioner emission.** The harness DID ship the consume-only
-> backfill for exactly this (`scripts/fix-org-grants.sh`: idempotent `GRANT INSERT,UPDATE ON org_memberships`
-> + `GRANT SELECT ON org_member_profiles TO authenticated`), but it was **retired in 09ca043** on the
-> assumption the 2026-06-15 fix made grants deterministic; this re-confirmation shows that assumption does
-> **not** hold for the org tables. **Re-verify by ~2026-09-17:** provision K≥5 fresh `b2b` tenants and assert
-> *all* show `org_memberships` SELECT/INSERT/UPDATE/DELETE + `org_member_profiles` SELECT to `authenticated`
-> (today only ~1/7 do). When the org-table grant emission is deterministic, this re-confirmation closes.
-> Reconciles against the Phase-2.3 gate `org-table grants incomplete` (verify-phase.sh, block (a)).
+> is the root cause of the b2b Gate-2.3 `org-table grants incomplete` PARTIAL. NOW SKILL-HANDLED for the
+> org-member-management grants (the underlying platform non-determinism stays escalated below).** The
+> 2026-06-15 platform fix (GAP-1b/1c, below) closed the grant *emission* and the personal-org *seed*, but did
+> **not** make the org-table grant emission *deterministic* — exactly the §1d symptom. Live evidence on the
+> shared hub (constructive-db 5b1128fa68): **6 of 7** provisioned `b2b` tenants are missing the org-table
+> grants the static seed schema has — `org_memberships` is granted only `SELECT,DELETE` (INSERT/UPDATE
+> omitted) and `org_member_profiles` is granted **nothing** — while the same `modules.preset: b2b` input on
+> tenant `testcrm` got the full `SELECT,INSERT,UPDATE,DELETE` + `org_member_profiles SELECT`. All 6 partial
+> tenants were provisioned **after** the 2026-06-15 fix (so this is *not* a stale pre-fix tenant), and on a
+> partial tenant the RLS **policies are complete** (`auth_ins_ent_mem` / `auth_upd_ent_mem` / `auth_sel_ent_mem`
+> all present) — only the table-level `GRANT`s are missing, the classic GAP-1 "RLS-on, policies present, DML
+> grants omitted" silent-deny shape. Net (unhandled): member-list / role-change / `org_member_profiles` reads
+> (the org member-management surface) 403 on ~6/7 b2b builds.
+>
+> **Skill handling (RE-INSTATED, targeted) — `scripts/templates/provision/provision.ts` b2b/full appendix.**
+> The skill now re-applies *only* the org-member-management table grants, inline in `provision.ts`, gated on
+> the org presets (`b2b` | `b2b:storage` | `full`): it resolves THIS tenant's memberships-public schema
+> generically (by `DATABASE_ID` against `metaschema_public.schema`, anchored separator-tolerant name match as
+> fallback — no app-domain literal), then idempotently `GRANT USAGE ON SCHEMA … TO authenticated`,
+> `GRANT SELECT,INSERT,UPDATE,DELETE ON <mem>.org_memberships TO authenticated`, and
+> `GRANT SELECT ON <mem>.org_member_profiles TO authenticated`, and re-asserts the outcome. This is the SAME
+> grant set the retired `scripts/fix-org-grants.sh` applied (block (b)), **minus** the personal-org seed +
+> `create_entity` bit (those are now platform-native, GAP-1b/1c CLOSED — explicitly NOT re-instated). The
+> 09ca043 retirement removed this grant half **with** the seed half on the assumption the 2026-06-15 fix made
+> grants deterministic; this re-confirmation shows that assumption does **not** hold for the org tables, so the
+> grant half is back (hands-free for b2b/full builds) while the seed half stays gone. So a fresh b2b/full build
+> now lands `org_memberships SELECT/INSERT/UPDATE/DELETE` + `org_member_profiles SELECT` regardless of which way
+> the non-deterministic provisioner emitted, and the org-member invite/role-change/profile-read flow
+> round-trips. The applier writes ONLY this tenant's own module schema in the hub db (consume-only over
+> constructive/constructive-db).
+>
+> **Still upstream-only (the gap this applier covers for):** the root cause — the per-tenant provisioner's
+> **non-deterministic** org-table grant emission — is upstream; the harness is consume-only over constructive-db
+> and cannot durably fix it (the applier is a per-tenant backfill, not a provisioner fix). **Re-verify by
+> ~2026-09-17:** provision K≥5 fresh `b2b` tenants and assert *all* show `org_memberships`
+> SELECT/INSERT/UPDATE/DELETE + `org_member_profiles` SELECT to `authenticated` **from the provisioner alone**
+> (today only ~1/7 do). When the org-table grant emission is deterministic upstream, this re-confirmation
+> closes and the `provision.ts` org-member-management grant applier can be retired again. Reconciles against the
+> Phase-2.3 gate `org-table grants incomplete` (verify-phase.sh, block (a)).
 
 > **The durable fix (owned by constructive-db + constructive):** make the dynamic per-tenant provisioner
 > emit the **same** `authenticated` DML grants + write policies the static seed schema has (self-update on
@@ -149,9 +171,13 @@ Three concrete faces of the same gap:
 > `<db>-memberships-private.org_memberships_sprt` (`actor_id = entity_id = user_id`) deterministically, so a
 > fresh email-password signup is a member of an org and `AuthzEntityMembership(membership_type:2)` writes
 > succeed; and seed `app_permission_defaults` so a normal member can create an org (or expose a first-class
-> "make me an org owner" path). **This upstream change LANDED 2026-06-15** — retiring the harness-side
-> org-reconcile stopgap and the 1a/1c reconciliation; RLS-USERS-UPDATE-001 + RLS-ORG-RECONCILE-001 remain
-> documented as the historical control-plane recipe for deployments that predate the fix.
+> "make me an org owner" path). **The personal-org-seed + `create_entity`-bit half of this upstream change
+> LANDED 2026-06-15** — retiring the harness-side personal-org-seed stopgap and the 1a/1c *seed* reconciliation;
+> RLS-USERS-UPDATE-001 + RLS-ORG-RECONCILE-001 remain documented as the historical control-plane recipe for
+> deployments that predate the fix. **The org-table-grant half did NOT land deterministically** (see the
+> 2026-06-17 re-confirmation above) — so the **org-member-management grant** part of the stopgap is
+> RE-INSTATED (targeted, in the `provision.ts` b2b/full appendix) until the provisioner emits those grants
+> deterministically upstream.
 
 > **Idempotency note (same family — `constructBlueprint` is not re-runnable).** A re-run of `provision.ts`
 > against an **already-provisioned** DB **aborts** on the first duplicate `CREATE POLICY` (the 2026-06-05
@@ -164,10 +190,15 @@ Three concrete faces of the same gap:
 > **Owner / status / re-verify (GAP-1b + GAP-1c).**
 > - **Owner:** constructive-db (per-tenant provisioner grant/policy + `org_memberships_sprt` seed on
 >   `sign_up`/`provision`) + constructive (auth proc surface).
-> - **Status:** **CLOSED (2026-06-15)** — the upstream fix landed (constructive-db 5b1128fa68): the provisioner
->   grants the org tables + `create_entity` bit and self-seeds the personal-org `org_memberships_sprt` row on
->   signup. The harness-side org-reconcile stopgap + the after-signup live-QA hook were **deleted** as redundant
->   no-ops, and RLS-ORG-RECONCILE-001 is retained only as the historical control-plane recipe.
+> - **Status:** **PARTIALLY CLOSED (2026-06-15).** The **personal-org seed + `create_entity` bit** are CLOSED —
+>   the upstream fix landed (constructive-db 5b1128fa68): the provisioner self-seeds the personal-org
+>   `org_memberships_sprt` row + sets the `create_entity` bit on signup. The harness-side personal-org-seed
+>   stopgap + the after-signup live-QA hook were **deleted** as redundant no-ops, and RLS-ORG-RECONCILE-001 is
+>   retained only as the historical control-plane recipe. The **org-table GRANTs** are **NOT** reliably closed —
+>   their emission is non-deterministic across tenants (see the 2026-06-17 re-confirmation above), so the
+>   **org-member-management grant** part of the stopgap is **RE-INSTATED** (targeted, in the `provision.ts`
+>   b2b/full appendix) and stays escalated as a quality item: the platform should grant these org tables
+>   natively + deterministically.
 > - **Re-verify (regression check):** against a **freshly provisioned `b2b` tenant**, perform a clean
 >   email-password signup and then a single `AuthzEntityMembership(membership_type:2)` INSERT on an org-scoped
 >   business table (the `build/test-crm-brief.yaml` `companies`/`contacts` path is the canonical reproduction).
@@ -760,12 +791,16 @@ Three concrete faces of the same gap:
 ## Priority for the platform team
 
 1. **GAP-1** (per-tenant provisioner grants/policies + the `org_memberships_sprt` personal-org seed on
-   `sign_up`/`provision` + `app_permission_defaults` + determinism) — **LANDED 2026-06-15.** This was the
+   `sign_up`/`provision` + `app_permission_defaults` + determinism) — **MOSTLY LANDED 2026-06-15.** This was the
    highest-leverage gap: the root of the silent-no-op class and the b2b unreachable-from-clean-signup class.
-   Landing it retired the two largest harness workarounds (RLS-USERS-UPDATE-001, RLS-ORG-RECONCILE-001), the
-   b2b-tier permission patch, and the org-reconcile stopgap (now deleted). A fresh b2b signup can now write
-   org-scoped rows under its personal org natively. See the GAP-1b/1c owner/status/re-verify note above.
-   (Re-run-safety determinism, G4, may remain — see the idempotency note.)
+   Landing it retired the two largest harness workarounds (RLS-USERS-UPDATE-001, RLS-ORG-RECONCILE-001 *seed*
+   half), the b2b-tier permission patch, and the personal-org-seed stopgap (now deleted). A fresh b2b signup can
+   now write org-scoped rows under its personal org natively. **STILL OPEN — org-table grant determinism:** the
+   org-table `GRANT` emission did NOT land deterministically (re-confirmed 2026-06-17 — ~6/7 fresh b2b tenants
+   miss `org_memberships` INSERT/UPDATE + `org_member_profiles` SELECT), so the **org-member-management grant**
+   half of the stopgap is **RE-INSTATED** (targeted, in the `provision.ts` b2b/full appendix) until the
+   provisioner emits those grants deterministically. See the GAP-1b/1c owner/status/re-verify note + §1d
+   re-confirmation above. (Re-run-safety determinism, G4, may also remain — see the idempotency note.)
 2. **GAP-9** (`sendVerificationEmail` aborts on `user_secrets_del(uuid, text[])`) — new from the 2026-06-05
    Wave-2 validation, **HIGH** with **no workaround**: the *real* email-verify blocker — the SEND raises
    server-side, so the entire email-verification flow is unreachable on `auth:email`. Headline EMAIL fix.
