@@ -172,10 +172,12 @@ generator can't express your shape (use the `nodes_raw`/`policies_raw` brief esc
 
 ### Manual fallback (if the generator can't express a shape)
 
-1. Copy the **6 provision files verbatim** from
-   **[skill-supplements.md](./skill-supplements.md) "Phase 2.3: Blueprint Provision Template"** into
-   `packages/provision/src/` (`config.ts`, `helpers.ts`, `blueprint.ts`, `create-db.ts`, `provision.ts`,
-   `schemas/core.ts`). Set your tables in `schemas/core.ts`.
+1. Copy the **5 provision files verbatim** from the template dir
+   **`scripts/templates/provision/`** (the source of truth the pointer in
+   [skill-supplements.md](./skill-supplements.md) "Phase 2.3: Blueprint Provision Template" cites) into
+   `packages/provision/src/` (`config.ts`, `helpers.ts`, `blueprint.ts`, `create-db.ts`, `provision.ts`),
+   substituting the db-name/admin-creds/endpoint placeholders. Then author `schemas/core.ts` yourself
+   (it is GENERATED from the brief by `scaffold-provision.mjs`; hand-write it only in this manual fallback).
    - **Grants MUST be object-form** (already in the template): `grants: [{ roles: ['authenticated'],
      privileges: [['select','*'],['insert','*'],['update','*'],['delete','*']] }]`. **Never** the stale
      `grant_roles + bare-tuple` form — it lands no GRANT and every write 403s (the #1 prior workaround).

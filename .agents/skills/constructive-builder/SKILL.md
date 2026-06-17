@@ -107,7 +107,7 @@ Each table declares a **policy intent**, which maps to one of three tiers:
 | [evaluator-role.md](./references/evaluator-role.md) | Independent acceptance evaluator: rationale + exact fresh-sub-agent spawn prompt | The Phase 4 final acceptance gate |
 | [secrets-and-config.md](./references/secrets-and-config.md) | Index of platform plumbing — site-domain, email ports, secrets/KMS, app env keys | Wiring `.env`, standing up email, a secret/API-key flow, a config error |
 | [architecture-overview.md](./references/architecture-overview.md) | The three build surfaces, the two SDKs, the two auth tokens | Building a mental model of what you're assembling |
-| [skill-supplements.md](./references/skill-supplements.md) | Copy-paste code templates per phase (provision files, CRUD pages, route/sidebar edits) | A scaffolder can't express a shape and you hand-edit |
+| [skill-supplements.md](./references/skill-supplements.md) | Per-phase fallback: pointers to the real template files (`scripts/templates/*`) + the genuine fallback (type catalogs, relation-UI principles, data-modeling gotchas, the imperative provision path, the org-flow recipe) | A scaffolder can't express a shape and you hand-edit |
 
 > **Known block↔backend gaps (kept intact).** `createApiKey` accepts `accessLevel ∈ {read_only, full_access}` only (the dialog's `read/write/admin` → live `INVALID_ACCESS_LEVEL`); and four capabilities are **backend-pending / blocked** — list sessions, list API keys (no Connection type), self-service org create on b2b (GAP-6), and sessions-revoke id mismatch (GAP-2). `scripts/check-sdk.mjs` surfaces these as contract advisories. Full detail in `references/platform-gaps.md` + `references/flow-catalog.md`.
 

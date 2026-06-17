@@ -46,9 +46,13 @@ export type DynamicFormCardProps = {
   /** Existing record ID — omit for create mode */
   recordId?: string;
   /**
-   * Pre-set field values from context (typically FK fields).
-   * e.g. { contactId: "uuid" } when adding a Note from a Contact page.
-   * These fields are rendered as visible-but-locked (disabled, 🔒 icon).
+   * Pre-set field values from context.
+   * - A NON-system field (typically an FK), e.g. { contactId: "uuid" } when adding a Note from a
+   *   Contact page → rendered as visible-but-locked (disabled, 🔒 icon).
+   * - A SYSTEM scoping field hidden from the form, e.g. { entityId: <activeOrgId> } an org-scoped
+   *   entity page passes so the create supplies the non-null AuthzEntityMembership entity_id → NOT
+   *   rendered (SYSTEM_FIELDS hides it) but folded into the create input (see handleSave), gated by
+   *   the create input type's writable set.
    */
   defaultValues?: Record<string, unknown>;
   /**
@@ -375,6 +379,18 @@ export const DynamicFormCard: CardComponent<DynamicFormCardProps> = ({
         // = open-ended) and is immediately visible. A value the user DID set is kept.
         if (validFromField && (input[validFromField] === undefined || input[validFromField] === '')) {
           input[validFromField] = new Date().toISOString();
+        }
+        // CONTEXT-DEFAULT scoping merge (generic — the b2b detailed-create-FORM fix). A
+        // context-supplied `defaultValues` key (e.g. the active-org `entityId` an org-scoped entity
+        // page passes) that is a SYSTEM field — entity_id/owner_id-style — is HIDDEN from the form
+        // (SYSTEM_FIELDS / editableFields excludes it), so it is never iterated into `input` above
+        // and the create would send NO entity_id, which AuthzEntityMembership NOT-NULL/RLS-rejects.
+        // Fold every defaultValue the create did not already collect (a user-edited field wins) into
+        // the input; filterToWritable below keeps ONLY keys the <Type>Input actually accepts, so a
+        // key that is not a writable create column is dropped — no field name is hard-coded here, and
+        // a non-org create (no defaultValues) is unchanged.
+        for (const [k, v] of Object.entries(defaultValues ?? {})) {
+          if (input[k] === undefined && v !== undefined && v !== '') input[k] = v;
         }
         // Drop any key the <Type>Input create input does not accept (DB-generated/read-only columns)
         // so the insert never carries an unknown field. introspection-derived; no-op when null.

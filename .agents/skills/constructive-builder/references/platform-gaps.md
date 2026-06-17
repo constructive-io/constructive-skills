@@ -120,6 +120,28 @@ Three concrete faces of the same gap:
   absent, rather than trusting the provision succeeded. **Cost:** every build pays a verify-and-reconcile
   pass that should be unnecessary.
 
+> **Re-confirmed STILL-OPEN 2026-06-17 (org-table grants are NON-deterministic post-2026-06-15-fix) — this
+> is the root cause of the b2b Gate-2.3 `org-table grants incomplete` PARTIAL.** The 2026-06-15 platform fix
+> (GAP-1b/1c, below) closed the grant *emission* and the personal-org *seed*, but did **not** make the org-table
+> grant emission *deterministic* — exactly the §1d symptom. Live evidence on the shared hub:
+> **6 of 7** provisioned `b2b` tenants are missing the org-table grants the static seed schema has —
+> `org_memberships` is granted only `SELECT,DELETE` (INSERT/UPDATE omitted) and `org_member_profiles` is
+> granted **nothing** — while the same `modules.preset: b2b` input on tenant `testcrm` got the full
+> `SELECT,INSERT,UPDATE,DELETE` + `org_member_profiles SELECT`. All 6 partial tenants were provisioned
+> **after** the 2026-06-15 fix (so this is *not* a stale pre-fix tenant), and on a partial tenant the RLS
+> **policies are complete** (`auth_ins_ent_mem` / `auth_upd_ent_mem` / `auth_sel_ent_mem` all present) — only
+> the table-level `GRANT`s are missing, the classic GAP-1 "RLS-on, policies present, DML grants omitted"
+> silent-deny shape. Net: member-list / role-change / `org_member_profiles` reads (the org member-management
+> surface) 403 on ~6/7 b2b builds. **This is upstream-only — the harness is consume-only over constructive-db
+> and cannot durably fix non-deterministic provisioner emission.** The harness DID ship the consume-only
+> backfill for exactly this (`scripts/fix-org-grants.sh`: idempotent `GRANT INSERT,UPDATE ON org_memberships`
+> + `GRANT SELECT ON org_member_profiles TO authenticated`), but it was **retired in 09ca043** on the
+> assumption the 2026-06-15 fix made grants deterministic; this re-confirmation shows that assumption does
+> **not** hold for the org tables. **Re-verify by ~2026-09-17:** provision K≥5 fresh `b2b` tenants and assert
+> *all* show `org_memberships` SELECT/INSERT/UPDATE/DELETE + `org_member_profiles` SELECT to `authenticated`
+> (today only ~1/7 do). When the org-table grant emission is deterministic, this re-confirmation closes.
+> Reconciles against the Phase-2.3 gate `org-table grants incomplete` (verify-phase.sh, block (a)).
+
 > **The durable fix (owned by constructive-db + constructive):** make the dynamic per-tenant provisioner
 > emit the **same** `authenticated` DML grants + write policies the static seed schema has (self-update on
 > `users`, INSERT/UPDATE on the org tables, SELECT on `org_member_profiles`), **deterministically**; have

@@ -647,9 +647,43 @@ for (const a of ABORTS) {
   }
 }
 
+// ── 6. skill-supplements.md pointer drift ───────────────────────────────────
+// references/skill-supplements.md was trimmed of the inlined template/CRUD/route bodies; the
+// genuine fallback now POINTS at the real files (scripts/templates/provision/*,
+// scripts/templates/frontend/*, the scaffold-*/wire-app emitters). A pointer that rots (file
+// renamed/removed) would silently mislead an agent. Assert every `scripts/...` path mentioned in
+// the supplements resolves to a real file under the skill root — the live guard the trim's drift
+// notes promise. Generic: it scans whatever paths the doc cites, hard-codes nothing.
+{
+  const supPath = path.resolve(HARNESS, 'references', 'skill-supplements.md');
+  if (!fs.existsSync(supPath)) {
+    bad('skill-supplements.md not found at references/skill-supplements.md (the pointer drift check cannot run)');
+  } else {
+    const sup = fs.readFileSync(supPath, 'utf8');
+    // Pull out every `scripts/...` path the doc references. Paths appear inside backticks or markdown
+    // table cells; match the longest `scripts/<...>` token ending at a real file extension we ship
+    // (.ts/.tsx/.mjs/.sh/.json) so prose like "scripts/" alone isn't treated as a path.
+    const re = /scripts\/[A-Za-z0-9._/-]+\.(?:tsx?|mjs|sh|json)/g;
+    const referenced = Array.from(new Set(sup.match(re) || []));
+    if (referenced.length === 0) {
+      bad('skill-supplements.md references ZERO scripts/* paths — the trim left no pointers to verify (expected pointers to scripts/templates/* + the emitters)');
+    } else {
+      let missing = 0;
+      for (const rel of referenced) {
+        if (fs.existsSync(path.resolve(HARNESS, rel))) continue;
+        bad(`skill-supplements.md points at a non-existent file: ${rel} (pointer rot — update the doc or restore the file)`);
+        missing++;
+      }
+      if (missing === 0) {
+        ok(`skill-supplements.md: all ${referenced.length} referenced scripts/* path(s) resolve (pointers are live, no drift)`);
+      }
+    }
+  }
+}
+
 console.log('');
 if (failures > 0) {
   console.error(`check:scaffold FAIL — ${failures} check(s) failed. The provision generator's contract drifted.`);
   process.exit(1);
 }
-console.log('check:scaffold PASS — provision generator reproduces the canary, handles the divergent intent shapes, AND loudly rejects contradictory ones.');
+console.log('check:scaffold PASS — provision generator reproduces the canary, handles the divergent intent shapes, loudly rejects contradictory ones, AND skill-supplements.md pointers all resolve.');

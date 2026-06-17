@@ -13,6 +13,10 @@
  *     and it mirrors the working golden-app /todos page exactly.
  *   • EDIT (and detailed create) — the runtime-generic DynamicFormCard pushed on the
  *     CRUD Stack (the reuse — schema-driven via `_meta`, no bespoke per-table form).
+ *     On an ORG-SCOPED table the detailed-create push passes the ACTIVE org as a
+ *     `defaultValues` context entry (entity_id is a SYSTEM field the form hides, so the
+ *     card supplies it) and gates the "Details…" button on a resolved active org — the
+ *     same active-org scope the quick-add spreads. Owner/public pass neither.
  *
  * `entity=todo` makes the canary's `todo-*` testids + single-submit create fall out
  * with zero special-casing.
@@ -140,13 +144,13 @@ export default function __Entities__Page() {
   }
 
   // Detailed create — the full schema-driven form (every field) on the Stack.
-  function openDetailedCreate() {
+  function openDetailedCreate() {__DETAILS_GUARD__
     stack.push({
       id: 'create-__entity__',
       title: 'New __ENTITY_LABEL__',
       Component: DynamicFormCard,
       props: {
-        tableName: '__Entity__',
+        tableName: '__Entity__',__DETAILED_CREATE_DEFAULTS__
         onSuccess: () => refetch(),
       },
       width: 480,
@@ -219,7 +223,7 @@ export default function __Entities__Page() {
               type="button"
               variant="outline"
               data-testid="__entity__-details"
-              onClick={openDetailedCreate}
+              onClick={openDetailedCreate}__DETAILS_DISABLED__
             >
               Details…
             </Button>__FK_SELECT_JSX__

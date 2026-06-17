@@ -62,7 +62,7 @@ If the current task provides a different task-specific spec, use that file inste
 
 ## BLUEPRINT-001
 
-The blueprint examples in `skill-supplements.md` contain generic tables (boards, lists, cards). They are **structural references only**.
+`schemas/core.ts` (the blueprint) is **GENERATED from the app brief** by `scripts/scaffold-provision.mjs` — it is not a static example to copy. Treat the brief grammar (`references/brief-grammar.md`) + the type catalogs in `skill-supplements.md` as the **structural references**; never hand-copy a table shape, derive it from your brief.
 
 When building a non-benchmark app:
 
@@ -675,7 +675,7 @@ Replace `<db-name>` with your database name and `<schema>` with the schema found
 > (anchors on the captured `<sub>+<hash>`, not a floating `%…%`); use the same anchored approach if you run
 > it by hand — never a bare `LIKE '%<db-name>%'`.
 
-> **Tip:** The `provision.ts` template in `skill-supplements.md` already includes both workarounds as part of its post-provisioning steps.
+> **Tip:** The `provision.ts` template file (`scripts/templates/provision/provision.ts`, which `scaffold-provision.mjs` stamps) already includes both workarounds in its post-provisioning auth appendix (membership defaults + email-verify + users self-update).
 
 ### authenticated grants + RLS for per-DB CRUD (F3 — grant half)
 

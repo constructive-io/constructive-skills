@@ -139,7 +139,7 @@ import { useOrganizationsQuery } from '@sdk/admin';                    // Orgs, 
 | 3.1.3 | `constructive-frontend` skill (CRUD Stack) | public |
 | 3.1.4 | `constructive-frontend` skill (meta forms) | public |
 
-> **📖 Required reading:** After reading the skill, **you must read [skill-supplements.md](./skill-supplements.md)**. It contains complete Create/Edit/List templates and SDK integration examples that can be directly copied and used.
+> **📖 Required reading:** After reading the skill, **you must read [skill-supplements.md](./skill-supplements.md)** (the "Phase 3: constructive-frontend (CRUD Stack) Supplement" pointer) plus the relation-UI principles. The Create/Edit/List card bodies now live as real template files (`scripts/templates/frontend/crud/*`, `scripts/templates/frontend/entity-page.tsx`) that the scaffolder stamps — read those for the concrete code.
 
 #### Key Rules
 
@@ -167,7 +167,7 @@ import { useOrganizationsQuery } from '@sdk/admin';                    // Orgs, 
   - `@sdk/app` - Your business data (tables you created)
 - **Use generated SDK:** Do not write raw GraphQL; use generated hooks from `@sdk/app`.
 - **Read generated docs first:** Before implementing CRUD, read `src/graphql/sdk/app/README.md`.
-- **Register routes:** Adding a new route requires updating `src/app-routes.ts`. **Use the Edit commands from [skill-supplements.md](./skill-supplements.md) "Phase 3: Add Route Template" directly, no need to Read the entire file.**
+- **Register routes:** Adding a new route requires updating `src/app-routes.ts` (+ the sidebar). The scaffolder (`scripts/scaffold-frontend.mjs` / `scripts/wire-app.mjs`) does this from the brief; see [skill-supplements.md](./skill-supplements.md) "Phase 3: Adding Routes + Sidebar" and the "Adding New Route Checklist" if you hand-edit.
 - **Sidebar:** Add navigation links in `src/lib/navigation/sidebar-config.ts`. **Also use the template to Edit directly.**
 - **Route structure:** Put new feature routes directly under `src/app/` (e.g. `app/boards/`).
 - **ORM/client delete:** The generated SDK's `delete` method requires an explicit `select` argument, e.g. `client.board.delete({ where: { id }, select: { id: true } }).execute()`. If `pnpm lint:types` reports "Property 'select' is missing", add `select` (see troubleshooting Phase 3). If you see configure-app-sdk `headers` type errors in Phase 3, that's a Phase 3 fix — see troubleshooting Phase 3.
@@ -189,7 +189,7 @@ Then re-run `pnpm codegen` to regenerate the schema with the new orderBy values.
 
 #### Phase 3 "don't redo" checklist (read this before coding UI)
 
-- **Mandatory: Review provision script for relations:** Before writing any CRUD UI, open `packages/provision/src/schemas/core.ts` and find all relations. For each relation, plan the corresponding UI (e.g. `notes → folders` needs a folder Select in Create/Edit Note Card). See [skill-supplements.md](./skill-supplements.md) "Relation Field UI Template".
+- **Mandatory: Review provision script for relations:** Before writing any CRUD UI, open `packages/provision/src/schemas/core.ts` and find all relations. For each relation, plan the corresponding UI (e.g. `notes → folders` needs a folder Select in Create/Edit Note Card). See [skill-supplements.md](./skill-supplements.md) "Relation Fields UI (Principles)".
 - **Mandatory: Check template for Stack before any CRUD UI:** Run `ls src/components/ui/stack` (from `<app>` = packages/app, where the app's src/ lives). If the directory exists, you **must** read **constructive-frontend** (CRUD Stack) and implement create/edit/delete with **Stack Cards** (`useCardStack`, `card.push`, `CardComponent`). Do **not** create or import a generic `@/components/ui/dialog` for CRUD panels when Stack exists - the template expects Stack for slide-in panels.
 - **Always check template UI primitives first**: Before creating any new UI primitive (Dialog/Drawer/etc.), check `src/components/ui/` (app root) for an existing component. If `@/components/ui/stack` exists, use **Stack Cards** per `constructive-frontend` (CRUD Stack) and do **not** build a new Dialog system.
 - **Generated hooks are the source of truth**: Before calling any `useXxxQuery` / `useXxxMutation`, open the generated file and follow its `@example` exactly. Do not guess parameters like `input`, `variables`, `select`, `patch`.
@@ -213,9 +213,9 @@ Then re-run `pnpm codegen` to regenerate the schema with the new orderBy values.
 - **First, check whether the template has Stack:** Run `ls src/components/ui/stack` (from `<app>` = packages/app). If it exists, you **must** read **constructive-frontend** (CRUD Stack) and use **Stack Cards** for all create/edit/delete UI. Do not create or use a generic Dialog for CRUD panels when Stack exists.
 - Read **constructive-frontend** (CRUD Stack) before implementing any create/edit/delete UI. If the template has Stack (e.g. `CardStackProvider`, `useCardStack` in `@/components/ui/stack`), implement edit/delete as Stack cards and use stacked confirm-delete as described in the skill. If the template has no Stack, use the template's Dialog/AlertDialog from `@/components/ui/*`.
 - Read **constructive-frontend** (UI components) and the Next.js app structure (see the `constructive-io/constructive` repo) as needed for layout and components.
-- **📖 Read [skill-supplements.md](./skill-supplements.md)** — Contains complete Create/Edit/List page templates that can be directly copied and used, just change the entity name.
+- **📖 Read [skill-supplements.md](./skill-supplements.md)** — its "Phase 3: constructive-frontend (CRUD Stack) Supplement" points at the Create/Edit/List card template files (`scripts/templates/frontend/crud/*`, `entity-page.tsx`) the scaffolder stamps per entity; read those for the concrete code.
 
-**1. Build App-Specific CRUD Screens (use skill-supplements.md templates):**
+**1. Build App-Specific CRUD Screens (the scaffolder stamps the CRUD Stack templates per entity):**
 
 Implement list, create, detail, edit, and delete flows for **all** of your app's core entities (e.g. for a CRM: Contacts, Companies, Deals, Activities - not just one). Every entity that has a table in the provision script should have a full CRUD page; do not leave any as placeholder-only. **Full CRUD** means: List + Create + **Edit/Update** (form or modal to change existing records) + **Delete** (with confirmation dialog, not only `confirm()`).
 
@@ -264,7 +264,7 @@ evaluator, not the builder).
 - **3.3** CRUD flows work in browser **for every app entity** (no placeholder-only pages for core entities)
 - **3.4** **For each entity:** list ✓ create ✓ **edit/update** ✓ delete ✓ (delete uses confirmation UI e.g. Dialog/Stack confirm, not only `confirm()`)
 - **3.4b** **Before marking Phase 3 complete:** No use of `confirm()` or `alert()` in app UI. Search the app (e.g. `grep -rE 'confirm\(|alert\(' src` from the app root) and replace any match with template `AlertDialog` from `@/components/ui/alert-dialog`.
-- **3.4c** **Relation field UI check:** For each relation in the provision script, verify that Create/Edit Card has a corresponding Select dropdown, and List page displays related entity information. Refer to [skill-supplements.md](./skill-supplements.md) "Relation Field UI Template".
+- **3.4c** **Relation field UI check:** For each relation in the provision script, verify that Create/Edit Card has a corresponding Select dropdown, and List page displays related entity information. Refer to [skill-supplements.md](./skill-supplements.md) "Relation Fields UI (Principles)".
 - **3.5** UI components render correctly (no console errors)
 - **3.6** New routes registered in `src/app-routes.ts` for all entity pages
 - **3.7** Sidebar includes navigation links to new app routes

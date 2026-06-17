@@ -1,63 +1,43 @@
 #!/bin/bash
 set -euo pipefail
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# verify-phase.sh — the GATE ORCHESTRATOR. It parses args, resolves the brief/run-state/workspace,
+# remaps the public phase numbers to internal ones, hydrates PG*, and DISPATCHES the per-phase
+# assertion gates (the big `case "$PHASE"` below). The reusable machinery lives in sourced libs beside
+# this script under lib/; bootstrap their dir relative to THIS file, then source them in dependency
+# order:
+#   sh-common.sh      RED/GREEN/YELLOW/NC + pass/fail/warn/info(/hr) + SCRIPT_DIR (=scripts/) + REPO_ROOT
+#                     (computed from the lib's own location, so identical to the value this script
+#                     computed inline before the split).
+#   schema-resolve.sh per-DB schema-resolution helpers (schema_db_like / resolve_schema_name /
+#                     resolve_table_schema) used by the Phase-2.3 grant/RLS gates.
+#   verify-resolve.sh spec/state/workspace/app RESOLVER functions (cfg, cfg_endpoint, endpoint_host,
+#                     resolve_app_id/subdomain_id, state_dir, spec_value, spec_table_names,
+#                     resolve_app_package/sdk_package/app_source_dir/workspace_root, workspace_path,
+#                     app_rel, state_field_ok/value/notes_contain, resolve_db_name/subdomain).
+#   verify-gates.sh   the gate-assertion HELPER functions the dispatch calls (check_state_fields,
+#                     skill_checker_path, check_blocks_coverage, check_app_compiles, app_build_id_file,
+#                     build_app, verify_or_build_app, check_flows_drift, check_harness_drift,
+#                     check_fail_hints, spec_has_required_flows, run_live_qa).
+# These libs hold ONLY function definitions (bash binds them at source time, before any executable line
+# below runs), so this decomposition is purely structural — the resolution precedence, the phase remap,
+# and every gate's PASS/FAIL output (and each fail() FIX hint) are byte-identical to the pre-split file.
+_LIB_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib"
+# shellcheck source=lib/sh-common.sh
+. "$_LIB_DIR/sh-common.sh"
+# shellcheck source=lib/schema-resolve.sh
+. "$_LIB_DIR/schema-resolve.sh"
+# shellcheck source=lib/verify-resolve.sh
+. "$_LIB_DIR/verify-resolve.sh"
+# shellcheck source=lib/verify-gates.sh
+. "$_LIB_DIR/verify-gates.sh"
 
-pass() { echo -e "${GREEN}  PASS${NC}: $1"; }
-fail() {
-  echo -e "${RED}  FAIL${NC}: $1"
-  [ -n "${2:-}" ] && echo -e "        FIX: $2"
-  exit 1
-}
-warn() { echo -e "${YELLOW}  WARN${NC}: $1"; }
-info() { echo "  INFO: $1"; }
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# ── infra coordinates from constructive.config.json (single source-of-truth) ────
-# cfg / cfg_endpoint read one resolved value; each falls back to the literal $2 / its
-# own default if the loader can't run (so this script still works standalone). Defaults
-# equal today's values — only WHERE a value is read changes, not WHAT it defaults to.
-# (|| true keeps these from tripping `set -e` when node is absent.)
-cfg() { node "$SCRIPT_DIR/lib/config.mjs" get "$1" 2>/dev/null || printf '%s' "${2:-}"; }
-cfg_endpoint() { node "$SCRIPT_DIR/lib/config.mjs" endpoint "$@" 2>/dev/null || true; }
-# Host header (no scheme/port/path) from a built endpoint URL.
-endpoint_host() { printf '%s' "$1" | sed -e 's#^[a-z]*://##' -e 's#:[0-9]*/graphql$##' -e 's#/graphql$##'; }
+# ── infra coordinate read once, now that cfg() is sourced (single source-of-truth). ──
 PG_HUB_DATABASE="$(cfg db.hubDatabase constructive)"
 
-# ── app-identity helpers (shared via lib/brief.mjs — one definition, not three) ──
-# resolve_app_id <brief-file>: per-app build-state id (plain lowercase [a-z0-9]) from the
-# brief's db_name. Tolerant: missing/unreadable brief → empty + exit 0, exactly like the
-# old `awk … 2>/dev/null || true`.
-resolve_app_id() {
-  node -e 'import(process.argv[1]).then(m=>{try{process.stdout.write(m.resolveAppId(require("fs").readFileSync(process.argv[2],"utf8")))}catch(e){}}).catch(()=>{})' \
-    "$SCRIPT_DIR/lib/brief.mjs" "$1" 2>/dev/null || true
-}
-# resolve_subdomain_id <db-name>: the GraphQL subdomain from the two RESOLVING steps of
-# lib/brief.mjs subdomainFor() — run-state $STATE_PATH database.subdomain → platform psql
-# lookup — returning EMPTY when neither resolved (noFallback:true). resolve_subdomain()
-# below applies the db-name fallback + the historical `warn`, so this matches the old
-# inline behaviour exactly (stdout AND stderr). STATE_PATH + PG_HUB_DATABASE are read from
-# the environment the helper inherits, so the precedence is identical.
-resolve_subdomain_id() {
-  STATE_PATH="${STATE_PATH:-}" PG_HUB_DATABASE="$PG_HUB_DATABASE" \
-  node -e 'import(process.argv[1]).then(m=>{try{process.stdout.write(m.subdomainFor(process.argv[2],{noFallback:true}))}catch(e){}}).catch(()=>{})' \
-    "$SCRIPT_DIR/lib/brief.mjs" "$1" 2>/dev/null || true
-}
-
-# Per-app build-state dir (RECON-3 state convention). APP_ID (or --app) selects build/<app-id>/;
-# unset = legacy build/. APP_ID is the brief's naming.db_name (plain lowercase) so one token
-# disambiguates brief + state + port + flows; $APP_ID is the env escape hatch. This ONLY changes
-# the FALLBACKS below (explicit --spec/--state still win), so with APP_ID UNSET every reader
-# collapses to the EXACT legacy chain — golden-path/canary/check-scaffold stay byte-equal.
+# Per-app build-state id seed (RECON-3). APP_ID defaults empty (legacy singleton build/); state_dir()
+# (in verify-resolve.sh) turns it into build/<app-id> when set. The fallbacks below honor it.
 : "${APP_ID:=}"
-state_dir() {                       # echoes build/<app-id> when APP_ID set, else build
-  if [ -n "${APP_ID:-}" ]; then echo "$REPO_ROOT/build/$APP_ID"; else echo "$REPO_ROOT/build"; fi
-}
 
 PHASE=""
 POSITIONAL_DB_NAME=""
@@ -136,795 +116,8 @@ if [[ -z "$STATE_PATH" && -f "$REPO_ROOT/test/run-state.json" ]]; then
   STATE_PATH="$REPO_ROOT/test/run-state.json"
 fi
 
-spec_value() {
-  local key="$1"
-  if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
-    return 1
-  fi
-
-  awk -F': ' -v key="$key" '
-    $1 ~ "^[[:space:]]*" key "$" {
-      val = $2
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", val)
-      gsub(/^"/, "", val)
-      gsub(/"$/, "", val)
-      print val
-      exit
-    }
-  ' "$SPEC_PATH"
-}
-
-spec_table_names() {
-  if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
-    return 1
-  fi
-
-  awk '
-    /^[[:space:]]*tables:/ { in_tables = 1; next }
-    in_tables && /^[[:space:]]*relations:/ { in_tables = 0 }
-    in_tables && /^[[:space:]]{2,4}-[[:space:]]*name:/ {
-      line = $0
-      sub(/.*name:[[:space:]]*/, "", line)
-      gsub(/^[[:space:]]+|[[:space:]]+$/, "", line)
-      print line
-    }
-  ' "$SPEC_PATH"
-}
-
-resolve_app_package() {
-  local app_package
-  app_package="$(spec_value app_package || true)"
-  if [ -n "$app_package" ]; then
-    echo "$app_package"
-    return
-  fi
-
-  local package_json
-  package_json="$(workspace_path "$(app_rel)/package.json")"
-  if [ -f "$package_json" ]; then
-    node -e "console.log(require(process.argv[1]).name)" "$package_json"
-  fi
-}
-
-# Resolve the SDK the frontend imports. Two supported layouts (F8):
-#   (A) standalone SDK package  sdk/sdk  (the OPTIONAL extension, SKILL public 2.5)
-#   (B) the mainline template per-DB SDK at <app>/src/graphql/sdk, imported via the
-#       `@sdk/{admin,auth,app}` aliases (SKILL Phase 3 — `pnpm codegen` output)
-# Preference: an explicit spec `sdk_package`, then a real standalone `sdk/sdk` package,
-# else fall back to the IN-APP SDK marker `@sdk/` so the mainline (which has no standalone
-# package) does not false-fail "Could not resolve SDK package name".
-resolve_sdk_package() {
-  local sdk_package
-  sdk_package="$(spec_value sdk_package || true)"
-  if [ -n "$sdk_package" ]; then
-    echo "$sdk_package"
-    return
-  fi
-
-  local package_json
-  package_json="$(workspace_path "sdk/sdk/package.json")"
-  if [ -f "$package_json" ]; then
-    node -e "console.log(require(process.argv[1]).name)" "$package_json"
-    return
-  fi
-
-  # No standalone SDK package — mainline template layout. Signal the in-app SDK marker.
-  local app_root
-  app_root="$(app_rel)"
-  if [ -d "$(workspace_path "$app_root/src/graphql/sdk")" ]; then
-    echo "@sdk/"
-  fi
-}
-
-resolve_app_source_dir() {
-  local app_root
-  app_root="$(app_rel)"
-  if [ -d "$(workspace_path "$app_root/app")" ]; then
-    echo "$app_root/app"
-    return
-  fi
-  if [ -d "$(workspace_path "$app_root/pages")" ]; then
-    echo "$app_root/pages"
-    return
-  fi
-  if [ -d "$(workspace_path "$app_root/src")" ]; then
-    echo "$app_root/src"
-    return
-  fi
-}
-
-resolve_workspace_root() {
-  if [ -n "$WORKSPACE_OVERRIDE" ]; then
-    echo "$WORKSPACE_OVERRIDE"
-    return
-  fi
-
-  local spec_workspace
-  spec_workspace="$(spec_value workspace_root || true)"
-  if [ -n "$spec_workspace" ]; then
-    if [[ "$spec_workspace" = /* ]]; then
-      echo "$spec_workspace"
-    else
-      echo "$REPO_ROOT/$spec_workspace"
-    fi
-    return
-  fi
-
-  if [ -f "$PWD/pgpm.json" ]; then
-    echo "$PWD"
-    return
-  fi
-
-  echo "$PWD"
-}
-
+# Resolve the workspace root once (resolve_workspace_root is sourced from verify-resolve.sh).
 WORKSPACE_ROOT="$(resolve_workspace_root)"
-
-workspace_path() {
-  local rel="$1"
-  if [[ "$rel" = /* ]]; then
-    echo "$rel"
-  else
-    echo "$WORKSPACE_ROOT/$rel"
-  fi
-}
-
-# Resolve the frontend app PACKAGE, returned as a path RELATIVE to WORKSPACE_ROOT.
-#
-# CONTRACT (shared app-locator, Gap5a): callers pass a WORKSPACE ROOT (the dir the
-# scaffolders write to), and this derives the app package inside it — they no longer
-# have to hand us the package dir. Because the mainline `nextjs/constructive-app`
-# template is a SINGLE-PACKAGE layout (its components.json/package.json/src all live at
-# the workspace root, with only packages/provision beside them), the workspace root IS
-# the app package there; other layouts nest it under packages/app (or a legacy app/).
-# Passing an explicit package dir still works (back-compat): a package dir holds the
-# marker, so the marker check returns `.` for it too.
-#
-# Resolution (the order the task prescribes, with the spec override kept first):
-#   1. an explicit `app_root` in the spec (app-brief.yaml) — escape hatch, wins.
-#   2. the WORKSPACE ROOT itself when it holds the app-package MARKER
-#      (components.json, OR package.json + src/) → `.`  (single-package template /
-#      an explicit package dir passed as the locator).
-#   3. `packages/app/` if it exists (nested sandbox-template layout).
-#   4. root-level `app/` if it exists (legacy layout).
-#   5. fall back to `app` — UNRESOLVED. We don't hard-fail here (app_rel is called
-#      inside many command substitutions); instead the downstream phase gates fail
-#      LOUDLY with a concrete message (e.g. "$APP_ROOT/ not found" at Phase 3), which
-#      already cites how to scaffold. So an unresolvable locator still fails the run.
-app_rel() {
-  local spec_app_root
-  spec_app_root="$(spec_value app_root || true)"
-  if [ -n "$spec_app_root" ]; then
-    echo "$spec_app_root"
-    return
-  fi
-  # Marker: does WORKSPACE_ROOT itself hold the app package? components.json is the
-  # strongest signal (shadcn/registry target); else the package.json + src/ pair.
-  if [ -f "$(workspace_path "components.json")" ] \
-     || { [ -f "$(workspace_path "package.json")" ] && [ -d "$(workspace_path "src")" ]; }; then
-    echo "."
-    return
-  fi
-  if [ -d "$(workspace_path "packages/app")" ]; then
-    echo "packages/app"
-    return
-  fi
-  if [ -d "$(workspace_path "app")" ]; then
-    echo "app"
-    return
-  fi
-  echo "app"
-}
-
-state_field_ok() {
-  local path="$1"
-  if [ -z "$STATE_PATH" ] || [ ! -f "$STATE_PATH" ]; then
-    return 0
-  fi
-
-  node - "$STATE_PATH" "$path" <<'NODE'
-const fs = require('fs');
-const [statePath, fieldPath] = process.argv.slice(2);
-const data = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-
-function readPath(obj, rawPath) {
-  const parts = rawPath.replace(/\[(.+?)\]/g, '.$1').split('.').filter(Boolean);
-  let cursor = obj;
-  for (const part of parts) {
-    if (cursor == null || !(part in cursor)) return undefined;
-    cursor = cursor[part];
-  }
-  return cursor;
-}
-
-const value = readPath(data, fieldPath);
-let ok = true;
-
-if (value == null) ok = false;
-else if (typeof value === 'boolean') ok = value;
-else if (typeof value === 'string') ok = value.length > 0;
-else if (Array.isArray(value)) ok = value.length > 0;
-else if (typeof value === 'object') ok = Object.keys(value).length > 0;
-
-process.exit(ok ? 0 : 1);
-NODE
-}
-
-# Echo a single (possibly dotted) run-state field's scalar value, or empty string when absent.
-# Used for STRUCTURED reads (e.g. database.name) — the structured replacement for substring-sniffing
-# freeform notes[]. Returns non-zero only when there is no state file at all.
-state_value() {
-  local path="$1"
-  if [ -z "$STATE_PATH" ] || [ ! -f "$STATE_PATH" ]; then
-    return 1
-  fi
-
-  node - "$STATE_PATH" "$path" <<'NODE'
-const fs = require('fs');
-const [statePath, fieldPath] = process.argv.slice(2);
-const data = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-
-function readPath(obj, rawPath) {
-  const parts = rawPath.replace(/\[(.+?)\]/g, '.$1').split('.').filter(Boolean);
-  let cursor = obj;
-  for (const part of parts) {
-    if (cursor == null || !(part in cursor)) return undefined;
-    cursor = cursor[part];
-  }
-  return cursor;
-}
-
-const value = readPath(data, fieldPath);
-process.stdout.write(value == null ? '' : String(value));
-NODE
-}
-
-state_notes_contain() {
-  local pattern="$1"
-  if [ -z "$STATE_PATH" ] || [ ! -f "$STATE_PATH" ]; then
-    return 1
-  fi
-
-  node - "$STATE_PATH" "$pattern" <<'NODE'
-const fs = require('fs');
-const [statePath, pattern] = process.argv.slice(2);
-const data = JSON.parse(fs.readFileSync(statePath, 'utf8'));
-const notes = Array.isArray(data.notes) ? data.notes.join('\n') : '';
-const regex = new RegExp(pattern, 'i');
-process.exit(regex.test(notes) ? 0 : 1);
-NODE
-}
-
-check_state_fields() {
-  if [ -z "$STATE_PATH" ] || [ ! -f "$STATE_PATH" ]; then
-    return 0
-  fi
-
-  local fields=()
-
-  # NOTE: $PHASE here is the INTERNAL name (after the public→internal remap above).
-  # Mainline-phase labels are given for orientation only — the field lists are unchanged.
-  case "$PHASE" in
-    1) fields=("platform.postgres_ready" "platform.graphql_ready") ;;                                                                  # Phase 1 — Backend Up
-    2.1) fields=("workspace.root" "workspace.pgpm_initialized" "workspace.pnpm_workspace_configured") ;;                               # Phase 2 — Data Model Provisioned (workspace)
-    2.2) fields=("packages.provision.path" "packages.provision.name" "database.name" "auth.platform_token_ref" "auth.per_db_token_ref") ;; # Phase 2 — Data Model Provisioned (blueprint, public 2.3)
-    2.3) fields=("codegen.schema_exported" "codegen.sdk_generated" "codegen.cli_generated") ;;                                          # Standalone-SDK Optional Extension (public 2.5)
-    2.4) fields=("packages.app.path" "frontend.env_written") ;;                                                                         # Phase 3 — Frontend + SDK (public 2.6)
-    2.5) fields=("ui.crud_flows_ok" "ui.forms_ok" "ui.routes_verified") ;;                                                              # Phase 4 — UI / Blocks (public 3)
-  esac
-
-  local missing=0
-  for field in "${fields[@]}"; do
-    if state_field_ok "$field"; then
-      pass "run-state field present: $field"
-    else
-      warn "run-state field missing or false: $field"
-      missing=1
-    fi
-  done
-
-  [ "$missing" -eq 0 ] || fail "run-state is incomplete for phase $PHASE" "Fill in the WARNed fields above in build/run-state.json (set this phase's booleans true / non-empty strings) — update it at the end of every phase (SKILL.md 'Checkpoint + run-state after every green gate')."
-}
-
-# Locate one of the checker scripts (check-sdk.mjs / check-flows.mjs). These are now BUNDLED in
-# THIS skill's own scripts/ dir ($SCRIPT_DIR), so the self-contained copy is preferred (no
-# cross-repo glob needed). An explicit env override still wins for an out-of-tree checker, and the
-# legacy sibling-skills glob + an app-vendored copy remain as best-effort FALLBACKS only.
-# Usage: skill_checker_path <basename> <ENV_OVERRIDE_VALUE>; echoes the first hit, empty if none.
-skill_checker_path() {
-  local base="$1" override="${2:-}"
-  local app_root cand
-  app_root="$(workspace_path "$(app_rel)")"
-  # 1. explicit env override (CHECK_SDK_MJS / CHECK_FLOWS_MJS) — highest priority.
-  if [ -n "$override" ] && [ -f "$override" ]; then
-    echo "$override"
-    return 0
-  fi
-  # 2. the LOCAL bundled copy in this skill's scripts/ (self-contained; the canonical source). Then
-  #    3. the legacy sibling skills repo glob (name is constructive-skills*, not fixed) under both
-  #       roots, and 4. a copy vendored under the app's own scripts/ — both FALLBACKS only. The loop
-  #       picks the first existing match.
-  for cand in \
-    "$SCRIPT_DIR/$base" \
-    "$REPO_ROOT"/../constructive-skills*/.agents/skills/constructive-blocks/scripts/"$base" \
-    "$WORKSPACE_ROOT"/../constructive-skills*/.agents/skills/constructive-blocks/scripts/"$base" \
-    "$app_root/scripts/$base"; do
-    if [ -f "$cand" ]; then
-      echo "$cand"
-      return 0
-    fi
-  done
-  return 0
-}
-
-# Additive Blocks coverage gate. No-op unless the app installed Constructive Blocks
-# (i.e. a `.constructive/blocks/*.requires.json` manifest exists). When manifests are
-# present it asserts the on-ramp wiring from references/blocks-onramp.md:
-#   1. the @/generated/* alias is present in the app tsconfig
-#   2. check-sdk.mjs passes (if the script can be located)
-#   3. <BlocksRuntime is mounted somewhere in the app source
-# This never fires for non-blocks apps, so existing phases are unaffected.
-check_blocks_coverage() {
-  local app_root manifest_dir manifest_root
-  app_root="$(workspace_path "$(app_rel)")"
-  [ -d "$app_root" ] || return 0
-
-  # Manifests land at <root>/.constructive/blocks — BUT shadcn writes them under the components.json
-  # registry target, which for this Next.js template is src/, so the real location is usually
-  # `<app>/src/.constructive/blocks` (not `<app>/.constructive/blocks`). Probe in order:
-  #   1. <app>/.constructive/blocks         (app root, the documented canonical)
-  #   2. <app>/src/.constructive/blocks      (where shadcn ACTUALLY writes — was the self-disable gap)
-  #   3. <workspace>/.constructive/blocks    (unlikely fallback)
-  # Track BOTH the manifest dir AND the project root that contains the tsconfig (`manifest_root`) so
-  # check-sdk.mjs is pointed at the SAME app whose manifests we found — check-sdk itself looks in both
-  # the project root and project/src/.constructive, so manifest_root stays the APP ROOT (where
-  # tsconfig.json lives) even when the manifests are under src/. Otherwise check-sdk could read a
-  # different (empty) .constructive/blocks and exit 0 with zero ops verified (a false pass).
-  manifest_root="$app_root"
-  manifest_dir="$app_root/.constructive/blocks"
-  if [ ! -d "$manifest_dir" ] && [ -d "$app_root/src/.constructive/blocks" ]; then
-    manifest_root="$app_root"
-    manifest_dir="$app_root/src/.constructive/blocks"
-  elif [ ! -d "$manifest_dir" ]; then
-    manifest_root="$WORKSPACE_ROOT"
-    manifest_dir="$(workspace_path ".constructive/blocks")"
-  fi
-  [ -d "$manifest_dir" ] || return 0
-
-  local manifest_count
-  manifest_count="$(find "$manifest_dir" -maxdepth 1 -name '*.requires.json' 2>/dev/null | wc -l | tr -d ' ')"
-  [ "$manifest_count" -gt 0 ] || return 0
-
-  echo "  INFO: Blocks coverage gate — found $manifest_count installed block manifest(s) in $manifest_dir"
-
-  # 1. @/generated/* alias present in the app tsconfig?
-  local tsconfig="$app_root/tsconfig.json"
-  if [ -f "$tsconfig" ] && grep -q '@/generated/' "$tsconfig"; then
-    pass "Blocks: @/generated/* alias present in app tsconfig"
-  else
-    fail "Blocks: @/generated/* alias missing from $tsconfig" "Alias @/generated/{auth,admin} onto src/graphql/sdk/{auth,admin} (references/blocks-onramp.md Step 1)"
-  fi
-
-  # 2. <BlocksRuntime mounted in app source?
-  local app_src
-  app_src="$app_root/src"
-  [ -d "$app_src" ] || app_src="$app_root"
-  if grep -rqE '<BlocksRuntime[[:space:]/>]' "$app_src" 2>/dev/null; then
-    pass "Blocks: <BlocksRuntime> is mounted in app source"
-  else
-    fail "Blocks: <BlocksRuntime> not found in app source" "Mount <BlocksRuntime> once at the app root (references/blocks-onramp.md Step 5b)"
-  fi
-
-  # 3. check-sdk.mjs preflight — run if we can locate the script. It ships BUNDLED in this skill's
-  #    scripts/ (preferred); a CHECK_SDK_MJS env override wins, the sibling glob / app copy are
-  #    fallbacks. Advisory-skip only if it cannot be found.
-  local checker=""
-  checker="$(skill_checker_path check-sdk.mjs "${CHECK_SDK_MJS:-}")"
-
-  if [ -n "$checker" ]; then
-    # Point check-sdk.mjs at the SAME root we discovered manifests in (manifest_root), so its
-    # op-level assertions actually run against the manifests this gate found. check-sdk reads
-    # <project>/.constructive/blocks; passing app_root when manifests live at workspace root would
-    # make it see "nothing to check" and exit 0 (false pass). check-sdk also needs the tsconfig at
-    # that root — true for the app root (the canonical case); for the rare workspace-root fallback we
-    # require a tsconfig there before trusting the op-level pass, else flag it instead of silently
-    # passing.
-    if [ ! -f "$manifest_root/tsconfig.json" ]; then
-      warn "Blocks: manifests found at $manifest_dir but no tsconfig.json at $manifest_root; cannot run op-level preflight there (install blocks into the app root so check-sdk.mjs can resolve the SDK alias)"
-    elif node "$checker" --project "$manifest_root" >/tmp/check-sdk-out.$$ 2>&1; then
-      pass "Blocks: check-sdk.mjs preflight passed ($manifest_count manifest(s) satisfied)"
-      rm -f /tmp/check-sdk-out.$$
-    else
-      cat /tmp/check-sdk-out.$$ || true
-      rm -f /tmp/check-sdk-out.$$
-      fail "Blocks: check-sdk.mjs reported unsatisfied prerequisites" "See check-sdk.mjs output above; regenerate the SDK or treat the op as backend-pending (constructive-blocks skill). Ignore check-sdk's '-o src/generated' hint — for this template regenerate into src/graphql/sdk via 'pnpm codegen' (references/blocks-onramp.md Step 6)"
-    fi
-  else
-    warn "Blocks: check-sdk.mjs not found (it ships in this skill's scripts/; restore it or set CHECK_SDK_MJS); skipped op-level preflight"
-  fi
-}
-
-# App-compile gate. `next build` runs with typescript.ignoreBuildErrors = true (so Next does NOT
-# fail on the sibling generated SDK/provision tree it can't resolve), which means a green
-# `pnpm build` does NOT prove the app's OWN source type-checks — a typo'd block/SDK import or a
-# wrong hook name slips through every other gate. This closes that hole: it runs a no-emit
-# TypeScript check scoped to the app's src/** and FAILS the phase loudly if the app does not
-# compile. Target the SCOPED project tsconfig.appcheck.json (src/** only) when present — that is
-# the documented app-TS gate (SKILL.md S4c/S8); fall back to the app's tsconfig.json otherwise.
-# Runs INSIDE the per-app build flow (Phase 2.4 + 2.5), right after the build. Self-disables only
-# when there is genuinely no app/tsconfig to check (the surrounding phase already hard-fails those),
-# and advisory-skips (warn, not fail) if the TypeScript compiler can't be launched at all — so it
-# never masks a real type error, but a missing toolchain doesn't block a static run.
-check_app_compiles() {
-  local app_root app_root_abs app_package tsconfig_rel
-  app_root="$(app_rel)"
-  app_root_abs="$(workspace_path "$app_root")"
-  [ -d "$app_root_abs" ] || return 0
-
-  # Prefer the scoped app-TS project (src/** only) — it excludes the sibling provision tree whose
-  # deps aren't hoisted, so it checks the app's own code without the whole-workspace false-fails.
-  if [ -f "$app_root_abs/tsconfig.appcheck.json" ]; then
-    tsconfig_rel="tsconfig.appcheck.json"
-  elif [ -f "$app_root_abs/tsconfig.json" ]; then
-    tsconfig_rel="tsconfig.json"
-  else
-    return 0  # nothing to compile-check; the phase's own scaffold gates already cover a missing tsconfig
-  fi
-
-  app_package="$(resolve_app_package || true)"
-  [ -n "$app_package" ] || { warn "Compile check: could not resolve the app package name; skipped tsc --noEmit"; return 0; }
-
-  local compile_log compile_rc
-  compile_log="$(mktemp)"
-  # Run the no-emit type-check in the app package's own dir (pnpm --filter <pkg> exec cd's there),
-  # so `-p $tsconfig_rel` resolves against the app and `tsc` is the app's own devDep.
-  if (cd "$WORKSPACE_ROOT" && pnpm --filter "$app_package" exec tsc -p "$tsconfig_rel" --noEmit >"$compile_log" 2>&1); then
-    compile_rc=0
-  else
-    compile_rc=$?
-  fi
-
-  if [ "$compile_rc" -eq 0 ]; then
-    pass "App type-checks (tsc --noEmit via $tsconfig_rel) — no compile errors"
-    rm -f "$compile_log"
-  else
-    # Tail the compiler output so the failure is actionable inline (full log path printed too).
-    echo "  ----- tsc --noEmit ($tsconfig_rel) output (tail) -----"
-    tail -n 40 "$compile_log" 2>/dev/null | sed 's/^/  /' || true
-    info "Full compile log: $compile_log"
-    if [ "$tsconfig_rel" = "tsconfig.json" ]; then
-      fail "App does not type-check (tsc --noEmit via tsconfig.json reported errors)" "Fix the TypeScript errors above (a common cause is a typo'd or non-existent block/SDK import — e.g. importing a hook or component name the generated SDK does not export). For a clean, app-scoped signal, add a scoped project '$app_root/tsconfig.appcheck.json' = { \"extends\": \"./tsconfig.json\", \"include\": [\"src/**/*.ts\", \"src/**/*.tsx\"], \"exclude\": [\"node_modules\"] } and re-run (SKILL.md S4c/S8) — tsconfig.json also type-checks sibling packages that may not be hoisted."
-    else
-      fail "App does not type-check (tsc --noEmit via tsconfig.appcheck.json reported errors)" "Fix the TypeScript errors above before this phase can pass — a common cause is a typo'd or non-existent block/SDK import (importing a hook/component name the generated SDK does not export, or a wrong @sdk/* / @/generated/* path). Re-run 'pnpm codegen' if an SDK symbol is genuinely missing, then 'pnpm exec tsc -p tsconfig.appcheck.json --noEmit' in the app dir until clean (SKILL.md S8)."
-    fi
-  fi
-}
-
-# Additive flows-catalog drift gate. No-op unless this skill ships a generated
-# references/flows.json (the flow catalog emitted from the apps/blocks manifest). When it
-# is present, this runs the BUNDLED check-flows.mjs (in this skill's scripts/), which recomputes
-# the catalog's sotHash from the source-of-truth + node-type-registry presets and asserts
-# the references copy of flows.json matches. This closes the same silent-drift class as the
-# modules:['all'] bug: a flow's module list can no longer rot relative to the presets it claims
-# to ride. Mirrors check_blocks_coverage: self-disables when there is nothing to check, and
-# advisory-skips only if the bundled checker cannot be located.
-check_flows_drift() {
-  # Self-disable when this harness has no generated flow catalog (mirrors the
-  # "no manifests → return 0" guard in check_blocks_coverage).
-  local flows_json="$REPO_ROOT/references/flows.json"
-  [ -f "$flows_json" ] || return 0
-
-  echo "  INFO: Flows drift gate — found generated flow catalog at $flows_json"
-
-  # Locate check-flows.mjs via skill_checker_path: the LOCAL bundled copy in this skill's scripts/
-  # is preferred (CHECK_FLOWS_MJS override wins; the legacy sibling glob / app copy remain
-  # fallbacks). Advisory-skip only if it somehow cannot be found (the bundled copy was removed).
-  local checker=""
-  checker="$(skill_checker_path check-flows.mjs "${CHECK_FLOWS_MJS:-}")"
-
-  if [ -z "$checker" ]; then
-    warn "Flows: check-flows.mjs not found (it ships in this skill's scripts/; restore it or set CHECK_FLOWS_MJS); skipped flow-catalog drift check"
-    return 0
-  fi
-
-  # check-flows.mjs exit codes mirror check-sdk.mjs house style: 0 = in sync, 1 = drift,
-  # 2 = could not run. Treat drift (1) as a hard fail; treat can't-run (2) as an advisory skip
-  # so a half-checked-out skill repo never breaks an otherwise-green harness run.
-  local out status=0
-  out="/tmp/check-flows-out.$$"
-  node "$checker" --harness-flows "$flows_json" >"$out" 2>&1 || status="$?"
-  if [ "$status" -eq 0 ]; then
-    pass "Flows: check-flows.mjs reports the flow catalog is in sync (no drift)"
-    rm -f "$out"
-  elif [ "$status" -eq 2 ]; then
-    cat "$out" 2>/dev/null || true
-    rm -f "$out"
-    warn "Flows: check-flows.mjs could not run (exit 2); skipped flow-catalog drift check (not failing)"
-  else
-    cat "$out" 2>/dev/null || true
-    rm -f "$out"
-    fail "Flows: check-flows.mjs reported flow-catalog drift (exit $status)" "Regenerate the catalog from the apps/blocks manifest ('pnpm gen:flows') so references/flows.json matches the source-of-truth + node-type-registry presets, then re-run. Do NOT hand-edit references/flows.json."
-  fi
-}
-
-# Additive harness self-consistency gate. No-op unless this harness ships
-# scripts/check-harness-drift.mjs (a harness-owned checker that asserts the docs/scripts agree on
-# the canonical values that have historically drifted: the per-DB data endpoint = api-<sub>, the
-# registry/app ports, and the @constructive/<name> install form). Mirrors check_flows_drift:
-# self-disables when the checker is absent, surfaces the checker's own output, and treats a drift
-# (exit 1) as a hard gate fail. Wired into Phase 1 so it runs early, before the build/codegen work.
-check_harness_drift() {
-  # Self-disable when the checker has not been authored yet (mirrors the "no file → return 0"
-  # guard the other additive gates use). The checker is harness-owned and lives beside the other
-  # *.mjs in this script's scripts/ dir.
-  local checker="$REPO_ROOT/scripts/check-harness-drift.mjs"
-  [ -f "$checker" ] || return 0
-
-  echo "  INFO: Build-flow drift gate — running scripts/check-harness-drift.mjs"
-
-  # exit 0 = harness is internally consistent; exit 1 = drift (hard fail). Any other non-zero is
-  # treated as a fail too so a broken checker never silently passes.
-  local out status=0
-  out="/tmp/check-harness-drift-out.$$"
-  node "$checker" >"$out" 2>&1 || status="$?"
-  if [ "$status" -eq 0 ]; then
-    cat "$out" 2>/dev/null || true
-    rm -f "$out"
-    pass "Config: check-harness-drift.mjs reports the build flow is internally consistent (no drift)"
-  else
-    cat "$out" 2>/dev/null || true
-    rm -f "$out"
-    fail "Config: check-harness-drift.mjs reported drift (exit $status)" "The build-flow docs/scripts disagree on a canonical value (per-DB data endpoint = api-<sub>, REGISTRY_PORT=4081, APP_PORT=3081, or install form @constructive/<name>). See the checker output above and align the flagged file(s)."
-  fi
-}
-
-# Additive self-lint: every fail() CALL-SITE in this script must pass a 2nd arg = a self-correcting
-# FIX hint, so an agent that trips a gate always gets a concrete next action (cite the gotcha CODE +
-# the one-liner / SKILL anchor). This keeps the hint-coverage ratio from regressing as call-sites are
-# added. Pure grep (no deps); mirrors `npm run check:fix-hints`. A hintless fail() is a hard gate fail.
-check_fail_hints() {
-  local self="$REPO_ROOT/scripts/verify-phase.sh"
-  [ -f "$self" ] || return 0
-  # Hintless call-site = a `fail "…"` with nothing after the closing quote, excluding comment lines.
-  local hintless
-  hintless="$(grep -nE 'fail "[^"]*"[[:space:]]*$' "$self" | grep -vE '^[[:space:]]*[0-9]+:[[:space:]]*#' || true)"
-  if [ -n "$hintless" ]; then
-    echo "  INFO: fail()-hint self-lint found call-site(s) with no 2nd-arg FIX hint:"
-    echo "$hintless" | sed 's/^/        /'
-    fail "Self-lint: a fail() call-site is missing its 2nd-arg FIX hint" "Add a concrete FIX hint (the optional 2nd arg) to each fail() listed above — cite the relevant gotcha CODE + the exact one-liner / SKILL anchor (run 'npm run check:fix-hints' to re-check)."
-  else
-    pass "Self-lint: every fail() call-site carries a 2nd-arg FIX hint"
-  fi
-}
-
-# Detect whether the spec declares at least one acceptance.required_flows entry.
-# spec_value cannot see YAML list items, so scan the acceptance: block for a `- ` item
-# under required_flows:. Returns 0 (true) if a non-empty list is present.
-spec_has_required_flows() {
-  if [ -z "$SPEC_PATH" ] || [ ! -f "$SPEC_PATH" ]; then
-    return 1
-  fi
-  awk '
-    /^[[:space:]]*acceptance:/ { in_acc = 1; next }
-    in_acc && /^[^[:space:]]/ { in_acc = 0 }
-    in_acc && /^[[:space:]]*required_flows:[[:space:]]*\[[[:space:]]*\]/ { next }   # inline empty list
-    in_acc && /^[[:space:]]*required_flows:/ { in_flows = 1; next }
-    in_flows && /^[[:space:]]*[a-zA-Z_]/ { in_flows = 0 }
-    in_flows && /^[[:space:]]*-[[:space:]]*[^[:space:]#]/ { found = 1; exit }
-    END { exit (found ? 0 : 1) }
-  ' "$SPEC_PATH"
-}
-
-# ── Opt-in live running-app acceptance gate (signup → login → CRUD round-trip) ──────────────
-# Runs ONLY in the Phase 4 / UI path. Enabled when LIVE_QA=1 OR the spec declares
-# acceptance.required_flows. Drives the running app headlessly (agent-browser or Playwright)
-# through a real signup → login → CRUD round-trip and asserts the persisted effect. HARD-FAILS
-# when enabled and the drive fails. DEGRADES GRACEFULLY (clear skip notice, exit 0) when the
-# gate is disabled, no browser/driver is available, or no acceptance-drive script is wired —
-# so environments without a browser are never broken. Set LIVE_QA_STRICT=1 to turn the
-# "enabled but nothing to run" skip into a hard fail.
-#   $1 = app workspace-relative root (app or packages/app)
-#   $2 = resolved app package name (for `pnpm --filter`)
-run_live_qa() {
-  local app_root="$1"
-  local app_package="$2"
-
-  # 1. Enablement: explicit flag OR required_flows in the brief.
-  local enabled="no"
-  if [ "${LIVE_QA:-0}" = "1" ]; then
-    enabled="yes"
-  elif spec_has_required_flows; then
-    enabled="yes"
-  fi
-  if [ "$enabled" != "yes" ]; then
-    info "Live-QA gate: disabled (set LIVE_QA=1 or add acceptance.required_flows to the brief to enable) — skipping"
-    return 0
-  fi
-
-  echo "  INFO: Live-QA gate: ENABLED (signup → login → CRUD round-trip against the running app)"
-
-  # 2. Browser/driver availability — degrade gracefully if none is present.
-  local have_browser="no"
-  if command -v agent-browser >/dev/null 2>&1; then
-    have_browser="agent-browser"
-  elif command -v npx >/dev/null 2>&1 && npx --no-install playwright --version >/dev/null 2>&1; then
-    have_browser="playwright"
-  fi
-  if [ "$have_browser" = "no" ]; then
-    warn "Live-QA gate: no browser driver available (neither 'agent-browser' on PATH nor a resolvable Playwright). Skipping the live drive — install agent-browser ('npm i -g agent-browser && agent-browser install') to enable. NOT failing: this environment has no browser."
-    return 0
-  fi
-  info "Live-QA gate: using browser driver: $have_browser"
-
-  # 3. Locate the acceptance-drive script. The actual signup→login→CRUD steps live in a driver
-  #    (JS/TS) so the gate stays portable; point at it with LIVE_QA_DRIVER, ship scripts/live-qa.mjs,
-  #    or define an `e2e`/`test:e2e` script in the app package.
-  local driver_cmd=""
-  if [ -n "${LIVE_QA_DRIVER:-}" ] && [ -f "${LIVE_QA_DRIVER}" ]; then
-    driver_cmd="node ${LIVE_QA_DRIVER}"
-  elif [ -f "$REPO_ROOT/scripts/live-qa.mjs" ]; then
-    driver_cmd="node $REPO_ROOT/scripts/live-qa.mjs"
-  elif [ -f "$(workspace_path "$app_root/package.json")" ] && node -e "const s=require('$(workspace_path "$app_root/package.json")').scripts||{}; process.exit((s['test:e2e']||s['e2e'])?0:1)" 2>/dev/null; then
-    driver_cmd="pnpm --filter $app_package run $(node -e "const s=require('$(workspace_path "$app_root/package.json")').scripts||{}; process.stdout.write(s['test:e2e']?'test:e2e':'e2e')" 2>/dev/null)"
-  fi
-
-  if [ -z "$driver_cmd" ]; then
-    if [ "${LIVE_QA_STRICT:-0}" = "1" ]; then
-      fail "Live-QA gate: enabled and a browser is present, but no acceptance-drive script was found" "Provide one: set LIVE_QA_DRIVER=/abs/path/to/driver.mjs, add scripts/live-qa.mjs, or define an 'e2e'/'test:e2e' script in $app_root/package.json. The driver must sign up, log in, do a CRUD round-trip, assert 200s + a persisted row, and exit non-zero on any failure."
-    fi
-    warn "Live-QA gate: enabled and a browser is present, but no acceptance-drive script is wired (LIVE_QA_DRIVER / scripts/live-qa.mjs / app 'e2e' script). Skipping the live drive. Set LIVE_QA_STRICT=1 to make this a hard fail. The independent evaluator (references/evaluator-role.md) still owns final acceptance."
-    return 0
-  fi
-  info "Live-QA gate: drive command: $driver_cmd"
-
-  # 4. Resolve the app's base URL/port. Precedence: explicit LIVE_QA_BASE_URL → the per-app
-  #    run-state frontend port/url that wire-app PERSISTED (the ALLOCATED free dev port — authoritative,
-  #    so two concurrent apps each hit their OWN port) → the brief's frontend_port (only a BASE) →
-  #    config default (app.portBase). The run-state wins over the brief because the brief port is just
-  #    the base the allocator grew from; the running app is on the persisted port.
-  local port base_url state_port state_url
-  state_url="$(state_value frontend.base_url 2>/dev/null || true)"
-  state_port="$(state_value frontend.frontend_port 2>/dev/null || true)"
-  # tolerate the older field names too (frontend.url / frontend.port)
-  [ -n "$state_url" ] || state_url="$(state_value frontend.url 2>/dev/null || true)"
-  [ -n "$state_port" ] || state_port="$(state_value frontend.port 2>/dev/null || true)"
-  port="$state_port"
-  [ -n "$port" ] || port="$(spec_value frontend_port || true)"
-  # Default app/dev port from constructive.config.json (app.portBase = canonical 3081).
-  [ -n "$port" ] || port="$(cfg app.portBase 3081)"
-  if [ -n "${LIVE_QA_BASE_URL:-}" ]; then
-    base_url="$LIVE_QA_BASE_URL"
-  elif [ -n "$state_url" ]; then
-    base_url="$state_url"
-  else
-    base_url="http://localhost:$port"
-  fi
-  info "Live-QA gate: target app URL: $base_url (port $port)"
-
-  # 5. Bring up the app unless one is already responding (then reuse it).
-  local started_app="no" app_pid="" app_log
-  app_log="$(mktemp)"
-  local already
-  # curl -w "%{http_code}" ALREADY prints "000" to stdout on a connection failure (exit 7) by itself;
-  # the old `|| echo "000"` then APPENDED a second "000" → "000000", which "!= 000" made the gate
-  # WRONGLY conclude the app was already responding (HTTP 000000) and NEVER start it → agent-browser
-  # then opened a dead port. Take curl's code verbatim and treat empty/000 as down, so a
-  # not-already-running app IS started.
-  # `set -e` GUARD: when nothing is listening, curl exits 7 (connection refused). curl is the LAST
-  # command in this substitution, so its exit 7 becomes the assignment's status and, under `set -e`,
-  # ABORTS the whole gate right here — BEFORE the `[ -z ]` fallback and the dev-server-start branch
-  # below ever run (the app would never get started). `|| true` neutralizes ONLY curl's exit status
-  # while keeping its stdout ("000" on refusal, or the real code on a live server); it does NOT
-  # re-introduce the double-"000" the old `|| echo "000"` caused, since `true` prints nothing.
-  already="$( { curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null || true; } )"; [ -z "$already" ] && already="000"
-  if [ "$already" != "000" ]; then
-    info "Live-QA gate: app already responding at $base_url (HTTP $already) — reusing it"
-  else
-    info "Live-QA gate: starting the app (pnpm --filter $app_package start) on port ${port}..."
-    ( cd "$WORKSPACE_ROOT" && PORT="$port" pnpm --filter "$app_package" start >"$app_log" 2>&1 ) &
-    app_pid="$!"
-    started_app="yes"
-    local up="no" i
-    for i in $(seq 1 60); do
-      local code
-      # Same `set -e` guard as above: until the app binds, curl exits 7 and would abort the poll
-      # loop on its very first iteration. `|| true` keeps the captured code while ignoring the exit.
-      code="$( { curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null || true; } )"; [ -z "$code" ] && code="000"
-      if [ "$code" != "000" ]; then up="yes"; break; fi
-      # Bail early if the app process already died.
-      if ! kill -0 "$app_pid" 2>/dev/null; then break; fi
-      sleep 2
-    done
-    if [ "$up" != "yes" ]; then
-      [ -n "$app_pid" ] && kill "$app_pid" 2>/dev/null || true
-      cat "$app_log" 2>/dev/null || true
-      rm -f "$app_log"
-      fail "Live-QA gate: app did not come up at $base_url within timeout" "Check the app start log above; ensure 'pnpm --filter $app_package start' serves port $port (or set LIVE_QA_BASE_URL)."
-    fi
-  fi
-
-  # 5b. Resolve the spec the driver reads to an ABSOLUTE path before exporting it.
-  #     The driver runs with cwd=$WORKSPACE_ROOT (step 6), but LIVE_QA_SPEC / --spec are usually
-  #     REPO-relative (e.g. fixtures/golden-app-brief.yaml) — a relative path would `existsSync()`
-  #     against the wrong dir in the driver and silently resolve ZERO flows ("nothing to QA").
-  #     Precedence: an explicit LIVE_QA_SPEC, else this gate's own $SPEC_PATH. We absolutize a
-  #     relative value by probing the caller cwd first, then $REPO_ROOT, then $REPO_ROOT/fixtures
-  #     (where the frozen briefs live).
-  local qa_spec="${LIVE_QA_SPEC:-$SPEC_PATH}"
-  if [ -n "$qa_spec" ] && [[ "$qa_spec" != /* ]]; then
-    if [ -f "$PWD/$qa_spec" ]; then
-      qa_spec="$PWD/$qa_spec"
-    elif [ -f "$REPO_ROOT/$qa_spec" ]; then
-      qa_spec="$REPO_ROOT/$qa_spec"
-    elif [ -f "$REPO_ROOT/fixtures/$qa_spec" ]; then
-      qa_spec="$REPO_ROOT/fixtures/$qa_spec"
-    fi
-  fi
-  if [ -n "$qa_spec" ] && [ -f "$qa_spec" ]; then
-    export LIVE_QA_SPEC="$qa_spec"
-    info "Live-QA gate: spec (absolute) for the driver: $LIVE_QA_SPEC"
-  fi
-
-  # 6. Run the acceptance drive. HARD-FAIL on non-zero exit.
-  #    NOTE: `set -e` is active — capture the exit code with `|| qa_status=$?` so a failing drive
-  #    does NOT abort the script before teardown (step 7) and the explicit fail message below.
-  local qa_log qa_status=0
-  qa_log="$(mktemp)"
-  ( cd "$WORKSPACE_ROOT" && LIVE_QA_BASE_URL="$base_url" BASE_URL="$base_url" $driver_cmd >"$qa_log" 2>&1 ) || qa_status="$?"
-
-  # 7. Tear down the app if we started it.
-  if [ "$started_app" = "yes" ] && [ -n "$app_pid" ]; then
-    kill "$app_pid" 2>/dev/null || true
-    wait "$app_pid" 2>/dev/null || true
-  fi
-
-  if [ "$qa_status" -eq 0 ]; then
-    pass "Live-QA gate: signup → login → CRUD round-trip passed against $base_url"
-    rm -f "$qa_log" "$app_log"
-  else
-    cat "$qa_log" 2>/dev/null || true
-    rm -f "$qa_log" "$app_log"
-    fail "Live-QA gate: signup → login → CRUD round-trip FAILED against $base_url (driver exit $qa_status)" "See driver output above. A flow is only green when its request returns 2xx AND the effect is persisted (row visible after reload)."
-  fi
-}
-
-resolve_db_name() {
-  if [ -n "$POSITIONAL_DB_NAME" ]; then
-    echo "$POSITIONAL_DB_NAME"
-    return
-  fi
-
-  if [ -n "${DB_NAME:-}" ]; then
-    echo "$DB_NAME"
-    return
-  fi
-
-  local spec_db
-  spec_db="$(spec_value db_name || true)"
-  if [ -n "$spec_db" ]; then
-    echo "$spec_db"
-    return
-  fi
-
-  echo "myapp"
-}
-
-resolve_subdomain() {
-  local db_name="${1:-$(resolve_db_name)}"
-
-  # Steps 1+2 (run-state stored subdomain → platform psql lookup) are now centralized in
-  # lib/brief.mjs subdomainFor(); resolve_subdomain_id returns EMPTY when neither resolves.
-  local subdomain
-  subdomain="$(resolve_subdomain_id "$db_name")"
-  if [ -n "$subdomain" ]; then
-    echo "$subdomain"
-    return
-  fi
-
-  # 3. Fallback to db name (may not work if platform assigns random subdomains)
-  warn "Could not resolve subdomain for '$db_name'; falling back to db name"
-  echo "$db_name"
-}
 
 # Phase number normalization
 # SKILL.md exposes externally-visible step numbers that differ from this script's
@@ -1078,10 +271,9 @@ case "$PHASE" in
     # sibling tenant whose name merely CONTAINS this db can't match). Resolve each schema DIRECTLY
     # via '<DB_LIKE>%<token>%public' — no prefix arithmetic — so an underscore name (which the old
     # '${x%-memberships-public}' strip left untouched) can't yield a wrong app/users schema.
-    DB_LIKE="$(psql -d constructive -t -c "SELECT replace(replace('$DB_NAME_RESOLVED', '_', '%'), '-', '%');" 2>/dev/null | tr -d ' ')"
-    [ -n "$DB_LIKE" ] || DB_LIKE="$DB_NAME_RESOLVED"
+    DB_LIKE="$(schema_db_like "$DB_NAME_RESOLVED")"
 
-    MEMBERSHIP_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'app_membership_defaults' AND table_schema LIKE '${DB_LIKE}%memberships%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
+    MEMBERSHIP_SCHEMA="$(resolve_table_schema "$DB_LIKE" 'app_membership_defaults' '%memberships%public')"
     [ -n "$MEMBERSHIP_SCHEMA" ] && pass "Resolved platform membership schema: $MEMBERSHIP_SCHEMA" || fail "Could not resolve Constructive membership schema for '$DB_NAME_RESOLVED'" "DB exists but app schemas aren't provisioned — re-run create-db + provision (SKILL.md S2); if provision aborted with NOT_FOUND (memberships_module) you used AuthzEntityMembership on an auth:email app — switch to AuthzDirectOwner (gotchas RLS-POLICY-001)."
 
     # Human-readable prefix (display only; app/users resolved directly below). Strip the
@@ -1089,7 +281,7 @@ case "$PHASE" in
     SCHEMA_PREFIX="${MEMBERSHIP_SCHEMA%[-_]memberships[-_]public}"
     [ -n "$SCHEMA_PREFIX" ] && pass "Resolved platform schema prefix: $SCHEMA_PREFIX" || fail "Could not resolve Constructive schema prefix for '$DB_NAME_RESOLVED'" "Membership schema didn't match the expected '<db>…memberships…public' shape — re-run provision (SKILL.md S2); the provision.ts membership SQL must use the separator-tolerant match (gotchas SUBDOMAIN-001)."
 
-    APP_SCHEMA="$(psql -d constructive -t -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '${DB_LIKE}%app%public' ORDER BY length(schema_name), schema_name LIMIT 1;" 2>/dev/null | tr -d ' ')"
+    APP_SCHEMA="$(resolve_schema_name "$DB_LIKE" '%app%public')"
     [ -n "$APP_SCHEMA" ] && pass "Resolved platform app schema: $APP_SCHEMA" || fail "Could not resolve Constructive app schema for '$DB_NAME_RESOLVED'" "The '<db>…app…public' schema is missing — provision didn't create the app schema; re-run create-db + provision (SKILL.md S2)."
 
     # ── Grant OUTCOME assertion (replaces the old notes-substring tripwire) ────────────────────
@@ -1107,7 +299,7 @@ case "$PHASE" in
 
     # Resolve the users schema DIRECTLY (anchored + separator-tolerant), same as app/memberships
     # above — tolerates BOTH '<db>-…-users-public' and '<db>_users_public' (SUBDOMAIN-001).
-    USERS_SCHEMA="$(psql -d constructive -t -c "SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE '${DB_LIKE}%users%public' ORDER BY length(schema_name), schema_name LIMIT 1;" 2>/dev/null | tr -d ' ')"
+    USERS_SCHEMA="$(resolve_schema_name "$DB_LIKE" '%users%public')"
     [ -n "$USERS_SCHEMA" ] || USERS_SCHEMA="${SCHEMA_PREFIX}-users-public"
     USERS_SELF_UPDATE_POLICY="$(psql -d constructive -t -c "SELECT count(*) FROM pg_policies WHERE schemaname = '$USERS_SCHEMA' AND tablename = 'users' AND cmd = 'UPDATE';" 2>/dev/null | tr -d ' ')"
     if [ "${USERS_SELF_UPDATE_POLICY:-0}" -ge 1 ] 2>/dev/null; then
@@ -1158,13 +350,13 @@ case "$PHASE" in
 
       # Resolve the org/membership schemas with the SAME anchored, separator-tolerant DB_LIKE machinery
       # already used above (SUBDOMAIN-001).
-      MEMBERSHIP_PUB_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'org_memberships' AND table_schema LIKE '${DB_LIKE}%memberships%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
+      MEMBERSHIP_PUB_SCHEMA="$(resolve_table_schema "$DB_LIKE" 'org_memberships' '%memberships%public')"
       [ -n "$MEMBERSHIP_PUB_SCHEMA" ] && pass "Resolved org memberships-public schema: $MEMBERSHIP_PUB_SCHEMA" || fail "Could not resolve the org memberships-public schema (table org_memberships) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%memberships%public')" "This app reads as b2b/org ($ORG_TIER_REASON) but org_memberships isn't provisioned — provision with the b2b preset (modules.preset: b2b; SKILL.md S2), or if it's actually owner-only clear the org signal (don't set modules.preset b2b). gotchas RLS-ORG-RECONCILE-001."
 
-      MEMBERSHIP_PRIV_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'org_memberships_sprt' AND table_schema LIKE '${DB_LIKE}%memberships%private' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
+      MEMBERSHIP_PRIV_SCHEMA="$(resolve_table_schema "$DB_LIKE" 'org_memberships_sprt' '%memberships%private')"
       [ -n "$MEMBERSHIP_PRIV_SCHEMA" ] && pass "Resolved org memberships-private schema: $MEMBERSHIP_PRIV_SCHEMA" || fail "Could not resolve the org memberships-private schema (table org_memberships_sprt) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%memberships%private')" "The org SPRT tables aren't provisioned — re-run create-db + provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
 
-      PERMISSIONS_PUB_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'app_permissions' AND table_schema LIKE '${DB_LIKE}%permissions%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
+      PERMISSIONS_PUB_SCHEMA="$(resolve_table_schema "$DB_LIKE" 'app_permissions' '%permissions%public')"
       [ -n "$PERMISSIONS_PUB_SCHEMA" ] && pass "Resolved org permissions-public schema: $PERMISSIONS_PUB_SCHEMA" || fail "Could not resolve the org permissions-public schema (table app_permissions) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%permissions%public')" "The permissions module isn't provisioned — re-run create-db + provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
 
       # (a) org-table GRANTs to 'authenticated': assert the 4 privileges on org_memberships AND SELECT
@@ -1197,7 +389,7 @@ case "$PHASE" in
       #       • Pre-signup (no actor) → the per-actor seed can't exist yet; grants (a) + bit (b) above
       #         are the assertable provision-time outcome (keeps a fresh b2b provision-time gate green,
       #         like the owner canary).
-      USERS_SCHEMA_ORG="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'users' AND table_schema LIKE '${DB_LIKE}%users%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
+      USERS_SCHEMA_ORG="$(resolve_table_schema "$DB_LIKE" 'users' '%users%public')"
       [ -n "$USERS_SCHEMA_ORG" ] || USERS_SCHEMA_ORG="$USERS_SCHEMA"
       ORG_USER_COUNT="$(psql -d constructive -t -c "SELECT count(*) FROM \"$USERS_SCHEMA_ORG\".users;" 2>/dev/null | tr -d ' ')"
       # Personal-org seed rows present (actor = entity), and of those, how many carry the create_entity bit.
@@ -1457,13 +649,9 @@ case "$PHASE" in
 
     APP_PACKAGE="$(resolve_app_package || true)"
     [ -n "$APP_PACKAGE" ] || fail "Could not resolve app package name" "Set a \"name\" in the app's package.json (it's what 'pnpm --filter <name> build' targets) — the nextjs/constructive-app template ships one; restore it if you cleared it (SKILL.md S3)."
-    FRONTEND_BUILD_LOG="$(mktemp)"
-    if (cd "$WORKSPACE_ROOT" && pnpm --filter "$APP_PACKAGE" build >"$FRONTEND_BUILD_LOG" 2>&1); then
-      pass "Frontend build succeeds"
-    else
-      info "Build log: $FRONTEND_BUILD_LOG"
-      fail "Frontend build failed (see build log above)" "Check TypeScript errors in $FRONTEND_BUILD_LOG"
-    fi
+    # Phase 2.4 is the BUILD PRODUCER: it runs the full build and, on success, leaves <app>/.next/BUILD_ID
+    # which Phase 2.5 verifies against instead of rebuilding (build-once; see verify_or_build_app).
+    build_app "Frontend build succeeds" "Frontend build failed (see build log above)"
 
     # The build above runs with ignoreBuildErrors, so it does NOT prove the app's own source
     # type-checks — gate that explicitly with a no-emit TypeScript check on the app (src/**).
@@ -1546,13 +734,11 @@ case "$PHASE" in
 
     APP_PACKAGE="$(resolve_app_package || true)"
     [ -n "$APP_PACKAGE" ] || fail "Could not resolve app package name" "Set a \"name\" in the app's package.json (it's what 'pnpm --filter <name> build' targets) — the nextjs/constructive-app template ships one; restore it if you cleared it (SKILL.md S3)."
-    FINAL_BUILD_LOG="$(mktemp)"
-    if (cd "$WORKSPACE_ROOT" && pnpm --filter "$APP_PACKAGE" build >"$FINAL_BUILD_LOG" 2>&1); then
-      pass "Final frontend build succeeds"
-    else
-      info "Build log: $FINAL_BUILD_LOG"
-      fail "Final frontend build failed (see build log above)" "Check TypeScript errors in $FINAL_BUILD_LOG"
-    fi
+    # Build-once: Phase 2.4 (gate 2.6) already ran the full build this session and left
+    # <app>/.next/BUILD_ID. Verify against that artifact instead of paying for a second full build;
+    # GUARD — if it's missing (this phase run standalone, or .next cleaned) build ONCE so the
+    # assertion is preserved (a broken build still fails here).
+    verify_or_build_app "Final frontend build succeeds" "Final frontend build failed (see build log above)"
 
     # The build above runs with ignoreBuildErrors, so it does NOT prove the app's own source
     # type-checks — gate that explicitly with a no-emit TypeScript check on the app (src/**).
