@@ -1,6 +1,6 @@
 {
   "_README": "Copy this to build/run-state.json and UPDATE it at the end of every phase. scripts/verify-phase.sh READS this file (it never writes it) — every field below is a field the verifier actually checks. A field that is null / false / '' / [] is treated as 'not done yet' and the matching gate WARNs (and, when the whole phase's set is incomplete, FAILS). Fill each field in as that phase completes. See SKILL.md ('write/update run-state.json at the end of each phase') and gotchas.md SUBDOMAIN-001.",
-  "_schema": "Field sets mirror verify-phase.sh check_state_fields() exactly. Booleans are gates (true = done); strings/refs must be non-empty; notes[] must be non-empty. The Phase 2.2 grant check is now an OUTCOME assertion (verify-phase.sh queries the DB for the 4 'authenticated' privileges + the users self_update policy), so notes[] is NO LONGER substring-scanned — record honestly. If you used the documented manual GRANT fallback (SKILL.md S2 step 3), set the STRUCTURED 'grant_source' field to 'manual-fallback' (default/SDK path = 'sdk'); the gate reads that field, not freeform prose.",
+  "_schema": "Field sets mirror verify-phase.sh check_state_fields() exactly. Booleans are gates (true = done); strings/refs must be non-empty; notes[] must be non-empty. The Phase 2.2 grant check is an OUTCOME assertion (verify-phase.sh queries the DB for the 4 'authenticated' privileges + the users self_update policy, both of which the platform grants natively now), so notes[] is NOT substring-scanned — record honestly.",
 
   "app": "myapp",
   "db_name": "myapp",
@@ -30,8 +30,7 @@
     "name": "",
     "subdomain": "",
     "app_data_endpoint": "",
-    "app_auth_endpoint": "",
-    "grant_source": ""
+    "app_auth_endpoint": ""
   },
 
   "auth": {
@@ -70,6 +69,6 @@
   },
 
   "notes": [
-    "Replace this line with a real per-phase note; keep notes[] non-empty. Notes are NO LONGER substring-scanned — the Phase 2.2 grant check is an OUTCOME assertion against the DB (verify-phase.sh queries the 4 'authenticated' privileges + the users self_update policy). Record honestly, and if you applied the documented manual GRANT fallback (SKILL.md S2 step 3) set database.grant_source='manual-fallback' (otherwise 'sdk'). Provisioning still goes through the SDK/blueprint path first (gotchas.md SQL-001)."
+    "Replace this line with a real per-phase note; keep notes[] non-empty. Notes are NOT substring-scanned — the Phase 2.2 grant check is an OUTCOME assertion against the DB (verify-phase.sh queries the 4 'authenticated' privileges + the users self_update policy, which the platform grants natively). Record honestly. Provisioning goes through the SDK/blueprint path (gotchas.md SQL-001)."
   ]
 }

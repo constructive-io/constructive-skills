@@ -10,12 +10,12 @@
  *                      schemas/core.ts wholesale; multi-schema apps add more).
  *   __AUTH_PRESET__  ← the chosen auth preset key (e.g. 'auth:email', 'b2b',
  *                      'full', or 'minimal'). The auth-appendix below
- *                      (membership defaults + email-verify + users self_update) is
- *                      GATED on this — a non-auth app uses 'minimal' and the whole
- *                      appendix is skipped. An org preset ('b2b' | 'full') ALSO runs
- *                      the b2b org reconcile (personal-org sprt row + create_entity bit
- *                      + org-table grants — the org counterpart to the users self_update
- *                      step; see PLATFORM-GAPS.md GAP-1b/1c). This is preset-keyed
+ *                      (membership defaults + email-verify + users self_update +
+ *                      public-read anon SELECT) is GATED on this — a non-auth app uses
+ *                      'minimal' and the whole appendix is skipped. The b2b org membership
+ *                      (personal-org sprt row + create_entity bit + org-table grants) is now
+ *                      provisioned NATIVELY by the platform (PLATFORM-GAPS.md GAP-1b/1c,
+ *                      CLOSED), so there is no org-reconcile step here. This is preset-keyed
  *                      boilerplate, not domain code; the generic orchestration loop stays intact.
  *   __SITE_DOMAIN__  ← boolean: whether to backfill the per-app site-domain row that
  *                      send-email-link needs (else "Missing site configuration for
@@ -70,9 +70,8 @@ async function main() {
     // is obvious rather than masked behind "success".
     console.warn(
       '\n  ⚠️  PGHOST unset — the AUTH APPENDIX (membership approval, email-verify, users self-update,' +
-        ' org/public-read reconcile) will be SKIPPED → the app is only PARTIALLY provisioned.' +
-        ' Reconcile with scripts/fix-grants.sh (+ fix-org-grants.sh for b2b), or re-run with PG env' +
-        ' exported (eval "$(pgpm env)"). This is NOT a clean provision.\n',
+        ' public-read reconcile) will be SKIPPED → the app is only PARTIALLY provisioned.' +
+        ' Re-run with PG env exported (eval "$(pgpm env)"). This is NOT a clean provision.\n',
     );
   }
 
@@ -332,123 +331,21 @@ async function main() {
         }
       } catch (err) {
         console.warn(`   ⚠️  public-read (anonymous) reconcile failed: ${(err as Error).message?.slice(0, 160)}. ` +
-          `Logged-out reads of published rows may 403 with "permission denied" — run scripts/fix-grants.sh <db-name> to backfill.`);
+          `Logged-out reads of published rows may 403 with "permission denied" — re-run provision with PG env exported to backfill.`);
       } finally {
         await pubPool.end();
       }
     }
 
-    // --- B2B ORG RECONCILE (org counterpart to the users self-update step) ---------------
-    // Only for org/b2b presets. On the b2b tier a fresh email-password signup gets a `users`
-    // row + a personal-org `org_memberships` row, but the per-tenant provisioner does NOT
-    // create the personal-org row in the PRIVATE `org_memberships_sprt` that every
-    // AuthzEntityMembership table's RLS reads (the AFTER-INSERT trigger only fires its sprt
-    // INSERT when an app_memberships_sprt parent exists, and that table is empty after a bare
-    // signup), nor grant the `create_entity` permission bit. Result: createCompany /
-    // createUser(type=2) / org-member writes are RLS-rejected ("new row violates row-level
-    // security policy") even though auth works. This block backfills, idempotently, for every
-    // authenticated user (actor = entity = their own id = their personal org):
-    //   (a) the create_entity bit on org_memberships (public),
-    //   (b) the org_memberships INSERT/UPDATE + org_member_profiles SELECT grants to `authenticated`,
-    //   (c) the personal-org sprt row in <db>-memberships-private.org_memberships_sprt (+ the
-    //       app_memberships_sprt parent), which is the row the RLS actually checks.
-    // WORKAROUND for an upstream provisioner gap — PLATFORM-GAPS.md GAP-1b/1c; gotchas
-    // RLS-ORG-RECONCILE-001 / skill-supplements "Org-flow extension". The durable fix is upstream
-    // (the dynamic per-tenant provisioner should emit these + seed the personal-org sprt row).
-    // The standalone, tenant-anchored form is scripts/fix-org-grants.sh <db-name> (run that by
-    // hand if you provisioned manually or need to scope to one --user).
-    const isOrgPreset = AUTH_PRESET === 'b2b' || AUTH_PRESET === 'full';
-    if (pgAvailable && isOrgPreset) {
-      console.log('\n  Applying b2b org reconcile (personal-org sprt row + create_entity + org grants)...');
-      const orgPool = new Pool({ database: config.pgDatabase });
-      try {
-        // Resolve this tenant's memberships-public/-private + permissions-public schemas,
-        // anchored on the db-name prefix (NO leading %, separator-tolerant) — never a floating
-        // %…% (which would bleed onto a sibling tenant). Mirrors fix-org-grants.sh.
-        const dbLike = config.databaseName.replace(/_/g, '%').replace(/-/g, '%') + '%';
-        const memPubRes = await orgPool.query(
-          `SELECT table_schema FROM information_schema.tables
-           WHERE table_name = 'org_memberships' AND table_schema LIKE $1
-           ORDER BY length(table_schema), table_schema LIMIT 1`,
-          [dbLike + 'memberships%public']
-        );
-        const memPrivRes = await orgPool.query(
-          `SELECT table_schema FROM information_schema.tables
-           WHERE table_name = 'org_memberships_sprt' AND table_schema LIKE $1
-           ORDER BY length(table_schema), table_schema LIMIT 1`,
-          [dbLike + 'memberships%private']
-        );
-        const permPubRes = await orgPool.query(
-          `SELECT table_schema FROM information_schema.tables
-           WHERE table_name = 'app_permissions' AND table_schema LIKE $1
-           ORDER BY length(table_schema), table_schema LIMIT 1`,
-          [dbLike + 'permissions%public']
-        );
-        const usersPubRes = await orgPool.query(
-          `SELECT table_schema FROM information_schema.tables
-           WHERE table_name = 'users' AND table_schema LIKE $1
-           ORDER BY length(table_schema), table_schema LIMIT 1`,
-          [dbLike + 'users%public']
-        );
-        const memPub = memPubRes.rows[0]?.table_schema as string | undefined;
-        const memPriv = memPrivRes.rows[0]?.table_schema as string | undefined;
-        const permPub = permPubRes.rows[0]?.table_schema as string | undefined;
-        const usersPub = usersPubRes.rows[0]?.table_schema as string | undefined;
-
-        if (!memPub || !memPriv || !permPub || !usersPub) {
-          console.warn('   ⚠️  Could not resolve the org/permissions/users schemas — b2b org ' +
-            'reconcile NOT applied. createCompany/org writes may be RLS-denied (gotchas RLS-ORG-RECONCILE-001). ' +
-            'Run scripts/fix-org-grants.sh <db-name> by hand.');
-        } else {
-          // Resolve the create_entity bit(64) literal by NAME (the bit position is platform-owned;
-          // bit 5 = 0x20). Never hard-code the bit string.
-          const ceRes = await orgPool.query(
-            `SELECT bitstr::text AS bit FROM "${permPub}".app_permissions WHERE name = 'create_entity' LIMIT 1`
-          );
-          const ceBit = ceRes.rows[0]?.bit as string | undefined;
-          if (!ceBit) {
-            console.warn(`   ⚠️  create_entity permission not found in ${permPub}.app_permissions — ` +
-              'b2b org reconcile NOT applied. Confirm the b2b preset was provisioned.');
-          } else {
-            // (b) org-table grants (idempotent).
-            await orgPool.query(`GRANT USAGE ON SCHEMA "${memPub}" TO authenticated`);
-            await orgPool.query(`GRANT SELECT, INSERT, UPDATE, DELETE ON "${memPub}".org_memberships TO authenticated`);
-            await orgPool.query(`GRANT SELECT ON "${memPub}".org_member_profiles TO authenticated`);
-
-            // (a)+(c) per actor: create_entity bit + personal-org sprt rows. One statement-stream,
-            // ON CONFLICT … DO UPDATE so re-runs are a no-op. $1 = create_entity bit, $2 = actor.
-            const usersRes = await orgPool.query(`SELECT id FROM "${usersPub}".users`);
-            let reconciled = 0;
-            for (const row of usersRes.rows as Array<{ id: string }>) {
-              const actor = row.id;
-              await orgPool.query(
-                `INSERT INTO "${memPriv}".app_memberships_sprt (is_owner, is_admin, permissions, actor_id)
-                 VALUES (true, true, $1::bit(64), $2)
-                 ON CONFLICT (actor_id) DO UPDATE
-                   SET permissions = "${memPriv}".app_memberships_sprt.permissions | $1::bit(64),
-                       is_owner = true, is_admin = true;
-                 INSERT INTO "${memPriv}".org_memberships_sprt (is_owner, is_admin, permissions, actor_id, entity_id, is_read_only)
-                 VALUES (true, true, $1::bit(64), $2, $2, false)
-                 ON CONFLICT (actor_id, entity_id) DO UPDATE
-                   SET permissions = "${memPriv}".org_memberships_sprt.permissions | $1::bit(64),
-                       is_owner = true, is_admin = true, is_read_only = false;
-                 UPDATE "${memPub}".org_memberships
-                   SET permissions = permissions | $1::bit(64), granted = granted | $1::bit(64)
-                   WHERE actor_id = $2 AND entity_id = $2;`,
-                [ceBit, actor]
-              );
-              reconciled += 1;
-            }
-            console.log(`   b2b org reconcile applied: ${reconciled} actor(s) in ${memPriv} (personal-org sprt + create_entity + org grants)`);
-          }
-        }
-      } catch (err) {
-        console.warn(`   ⚠️  b2b org reconcile step failed: ${(err as Error).message?.slice(0, 160)}. ` +
-          `createCompany/org writes may be RLS-denied — run scripts/fix-org-grants.sh <db-name> (gotchas RLS-ORG-RECONCILE-001).`);
-      } finally {
-        await orgPool.end();
-      }
-    }
+    // --- B2B ORG MEMBERSHIP: now PLATFORM-NATIVE (no reconcile step) ----------------------
+    // On the b2b/org tier a fresh email-password signup needs a personal-org row in the PRIVATE
+    // `org_memberships_sprt` (the row every AuthzEntityMembership RLS reads), the `create_entity`
+    // permission bit, and org-table grants to `authenticated` — or createCompany / org-member
+    // writes RLS-reject. The platform now provisions the org grants + create_entity bit and
+    // SELF-SEEDS the personal-org sprt row (actor = entity, is_owner, create_entity set) on signup
+    // (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15). The former inline org-reconcile block here
+    // was a workaround for that gap and is now a redundant no-op, so it is removed; org-scoped
+    // writes work natively after signup. Phase 2.2 (verify-phase.sh) asserts this platform outcome.
   }
 
   console.log('\n  All schemas provisioned successfully!\n');

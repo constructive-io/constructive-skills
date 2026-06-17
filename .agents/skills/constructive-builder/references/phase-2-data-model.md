@@ -9,10 +9,10 @@ provision-side `pnpm codegen`). Two verify gates cover it: `./scripts/verify-pha
 and `./scripts/verify-phase.sh 2.3` (database + tables + policies).
 
 > **Speedrun shortcut:** [speedrun.md](./speedrun.md) S1+S2 collapse this whole phase into
-> `scripts/scaffold-provision.mjs build/app-brief.yaml <app>` + run create-db/provision +
-> `scripts/fix-grants.sh`. This file is the **method the generator automates + the hand-edit fallback** —
-> read it to understand/review the generated `schemas/core.ts`, or when your shape needs the
-> `nodes_raw`/`policies_raw` escape hatches ([brief-grammar.md](./brief-grammar.md)).
+> `scripts/scaffold-provision.mjs build/app-brief.yaml <app>` + run create-db/provision + a read-only grant
+> VERIFY (the platform grants `authenticated` natively). This file is the **method the generator automates +
+> the hand-edit fallback** — read it to understand/review the generated `schemas/core.ts`, or when your shape
+> needs the `nodes_raw`/`policies_raw` escape hatches ([brief-grammar.md](./brief-grammar.md)).
 
 > **Parallelize:** while the backend from Phase 1 finishes deploying, you can already draft the
 > `BlueprintDefinition` (step 2.3) — authoring does not need the server until `create-db`/`provision` run.
@@ -319,9 +319,9 @@ export default async function main() {
 >    **object-form** `grants: [{ roles: ['authenticated'], privileges: [['select','*'],…] }]` (NOT the
 >    stale `grant_roles` + bare-tuple shape, which lands no grant); **`constructBlueprint` applies those
 >    GRANTs server-side** (GRANT … TO authenticated). If the grants don't land, even an approved member
->    gets `permission denied` — VERIFY post-provision (`information_schema.role_table_grants`) and apply
->    the one-time manual GRANT fallback (`scripts/fix-grants.sh <db-name>`, [speedrun.md](./speedrun.md) S2
->    step 3) if the hub did not.
+>    gets `permission denied` — VERIFY post-provision (`information_schema.role_table_grants`) and, only on a
+>    deployment that predates the native grant, apply the one-time manual GRANT fallback
+>    ([speedrun.md](./speedrun.md) S2 step 3) if the hub did not.
 >
 > **GraphQL-only approve/grant path (no PostgreSQL connection).** If you have only the GraphQL API
 > (no `PGHOST`), do **not** "skip and hope the defaults apply" — drive it through the API instead:
@@ -345,10 +345,9 @@ export default async function main() {
 > Full SQL for the with-PostgreSQL path in [gotchas.md](./gotchas.md) → "Provisioning Workarounds (SQL
 > Access Required)".
 
-> 🚨 **Two more grant reconciles run automatically (preset-keyed) — both are HANDS-FREE and generic.**
-> `provision.ts` (and the standalone `scripts/fix-grants.sh` / `scripts/fix-org-grants.sh` backstops)
-> apply two further platform-gap workarounds derived from the **policy intent / schema**, never from any
-> table or column name:
+> 🚨 **One more grant reconcile runs automatically (preset-keyed) — HANDS-FREE and generic.**
+> `provision.ts` applies a further platform-gap workaround derived from the **policy intent / schema**,
+> never from any table or column name:
 >
 > 1. **Public-read (anonymous) — for any `public-read+owner-write` table.** The platform lands the
 >    `AuthzPublishable` SELECT policy scoped to `authenticated` ONLY and grants the `anonymous` role
@@ -359,13 +358,12 @@ export default async function main() {
 >    policy's role list to include `anonymous`. RLS still filters to `is_published`, so anon sees **only
 >    published rows**; the owner-write policies stay `authenticated`-only. A non-public app has zero such
 >    policies → clean no-op. Runs for **any** non-`minimal` auth preset (public-read apps use `auth:email`).
-> 2. **B2B org grants — user-INDEPENDENT, run unconditionally.** On the `b2b`/`full` preset the org-table
->    GRANTs (`org_memberships` INSERT/UPDATE, `org_member_profiles` SELECT, the memberships-schema USAGE)
->    are **role-level** and do NOT depend on any user existing. They are applied **even at Phase 2 with an
->    empty `users` table** (no app signup yet) — `fix-org-grants.sh` applies the grants FIRST and only the
->    per-actor personal-org sprt seed is deferred to first signup (it never aborts on "no users", matching
->    what the 2.3 gate asserts). See [gotchas.md](./gotchas.md) RLS-ORG-RECONCILE-001 /
->    [platform-gaps.md](./platform-gaps.md) GAP-1b/1c.
+>
+> **B2B org grants + personal-org seed are now PLATFORM-NATIVE** (no reconcile): on the `b2b`/`full` preset
+> the platform provisions the org-table GRANTs (`org_memberships` INSERT/UPDATE, `org_member_profiles`
+> SELECT, the memberships-schema USAGE) + `create_entity` bit and self-seeds the per-actor personal-org sprt
+> row on signup. See [gotchas.md](./gotchas.md) RLS-ORG-RECONCILE-001 / [platform-gaps.md](./platform-gaps.md)
+> GAP-1b/1c (CLOSED 2026-06-15).
 
 > **Search (was Phase 2.3.1) is optional** and lives in the **Optional Extensions** appendix of the slim
 > SKILL.md — only add it if a table needs full-text / fuzzy / vector search. Skip it for a basic app.

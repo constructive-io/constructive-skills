@@ -160,8 +160,9 @@ node scripts/scaffold-provision.mjs build/app-brief.yaml <app>
 ```
 
 Then run it (same as below): `cd packages/provision && pnpm run create-db && pnpm run provision`,
-and VERIFY/reconcile the grant with `scripts/fix-grants.sh <db-name>` (step 3 below). No `pnpm install`
-is needed first — scaffold-provision already installed the provision deps (above).
+and VERIFY the grant landed (step 3 below — the platform grants `authenticated` natively, so this is a
+read-only check). No `pnpm install` is needed first — scaffold-provision already installed the provision
+deps (above).
 
 Everything from here down in S2 is the **method the generator automates + your hand-edit fallback**:
 the same object-form-grant / default-owner-policy / module-list / membership-SQL rules the generator
@@ -203,49 +204,30 @@ pnpm run create-db          # signs up + provisions + writes ../../.env (DATABAS
 pnpm run provision          # creates tables/RLS + object-form grants + approves membership + verifies email + users self-update policy
 ```
 
-3. **VERIFY + reconcile the grant (the platform sometimes skips it — 70s prior sink).** As the
-   `authenticated` role you must be able to insert *and* read back. One command does the check and the
-   reconcile:
-```bash
-# Resolves the dash-collapsed app + users schemas for your db, then ensures all 4 'authenticated'
-# privileges on the app schema AND the users-table self_update UPDATE policy. IDEMPOTENT — safe to
-# re-run; a no-op when provision already landed both. (It connects to the HUB db `constructive`, not
-# $PGDATABASE — pgpm env sets PGDATABASE=postgres, where the app schemas do NOT live.)
-scripts/fix-grants.sh <db-name>        # if your run used a manual fallback, set run-state database.grant_source='manual-fallback'
-```
-   This is exactly what the Phase 2.2 gate asserts (the 4 privileges + the self_update policy). If you
-   must do it by hand instead (terse fallback; `HUBDB="${PG_HUB_DATABASE:-constructive}"`, find
-   `<APPSCHEMA>`/`<USERSSCHEMA>` via `SELECT schema_name FROM information_schema.schemata WHERE
-   schema_name LIKE '%app-public'` / `'%users-public'`):
+3. **VERIFY the grant landed.** As the `authenticated` role you must be able to insert *and* read back.
+   The platform grants `authenticated` its 4 privileges on the app schema AND the users-table
+   `auth_upd_self_update` policy **natively** (PLATFORM-GAPS.md GAP-1a, CLOSED), so this is normally a
+   read-only confirmation — exactly what the Phase 2.2 gate asserts (the 4 privileges + the self_update
+   policy). Only on a deployment that **predates** that fix do you apply it by hand
+   (`HUBDB="${PG_HUB_DATABASE:-constructive}"`, find `<APPSCHEMA>`/`<USERSSCHEMA>` via `SELECT schema_name
+   FROM information_schema.schemata WHERE schema_name LIKE '%app-public'` / `'%users-public'`):
 ```bash
 psql "$HUBDB" -c "GRANT USAGE ON SCHEMA \"<APPSCHEMA>\" TO authenticated;
                   GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA \"<APPSCHEMA>\" TO authenticated;"
-# users self-edit (updateUser) — emit auth_upd_self_update if provision's createSecureTableProvision step didn't (RLS-USERS-UPDATE-001):
+# users self-edit (updateUser) — emit auth_upd_self_update only if the platform didn't (RLS-USERS-UPDATE-001):
 psql "$HUBDB" -c "GRANT UPDATE ON \"<USERSSCHEMA>\".users TO authenticated;
                   CREATE POLICY auth_upd_self_update ON \"<USERSSCHEMA>\".users FOR UPDATE TO authenticated USING (id = jwt_public.current_user_id());"
 ```
 
-3b. **B2B ONLY — reconcile the org/membership state a fresh signup needs (the org counterpart to step 3).**
-    Run this **only when the brief's `modules.preset` is `b2b`** (i.e. the chosen flow's `backend.modules`
-    carry the org-scoped `memberships`/`hierarchy` tuples — `organization`/`org-members`/`org-roles`/
-    `org-invites`/`app-memberships`). On the b2b tier a fresh email-password signup gets a `users` row and a
-    personal-org `org_memberships` row, but the per-tenant provisioner does **not** create the personal-org
-    row in the **private** `org_memberships_sprt` that every `AuthzEntityMembership` table's RLS reads, nor
-    grant the `create_entity` permission bit — so `createCompany`/`createUser(type=2)`/org-member writes are
-    RLS-rejected (`new row violates row-level security policy`) even with auth working. `provision.ts`'s
-    appendix already runs this automatically for org briefs (it detects the org modules); run it by hand if
-    you provisioned manually:
-```bash
-# Idempotent, tenant-anchored, separator-tolerant — the b2b analog of fix-grants.sh. For each actor it
-# (a) sets the create_entity bit, (b) backfills the org_memberships INSERT/UPDATE + org_member_profiles
-# SELECT grants, and (c) inserts the personal-org sprt row (actor_id = entity_id = user_id) the RLS reads.
-# Default = all authenticated users; pass --user <id> to scope to one signed-up actor. Stamps
-# run-state database.org_reconcile='manual-fallback'. WORKAROUND for an upstream provisioner gap
-# (platform-gaps.md GAP-1b/1c; gotchas RLS-ORG-RECONCILE-001).
-scripts/fix-org-grants.sh <db-name>
-```
-    Verify (BEFORE→AFTER): a fresh signup's `createCompany(entityId = their user id)` is rejected before, and
-    succeeds after; a NON-reconciled actor stays denied (proves it's per-actor, not a blanket escalation).
+3b. **B2B ONLY — org/membership state is now PLATFORM-NATIVE (no reconcile step).** On the b2b tier
+    (`modules.preset: b2b` — the chosen flow's `backend.modules` carry the org-scoped `memberships`/`hierarchy`
+    tuples: `organization`/`org-members`/`org-roles`/`org-invites`/`app-memberships`) the platform grants the
+    org tables + `create_entity` bit and **self-seeds** the personal-org `org_memberships_sprt` row every
+    `AuthzEntityMembership` table's RLS reads, on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15). So a
+    fresh email-password signup's `createCompany(entityId = their user id)` / org-member writes persist
+    immediately — no reconcile. Verify: a fresh signup's `createCompany(entityId = their user id)` succeeds
+    end-to-end (row visible on reload). (Minting a brand-NEW org via `createUser(type=2)` is still
+    operator-only — PLATFORM-GAPS.md GAP-6, OPEN.)
 
 ---
 

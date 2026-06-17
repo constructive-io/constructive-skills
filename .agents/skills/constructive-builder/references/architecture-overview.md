@@ -87,7 +87,7 @@ Read the `constructive-security` skill for the full list of 14 valid Authz* poli
 
 There is no `AuthzOwnershipInEntity` type. `DataOwnershipInEntity` pairs with `AuthzEntityMembership` and/or `AuthzDirectOwner`.
 
-Prefer `AuthzEntityMembership` over `AuthzMembership` for entity-scoped app data.
+Prefer `AuthzEntityMembership` over `AuthzMembership` for entity-scoped app data (it emits the `auth_sel_entity_membership` policy — `auth_<verb>_<policytype>`, no hash suffix).
 
 ### Common Policy Configurations (Quick Reference)
 

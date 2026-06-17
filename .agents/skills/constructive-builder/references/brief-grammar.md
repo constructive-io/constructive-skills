@@ -280,8 +280,8 @@ ui:
 acceptance: { required_flows: [ email-password ] }
 ```
 
-Full file: `fixtures/test-crm-brief.yaml`. (B2B needs the org-state reconcile — [speedrun.md](./speedrun.md)
-S2 step 3b / `scripts/fix-org-grants.sh` — for a fresh signup's org writes to succeed; GAP-1b/1c.)
+Full file: `fixtures/test-crm-brief.yaml`. (B2B org state — the personal-org membership a fresh signup's org
+writes need — is provisioned natively by the platform; GAP-1b/1c, CLOSED. No reconcile step.)
 
 > **`acceptance.required_flows` is a hard gate, not a wish list.** List only flows with a FULLY-implemented
 > live-QA driver (today: `email-password`). Listing a flow with no driver is a hard coverage-gap FAIL.

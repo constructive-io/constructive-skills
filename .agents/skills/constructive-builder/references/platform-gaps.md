@@ -55,16 +55,17 @@ Three concrete faces of the same gap:
 
 ### 1a. `users` table — missing UPDATE policy (`updateUser` is a silent no-op)
 - **Symptom:** `updateUser` (profile edit, display name, avatar) returns **HTTP 200 but persists 0 rows**.
-- **Root:** the dynamic provisioner enables RLS + a *column* UPDATE grant to `authenticated`
-  (username/display_name/profile_picture) on the per-tenant `users` table, but emits **only an `auth_sel`
-  SELECT policy and no UPDATE policy**. RLS then rejects every UPDATE. The **static** seed schema has
-  `auth_upd` / `auth_upd_admin_updates`; the **dynamic** path omits them. Verified identical across tenants.
-- **Harness workaround:** after `constructBlueprint`, issue a control-plane `createSecureTableProvision`
-  (modules endpoint, sudo token) adding an `AuthzDirectOwner` UPDATE policy
-  (`policy_name: self_update`, `entity_field: id` → `auth_upd_self_update`,
-  `USING id = jwt_public.current_user_id()`). Documented as gotchas **RLS-USERS-UPDATE-001**; baked into the
-  `provision.ts` template. **Cost:** every app that edits the user record must run an extra control-plane
-  step the platform should have emitted.
+- **Root (historical):** the dynamic provisioner used to enable RLS + a *column* UPDATE grant to
+  `authenticated` (username/display_name/profile_picture) on the per-tenant `users` table but emit **only
+  the `auth_sel_self_update` SELECT policy and no UPDATE policy** (`auth_<verb>_<policytype>`, no hash
+  suffix). RLS then rejected every UPDATE. The **static** seed schema had `auth_upd_self_update` /
+  `auth_upd_admin_updates`; the **dynamic** path omitted them.
+- **Status — CLOSED (2026-06-15):** the platform now emits the `users` self-UPDATE policy
+  (`auth_upd_self_update`, `USING id = jwt_public.current_user_id()`) natively for an auth preset, so
+  `updateUser` persists end-to-end with no extra step. Documented as gotchas **RLS-USERS-UPDATE-001**. On a
+  deployment predating the fix, the control-plane `createSecureTableProvision` step (an `AuthzDirectOwner`
+  UPDATE policy, `policy_name: self_update`, `entity_field: id`) in the `provision.ts` template / SKILL.md
+  S2 step 3 re-adds it.
 
 ### 1b. Org module tables — missing INSERT/UPDATE/SELECT grants + policies AND no personal-org seed row (org create + member writes RLS-denied for a fresh email-password signup)
 - **Symptom:** with the `b2b` preset provisioned, a **fresh email-password signup** that then tries to
@@ -86,17 +87,16 @@ Three concrete faces of the same gap:
      every `AuthzEntityMembership(membership_type:2)` write (the b2b business-table INSERT path) has no
      membership to satisfy and is RLS-denied. This is the root cause that makes the whole b2b tier
      unreachable from a clean signup — distinct from, and on top of, the grant/policy gap in (1).
-- **Harness workaround:** a post-provision reconciliation that **(a)** grants the `create_entity`
-  app-permission bit to the actor (see 1c), **(b)** reconciles the `org_memberships` / `org_member_profiles`
-  grants + write policies via `createSecureTableProvision`, and **(c)** inserts the per-user personal-org row
-  into `<db>-memberships-private.org_memberships_sprt` (`actor_id = entity_id = user_id`) so
-  membership-scoped INSERTs have an org to match. Documented as gotchas **RLS-ORG-RECONCILE-001** + the recipe
-  in skill-supplements.md "Org-flow extension"; the executable stopgap is **`scripts/fix-org-grants.sh <db>`**
-  (added by the parallel harness agent — the org counterpart to `fix-grants.sh`, applied automatically by the
-  build the way `fix-grants.sh` auto-applies the `auth:email` users `self_update` reconcile). **Cost:** the
-  entire b2b tier is gated behind hand-applied control-plane grants **and** a hand-seeded personal-org row;
-  agents only passed the fan-out by re-deriving these live, and every b2b app re-pays this until the upstream
-  fix lands.
+- **Status — CLOSED (2026-06-15):** the platform now, on the b2b/org tier, **(a)** grants the `create_entity`
+  app-permission bit to the actor, **(b)** provisions the `org_memberships` / `org_member_profiles` grants +
+  write policies, and **(c)** self-seeds the per-user personal-org row in
+  `<db>-memberships-private.org_memberships_sprt` (`actor_id = entity_id = user_id`) on `sign_up` — so a fresh
+  email-password signup is a member of its personal org and `AuthzEntityMembership(membership_type:2)` writes
+  persist immediately. Documented as gotchas **RLS-ORG-RECONCILE-001** + the recipe in skill-supplements.md
+  "Org-flow extension" (kept as the historical control-plane form). The former harness-side stopgap (an
+  org-reconcile script auto-applied by the build, plus the after-signup live-QA hook) is therefore **removed** —
+  org-scoped writes work natively after signup, and a real RLS denial now surfaces directly at the create
+  assertion.
 
 ### 1c. `app_permission_defaults` ships all-zeros → no self-service org creation
 - **Symptom:** a freshly provisioned tenant has **no actor who can create an org**. Org creation requires
@@ -105,12 +105,9 @@ Three concrete faces of the same gap:
   RLS-denies with nothing in the UI explaining why.
 - **Root:** `app_permission_defaults` (the row that seeds a new member's permission bitmask) is provisioned
   all-zeros. There is no default path that yields a member who holds `create_entity`.
-- **Harness workaround:** after provisioning, grant the `create_entity` bit to the test actor's app
-  membership (verified against the `constructive-security` skill — the bit is `0x20`, but the mutation
-  surface is platform-owned, so the harness documents the requirement rather than hard-coding a possibly
-  wrong mutation). This is folded into the same stopgap as 1b — **`scripts/fix-org-grants.sh <db>`** grants
-  the bit alongside reconciling the org-table grants/policies and seeding the personal-org row. **Cost:** no
-  app can offer self-service org creation out of the box; every b2b app must patch permissions post-provision.
+- **Status — CLOSED (2026-06-15):** the platform now seeds the actor's app membership with the `create_entity`
+  bit (**bit 5 = `0x20`**) on the b2b/org tier, so a normal signed-up user can self-serve an org out of the box.
+  Folded into the same platform fix as 1b; no post-provision patch is needed.
 
 ### 1d. Non-determinism across tenants
 - **Symptom:** the *same* provision input applied to two tenants does **not** reliably yield the same
@@ -130,8 +127,9 @@ Three concrete faces of the same gap:
 > `<db>-memberships-private.org_memberships_sprt` (`actor_id = entity_id = user_id`) deterministically, so a
 > fresh email-password signup is a member of an org and `AuthzEntityMembership(membership_type:2)` writes
 > succeed; and seed `app_permission_defaults` so a normal member can create an org (or expose a first-class
-> "make me an org owner" path). That single upstream change retires RLS-USERS-UPDATE-001,
-> RLS-ORG-RECONCILE-001, the harness-side `scripts/fix-org-grants.sh` stopgap, and the 1c/1d reconciliation.
+> "make me an org owner" path). **This upstream change LANDED 2026-06-15** — retiring the harness-side
+> org-reconcile stopgap and the 1a/1c reconciliation; RLS-USERS-UPDATE-001 + RLS-ORG-RECONCILE-001 remain
+> documented as the historical control-plane recipe for deployments that predate the fix.
 
 > **Idempotency note (same family — `constructBlueprint` is not re-runnable).** A re-run of `provision.ts`
 > against an **already-provisioned** DB **aborts** on the first duplicate `CREATE POLICY` (the 2026-06-05
@@ -141,23 +139,19 @@ Three concrete faces of the same gap:
 > GAP-1's determinism ask. Close-out: re-run `provision.ts` unchanged → clean no-op (exit 0, no `already
 > exists`). Full escalation: **`planning/upstream-gaps-stress-test-2026-06-05.md` → G4**.
 
-> **Owner / expiry / re-verify (GAP-1b + GAP-1c).**
+> **Owner / status / re-verify (GAP-1b + GAP-1c).**
 > - **Owner:** constructive-db (per-tenant provisioner grant/policy + `org_memberships_sprt` seed on
->   `sign_up`/`provision`) + constructive (auth proc surface). The harness is **consume-only** here and
->   cannot fix it — it only papers over it via `scripts/fix-org-grants.sh`.
-> - **Status / expiry:** OPEN as of **2026-06-05**. This escalation + the `fix-org-grants.sh` stopgap should
->   be **revisited by ~2026-09-05** (one quarter): either the upstream fix lands and the stopgap is deleted,
->   or this entry is re-confirmed still-needed with a fresh date. A stopgap with no expiry rots into load-
->   bearing infrastructure no one remembers is a workaround.
-> - **Re-verify (close-out check):** against a **freshly provisioned `b2b` tenant**, with **no**
->   `fix-org-grants.sh` run, perform a clean email-password signup and then a single
->   `AuthzEntityMembership(membership_type:2)` INSERT on an org-scoped business table (the
->   `build/test-crm-brief.yaml` `companies`/`contacts` path is the canonical reproduction). It currently
->   **RLS-rejects**; when it **persists end-to-end unaided** (row visible on reload, owner/org scoping
->   correct), GAP-1b/1c are closed — at which point delete `scripts/fix-org-grants.sh`, drop its auto-apply
->   from the build, and prune RLS-ORG-RECONCILE-001 from gotchas + the "Org-flow extension" recipe. The
->   standing automated form of this check is the **b2b rot-canary** (`scripts/genericity-check.sh --canary b2b`,
->   see AGENTS.md → Rot Check), run with the stopgap disabled.
+>   `sign_up`/`provision`) + constructive (auth proc surface).
+> - **Status:** **CLOSED (2026-06-15)** — the upstream fix landed (constructive-db 5b1128fa68): the provisioner
+>   grants the org tables + `create_entity` bit and self-seeds the personal-org `org_memberships_sprt` row on
+>   signup. The harness-side org-reconcile stopgap + the after-signup live-QA hook were **deleted** as redundant
+>   no-ops, and RLS-ORG-RECONCILE-001 is retained only as the historical control-plane recipe.
+> - **Re-verify (regression check):** against a **freshly provisioned `b2b` tenant**, perform a clean
+>   email-password signup and then a single `AuthzEntityMembership(membership_type:2)` INSERT on an org-scoped
+>   business table (the `build/test-crm-brief.yaml` `companies`/`contacts` path is the canonical reproduction).
+>   It now **persists end-to-end unaided** (row visible on reload, owner/org scoping correct). The standing
+>   automated form is the **b2b rot-canary** (`scripts/genericity-check.sh --canary b2b`, see AGENTS.md → Rot
+>   Check) — an org-scoped create that RLS-rejects there is now a real regression, not an expected gap.
 
 ---
 
@@ -183,9 +177,9 @@ Three concrete faces of the same gap:
 - **Harness workaround:** **NONE.** Confirmed-upstream on **both** surfaces. The harness brief grammar
   forwards the junction security **correctly** — `scripts/lib/brief.mjs` `buildRelation()` is
   `const out = { ...r }`, forwarding `relation.data.*` **verbatim** into the `BlueprintDefinition`; the brief
-  is **not** the lossy layer. There is **no** junction/`project_labels` handling in `scripts/fix-org-grants.sh`,
-  `scripts/fix-grants.sh`, or any `scaffold-provision` path (unlike the GAP-1a/1b `createSecureTableProvision`
-  reconciles). **Cost:** any app modeling a many-to-many (tags / labels / multi-select / membership joins)
+  is **not** the lossy layer. There is **no** junction/`project_labels` handling in any `scaffold-provision`
+  path (unlike the historical GAP-1a/1b `createSecureTableProvision` reconciles). **Cost:** any app modeling a
+  many-to-many (tags / labels / multi-select / membership joins)
   ships a junction that denies all access, with **no in-harness mitigation** — it stays dead until the
   upstream fix lands.
 - **Owner:** **constructive-db** (have `relation_provision` materialize the junction with the named
@@ -340,19 +334,19 @@ Three concrete faces of the same gap:
 - **Symptom:** with the `b2b` preset provisioned, an `authenticated` `app_user` session that calls
   `createUser(type=2)` (the `OrgCreateCard` "create an org" path) is **RLS-denied** — **no non-personal org
   can be minted** from a normal signed-in user. The org tier's first action is unreachable.
-- **Distinct from GAP-1b/1c:** GAP-1b/1c (and `scripts/fix-org-grants.sh`) cover entity-writes **under an
-  existing personal org** — they grant `create_entity`, reconcile the org-table grants/policies, and seed the
-  user's **personal-org** `org_memberships_sprt` row so `AuthzEntityMembership(membership_type:2)` business
-  INSERTs scope. They do **not** make `createUser(type=2)` succeed — **minting a NEW org** is a `type=2`
-  INSERT into the tenant `users` table that has **no `authenticated` policy** permitting it, so even after the
-  reconcile, org creation still RLS-denies.
+- **Distinct from GAP-1b/1c:** GAP-1b/1c (now platform-native, CLOSED) cover entity-writes **under an
+  existing personal org** — the platform grants `create_entity`, provisions the org-table grants/policies, and
+  seeds the user's **personal-org** `org_memberships_sprt` row so `AuthzEntityMembership(membership_type:2)`
+  business INSERTs scope. They do **not** make `createUser(type=2)` succeed — **minting a NEW org** is a
+  `type=2` INSERT into the tenant `users` table that has **no `authenticated` policy** permitting it, so even
+  with the personal-org seed in place, org creation still RLS-denies.
 - **Root:** the per-tenant provisioner emits **no `authenticated` INSERT policy** admitting self-service
   `type=2` org-creation rows on the tenant `users` table (same omission-class as GAP-1, specific to the
   org-creation INSERT, which the band-aid reconcile does not synthesize).
-- **Harness workaround:** **partial / none** — `fix-org-grants.sh` reconciles entity-writes but cannot make
-  `createUser(type=2)` succeed (minting a new org is operator/sudo-only today). **Cost:** the b2b tier has
-  **no self-service org creation** at all; every org must be minted out-of-band, which the consume-only
-  harness cannot do for an app's end users.
+- **Harness workaround:** **none** — the platform-native personal-org seed (GAP-1b/1c) makes entity-writes
+  under an existing org work, but **minting a NEW org** via `createUser(type=2)` is operator/sudo-only today.
+  **Cost:** the b2b tier has **no self-service org creation** at all; every org must be minted out-of-band,
+  which the consume-only harness cannot do for an app's end users.
 - **Owner:** **constructive-db** — emit the `authenticated` INSERT policy admitting self-service `type=2` org
   creation on the tenant `users` table, or expose a first-class "create-organization" proc that runs the
   INSERT under the right authority and seeds the creator's owner `org_memberships_sprt` row in the same txn.
@@ -360,14 +354,13 @@ Three concrete faces of the same gap:
 - **Close-out probe:** on a fresh `b2b` tenant, clean email-password signup → authenticated
   `createUser(type=2, name:'Acme')` must persist an org row (creator scoped as owner). Today RLS-denied. Full
   escalation: **`planning/upstream-gaps-stress-test-2026-06-05.md` → G2**.
-- **Wave-2 live confirmation (2026-06-05, `desk2`):** CONFIRMED LIVE via **both** paths — `OrgCreateCard.onSuccess`
+- **Live confirmation (`desk2`):** CONFIRMED LIVE via **both** paths — `OrgCreateCard.onSuccess`
   (`createUser(type=2)`) **and** a direct `createUser(type=2, name:…)` API call both return
-  `new row violates row-level security policy for table "users"`. Wave-2 also **isolated** this gap: on the
-  current hub a fresh signup **already gets its personal-org `org_memberships_sprt` row** (DB: `4 users == 4 sprt`,
-  `is_owner=t`) and `createProject(entityId = own org)` succeeds **without** `fix-org-grants.sh` — i.e. **GAP-1b/1c
-  appears FIXED upstream** and `fix-org-grants.sh` is now a no-op safety net, leaving GAP-6 (minting a NEW org)
-  as the **last** b2b self-service blocker. The `desk2` build was `partial` for exactly this reason — create-org is
-  GAP-6-blocked upstream, not a harness bug. Full detail: **planning doc → G2 (Wave-2 confirmation)**.
+  `new row violates row-level security policy for table "users"`. This also **isolated** the gap: a fresh signup
+  **gets its personal-org `org_memberships_sprt` row** (DB: `4 users == 4 sprt`, `is_owner=t`) and
+  `createProject(entityId = own org)` succeeds natively — **GAP-1b/1c is CLOSED upstream (2026-06-15)** — leaving
+  GAP-6 (minting a NEW org) as the **last** b2b self-service blocker. A `desk2`-style build is `partial` for
+  exactly this reason — create-org is GAP-6-blocked upstream, not a harness bug. Full detail: **planning doc → G2**.
 
 > **Status / expiry / re-verify.** OPEN as of **2026-06-05** (CONFIRMED LIVE Wave-2; Owner + close-out probe
 > are above). Re-verify by **~2026-09-05** (one quarter): either the per-tenant `users` table admits
@@ -667,12 +660,12 @@ Three concrete faces of the same gap:
 ## Priority for the platform team
 
 1. **GAP-1** (per-tenant provisioner grants/policies + the `org_memberships_sprt` personal-org seed on
-   `sign_up`/`provision` + `app_permission_defaults` + determinism) — highest leverage: it is the root of
-   the silent-no-op class and the b2b unreachable-from-clean-signup class, and retires the two largest
-   harness workarounds (RLS-USERS-UPDATE-001, RLS-ORG-RECONCILE-001), the b2b-tier permission patch, and the
-   `scripts/fix-org-grants.sh` stopgap. **The b2b tier is the most exposed**: a fresh signup cannot create or
-   write any org-scoped row until this lands, so the whole tier ships behind hand-applied control-plane
-   reconciliation. See the GAP-1b/1c owner/expiry/re-verify note above.
+   `sign_up`/`provision` + `app_permission_defaults` + determinism) — **LANDED 2026-06-15.** This was the
+   highest-leverage gap: the root of the silent-no-op class and the b2b unreachable-from-clean-signup class.
+   Landing it retired the two largest harness workarounds (RLS-USERS-UPDATE-001, RLS-ORG-RECONCILE-001), the
+   b2b-tier permission patch, and the org-reconcile stopgap (now deleted). A fresh b2b signup can now write
+   org-scoped rows under its personal org natively. See the GAP-1b/1c owner/status/re-verify note above.
+   (Re-run-safety determinism, G4, may remain — see the idempotency note.)
 2. **GAP-9** (`sendVerificationEmail` aborts on `user_secrets_del(uuid, text[])`) — new from the 2026-06-05
    Wave-2 validation, **HIGH** with **no workaround**: the *real* email-verify blocker — the SEND raises
    server-side, so the entire email-verification flow is unreachable on `auth:email`. Headline EMAIL fix.
@@ -681,8 +674,7 @@ Three concrete faces of the same gap:
    `AuthzAllowAll` junction stopgap, so the M:N *feature* works (attach/list/detach round-trip) — but the
    **literal per-org junction policy is still not honored** (the durable fix is upstream). **GAP-6** (Wave-2
    CONFIRMED LIVE via both the block and the direct API) leaves the b2b tier unable to mint its first org from a
-   clean signup (and is now isolated: GAP-1b/1c appears fixed upstream). Fix these next to GAP-1 to make the b2b
-   + M:N tier *fully* correct.
+   clean signup (now isolated: GAP-1b/1c is CLOSED upstream). Fix these to make the b2b + M:N tier *fully* correct.
 4. **GAP-7** (OOM cache-leak) — new, **HIGH** for shared-infra availability: a single hub OOM takes down
    every concurrent tenant. Bound the per-DB handler-cache `Map` (LRU/TTL).
 5. **GAP-10** (`sendAccountDeletionEmail` silent no-op) and **GAP-11** (dashboard-blocks empty selection,

@@ -668,11 +668,12 @@ async function main() {
   // --- users-table self-UPDATE policy (REQUIRED for updateUser / profile / account-settings) ---
   //
   // The per-tenant `users` table is MODULE-owned (provisioned by the auth modules, not by your
-  // blueprint), so you can't declare its policy in schemas/core.ts. The dynamic provisioner
-  // enables RLS + a column UPDATE grant to `authenticated` (username/display_name/profile_picture)
-  // but emits ONLY an `auth_sel` SELECT policy and NO UPDATE policy. Result: every `updateUser`
-  // returns 200 but changes 0 rows — a SILENT no-op (deterministic; verified identical across
-  // tenants). This is the users-table UPDATE-policy gap (gotchas RLS-USERS-UPDATE-001).
+  // blueprint), so you can't declare its policy in schemas/core.ts. The platform emits the
+  // `users` SELECT policy `auth_sel_self_update` AND, natively for an auth preset, the matching
+  // UPDATE policy `auth_upd_self_update` (verb + policy-name, no hash suffix). Historically the
+  // dynamic provisioner emitted only the SELECT policy and NO UPDATE policy, so every `updateUser`
+  // returned 200 but changed 0 rows — a SILENT no-op (gotchas RLS-USERS-UPDATE-001). On a platform
+  // predating that fix, the control-plane step below re-adds the UPDATE policy.
   //
   // Fix = a CONTROL-PLANE step: AFTER create-db + constructBlueprint, add the self-update policy
   // via `createSecureTableProvision` on the MODULES endpoint, with the SAME sudo/admin token used
@@ -793,20 +794,16 @@ main().catch((err) => {
 > exact call against the `constructive-security` skill — do NOT invent a snippet that might be wrong.**
 > Frame this as the org counterpart to RLS-USERS-UPDATE-001 (see gotchas.md).
 >
-> **AUTOMATED (the executable form):** the speedrun runs this for you — the generated `provision.ts`
-> appendix runs the b2b org reconcile when `AUTH_PRESET` is `b2b`/`full` (it backfills (a)+(b)+(c) for
-> every authenticated user, idempotently), and the standalone, tenant-anchored, separator-tolerant analog
-> is **`scripts/fix-org-grants.sh <db-name>`** (SKILL.md S2 step 3b; the b2b counterpart to
-> `fix-grants.sh`). It resolves the `create_entity` bit by NAME (bit 5 = `0x20`), backfills the
-> `org_memberships` INSERT/UPDATE + `org_member_profiles` SELECT grants, and inserts the personal-org row
-> into `<db>-memberships-private.org_memberships_sprt` (actor_id = entity_id = user_id) — the row the
-> `AuthzEntityMembership` RLS actually reads. **Live-validated on the cocrm b2b tenant:** a fresh signup's
-> `createCompany(entityId = their user id)` was RLS-rejected *before* and *succeeds after*, while a
-> NON-reconciled actor stays denied (per-actor, not a blanket escalation). Note (c) — the missing sprt
-> row — is the **direct cause** of the create-rejection (the AFTER-INSERT trigger on `org_memberships`
-> only populates the sprt when an `app_memberships_sprt` parent exists, which a bare signup lacks). This
-> stays a documented WORKAROUND for the upstream provisioner gap (platform-gaps.md GAP-1b/1c); the durable
-> fix is upstream.
+> **NOW PLATFORM-NATIVE (no reconcile step):** the platform provisions (a) the `create_entity` bit
+> (bit 5 = `0x20`), (b) the `org_memberships` INSERT/UPDATE + `org_member_profiles` SELECT grants, and
+> (c) the personal-org row in `<db>-memberships-private.org_memberships_sprt` (actor_id = entity_id =
+> user_id) — the row the `AuthzEntityMembership` RLS actually reads — automatically on signup
+> (platform-gaps.md GAP-1b/1c, CLOSED 2026-06-15). A fresh signup's `createCompany(entityId = their user
+> id)` therefore persists immediately; there is no provision-time appendix or standalone reconcile script
+> anymore. The recipe above is retained only as the historical control-plane form for a deployment that
+> predates the platform fix. Note (c) was the **direct cause** of the old create-rejection (the
+> AFTER-INSERT trigger on `org_memberships` only populates the sprt when an `app_memberships_sprt` parent
+> exists, which a bare signup lacked — the platform now seeds it).
 
 ### Schema Module Example: schemas/core.ts
 

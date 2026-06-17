@@ -351,7 +351,7 @@ NODE
 }
 
 # Echo a single (possibly dotted) run-state field's scalar value, or empty string when absent.
-# Used for STRUCTURED reads (e.g. grant_source) — the structured replacement for substring-sniffing
+# Used for STRUCTURED reads (e.g. database.name) — the structured replacement for substring-sniffing
 # freeform notes[]. Returns non-zero only when there is no state file at all.
 state_value() {
   local path="$1"
@@ -810,7 +810,13 @@ run_live_qa() {
   # WRONGLY conclude the app was already responding (HTTP 000000) and NEVER start it → agent-browser
   # then opened a dead port. Take curl's code verbatim and treat empty/000 as down, so a
   # not-already-running app IS started.
-  already="$(curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null)"; [ -z "$already" ] && already="000"
+  # `set -e` GUARD: when nothing is listening, curl exits 7 (connection refused). curl is the LAST
+  # command in this substitution, so its exit 7 becomes the assignment's status and, under `set -e`,
+  # ABORTS the whole gate right here — BEFORE the `[ -z ]` fallback and the dev-server-start branch
+  # below ever run (the app would never get started). `|| true` neutralizes ONLY curl's exit status
+  # while keeping its stdout ("000" on refusal, or the real code on a live server); it does NOT
+  # re-introduce the double-"000" the old `|| echo "000"` caused, since `true` prints nothing.
+  already="$( { curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null || true; } )"; [ -z "$already" ] && already="000"
   if [ "$already" != "000" ]; then
     info "Live-QA gate: app already responding at $base_url (HTTP $already) — reusing it"
   else
@@ -821,7 +827,9 @@ run_live_qa() {
     local up="no" i
     for i in $(seq 1 60); do
       local code
-      code="$(curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null)"; [ -z "$code" ] && code="000"
+      # Same `set -e` guard as above: until the app binds, curl exits 7 and would abort the poll
+      # loop on its very first iteration. `|| true` keeps the captured code while ignoring the exit.
+      code="$( { curl -s -o /dev/null -w "%{http_code}" "$base_url" 2>/dev/null || true; } )"; [ -z "$code" ] && code="000"
       if [ "$code" != "000" ]; then up="yes"; break; fi
       # Bail early if the app process already died.
       if ! kill -0 "$app_pid" 2>/dev/null; then break; fi
@@ -1062,18 +1070,6 @@ case "$PHASE" in
     RESULT="$(psql -d constructive -t -c "SELECT name FROM metaschema_public.database WHERE name = '$DB_NAME_RESOLVED';" 2>/dev/null | tr -d ' ')"
     [ "$RESULT" = "$DB_NAME_RESOLVED" ] && pass "Database '$DB_NAME_RESOLVED' exists" || fail "Database '$DB_NAME_RESOLVED' not found" "Re-run create-db (SKILL.md S2 step 2): cd packages/provision && pnpm run create-db && pnpm run provision."
 
-    # Grant provenance (structured, not prose-sniffed): an agent may legitimately have applied the
-    # documented manual GRANT fallback (S2 step 3). We honor that by reading a STRUCTURED run-state
-    # field rather than punishing honest freeform notes. grant_source ∈ {sdk, manual-fallback};
-    # 'manual-fallback' is allowed (just INFO). The real proof is the OUTCOME assertion below.
-    GRANT_SOURCE="$(state_value "database.grant_source" || true)"
-    case "$GRANT_SOURCE" in
-      sdk)            pass "run-state grant_source = sdk (object-form blueprint grants)" ;;
-      manual-fallback) info "run-state grant_source = manual-fallback (documented S2-step-3 GRANT) — allowed; outcome is asserted below" ;;
-      "")             info "run-state grant_source unset — skipping provenance note; outcome is asserted below" ;;
-      *)              warn "run-state grant_source='$GRANT_SOURCE' is not one of {sdk, manual-fallback}" ;;
-    esac
-
     # Per-DB schema resolution tolerant of BOTH naming conventions (gotchas SUBDOMAIN-001):
     #   OLD dash+hash:  <db>-<hash>-memberships-public   (fv4-* era)
     #   NEW underscore: <db>_memberships_public          (goldenapp_*/fv5_*/fv6_*)
@@ -1081,8 +1077,7 @@ case "$PHASE" in
     # the db name with its own '-'/'_' turned into '%', anchored at the START (no leading %, so a
     # sibling tenant whose name merely CONTAINS this db can't match). Resolve each schema DIRECTLY
     # via '<DB_LIKE>%<token>%public' — no prefix arithmetic — so an underscore name (which the old
-    # '${x%-memberships-public}' strip left untouched) can't yield a wrong app/users schema. Kept
-    # byte-for-byte in step with scripts/fix-grants.sh so the gate and the reconcile always agree.
+    # '${x%-memberships-public}' strip left untouched) can't yield a wrong app/users schema.
     DB_LIKE="$(psql -d constructive -t -c "SELECT replace(replace('$DB_NAME_RESOLVED', '_', '%'), '-', '%');" 2>/dev/null | tr -d ' ')"
     [ -n "$DB_LIKE" ] || DB_LIKE="$DB_NAME_RESOLVED"
 
@@ -1107,7 +1102,7 @@ case "$PHASE" in
     if [ "${GRANT_PRIVS:-0}" -ge 4 ] 2>/dev/null; then
       pass "'authenticated' holds all 4 privileges (SELECT/INSERT/UPDATE/DELETE) on $APP_SCHEMA tables"
     else
-      fail "'authenticated' is missing required privileges on $APP_SCHEMA (found ${GRANT_PRIVS:-0}/4)" "Grant didn't land — every authenticated write 403s. Use object-form grants (grants:[{roles:['authenticated'],privileges:[['select','*'],['insert','*'],['update','*'],['delete','*']]}]) in the blueprint (gotchas F3 / SKILL.md S2 step 1); run scripts/fix-grants.sh to apply + reconcile idempotently, or the one-time psql GRANT fallback in SKILL.md S2 step 3."
+      fail "'authenticated' is missing required privileges on $APP_SCHEMA (found ${GRANT_PRIVS:-0}/4)" "Grant didn't land — every authenticated write 403s. Use object-form grants (grants:[{roles:['authenticated'],privileges:[['select','*'],['insert','*'],['update','*'],['delete','*']]}]) in the blueprint (gotchas F3 / SKILL.md S2 step 1), then re-run create-db + provision; or apply the one-time psql GRANT fallback in SKILL.md S2 step 3."
     fi
 
     # Resolve the users schema DIRECTLY (anchored + separator-tolerant), same as app/memberships
@@ -1118,30 +1113,28 @@ case "$PHASE" in
     if [ "${USERS_SELF_UPDATE_POLICY:-0}" -ge 1 ] 2>/dev/null; then
       pass "users-table self_update UPDATE policy present in $USERS_SCHEMA (updateUser will persist)"
     else
-      fail "users-table self_update UPDATE policy missing in $USERS_SCHEMA" "updateUser is a silent 200-but-0-rows no-op without it (gotchas RLS-USERS-UPDATE-001). provision.ts must run the createSecureTableProvision self_update step (SKILL.md S2 step 1); run scripts/fix-grants.sh to reconcile it idempotently, or apply the one-time fallback policy in SKILL.md S2 step 3."
+      fail "users-table self_update UPDATE policy missing in $USERS_SCHEMA" "updateUser is a silent 200-but-0-rows no-op without it (gotchas RLS-USERS-UPDATE-001). The platform grants this policy natively for an auth preset; if it is missing, re-run create-db + provision (SKILL.md S2 step 1), or apply the one-time fallback policy in SKILL.md S2 step 3."
     fi
 
     # ── ORG-TIER grant OUTCOME assertion (b2b only; owner-only apps are untouched) ─────────────
-    # The b2b counterpart of the owner-tier gate above. It asserts the OUTCOME of scripts/fix-org-grants.sh
-    # (gotchas RLS-ORG-RECONCILE-001 / PLATFORM-GAPS.md GAP-1b/1c) — the org analogue of RLS-USERS-UPDATE-001.
+    # The b2b counterpart of the owner-tier gate above. It asserts the platform's NATIVE org
+    # provisioning OUTCOME — the org analogue of the users self_update check (RLS-USERS-UPDATE-001):
+    # the org-table grants to 'authenticated', the create_entity permission bit, and the personal-org
+    # org_memberships_sprt seed row the AuthzEntityMembership RLS reads. The platform now grants these
+    # and self-seeds the personal-org row on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15);
+    # this gate verifies that.
     # It is GATED on the app being b2b/org so it NEVER fires for owner-only apps (the frozen canary is
-    # owner-tier → this whole block is skipped there). Org tier is detected from TWO structured signals
-    # (mirrors live-qa.mjs caps.orgReconcile + brief.mjs's b2b gate — NOT prose):
-    #   (1) run-state database.org_reconcile is a non-empty string (the reconcile stamps 'sdk' /
-    #       'manual-fallback' once it ran — this is also live-qa's org-tier capability gate), OR
-    #   (2) the brief declares an org tier: modules.preset ∈ {b2b, b2b:storage, full}, OR a table carries
-    #       an org-scoped policy intent (policy: org-membership | member-owner). brief.mjs requires a b2b
-    #       preset for those policies, so either is a sound org-tier signal.
+    # owner-tier → this whole block is skipped there). Org tier is detected from the BRIEF (the
+    # authoritative, pre-build structured signal — mirrors brief.mjs's b2b gate, NOT prose):
+    #   the brief declares an org tier when modules.preset ∈ {b2b, b2b:storage, full}, OR a table carries
+    #   an org-scoped policy intent (policy: org-membership | member-owner). brief.mjs requires a b2b
+    #   preset for those policies, so either is a sound org-tier signal.
     # $SPEC_PATH is YAML and spec_value() is a FLAT-key reader (can't see nested modules.preset), so we
     # scan the brief directly with a scoped awk (preset under the `modules:` block) + a grep for the
     # policy intents — bounded reads of the brief the agent wrote, no platform SQL.
-    ORG_RECONCILE_STATE="$(state_value "database.org_reconcile" || true)"
     ORG_TIER=0
     ORG_TIER_REASON=""
-    if [ -n "$ORG_RECONCILE_STATE" ]; then
-      ORG_TIER=1
-      ORG_TIER_REASON="run-state database.org_reconcile='$ORG_RECONCILE_STATE'"
-    elif [ -n "$SPEC_PATH" ] && [ -f "$SPEC_PATH" ]; then
+    if [ -n "$SPEC_PATH" ] && [ -f "$SPEC_PATH" ]; then
       # modules.preset (scoped to the top-level `modules:` block so a stray 'preset:' elsewhere can't trip it).
       BRIEF_PRESET="$(awk '
         /^[[:space:]]*modules:[[:space:]]*$/ { in_mod = 1; next }
@@ -1161,13 +1154,12 @@ case "$PHASE" in
     fi
 
     if [ "$ORG_TIER" = "1" ]; then
-      info "Org tier detected ($ORG_TIER_REASON) — asserting b2b reconcile OUTCOME (gotchas RLS-ORG-RECONCILE-001)"
+      info "Org tier detected ($ORG_TIER_REASON) — asserting the platform's b2b provisioning OUTCOME (gotchas RLS-ORG-RECONCILE-001)"
 
       # Resolve the org/membership schemas with the SAME anchored, separator-tolerant DB_LIKE machinery
-      # already used above (SUBDOMAIN-001) and EXACTLY mirrored from scripts/fix-org-grants.sh, so the
-      # gate and the reconcile always agree on which physical schema is the live tenant's.
+      # already used above (SUBDOMAIN-001).
       MEMBERSHIP_PUB_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'org_memberships' AND table_schema LIKE '${DB_LIKE}%memberships%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
-      [ -n "$MEMBERSHIP_PUB_SCHEMA" ] && pass "Resolved org memberships-public schema: $MEMBERSHIP_PUB_SCHEMA" || fail "Could not resolve the org memberships-public schema (table org_memberships) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%memberships%public')" "This app reads as b2b/org ($ORG_TIER_REASON) but org_memberships isn't provisioned — provision with the b2b preset (modules.preset: b2b; SKILL.md S2), or if it's actually owner-only clear the org signal (don't set modules.preset b2b / don't stamp database.org_reconcile). gotchas RLS-ORG-RECONCILE-001."
+      [ -n "$MEMBERSHIP_PUB_SCHEMA" ] && pass "Resolved org memberships-public schema: $MEMBERSHIP_PUB_SCHEMA" || fail "Could not resolve the org memberships-public schema (table org_memberships) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%memberships%public')" "This app reads as b2b/org ($ORG_TIER_REASON) but org_memberships isn't provisioned — provision with the b2b preset (modules.preset: b2b; SKILL.md S2), or if it's actually owner-only clear the org signal (don't set modules.preset b2b). gotchas RLS-ORG-RECONCILE-001."
 
       MEMBERSHIP_PRIV_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'org_memberships_sprt' AND table_schema LIKE '${DB_LIKE}%memberships%private' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
       [ -n "$MEMBERSHIP_PRIV_SCHEMA" ] && pass "Resolved org memberships-private schema: $MEMBERSHIP_PRIV_SCHEMA" || fail "Could not resolve the org memberships-private schema (table org_memberships_sprt) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%memberships%private')" "The org SPRT tables aren't provisioned — re-run create-db + provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
@@ -1175,39 +1167,36 @@ case "$PHASE" in
       PERMISSIONS_PUB_SCHEMA="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'app_permissions' AND table_schema LIKE '${DB_LIKE}%permissions%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
       [ -n "$PERMISSIONS_PUB_SCHEMA" ] && pass "Resolved org permissions-public schema: $PERMISSIONS_PUB_SCHEMA" || fail "Could not resolve the org permissions-public schema (table app_permissions) for '$DB_NAME_RESOLVED' (anchored '${DB_LIKE}%permissions%public')" "The permissions module isn't provisioned — re-run create-db + provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
 
-      # (a) org-table GRANTs to 'authenticated': the dynamic provisioner ships org_memberships SELECT/DELETE
-      #     but OMITS INSERT/UPDATE, and grants org_member_profiles nothing (fix-org-grants step b). Assert
-      #     the 4 privileges on org_memberships AND SELECT on org_member_profiles (the RLS policies already
-      #     exist from provision; these GRANTs are what let members-list / role-change / profile reads round-trip).
+      # (a) org-table GRANTs to 'authenticated': assert the 4 privileges on org_memberships AND SELECT
+      #     on org_member_profiles (the RLS policies are provisioned; these GRANTs are what let
+      #     members-list / role-change / profile reads round-trip). The platform grants these natively.
       ORG_GM_PRIVS="$(psql -d constructive -t -c "SELECT count(DISTINCT privilege_type) FROM information_schema.role_table_grants WHERE table_schema = '$MEMBERSHIP_PUB_SCHEMA' AND table_name = 'org_memberships' AND grantee = 'authenticated' AND privilege_type IN ('SELECT','INSERT','UPDATE','DELETE');" 2>/dev/null | tr -d ' ')"
       ORG_OMP_SEL="$(psql -d constructive -t -c "SELECT count(*) FROM information_schema.role_table_grants WHERE table_schema = '$MEMBERSHIP_PUB_SCHEMA' AND table_name = 'org_member_profiles' AND grantee = 'authenticated' AND privilege_type = 'SELECT';" 2>/dev/null | tr -d ' ')"
       if [ "${ORG_GM_PRIVS:-0}" -ge 4 ] 2>/dev/null && [ "${ORG_OMP_SEL:-0}" -ge 1 ] 2>/dev/null; then
         pass "'authenticated' holds org_memberships SELECT/INSERT/UPDATE/DELETE + org_member_profiles SELECT in $MEMBERSHIP_PUB_SCHEMA"
       else
-        fail "org-table grants incomplete in $MEMBERSHIP_PUB_SCHEMA (org_memberships ${ORG_GM_PRIVS:-0}/4, org_member_profiles SELECT=${ORG_OMP_SEL:-0})" "The provisioner ships org_memberships SELECT/DELETE only + nothing on org_member_profiles, so member-list / role-change / org writes 403 (PLATFORM-GAPS.md GAP-1b). Run scripts/fix-org-grants.sh <db-name> to backfill INSERT/UPDATE + the profiles SELECT idempotently (SKILL.md S2 step 3b; gotchas RLS-ORG-RECONCILE-001)."
+        fail "org-table grants incomplete in $MEMBERSHIP_PUB_SCHEMA (org_memberships ${ORG_GM_PRIVS:-0}/4, org_member_profiles SELECT=${ORG_OMP_SEL:-0})" "Without these grants member-list / role-change / org writes 403. Re-run create-db + provision with the b2b preset (SKILL.md S2); the platform grants the org tables natively. gotchas RLS-ORG-RECONCILE-001."
       fi
 
       # (b) the create_entity app-permission bit must be DEFINED (org create / member writes gate on it;
-      #     bit 5 = 0x20 = 32, but we resolve it BY NAME — never hard-coded — exactly as fix-org-grants does).
-      #     If it's not defined the b2b permissions weren't provisioned (fail); the seed-row assertion (c)
-      #     needs this literal, so it runs ONLY in the defined branch.
+      #     bit 5 = 0x20 = 32, but we resolve it BY NAME — never hard-coded). If it's not defined the b2b
+      #     permissions weren't provisioned (fail); the seed-row assertion (c) needs this literal, so it
+      #     runs ONLY in the defined branch.
       ORG_CREATE_ENTITY_BIT="$(psql -d constructive -t -c "SELECT bitstr::text FROM \"$PERMISSIONS_PUB_SCHEMA\".app_permissions WHERE name = 'create_entity' LIMIT 1;" 2>/dev/null | tr -d ' ')"
       if [ -z "$ORG_CREATE_ENTITY_BIT" ]; then
-        fail "create_entity app-permission bit is NOT defined in $PERMISSIONS_PUB_SCHEMA.app_permissions" "Org create / member writes gate on the create_entity bit (PLATFORM-GAPS.md GAP-1c) — its absence means the b2b permissions weren't provisioned. Re-run provision with the b2b preset (SKILL.md S2); scripts/fix-org-grants.sh sets the bit on actors once it exists. gotchas RLS-ORG-RECONCILE-001."
+        fail "create_entity app-permission bit is NOT defined in $PERMISSIONS_PUB_SCHEMA.app_permissions" "Org create / member writes gate on the create_entity bit (PLATFORM-GAPS.md GAP-1c) — its absence means the b2b permissions weren't provisioned. Re-run create-db + provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
       fi
       pass "create_entity app-permission bit is defined in $PERMISSIONS_PUB_SCHEMA.app_permissions (...${ORG_CREATE_ENTITY_BIT: -8})"
 
       # (c) the personal-org seed row the AuthzEntityMembership RLS actually reads:
-      #     org_memberships_sprt(actor_id = entity_id) (fix-org-grants step c). It only exists per-ACTOR
-      #     after a signup + reconcile, so we branch on whether an actor exists yet (this gate runs at
-      #     provision time, which is BEFORE the first signup):
-      #       • If run-state stamped database.org_reconcile (reconcile claims it ran) → assert the OUTCOME:
-      #         a personal-org row exists AND carries the create_entity bit. Stamped but missing/bit-less → FAIL
-      #         (the stamp lied, or a different-suffix tenant was reconciled).
-      #       • If NOT yet stamped but an actor exists → surface (WARN) with the fix pointer (the per-actor
-      #         seed is the runtime reconcile's job; not a provision-time hard fail).
-      #       • Pre-signup (no actor) → the seed can't exist yet; grants (a) + bit (b) are the assertable
-      #         provision-time outcome (keeps a fresh b2b provision-time gate green, like the owner canary).
+      #     org_memberships_sprt(actor_id = entity_id). The platform self-seeds this per-ACTOR on
+      #     signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15), so we branch only on whether an
+      #     actor exists yet (this gate may run at provision time, which is BEFORE the first signup):
+      #       • An actor exists → assert the OUTCOME: a personal-org row exists AND carries the
+      #         create_entity bit. Missing / bit-less → FAIL (the platform's self-seed didn't land).
+      #       • Pre-signup (no actor) → the per-actor seed can't exist yet; grants (a) + bit (b) above
+      #         are the assertable provision-time outcome (keeps a fresh b2b provision-time gate green,
+      #         like the owner canary).
       USERS_SCHEMA_ORG="$(psql -d constructive -t -c "SELECT table_schema FROM information_schema.tables WHERE table_name = 'users' AND table_schema LIKE '${DB_LIKE}%users%public' ORDER BY length(table_schema), table_schema LIMIT 1;" 2>/dev/null | tr -d ' ')"
       [ -n "$USERS_SCHEMA_ORG" ] || USERS_SCHEMA_ORG="$USERS_SCHEMA"
       ORG_USER_COUNT="$(psql -d constructive -t -c "SELECT count(*) FROM \"$USERS_SCHEMA_ORG\".users;" 2>/dev/null | tr -d ' ')"
@@ -1215,27 +1204,19 @@ case "$PHASE" in
       ORG_SEED_ROWS="$(psql -d constructive -t -c "SELECT count(*) FROM \"$MEMBERSHIP_PRIV_SCHEMA\".org_memberships_sprt WHERE actor_id = entity_id;" 2>/dev/null | tr -d ' ')"
       ORG_SEED_WITH_BIT="$(psql -d constructive -t -c "SELECT count(*) FROM \"$MEMBERSHIP_PRIV_SCHEMA\".org_memberships_sprt WHERE actor_id = entity_id AND (permissions & '${ORG_CREATE_ENTITY_BIT}'::bit(64)) = '${ORG_CREATE_ENTITY_BIT}'::bit(64);" 2>/dev/null | tr -d ' ')"
 
-      if [ -n "$ORG_RECONCILE_STATE" ]; then
-        # Reconcile claims it ran — assert the OUTCOME (the seed row + its create_entity bit) exists.
+      if [ "${ORG_USER_COUNT:-0}" -ge 1 ] 2>/dev/null; then
+        # An actor exists — assert the platform self-seeded the personal-org row + create_entity bit.
         if [ "${ORG_SEED_WITH_BIT:-0}" -ge 1 ] 2>/dev/null; then
           pass "personal-org seed row present in $MEMBERSHIP_PRIV_SCHEMA.org_memberships_sprt (actor=entity) carrying create_entity (${ORG_SEED_WITH_BIT} of ${ORG_SEED_ROWS:-0}) — createCompany etc. will pass RLS"
         elif [ "${ORG_SEED_ROWS:-0}" -ge 1 ] 2>/dev/null; then
-          fail "personal-org seed row(s) exist in $MEMBERSHIP_PRIV_SCHEMA.org_memberships_sprt but NONE carry the create_entity bit (0 of ${ORG_SEED_ROWS})" "database.org_reconcile is stamped '$ORG_RECONCILE_STATE' but the seeded row is missing create_entity, so AuthzEntityMembership writes (createCompany) stay RLS-denied. Re-run scripts/fix-org-grants.sh <db-name> --app-dir <app> (it ORs the bit onto the sprt row idempotently; PLATFORM-GAPS.md GAP-1c; gotchas RLS-ORG-RECONCILE-001)."
+          fail "personal-org seed row(s) exist in $MEMBERSHIP_PRIV_SCHEMA.org_memberships_sprt but NONE carry the create_entity bit (0 of ${ORG_SEED_ROWS})" "The seeded row is missing create_entity, so AuthzEntityMembership writes (createCompany) stay RLS-denied. The platform self-seeds this on signup with the bit set (PLATFORM-GAPS.md GAP-1b/1c, CLOSED) — pull the current platform and re-provision with the b2b preset. gotchas RLS-ORG-RECONCILE-001."
         else
-          fail "run-state database.org_reconcile='$ORG_RECONCILE_STATE' but NO personal-org seed row exists in $MEMBERSHIP_PRIV_SCHEMA.org_memberships_sprt (actor=entity)" "The reconcile stamp claims it ran, yet the row the AuthzEntityMembership RLS reads is absent — the stamp is stale or a DIFFERENT-suffix tenant was reconciled (a shared hub mints a new hash-suffixed tenant per create-db). Re-run scripts/fix-org-grants.sh <db-name> --app-dir <app> so it pins the LIVE tenant by DATABASE_ID and seeds actor_id=entity_id (PLATFORM-GAPS.md GAP-1b; gotchas RLS-ORG-RECONCILE-001)."
-        fi
-      elif [ "${ORG_USER_COUNT:-0}" -ge 1 ] 2>/dev/null; then
-        # An actor exists but the reconcile was never stamped — the per-actor seed is the runtime
-        # reconcile's job; surface it (not a provision-time hard fail) so the operator knows to run it.
-        if [ "${ORG_SEED_WITH_BIT:-0}" -ge 1 ] 2>/dev/null; then
-          pass "personal-org seed row present + carries create_entity (${ORG_SEED_WITH_BIT}) though run-state isn't stamped — stamp database.org_reconcile so live-qa's org gate fires"
-        else
-          warn "org tier ($ORG_TIER_REASON) with ${ORG_USER_COUNT} actor(s) but NO create_entity-bearing personal-org sprt row yet (${ORG_SEED_WITH_BIT:-0}/${ORG_SEED_ROWS:-0}) — run scripts/fix-org-grants.sh <db-name> --app-dir <app> before org writes (createCompany will 403 until then; PLATFORM-GAPS.md GAP-1b/1c; gotchas RLS-ORG-RECONCILE-001)"
+          fail "NO personal-org seed row exists in $MEMBERSHIP_PRIV_SCHEMA.org_memberships_sprt (actor=entity) for ${ORG_USER_COUNT} actor(s)" "The platform self-seeds the personal-org row the AuthzEntityMembership RLS reads on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15). Its absence means the deployed platform predates that fix — pull the current platform and re-provision with the b2b preset (SKILL.md S2). gotchas RLS-ORG-RECONCILE-001."
         fi
       else
-        # Pre-signup (no actor yet): the per-actor seed can't exist; the runtime reconcile seeds it after
-        # the first signup. Grants (a) + the bit (b) above are the assertable provision-time outcome.
-        info "Org tier with no signed-up actor yet — grants + create_entity bit asserted; the personal-org sprt seed is reconciled per-actor after first signup (scripts/fix-org-grants.sh; gotchas RLS-ORG-RECONCILE-001)"
+        # Pre-signup (no actor yet): the per-actor seed can't exist; the platform seeds it on the first
+        # signup. Grants (a) + the bit (b) above are the assertable provision-time outcome.
+        info "Org tier with no signed-up actor yet — grants + create_entity bit asserted; the personal-org sprt seed is self-seeded by the platform per-actor on first signup (PLATFORM-GAPS.md GAP-1b/1c; gotchas RLS-ORG-RECONCILE-001)"
       fi
     fi
 

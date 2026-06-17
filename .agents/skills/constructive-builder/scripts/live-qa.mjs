@@ -825,23 +825,27 @@ async function probeCaps(ctx) {
     caps.mailpit = false;
   }
 
-  // orgReconcile (the b2b-vs-owner tier signal the org drivers gate on): env override wins;
-  // else read THIS app's run-state database.org_reconcile. The b2b producers stamp a POSITIVE
-  // value ('sdk' / 'manual-fallback') once the org reconcile actually ran; an AUTH:EMAIL
-  // (owner-tier) app instead carries a NEGATIVE sentinel like 'n/a (auth:email tier, owner
-  // policy)' / 'none' / 'false'. The old "any non-empty string ⇒ reconciled" rule mis-read
-  // that sentinel as b2b — so an owner-tier app would self-classify b2b and run org drivers it
-  // has no modules for. We now treat the negative sentinels as NOT-reconciled (owner tier),
-  // so org_reconcile is ON only for a genuine positive stamp. Combined with the per-app
-  // run-state isolation above, a polluted legacy b2b state can't flip an auth:email app to b2b.
+  // orgReconcile (the b2b-vs-owner tier signal the org drivers gate on). Despite the legacy name,
+  // this is purely a TIER detector now: the platform self-seeds the personal-org membership a fresh
+  // b2b signup needs (PLATFORM-GAPS.md GAP-1b/1c, CLOSED), so there is no reconcile to run — the cap
+  // just decides whether the org-flow drivers (org-members / org-roles / org-invites / app-memberships)
+  // RUN at all. Precedence:
+  //   (1) LIVE_QA_ORG_RECONCILE env override (only an explicit 1/true/yes ⇒ on), else
+  //   (2) the BRIEF tier (authoritative + brief-driven, never an app/db-name literal): a b2b preset
+  //       (b2b | b2b:storage | full) OR any table with an org-scoped policy intent (org-membership /
+  //       member-owner) ⇒ org tier. This MIRRORS verify-phase.sh's org-tier detection + brief.mjs's
+  //       b2b gate, so the gate and the driver agree, else
+  //   (3) a positive run-state database.org_reconcile stamp (back-compat with an externally-stamped
+  //       state; negative sentinels like 'n/a (auth:email tier)' / none / false read as owner-tier).
+  // An owner / public-read app is none of these ⇒ cap false ⇒ org drivers SKIP (the frozen owner
+  // canary is unaffected).
   if (process.env.LIVE_QA_ORG_RECONCILE != null && process.env.LIVE_QA_ORG_RECONCILE !== '') {
     caps.orgReconcile = /^(1|true|yes)$/i.test(process.env.LIVE_QA_ORG_RECONCILE.trim());
+  } else if (briefIsOrgTier()) {
+    caps.orgReconcile = true;
   } else {
     const rec = ctx?.state?.database?.org_reconcile;
     const recStr = typeof rec === 'string' ? rec.trim() : '';
-    // Negative/owner-tier sentinels → NOT reconciled. Match a leading negative token so the
-    // documented 'n/a (auth:email tier, owner policy)' string (and bare none/false/no/0/off/skip)
-    // all read as owner-tier; any other non-empty value (e.g. 'sdk', 'manual-fallback') ⇒ b2b on.
     const isNegative = /^(n\/?a|none|false|no|0|off|skip|n\/a)\b/i.test(recStr);
     caps.orgReconcile = recStr.length > 0 && !isNegative;
   }
@@ -1046,73 +1050,15 @@ function clearAuthState() {
   return Array.isArray(removed) ? removed : [];
 }
 
-// ── AFTER-SIGNUP HOOK (GAP-2: b2b post-signup reconcile) ─────────────────────
-// A FRESH email-password signup on the b2b/org tier gets a users row + a personal-org
-// org_memberships row, but NOT the private org_memberships_sprt row the AuthzEntityMembership
-// RLS reads (upstream GAP-1b/1c). So the very FIRST org-scoped create the driver attempts
-// right after signup is RLS-denied — even though the harness ships the reconcile that fixes
-// it. This hook runs the documented reconcile as a POST-SIGNUP step, BEFORE any org-scoped
-// create assertion, so a genuinely-working b2b app is not false-failed on the missing sprt row.
-//
-// CAPABILITY-DRIVEN, NEVER app/db-name-driven: it runs ONLY when ctx.caps.orgReconcile is true
-// (the same b2b tier signal the org drivers gate on). On the owner / public-read tiers
-// caps.orgReconcile is false and this is a NO-OP — no reconcile, zero behavior change (the
-// frozen owner canary never touches this). The command is a SEAM:
-//   • LIVE_QA_AFTER_SIGNUP — an explicit shell command to run verbatim (full override), else
-//   • the documented default: scripts/fix-org-grants.sh <db> [--app-dir <root>], with <db>
-//     resolved from THIS app's run-state database.name (the same name fix-org-grants.sh wants)
-//     and <root> from run-state workspace.root (so the script pins the LIVE tenant by
-//     DATABASE_ID from the app's .env — deterministic on a shared hub). If neither a db name
-//     nor an explicit command is resolvable we SKIP (and say so) rather than guess.
-// Idempotent (fix-org-grants.sh upserts) so re-running per signup is safe. Best-effort-but-
-// LOUD: a reconcile failure logs a warning and does NOT hard-fail signup — a real RLS denial
-// then surfaces at the create assertion with full context (we don't mask a true backend gap).
-// Runs at most once PER ACTOR (memoized via ctx._afterSignupDone, which ensureSignedIn CLEARS
-// before each fresh signup) — the reconcile is per-actor, so a freshly-minted 2nd actor
-// (signUpSecondActor → the pending-membership fixture) needs its OWN reconcile pass; without
-// the clear, the once-per-process memo would skip it and the 2nd actor's join would be denied.
-function afterSignupReconcileCmd(ctx) {
-  // Explicit override wins (verbatim shell command).
-  const override = (process.env.LIVE_QA_AFTER_SIGNUP || '').trim();
-  if (override) return { cmd: override, source: 'LIVE_QA_AFTER_SIGNUP' };
-  // Default: the documented org reconcile. Resolve <db> from THIS app's run-state.
-  const db = (ctx?.state?.database?.name || ctx?.state?.database?.subdomain || '').trim();
-  if (!db) return { cmd: '', source: 'none', reason: 'no run-state database.name to target the reconcile' };
-  const script = join(REPO_ROOT, 'scripts', 'fix-org-grants.sh');
-  if (!existsSync(script)) return { cmd: '', source: 'none', reason: `reconcile script not found at ${script}` };
-  // --app-dir makes the schema resolution deterministic (DATABASE_ID from the app's .env) on a
-  // shared hub with same-name sibling tenants. Optional — omitted if we don't know the root.
-  const root = (ctx?.state?.workspace?.root || '').trim();
-  const shq = (s) => `'${String(s).replace(/'/g, `'\\''`)}'`; // safe single-quote for the shell
-  const parts = [shq(script), shq(db)];
-  if (root && existsSync(root)) parts.push('--app-dir', shq(root));
-  return { cmd: `bash ${parts.join(' ')}`, source: 'fix-org-grants.sh', db, root };
-}
-async function runAfterSignupHook(ctx) {
-  // CAP GATE: only the b2b/org tier (caps.orgReconcile) needs this; a no-op everywhere else.
-  if (!ctx || !ctx.caps || !ctx.caps.orgReconcile) return;
-  if (ctx._afterSignupDone) return; // once per process (idempotent script, but avoid re-shelling)
-  const { cmd, source, reason, db } = afterSignupReconcileCmd(ctx);
-  if (!cmd) {
-    step(`after-signup reconcile (b2b tier) SKIPPED — ${reason || 'no command resolved'} (the org-scoped create may be RLS-denied; set LIVE_QA_AFTER_SIGNUP to a reconcile command)`);
-    ctx._afterSignupDone = true;
-    return;
-  }
-  step(`after-signup reconcile (b2b tier, cap orgReconcile): ${source}${db ? ` → ${db}` : ''} — applying the personal-org membership/grants a fresh signup needs before an org-scoped create`);
-  try {
-    const res = spawnSync('bash', ['-lc', cmd], { encoding: 'utf8', cwd: REPO_ROOT, timeout: 120000, env: process.env });
-    if (res.status === 0) {
-      step('after-signup reconcile applied (idempotent) — org-scoped create can now go through RLS');
-    } else {
-      // LOUD but NON-fatal: a real RLS denial then surfaces at the create assertion with context.
-      const tail = ((res.stderr || res.stdout || '').trim().split('\n').slice(-3).join(' | ')).slice(0, 300);
-      step(C.yellow(`after-signup reconcile exited ${res.status} (non-fatal; a genuine RLS denial will still surface at the create assertion): ${tail || 'no output'}`));
-    }
-  } catch (e) {
-    step(C.yellow(`after-signup reconcile could not run (non-fatal): ${(e && e.message) || String(e)}`));
-  }
-  ctx._afterSignupDone = true;
-}
+// ── B2B post-signup membership: now PLATFORM-NATIVE ─────────────────────────
+// A fresh email-password signup on the b2b/org tier used to get a users row + a public
+// org_memberships row but NOT the private org_memberships_sprt row the AuthzEntityMembership
+// RLS reads, so the first org-scoped create was RLS-denied (upstream GAP-1b/1c). The platform
+// now self-seeds that personal-org sprt row on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED
+// 2026-06-15), so the actor can create org-scoped rows immediately after signup with no
+// post-signup reconcile step. The former harness-side after-signup hook (which shelled out to
+// a reconcile script) is therefore removed — a genuine RLS denial now surfaces directly at the
+// create assertion as a real backend signal, never masked.
 
 // ── §2.5 Auth precondition — ensure a signed-in session (most flows need one).
 // Reuses the EXACT signup steps the email-password driver proved. Idempotent within a
@@ -1126,9 +1072,6 @@ async function ensureSignedIn(ctx, { fresh = false } = {}) {
   if (!fresh && pageEval(`!!${Q_TESTID(t.authedMarker)}`) === 'true') {
     return ctx._creds || { email: '', password: '' };
   }
-  // A FRESH signup mints a NEW actor → it needs its OWN after-signup reconcile (GAP-2); clear
-  // the per-actor memo so runAfterSignupHook re-runs for this new actor (no-op off the b2b tier).
-  if (fresh) ctx._afterSignupDone = false;
   const stamp = Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36);
   const email = fresh
     ? `liveqa+${stamp}@example.com`
@@ -1160,11 +1103,9 @@ async function ensureSignedIn(ctx, { fresh = false } = {}) {
     clickTestid(t.submit);
     step('assert the authenticated shell rendered');
     waitTestid(t.authedMarker, { what: `${t.authedMarker} (authenticated-only marker)`, timeoutMs: 25000 });
-    // GAP-2: on the b2b/org tier (caps.orgReconcile), reconcile the fresh actor's personal-org
-    // membership/grants NOW — AFTER signup, BEFORE the caller's first org-scoped create — so a
-    // working b2b app isn't false-failed on the missing org_memberships_sprt row. No-op on the
-    // owner / public-read tiers (cap off), so the frozen owner canary is unaffected.
-    await runAfterSignupHook(ctx);
+    // B2B tier: the platform self-seeds the fresh actor's personal-org membership row on signup
+    // (PLATFORM-GAPS.md GAP-1b/1c, CLOSED), so the caller's first org-scoped create works with no
+    // post-signup reconcile step. A genuine RLS denial now surfaces at the create assertion.
   } catch (err) {
     return `signup-failed (${(err && err.message) || String(err)})`;
   }
@@ -1404,20 +1345,18 @@ const brokenPartial = (reason, evidence) => partial(reason, evidence, { document
 const emailNotDeliveredEvidence = (kind) =>
   `Mailpit reachable but no ${kind} email arrived. This is NOT necessarily the site-domain row: an upstream send failure (mailer not configured, email template/proc error, or the send queue not draining) looks the same from here. Check the auth-server log for a send/enqueue error first; if the send was attempted, then add/verify the site-domain row (SKILL.md → Email services).`;
 
-// FIX-3c — GENUINE org-reconcile read (vs the loop-level ctx.caps.orgReconcile gate).
-// The org drivers `needs:['orgReconcile']`, so main() only INVOKES their run() when the cap
-// reads positive — but that loop-level read can be a STALE POSITIVE (a polluted legacy b2b
-// run-state leaking database.org_reconcile:'sdk' into an owner/email app, or LIVE_QA_ORG_RECONCILE
-// forced on). When such a driver then fails to resolve an owned org (no-org-id), we must NOT
-// blame the FLOW: the true cause is the reconcile precondition genuinely being absent. This
-// recomputes the reconcile signal the SAME way probeCaps does — env override (only an explicit
-// 1/true/yes counts) → THIS app's run-state database.org_reconcile with the SAME negative-sentinel
-// rule (n/a / none / false / no / 0 / off / skip ⇒ NOT reconciled) — so the driver can tell a
-// GENUINE positive (a real 'sdk'/'manual-fallback' stamp) from a stale/forced one. Pure read of
-// ctx.state + env; never throws.
+// GENUINE org-tier read — recomputes the org-tier signal the SAME way probeCaps does, so a driver
+// can confirm the loop-level ctx.caps.orgReconcile gate that let it run is a genuine org tier (not a
+// forced LIVE_QA_ORG_RECONCILE or an externally-stamped run-state on an owner/email app). Precedence
+// mirrors probeCaps: env override (only an explicit 1/true/yes) → the BRIEF tier (b2b preset /
+// org-scoped policy intent — authoritative now that the personal-org seed is platform-native and
+// nothing stamps run-state database.org_reconcile) → a positive run-state stamp (back-compat;
+// negative sentinels n/a/none/false/no/0/off/skip ⇒ owner tier). Pure read of the brief + ctx.state
+// + env; never throws.
 function orgReconcileGenuine(ctx) {
   const envv = process.env.LIVE_QA_ORG_RECONCILE;
   if (envv != null && envv !== '') return /^(1|true|yes)$/i.test(String(envv).trim());
+  if (briefIsOrgTier()) return true;
   const rec = ctx?.state?.database?.org_reconcile;
   const recStr = typeof rec === 'string' ? rec.trim() : '';
   const isNegative = /^(n\/?a|none|false|no|0|off|skip|n\/a)\b/i.test(recStr);
@@ -2897,15 +2836,15 @@ const FLOW_QA = {
       const nodes = res?.data?.orgProfiles?.nodes || [];
       if (nodes.some((n) => (n.name || '') === roleName)) return pass(`createOrgProfile persisted role "${roleName}"`);
       const errMsg = (res?.errors && res.errors[0]?.message) || '';
-      // Did NOT persist. The live-QA actor is a FRESH signup whose personal-org membership row is
-      // not seeded by the provisioner on signup (GAP-1b/1c), and a fresh mid-flow actor cannot be
-      // reconciled by fix-org-grants — so it is not authorized to write org profiles. The capability
-      // is GA: createOrgProfile persists + reads back for a RECONCILED actor (API-verified). So this
-      // is a DOCUMENTED upstream gap, not a driver/FIX-3 defect → gapPartial. (no-org-id above stays
-      // the reachable brokenPartial; non-mount above stays the reachable throw.)
-      return gapPartial(
-        'org-roles-actor-unreconciled (PLATFORM-GAPS GAP-1b/1c)',
-        `createOrgProfile("${roleName}") did not read back for the fresh live-QA signup actor (${errMsg || 'not in orgProfiles'}). The provisioner does not seed the personal-org membership row on signup (GAP-1b/1c) and a fresh mid-flow actor cannot be reconciled — so the actor is not authorized to write org profiles. createOrgProfile is GA for a reconciled actor (persists + reads back, API-verified). Documented upstream, not a driver or FIX-3 defect.`
+      // Did NOT persist. The platform now self-seeds the fresh signup actor's personal-org
+      // membership row on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15), so the actor IS a
+      // member/owner of their personal org and createOrgProfile under it should persist + read back.
+      // Reaching this branch therefore means a REAL break (createOrgProfile did not round-trip for a
+      // properly-seeded actor) → brokenPartial. (no-org-id above stays the reachable brokenPartial
+      // too; non-mount above stays the reachable throw.)
+      return brokenPartial(
+        'org-roles-create-did-not-persist',
+        `createOrgProfile("${roleName}") did not read back for the signed-in actor (${errMsg || 'not in orgProfiles'}). The platform self-seeds the actor's personal-org membership on signup (GAP-1b/1c, CLOSED), so the actor owns this org and createOrgProfile should persist — a failure here is a real backend/driver defect, not a documented gap.`
       );
     },
   },
@@ -3298,6 +3237,23 @@ function loadBriefForQa() {
 }
 
 /**
+ * Is this an ORG (b2b) tier app, per the BRIEF? Mirrors verify-phase.sh's org-tier detection and
+ * brief.mjs's b2b gate (NOT an app/db-name literal): true when modules.preset ∈ {b2b, b2b:storage,
+ * full}, OR any table carries an org-scoped policy intent (org-membership | member-owner). This is
+ * the authoritative tier signal for caps.orgReconcile now that the personal-org seed is platform-
+ * native (PLATFORM-GAPS.md GAP-1b/1c, CLOSED) and nothing stamps run-state database.org_reconcile.
+ * Pure read of the parsed brief; never throws (returns false when no brief is resolvable).
+ */
+function briefIsOrgTier() {
+  const brief = loadBriefForQa();
+  if (!brief) return false;
+  const preset = brief.modules?.preset;
+  if (preset === 'b2b' || preset === 'b2b:storage' || preset === 'full') return true;
+  const tables = brief.data_model?.tables ?? [];
+  return tables.some((t) => t && (t.policy === 'org-membership' || t.policy === 'member-owner'));
+}
+
+/**
  * Derive { crudPath, prefix } from the brief's FIRST crud route, mirroring
  * scaffold-frontend.mjs exactly. Returns null when no brief/crud-route is resolvable
  * (→ caller uses the todo fallback). The testid prefix is kebab(entity).
@@ -3391,7 +3347,7 @@ async function main() {
       const evidence =
         missing[0] === 'mailpit'
           ? 'email infra absent (Mailpit unreachable on :8025 + site-domain row) — flow needs it'
-          : 'org reconcile not applied (run scripts/fix-org-grants.sh <db>; PLATFORM-GAPS GAP-1b/1c)';
+          : 'not an org tier (no b2b preset / org-membership policy in this app) — org flow not applicable';
       log(`  ${C.yellow('◐ ' + flow)} — partial (documented gap): ${reason} ${C.dim('(' + evidence + ')')}\n`);
       results.push({ flow, status: 'partial', documentedGap: true, reason, evidence });
       continue;

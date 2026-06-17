@@ -364,8 +364,8 @@ let changed = 0;
 //
 // Run-state PATH for WRITING: when an app-id is resolvable (the sanitized subdomain — it always is
 // here, since SUB is set above) we ALWAYS write the ISOLATED per-app file build/<app-id>/run-state.json
-// and NEVER the legacy singleton — the same state-isolation guarantee fix-grants.sh keeps, so one app's
-// allocated port can't bleed onto a sibling. The legacy singleton build/run-state.json is used only
+// and NEVER the legacy singleton, so one app's allocated port can't bleed onto a sibling. The other
+// state writers keep the same per-app isolation. The legacy singleton build/run-state.json is used only
 // when there is no app-id at all (the single-app golden path). Consumers prefer the per-app file when
 // it exists, so creating it here is what makes them read THIS app's port.
 function resolveWritableStatePath() {

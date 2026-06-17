@@ -12,10 +12,10 @@
  * var was unset.
  *
  * THE FIX — resolve the orgId from an org the SIGNED-IN ACTOR ACTUALLY OWNS.
- * `scripts/fix-org-grants.sh` (RLS-ORG-RECONCILE-001, the orgReconcile cap) seeds, for
- * each actor, a PERSONAL-ORG row with the invariant **actor_id = entity_id = user_id,
- * is_owner = true** (in both the private `org_memberships_sprt` and the public
- * `org_memberships`). So after the reconcile, the actor OWNS the org whose
+ * The platform self-seeds, for each actor on signup, a PERSONAL-ORG row with the invariant
+ * **actor_id = entity_id = user_id, is_owner = true** (in both the private
+ * `org_memberships_sprt` and the public `org_memberships`) — PLATFORM-GAPS.md GAP-1b/1c,
+ * CLOSED 2026-06-15; RLS-ORG-RECONCILE-001. So the actor OWNS the org whose
  * `entityId == their own currentUser.id`. That personal-org id (= the actor's own user
  * id) is therefore a valid, OWNED orgId the detail drivers can drive against — through
  * RLS, not around it.

@@ -890,7 +890,7 @@ Calling `updateUser` (profile / account-settings) succeeds (HTTP 200, no error),
 
 ### Cause
 
-The dynamically-provisioned per-tenant `users` table has RLS enabled and a column UPDATE grant to `authenticated`, but the dynamic provisioner emits only an `auth_sel` SELECT policy and **no UPDATE policy**. RLS therefore rejects the update and 0 rows change — silently. Deterministic across tenants; `users` is module-owned, so this cannot be fixed in the blueprint.
+The dynamically-provisioned per-tenant `users` table has RLS enabled and a column UPDATE grant to `authenticated`. If the table's self-UPDATE policy is missing, RLS rejects the update and 0 rows change — silently. The policy is named `auth_upd_self_update` (`auth_<verb>_<policytype>`, no hash suffix; the SELECT counterpart is `auth_sel_self_update`). The platform now emits this UPDATE policy natively for an auth preset (PLATFORM-GAPS.md GAP-1a, CLOSED), so this is normally a non-issue; it can still occur on a deployment predating that fix, where — because `users` is module-owned — it can't be fixed in the blueprint and needs the control-plane step below.
 
 ### Solution
 
@@ -916,7 +916,7 @@ This emits `auth_upd_self_update` (`FOR UPDATE TO authenticated USING id = jwt_p
 ### Verification
 
 ```bash
-# Expect BOTH auth_sel and auth_upd_self_update on the users table:
+# Expect BOTH auth_sel_self_update and auth_upd_self_update on the users table:
 psql "$PGDATABASE" -c "SELECT polname FROM pg_policy WHERE polrelid =
   (SELECT oid FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
    WHERE c.relname='users' AND n.nspname LIKE '%users-public' LIMIT 1);"
@@ -2390,44 +2390,24 @@ live-QA refusing to navigate: the active browser tab is on origin http://localho
 
 ### Problem
 
-On the **b2b / org-membership tier**, the `email-password` flow signs up a fresh user and then immediately creates an org-scoped row (e.g. `createCompany` with `entity_id` = the user's personal org). That first create is RLS-denied ("new row violates row-level security policy"), so live-QA fails — even though the app is actually working.
+On the **b2b / org-membership tier**, the `email-password` flow signs up a fresh user and then immediately creates an org-scoped row (e.g. `createCompany` with `entity_id` = the user's personal org). That first create is RLS-denied ("new row violates row-level security policy"), so live-QA fails.
 
 ### Cause
 
-A fresh b2b signup gets a `users` row and a public `org_memberships` row, but **not** the private `org_memberships_sprt` row the `AuthzEntityMembership` RLS reads (upstream PLATFORM-GAPS GAP-1b/1c). The harness ships `scripts/fix-org-grants.sh` to reconcile that, but it must run **after signup, before the first org-scoped create**.
+This was an upstream gap: a fresh b2b signup got a `users` row and a public `org_memberships` row, but **not** the private `org_memberships_sprt` row the `AuthzEntityMembership` RLS reads, nor the `create_entity` bit (PLATFORM-GAPS GAP-1b/1c). **The platform now self-seeds the personal-org sprt row + grants the org tables and `create_entity` bit on signup (CLOSED 2026-06-15)**, so a fresh signup's first org-scoped create persists immediately with no reconcile step.
 
 ### Solution
 
-The driver now runs the reconcile as a **post-signup hook**, gated on the b2b capability (`ctx.caps.orgReconcile`) — **capability-driven, never app/db-name-driven**:
-
-- On the **owner / public-read** tiers (`caps.orgReconcile` false) it is a **NO-OP** — the frozen owner canary is unaffected.
-- On the **b2b** tier it runs the documented reconcile after the authed shell appears:
-  - default command: `scripts/fix-org-grants.sh <db> --app-dir <root>` — `<db>` from run-state `database.name`, `<root>` from run-state `workspace.root` (so the script pins the live tenant by `DATABASE_ID` deterministically on a shared hub);
-  - override with an explicit command via `LIVE_QA_AFTER_SIGNUP` (run verbatim).
-- It runs once **per actor** (the memo is cleared before each fresh signup, so a 2nd actor — the pending-membership fixture — gets its own reconcile). It is **idempotent** (the script upserts) and **best-effort-but-loud**: a reconcile failure logs a warning and does NOT mask a genuine RLS denial (that still surfaces at the create assertion).
+Pull the current platform (constructive-db with GAP-1b/1c closed) and re-provision with the b2b preset. There is **no harness-side reconcile** anymore — the former post-signup org-reconcile hook was removed. A first-create RLS denial here is now a **real regression** (or a deployment predating the platform fix), not an expected gap: check that the platform self-seed landed.
 
 ```bash
-# default (b2b tier): nothing to set — the hook derives the command from run-state
-# explicit override (any tier):
-LIVE_QA_AFTER_SIGNUP="bash scripts/fix-org-grants.sh <db> --app-dir <appdir>" node scripts/live-qa.mjs
-```
-
-### Verification
-
-The driver prints (b2b tier only):
-
-```
-· after-signup reconcile (b2b tier, cap orgReconcile): fix-org-grants.sh → <db> — applying the personal-org membership/grants …
-· after-signup reconcile applied (idempotent) — org-scoped create can now go through RLS
-```
-
-On the owner/public-read tiers the line is absent (no-op). Re-running the reconcile by hand is safe:
-
-```bash
+# Confirm the platform seeded the signup actor's personal-org sprt row (actor_id = entity_id) with create_entity:
 eval "$(pgpm env)"
-bash scripts/fix-org-grants.sh <db> --app-dir <appdir>
-# … PASS: personal-org sprt rows reconciled: 0 new, N already present  (idempotent)
+psql -d constructive -c "SELECT count(*) FROM \"<db>-memberships-private\".org_memberships_sprt WHERE actor_id = entity_id;"
+# Expect >= 1 per signed-up actor; createCompany(entityId = their user id) then persists end-to-end.
 ```
+
+Minting a brand-NEW org via `createUser(type=2)` is still operator-only (PLATFORM-GAPS GAP-6, OPEN) — that is distinct from writing under your personal org.
 
 ---
 

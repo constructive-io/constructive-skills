@@ -25,11 +25,10 @@ set -euo pipefail
 # GENERICITY_CANARY_BRIEF. These four tiers TOGETHER are the genericity rot-canary: todos
 # exercises owner-scope, blog public-read, b2b the org-membership policy class, and childfk the
 # required-belongs-to FK frontend emission (the child page's FK picker + camelCase FK key on
-# create) — so a drift that only breaks one tier is still caught. ⚠ The b2b canary's LIVE-QA
-# (signup → org-scoped CRUD) requires the
-# org-flow reconcile (scripts/fix-org-grants.sh <db>) to have been applied to its tenant
-# until PLATFORM-GAPS.md GAP-1b/1c is closed upstream; without it the org-scoped INSERT
-# RLS-rejects and Phase 3 fails by design (this canary IS the upstream re-verify probe).
+# create) — so a drift that only breaks one tier is still caught. The b2b canary's LIVE-QA
+# (signup → org-scoped CRUD) now passes hands-free: the platform self-seeds the fresh actor's
+# personal-org membership on signup (PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15), so the
+# org-scoped INSERT goes through RLS with no reconcile stopgap.
 #
 # What it does:
 #   S0. Smokes the shared warm backend on :3000 (api endpoint). DOWN/non-200 → restart
@@ -192,10 +191,10 @@ if [ -n "$CANARY" ]; then
   info "canary tier: $CANARY  →  brief=$BRIEF  dir=$APP_DIR  crud=$LIVE_QA_CRUD_PATH"
   case "$CANARY" in
     b2b|crm|org|org-membership)
-      warn "b2b canary: its LIVE-QA (signup → org-scoped CRUD) needs scripts/fix-org-grants.sh <db>"
-      warn "applied to this tenant until PLATFORM-GAPS.md GAP-1b/1c is closed upstream. Without that"
-      warn "reconcile the org-scoped INSERT RLS-rejects and Phase 3 FAILS by design — this canary IS"
-      warn "the upstream re-verify probe (run it WITHOUT the stopgap to check if the gap has closed)."
+      info "b2b canary: its LIVE-QA (signup → org-scoped CRUD) is expected to PASS hands-free —"
+      info "the platform self-seeds the fresh actor's personal-org membership on signup"
+      info "(PLATFORM-GAPS.md GAP-1b/1c, CLOSED 2026-06-15), so the org-scoped INSERT goes through"
+      info "RLS with no reconcile stopgap. An org-scoped create that 403s here is a real regression."
       ;;
   esac
 fi
