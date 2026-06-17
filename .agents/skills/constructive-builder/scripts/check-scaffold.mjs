@@ -341,6 +341,68 @@ acceptance: { required_flows: [email-password] }
     modAssert: (mods) => mods.length > 20 && !mods.some((m) => (Array.isArray(m) ? m[0] : m) === 'all'),
   },
   {
+    // ── member-owner (compound: user-owned AND org-scoped). ──────────────────
+    // policy: member-owner → the row is owned by ONE user AND lives within an org, and ONLY
+    // that author, ONLY within an org they belong to, may read/write it. Maps to the platform's
+    // AuthzMemberOwner — a COMPOUND predicate (cpt_member_owner ANDs `owner_id = current_user_id()`
+    // with `entity_id IN (SELECT org_sprt.entity_id … WHERE actor_id = current_user_id())`). Both
+    // columns must exist on the row, so the data node MUST be DataOwnershipInEntity (materializes
+    // owner_id + entity_id) — NOT a single-column DataDirectOwner/DataEntityMembership. This is the
+    // FLAT-own-entity shape (the row carries its OWN entity_id), so — unlike related-membership —
+    // it needs NO sel_obj/sel_field projection (the platform default sel_field='entity_id' projects
+    // the row's own org column correctly). membership_type:2 scopes Part-2 to the ORG sprt.
+    name: 'member-owner (compound owner+membership, DataOwnershipInEntity)',
+    brief: `version: 1
+app: { id: smoke-mo, label: Smoke MO }
+naming: { db_name: smokemo }
+modules: { preset: b2b }
+flows: [email-password, organization, org-members]
+data_model:
+  tables:
+    - name: notes
+      policy: member-owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: body, type: { name: text } }
+ui: { routes: [{ path: /notes, label: Notes, kind: crud, entity: note }] }
+acceptance: { required_flows: [email-password] }
+`,
+    assert: (def, brief) => {
+      const t = def.tables[0];
+      const types = t.nodes.map((n) => (typeof n === 'string' ? n : n.$type));
+      // nodes: DataId + DataOwnershipInEntity (the owner_id+entity_id materializer) + DataTimestamps,
+      // exactly once each. NO single-column ownership node (which would leave a column the compound
+      // policy reads unmaterialized → construct aborts `column "<col>" does not exist`).
+      const nodesOk =
+        types.filter((x) => x === 'DataOwnershipInEntity').length === 1 &&
+        types.includes('DataId') &&
+        types.includes('DataTimestamps') &&
+        !types.includes('DataDirectOwner') &&
+        !types.includes('DataEntityMembership');
+      // policy: exactly ONE AuthzMemberOwner, all-CRUD, permissive, with BOTH required params +
+      // the org membership_type. owner_field/entity_field are required by the platform schema;
+      // membership_type:2 selects org_sprt for the membership half of the AND.
+      const pol = (t.policies ?? [])[0];
+      const policyOk =
+        (t.policies ?? []).length === 1 &&
+        pol.$type === 'AuthzMemberOwner' &&
+        pol.permissive === true &&
+        JSON.stringify(pol.privileges) === JSON.stringify(['select', 'insert', 'update', 'delete']) &&
+        pol.data &&
+        pol.data.owner_field === 'owner_id' &&
+        pol.data.entity_field === 'entity_id' &&
+        pol.data.membership_type === 2;
+      // member-owner is a FLAT-own-entity policy → no projection params leak in (those belong to
+      // related-membership's FK→parent-PK shape, not here).
+      const noProjection = !('sel_obj' in pol.data) && !('sel_field' in pol.data);
+      // a clean per-row policy was emitted — NOT the M:N AllowAll coercion (that path is for junctions).
+      const noWarning = !(brief.warnings ?? []).some((w) => w.code === 'M2N_JUNCTION_ALLOW_ALL');
+      return nodesOk && policyOk && noProjection && noWarning;
+    },
+    // org-scoped intent → the b2b base (incl. memberships_module) is folded in; never ['all'].
+    modAssert: (mods) => mods.length > 20 && !mods.some((m) => (Array.isArray(m) ? m[0] : m) === 'all'),
+  },
+  {
     name: 'raw escape hatch (advanced Authz)',
     brief: `version: 1
 app: { id: smoke-raw, label: Smoke Raw }
@@ -364,6 +426,158 @@ acceptance: { required_flows: [email-password] }
       return hasRawNode && hasRawPolicy;
     },
   },
+  {
+    // ── org-scoped M:N junction (Pattern 3) — the GAP-1d fix. ────────────────
+    // An org-scoped RelationManyToMany must NOT be coerced to AuthzAllowAll: the
+    // generator MATERIALIZES entity_id on the junction (DataEntityMembership) and emits
+    // the REAL AuthzEntityMembership policy + authenticated grants, with NO warning. Both
+    // request forms (nested `data:` and the `junction_policy:` shorthand) must produce the
+    // identical Pattern-3 relation — asserted in one case via two relations.
+    name: 'org-scoped M:N junction Pattern 3 (no AllowAll, no warning)',
+    brief: `version: 1
+app: { id: smoke-mn3, label: Smoke MN3 }
+naming: { db_name: smokemn3 }
+modules: { preset: b2b }
+flows: [email-password, organization, org-members]
+data_model:
+  tables:
+    - name: projects
+      policy: org-membership
+      fields: [{ name: name, type: { name: text }, required: true }]
+    - name: tags
+      policy: org-membership
+      fields: [{ name: label, type: { name: text }, required: true }]
+    - name: crews
+      policy: org-membership
+      fields: [{ name: title, type: { name: text }, required: true }]
+  relations:
+    - $type: RelationManyToMany
+      source_table: projects
+      target_table: tags
+      junction_table_name: project_tags
+      data: { policy_type: AuthzEntityMembership, policy_data: { entity_field: entity_id, membership_type: 2 } }
+    - $type: RelationManyToMany
+      source_table: projects
+      target_table: crews
+      junction_table_name: project_crews
+      junction_policy: org-membership
+ui: { routes: [{ path: /projects, label: Projects, kind: crud, entity: project }, { path: /tags, label: Tags, kind: crud, entity: tag }] }
+acceptance: { required_flows: [email-password] }
+`,
+    assert: (def, brief) => {
+      // helper: a relation carries the full Pattern-3 shape.
+      const pat3 = (rel) => {
+        if (!rel || rel.$type !== 'RelationManyToMany') return false;
+        const nodeTypes = (rel.nodes ?? []).map((n) => (typeof n === 'string' ? n : n.$type));
+        const dem = (rel.nodes ?? []).find((n) => n && n.$type === 'DataEntityMembership');
+        const demShape = dem && dem.data &&
+          dem.data.entity_field_name === 'entity_id' &&
+          dem.data.include_id === false &&
+          dem.data.include_user_fk === true;
+        // entity_id materialized, NO bare DataId (which would mean AllowAll coercion).
+        const nodesOk = nodeTypes.includes('DataEntityMembership') && !nodeTypes.includes('DataId') && demShape;
+        const pol = (rel.policies ?? [])[0];
+        const policyOk = (rel.policies ?? []).length === 1 &&
+          pol.$type === 'AuthzEntityMembership' &&
+          pol.permissive === true &&
+          JSON.stringify(pol.privileges) === JSON.stringify(['select', 'insert', 'update', 'delete']) &&
+          pol.data && pol.data.entity_field === 'entity_id' && pol.data.membership_type === 2;
+        // NO AuthzAllowAll anywhere on the relation (the coercion would emit it).
+        const noAllowAll = !(rel.policies ?? []).some((p) => p.$type === 'AuthzAllowAll');
+        const grant = (rel.grants ?? [])[0];
+        const grantsOk = (rel.grants ?? []).length === 1 &&
+          Array.isArray(grant.roles) && grant.roles.includes('authenticated') &&
+          Array.isArray(grant.privileges) && grant.privileges.length === 4;
+        // the now-redundant nested `data` block must be stripped from the emitted relation.
+        const noNestedData = !('data' in rel);
+        return nodesOk && policyOk && noAllowAll && grantsOk && noNestedData;
+      };
+      const nested = def.relations.find((r) => r.junction_table_name === 'project_tags');
+      const shorthand = def.relations.find((r) => r.junction_table_name === 'project_crews');
+      const bothPattern3 = pat3(nested) && pat3(shorthand);
+      // The Pattern-3 path must record NO M:N AllowAll warning (the whole point).
+      const noWarning = !(brief.warnings ?? []).some((w) => w.code === 'M2N_JUNCTION_ALLOW_ALL');
+      return bothPattern3 && noWarning;
+    },
+    // org junction → the b2b base is in the closure; never the ['all'] sentinel.
+    modAssert: (mods) => mods.length > 20 && !mods.some((m) => (Array.isArray(m) ? m[0] : m) === 'all'),
+  },
+  {
+    // ── COMPOSITE-keyed M:N junction (use_composite_key:true). ───────────────
+    // use_composite_key:true is a first-class RelationManyToMany param: the platform
+    // trigger builds the PK from the junction's two FK columns, so NO surrogate DataId
+    // belongs on the junction ("mutually exclusive with nodes containing DataId"). Two
+    // junctions in one brief assert both paths: (a) an ORG-scoped composite junction —
+    // Pattern-3 entity_id is still materialized (include_id:false) + the REAL
+    // AuthzEntityMembership policy enforces, and the relation carries use_composite_key:true
+    // with NO DataId; (b) a PLAIN composite junction — the default node set drops DataId and
+    // keeps only DataTimestamps. Both forward use_composite_key:true verbatim to the platform.
+    name: 'composite-keyed M:N junction (use_composite_key:true, no surrogate DataId)',
+    brief: `version: 1
+app: { id: smoke-mncomposite, label: Smoke MN Composite }
+naming: { db_name: smokemncomposite }
+modules: { preset: b2b }
+flows: [email-password, organization, org-members]
+data_model:
+  tables:
+    - name: projects
+      policy: org-membership
+      fields: [{ name: name, type: { name: text }, required: true }]
+    - name: tags
+      policy: org-membership
+      fields: [{ name: label, type: { name: text }, required: true }]
+    - name: students
+      policy: owner
+      fields: [{ name: name, type: { name: text }, required: true }]
+    - name: courses
+      policy: owner
+      fields: [{ name: title, type: { name: text }, required: true }]
+  relations:
+    - $type: RelationManyToMany
+      source_table: projects
+      target_table: tags
+      junction_table_name: project_tags
+      use_composite_key: true
+      data: { policy_type: AuthzEntityMembership, policy_data: { entity_field: entity_id, membership_type: 2 } }
+    - $type: RelationManyToMany
+      source_table: students
+      target_table: courses
+      junction_table_name: enrollments
+      use_composite_key: true
+ui: { routes: [{ path: /projects, label: Projects, kind: crud, entity: project }, { path: /tags, label: Tags, kind: crud, entity: tag }] }
+acceptance: { required_flows: [email-password] }
+`,
+    assert: (def, brief) => {
+      const nodeTypesOf = (rel) => (rel.nodes ?? []).map((n) => (typeof n === 'string' ? n : n.$type));
+      // (a) the ORG-scoped composite junction: use_composite_key forwarded, entity_id
+      // materialized (include_id:false), AuthzEntityMembership enforces, and NO DataId.
+      const org = def.relations.find((r) => r.junction_table_name === 'project_tags');
+      const orgTypes = org ? nodeTypesOf(org) : [];
+      const dem = (org?.nodes ?? []).find((n) => n && n.$type === 'DataEntityMembership');
+      const orgOk = !!org &&
+        org.use_composite_key === true &&
+        !orgTypes.includes('DataId') &&
+        orgTypes.includes('DataEntityMembership') &&
+        dem?.data?.include_id === false &&
+        (org.policies ?? []).length === 1 &&
+        org.policies[0].$type === 'AuthzEntityMembership' &&
+        org.policies[0].data?.entity_field === 'entity_id';
+      // (b) the PLAIN composite junction: use_composite_key forwarded, default node set is
+      // DataId-free (DataTimestamps only), and no org policy is invented.
+      const plain = def.relations.find((r) => r.junction_table_name === 'enrollments');
+      const plainTypes = plain ? nodeTypesOf(plain) : [];
+      const plainOk = !!plain &&
+        plain.use_composite_key === true &&
+        !plainTypes.includes('DataId') &&
+        plainTypes.includes('DataTimestamps') &&
+        (plain.policies ?? []).length === 0;
+      // No M:N AllowAll warning was recorded (the org junction hit Pattern 3, not coercion).
+      const noWarning = !(brief.warnings ?? []).some((w) => w.code === 'M2N_JUNCTION_ALLOW_ALL');
+      return orgOk && plainOk && noWarning;
+    },
+    // org junction → the b2b base is in the closure; never the ['all'] sentinel.
+    modAssert: (mods) => mods.length > 20 && !mods.some((m) => (Array.isArray(m) ? m[0] : m) === 'all'),
+  },
 ];
 
 for (const d of DIVERGENT) {
@@ -378,7 +592,9 @@ for (const d of DIVERGENT) {
     ], { stdio: 'pipe' });
     const brief = loadBrief(briefPath);
     const def = buildBlueprintDefinition(brief);
-    let pass = d.assert(def);
+    // buildBlueprintDefinition records soft security warnings onto brief.warnings[] —
+    // pass the brief so an assertion can verify NO warning was recorded (Pattern-3 path).
+    let pass = d.assert(def, brief);
     if (pass && d.modAssert) pass = d.modAssert(computeModuleClosure(brief, def.tables));
     pass ? ok(`divergent: ${d.name}`) : bad(`divergent: ${d.name} — generated shape failed assertion`);
   } catch (err) {
@@ -388,9 +604,52 @@ for (const d of DIVERGENT) {
   }
 }
 
+// ── 4. ABORT contracts: shapes the generator must LOUDLY reject ──────────────
+// A contradictory request must fail fast + legibly (a BriefError), NOT silently emit a
+// blueprint the platform would later abort on deep inside an atomic provision.
+const ABORTS = [
+  {
+    name: 'use_composite_key:true + a DataId node on the junction (double PK)',
+    // The platform contract: use_composite_key is "mutually exclusive with nodes
+    // containing DataId" — the two FK columns ARE the PK, so a DataId is a second,
+    // conflicting PK. The generator must reject it rather than ship a double-PK junction.
+    brief: {
+      app: { id: 'x' }, naming: { db_name: 'x' }, modules: { preset: 'b2b' }, flows: [],
+      data_model: {
+        tables: [
+          { name: 'a', policy: 'owner', fields: [{ name: 'n', type: { name: 'text' }, required: true }] },
+          { name: 'b', policy: 'owner', fields: [{ name: 'm', type: { name: 'text' }, required: true }] },
+        ],
+        relations: [{
+          $type: 'RelationManyToMany', source_table: 'a', target_table: 'b',
+          junction_table_name: 'a_b', use_composite_key: true,
+          nodes: [{ $type: 'DataId', data: {} }],
+        }],
+      },
+    },
+    expect: /mutually exclusive with a DataId/i,
+  },
+];
+
+for (const a of ABORTS) {
+  let threw = null;
+  try {
+    buildBlueprintDefinition(a.brief);
+  } catch (err) {
+    threw = err;
+  }
+  if (threw && a.expect.test(String(threw.message))) {
+    ok(`abort: ${a.name} — rejected (${String(threw.message).split('(')[0].trim().slice(0, 60)}…)`);
+  } else if (threw) {
+    bad(`abort: ${a.name} — threw, but the message did not match ${a.expect}: ${String(threw.message).split('\n')[0]}`);
+  } else {
+    bad(`abort: ${a.name} — generator did NOT throw (it must reject this contradictory shape)`);
+  }
+}
+
 console.log('');
 if (failures > 0) {
   console.error(`check:scaffold FAIL — ${failures} check(s) failed. The provision generator's contract drifted.`);
   process.exit(1);
 }
-console.log('check:scaffold PASS — provision generator reproduces the canary AND handles the 3 divergent intent shapes.');
+console.log('check:scaffold PASS — provision generator reproduces the canary, handles the divergent intent shapes, AND loudly rejects contradictory ones.');

@@ -642,6 +642,84 @@ Three concrete faces of the same gap:
 
 ---
 
+## GAP-RELMEMBERSHIP-PROJ (GAP-15) — `AuthzRelatedEntityMembership` default projection (`sel_field='entity_id'`) is broken-CLOSED for the canonical child-FK→parent-PK shape
+
+> New from the **2026-06-17** related-membership intent build (`fixtures/test-relatedmembership-brief.yaml`),
+> confirmed by the prior run against the **deployed** platform. Owner is **constructive-db**
+> (`packages/node-type-registry/src/authz/authz-related-entity-membership.ts` registry default +
+> `packages/ast/.../policy_ast_builders.sql` `cpt_membership_by_join`). The harness is **consume-only**: it now
+> sets the correct projection params **explicitly** (`sel_obj:true` + `sel_field:'id'`) on every emitted
+> `related-membership` policy, so the gap is worked around in-skill — but the *platform default* is still wrong.
+
+- **Symptom:** a `related-membership` policy on the canonical shape — a CHILD row carries an FK
+  (`entity_field`, e.g. `cards.board_id`) to a PARENT's PRIMARY KEY (`boards.id`), and access derives from
+  membership in the org that owns the parent — denies **everyone** (broken-CLOSED) when the policy relies on the
+  registry default. `cpt_membership_by_join` compiles the predicate to
+  `<entity_field> = ANY ( SELECT <projection> FROM <sprt> JOIN <parent> obj ON sprt.entity_id = obj.<obj_field> WHERE sprt.actor_id = me )`.
+  The registry default projects the SPRT's `entity_id` (`sel_field='entity_id'`, `sel_obj` unset) — an **ORG id** —
+  so the outer compare is `board_PK = ANY(org_ids)`, which is **always FALSE** (a board's PK is never one of the
+  org UUIDs). Net: a structurally-correct policy that silently denies all reads/writes (the silent-deny class of
+  GAP-1, but rooted in a wrong *default projection* rather than a missing grant).
+- **Root:** the registry default `sel_field: 'entity_id'` (`authz-related-entity-membership.ts` parameter_schema)
+  is correct only for a child that stores the **same org id** the SPRT carries (a flat entity_id-on-child shape).
+  For the FK→parent-PK shape — the case this policy *exists to express* — the projected column must be the
+  **parent PK the FK references**: `sel_obj: true` (project from the joined `obj` table, not the SPRT) +
+  `sel_field: 'id'`. The platform's OWN canonical usage proves this is the intended shape: every framework
+  `AuthzRelatedEntityMembership` row in `services/constructive-services/deploy/migrate/policy.sql` carries
+  `{"sel_obj":true,"sel_field":"id", …}` (joining `org_memberships_sprt` → `metaschema_public.database` on
+  `entity_id = database.owner_id`, projecting `database.id`). The registry default does not match its own
+  first-party usage.
+- **Hand-proof matrix** (child `cards.board_id` → parent `boards.id`; `boards` org-scoped via `entity_id`; actor
+  A∈orgX owns board b1∈orgX, board b2∈orgX owned by A2∈orgX; actor B∈orgY; actor N in no org):
+
+  | actor | board | with **default** `sel_field='entity_id'` | with **fix** `sel_obj:true sel_field:'id'` |
+  |-------|-------|------------------------------------------|--------------------------------------------|
+  | A  (member of orgX) | card on b1 | **deny** (board_PK ∉ {orgX}) ❌ should see | **see** (b1 ∈ ids of boards in orgX) ✅ |
+  | A2 (member of orgX) | card on b1 | **deny** ❌ should see | **see** (org-mate's board, same orgX) ✅ |
+  | B  (member of orgY) | card on b1 | **deny** (correct, but for the wrong reason) | **deny** (b1 ∉ ids of boards in orgY) ✅ |
+  | N  (no org)          | card on b1 | **deny** | **deny** (empty membership set) ✅ |
+
+  The default column is a strict **deny-all** (A and A2 wrongly denied; B/N denied only incidentally). The fix
+  yields the intended matrix: A=see, A2=see, B=deny, N=deny.
+- **Second, coupled blocker (`obj_schema`):** omitting `obj_schema` does **not** auto-resolve. `rls_parser.parse`
+  → `parse_policy_sprt_join_table` fills `obj_schema` only when an `obj_table_id` UUID is supplied; with just a
+  bare `obj_table` name it keeps `obj_schema` absent, the generated `range_var` references an unqualified relation,
+  and `constructBlueprint` aborts the whole (atomic) provision with `relation "<parent>" does not exist`. There is
+  no sibling-table name→schema resolution in `construct_blueprint`/`provision_table` for policy `obj_table` refs
+  (the `v_table_map` it builds is used for relations/indexes/FTS, never for policy obj refs, and is populated
+  AFTER each `provision_table` call so a forward-reference wouldn't resolve anyway). The PHYSICAL domain schema
+  carries a runtime hash unknowable at blueprint-emit time, so the skill emits the logical `app_public` sentinel
+  and its generic blueprint engine (`templates/provision/blueprint.ts`) rewrites it to the resolved physical
+  schema immediately before construct. Durable fix: let `construct_blueprint` resolve a bare `obj_table` that
+  names a SIBLING blueprint table to that table's `obj_table_id` / physical schema (so a blueprint can reference a
+  sibling parent by name without the author or the harness knowing the hashed schema).
+- **Harness workaround (consume-only, IN PLACE):** `scripts/lib/brief.mjs` `POLICY_INTENTS['related-membership']`
+  now emits `sel_obj:true` + `sel_field:'id'` explicitly (deny-all fix) AND `obj_schema:'app_public'` (sentinel);
+  `templates/provision/blueprint.ts` rewrites the sentinel to the physical domain schema before construct. Both
+  are skill-side; the platform default is unchanged upstream.
+- **Owner:** **constructive-db** — (1) default `AuthzRelatedEntityMembership` to the FK→parent-PK projection
+  (`sel_obj:true`, `sel_field:'id'`) for the bare-`obj_field`/no-`sel_*` case (or document that the flat default
+  requires an explicit `sel_field`), to match the platform's own first-party usage; and (2) resolve a bare
+  sibling `obj_table` name to its schema/UUID in `construct_blueprint` so `obj_schema` is not required.
+- **Severity:** **HIGH** — a `related-membership` policy authored against the documented (and only) FK→parent-PK
+  shape is broken-CLOSED by default (silent total denial of a security-relevant access path), and is additionally
+  un-provisionable without an externally-resolved physical `obj_schema`.
+- **Close-out probe:** provision the `test-relatedmembership` fixture with the policy `data` reduced to
+  `{ entity_field, obj_table, obj_field, membership_type }` (NO `sel_obj`/`sel_field`, NO `obj_schema`): (a)
+  `constructBlueprint` succeeds (sibling `obj_table` auto-resolves its schema), and (b) actor A (member of the
+  board's org) can SELECT/INSERT the child row (per the matrix). Today (a) aborts `relation does not exist` and,
+  once `obj_schema` is supplied by hand, (b) is deny-all. When both hold by default, GAP-15 is closed.
+
+> **Status / expiry / re-verify.** **OPEN / escalated** as of **2026-06-17** (related-membership build; Owner is
+> **constructive-db** — registry default + `cpt_membership_by_join` / `construct_blueprint`, consume-only — see
+> above). The skill ships the explicit-params + sentinel-rewrite workaround so `related-membership` builds
+> correctly today. Re-verify by **~2026-09-17** (one quarter): either the platform default matches its own
+> first-party `sel_obj:true sel_field:'id'` usage AND `construct_blueprint` resolves a bare sibling `obj_table`
+> (then the skill can drop the explicit projection params + the `obj_schema` sentinel rewrite), or this entry is
+> re-confirmed still-needed with a fresh date.
+
+---
+
 ## GAP-14b (cross-reference) — payload-carrying N:M junction security NOT forwarded → **see GAP-1d**
 
 > The **2026-06-15** Cleome benchmark RE-CONFIRMED the M:N junction-security gap on **two** payload-carrying
@@ -677,6 +755,15 @@ Three concrete faces of the same gap:
    clean signup (now isolated: GAP-1b/1c is CLOSED upstream). Fix these to make the b2b + M:N tier *fully* correct.
 4. **GAP-7** (OOM cache-leak) — new, **HIGH** for shared-infra availability: a single hub OOM takes down
    every concurrent tenant. Bound the per-DB handler-cache `Map` (LRU/TTL).
+   - **GAP-15 / GAP-RELMEMBERSHIP-PROJ** (`AuthzRelatedEntityMembership` default projection broken-CLOSED for
+     the FK→parent-PK shape, + `obj_schema` not auto-resolved from a bare sibling `obj_table`) — new from the
+     2026-06-17 related-membership build, **HIGH**: a `related-membership` policy authored against the documented
+     FK→parent-PK shape is a silent deny-all by default (the registry default projects the SPRT `entity_id`, not
+     the parent PK the FK references — contradicting the platform's own first-party `sel_obj:true sel_field:'id'`
+     usage) and is un-provisionable without an externally-resolved physical `obj_schema`. The harness works around
+     BOTH consume-only (explicit projection params + an `app_public`→physical schema rewrite before construct).
+     Durable fix: default the projection to the FK→parent-PK shape AND resolve a bare sibling `obj_table` to its
+     schema/UUID in `construct_blueprint`.
 5. **GAP-10** (`sendAccountDeletionEmail` silent no-op) and **GAP-11** (dashboard-blocks empty selection,
    *different repo*) — new from Wave-2, both **MEDIUM**: GAP-10 leaves account-deletion claiming success while
    no email is sent; GAP-11 leaves `forgot-password-card` + `sign-out-button` non-functional as-shipped. Fix

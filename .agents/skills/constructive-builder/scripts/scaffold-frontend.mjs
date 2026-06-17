@@ -1030,24 +1030,54 @@ function buildFkSeams(entityKebab, fks = [], ownListHook = null) {
 // org security (AuthzEntityMembership honored); a DataId-only junction was coerced to
 // AuthzAllowAll (GAP-1d) and has NO entity_id column → its create takes only the FK pair.
 const JUNCTION_ENTITY_ID_NODES = new Set(['DataEntityMembership', 'DataOwnershipInEntity']);
+// Authz* policy types whose junction is org-scoped (materializes entity_id). Mirrors
+// brief.mjs's JUNCTION_MATERIALIZING_NODES key set — the SAME signal the backend uses to
+// emit Pattern-3 nodes. Read from the policy INTENT so the frontend tracks the backend
+// even when the brief states the intent WITHOUT explicit nodes (the default org path).
+const JUNCTION_ORG_POLICY_TYPES = new Set(['AuthzEntityMembership', 'AuthzMemberOwner']);
+// The `junction_policy:` shorthand → the Authz* type it resolves to (mirrors brief.mjs's
+// JUNCTION_POLICY_SHORTHAND, narrowed to the type so the frontend reads the same intent).
+const JUNCTION_POLICY_SHORTHAND_TYPE = {
+  'org-membership': 'AuthzEntityMembership',
+  'member-owner': 'AuthzMemberOwner',
+};
 
 /**
  * Whether a RelationManyToMany junction is ORG-SCOPED — i.e. it materializes an
- * `entity_id` column, so its create needs a non-null `entityId`. Detected GENERICALLY off
- * the relation's NESTED `data.nodes` (the brief grammar): true iff any node is a
- * DataEntityMembership / DataOwnershipInEntity. This is exactly the signal liftMany-
- * ToManySecurity + junctionPolicy use to decide whether AuthzEntityMembership is HONORED
- * (entity_id present) or COERCED to AuthzAllowAll (entity_id absent), so the frontend
- * tracks the backend 1:1 — no junction name is special-cased. A junction that declares
- * the columns via the FLAT SDK `nodes` key (advanced authors) is read the same way.
+ * `entity_id` column, so its create needs a non-null `entityId`. Tracks the backend's
+ * Pattern-3 decision (brief.mjs liftManyToManySecurity) 1:1, GENERICALLY, with NO junction
+ * name special-cased. A junction is org-scoped when EITHER:
+ *   (a) its nodes (nested `data.nodes` or flat SDK `nodes`) include a DataEntityMembership
+ *       / DataOwnershipInEntity (an advanced author declared the column), OR
+ *   (b) its requested policy INTENT is org-scoped — nested `data.policy_type`, the
+ *       `junction_policy:` shorthand, or a flat `policies[].$type` of AuthzEntityMembership
+ *       / AuthzMemberOwner — AND the author did NOT force a non-materializing explicit
+ *       `nodes` set (in which case the backend coerces to AuthzAllowAll and there is NO
+ *       entity_id column). This is exactly when the backend emits the Pattern-3 node.
  */
 function junctionOrgScoped(rel) {
-  const nodes = Array.isArray(rel?.data?.nodes)
+  const explicitNodes = Array.isArray(rel?.data?.nodes)
     ? rel.data.nodes
     : Array.isArray(rel?.nodes)
       ? rel.nodes
-      : [];
-  return nodes.some((n) => JUNCTION_ENTITY_ID_NODES.has(typeof n === 'string' ? n : n?.$type));
+      : null;
+  // (a) explicit materializing node present → org-scoped regardless of policy form.
+  if (explicitNodes && explicitNodes.some((n) => JUNCTION_ENTITY_ID_NODES.has(typeof n === 'string' ? n : n?.$type))) {
+    return true;
+  }
+  // If the author forced an explicit nodes set WITHOUT a materializing node, the backend
+  // can't honor an org policy (it coerces to AuthzAllowAll) → no entity_id column.
+  if (explicitNodes) return false;
+  // (b) no explicit nodes → org-scoped iff the requested policy intent is org-scoped
+  // (the default Pattern-3 path materializes entity_id). Read the intent from all forms.
+  const nested = rel?.data?.policy_type;
+  const short = (typeof rel?.junction_policy === 'string')
+    ? JUNCTION_POLICY_SHORTHAND_TYPE[rel.junction_policy]
+    : undefined;
+  const flat = Array.isArray(rel?.policies) ? rel.policies.map((p) => p?.$type) : [];
+  return JUNCTION_ORG_POLICY_TYPES.has(nested) ||
+    JUNCTION_ORG_POLICY_TYPES.has(short) ||
+    flat.some((t) => JUNCTION_ORG_POLICY_TYPES.has(t));
 }
 
 /**

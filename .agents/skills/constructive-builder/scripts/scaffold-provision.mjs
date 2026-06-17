@@ -184,6 +184,17 @@ function policyComment(briefTable) {
       return 'org-membership (DataEntityMembership + AuthzEntityMembership): any member of the owning org reads+writes. Requires b2b modules.';
     case 'member-owner':
       return 'member-owner (DataOwnershipInEntity + AuthzMemberOwner): user-owned AND org-scoped. Requires b2b modules.';
+    case 'org-hierarchy': {
+      const dir = briefTable?.policy_params?.direction ?? '?';
+      return `org-hierarchy (DataOwnershipInEntity + AuthzOrgHierarchy direction=${dir}): hierarchy-closure visibility. Requires b2b + hierarchy_module.`;
+    }
+    case 'related-membership': {
+      const pp = briefTable?.policy_params ?? {};
+      const ef = pp.entity_field ?? '?';
+      const jt = pp.join_table ?? '?';
+      const jef = pp.join_entity_field ?? '?';
+      return `related-membership (AuthzRelatedEntityMembership): parent-derived — members of the org owning ${jt} (joined via ${ef}→${jef}) read+write. Requires b2b.`;
+    }
     case 'public-read+owner-write':
       return 'public-read+owner-write (DataDirectOwner + DataPublishable; AuthzDirectOwner all-CRUD + AuthzPublishable select-only): published rows readable by anyone authenticated, only the owner writes.';
     case 'public-lookup':

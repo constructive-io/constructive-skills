@@ -1,0 +1,118 @@
+# GENERICITY FIXTURE — member-owner (BOTH user-owned AND org-scoped; the compound intent).
+#
+# Exercises `policy: member-owner` — the row is owned by ONE user AND lives within an org, and
+# ONLY that author, ONLY within an org they belong to, may read/write it. Maps to the platform's
+# AuthzMemberOwner (a compound predicate: ownership AND membership, ANDed). Unlike
+# `related-membership` (parent-derived, FK→parent-PK), member-owner is FLAT-own-entity: the row
+# carries its OWN owner_id + entity_id, so it needs NO sel_obj/sel_field projection — the platform
+# default sel_field='entity_id' already projects the row's own org column. Proves the generator:
+#   • on `notes` emits nodes [DataId, DataOwnershipInEntity, DataTimestamps]. DataOwnershipInEntity
+#     materializes BOTH owner_id AND entity_id — the two columns the AuthzMemberOwner predicate
+#     dereferences (secure-table-provision.md lists it as the canonical owner_id+entity_id data
+#     module). NO DataDirectOwner-only / NO DataEntityMembership-only — the compound policy needs
+#     BOTH columns on the row, which a single-column data node would not supply.
+#   • on `notes` emits policies [AuthzMemberOwner{ owner_field: owner_id, entity_field: entity_id,
+#     membership_type: 2 }] (all-CRUD, permissive). THE TWO PLATFORM-CONTRACT params:
+#       - owner_field + entity_field are REQUIRED by AuthzMemberOwner.parameter_schema. The platform
+#         builder ast_helpers.cpt_member_owner ANDs Part-1 `owner_id = current_user_id()` with
+#         Part-2 `entity_id IN (SELECT <sprt>.entity_id FROM <sprt> WHERE actor_id = current_user_id())`.
+#       - membership_type: 2 selects the ORG sprt (get_sprt_alias maps 2 → org_sprt). It is what
+#         scopes Part-2's membership check to org membership; the rls_parser resolves sprt_table /
+#         sprt_schema from it at provision time (NOT emitted here), so NO physical literal is hard-coded.
+#     RLS behavior (the member-owner contract this fixture pins):
+#       OWNER who is a MEMBER of the row's org → SEES + writes (Part-1 true AND Part-2 true).
+#       a different MEMBER of the same org (NON-owner) → DENIED (Part-1 false: owner_id ≠ actor).
+#       a NON-member (even if somehow the owner) → DENIED (Part-2 false: org ∉ actor's memberships).
+#   • the module closure contains the b2b memberships_module (the org_sprt Part-2 resolves through).
+#   • the brief validates ONLY under a b2b/full preset — a copy with `preset: auth:email` MUST fail
+#     validation (member-owner is org-scoped; the b2b base backs memberships_module).
+# Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-memberowner-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-memberowner-brief.yaml <app>   # notes CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-memberowner
+  label: Test Member Owner
+  description: Private notes owned by one user within their org — only the author, within their org, sees them.
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testmemberowner
+  package_scope: "@test-memberowner"
+  provision_package: "@test-memberowner/provision"
+  schema_package: "@test-memberowner/schema"
+  sdk_package: "@test-memberowner/sdk"
+  cli_package: "@test-memberowner/cli"
+  app_package: "@test-memberowner/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# b2b — backs the org-scoped surface AND carries memberships_module (the org_sprt the
+# AuthzMemberOwner membership check resolves through). member-owner carries the SAME b2b gate
+# as the FLAT org-membership intent; the b2b base already supplies the module.
+modules:
+  preset: b2b
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - organization             # create/configure orgs (requires modules.preset: b2b)
+  - org-members              # invite + manage org members (the membership the row scopes to)
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-memberowner.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3086
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# ONE member-owner table. policy: member-owner → the scaffolder emits
+# nodes [DataId, DataOwnershipInEntity, DataTimestamps] + policies
+# [AuthzMemberOwner{owner_field:owner_id, entity_field:entity_id, membership_type:2}]
+# (all-CRUD, permissive). This intent is fully determined by the policy NAME (no policy_params).
+data_model:
+  tables:
+    - name: notes
+      policy: member-owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: body, type: { name: text } }
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD surface (typed list + DynamicFormCard meta-forms). entity is the singular of the
+# table so the generated `<entity>-*` testids fall out (note-*). A member-owner row needs a
+# non-null entity_id + owner_id on create — the quick-add emits a `// TODO entityId: activeOrgId`
+# SEAM (the active org can't be inferred from the form; owner_id defaults to the actor).
+ui:
+  routes:
+    - { path: /notes, label: Notes, kind: crud, entity: note }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: it is the single flow with a FULLY-implemented Chrome QA script in
+# scripts/live-qa.mjs and it is email-free so it runs on a bare warm hub. organization /
+# org-members are PROVISIONED (above) but have no live-QA driver yet — listing them here
+# would be a hard coverage-gap FAIL; they are verified structurally by the Phase-2 gates.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend with the b2b/org modules is up on :3000.
+  - The actor is a member (org-members surface) of the org they create notes in — else AuthzMemberOwner Part-2 denies even the owner's own rows.

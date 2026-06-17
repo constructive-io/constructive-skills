@@ -1,0 +1,119 @@
+# GENERICITY FIXTURE — org-scoped MANY-TO-MANY junction (Pattern 3); the generator's
+# fix for the silent AuthzAllowAll coercion (GAP-1d, now CLOSED via Pattern 3).
+#
+# TWO org-scoped tables (projects ↔ tags) linked many-to-many through a `project_tags`
+# junction. The junction inherits the parents' org-membership access via Pattern 3: the
+# generator MATERIALIZES `entity_id` on the junction (DataEntityMembership) and emits the
+# REAL AuthzEntityMembership policy + authenticated grants — NOT AuthzAllowAll, and with
+# NO warning. This is the platform's own "Pattern 3" (constructive-db-relations-security):
+# RelationManyToMany forwards the relation's top-level nodes/policies/grants to
+# secure_table_provision verbatim. Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-mn-pattern3-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-mn-pattern3-brief.yaml <app>   # projects + tags CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-mn-pattern3
+  label: Test M:N Pattern 3
+  description: Org-scoped projects tagged many-to-many, junction secured via Pattern 3.
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testmnp3
+  package_scope: "@test-mn-pattern3"
+  provision_package: "@test-mn-pattern3/provision"
+  schema_package: "@test-mn-pattern3/schema"
+  sdk_package: "@test-mn-pattern3/sdk"
+  cli_package: "@test-mn-pattern3/cli"
+  app_package: "@test-mn-pattern3/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# b2b — the org-scoped memberships/permissions/invites surface that backs the
+# AuthzEntityMembership policy on both parent tables AND the Pattern-3 junction.
+modules:
+  preset: b2b
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - organization             # create/configure orgs (requires modules.preset: b2b)
+  - org-members              # invite + manage org members
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-mn-pattern3.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3083
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# Two org-membership tables. policy: org-membership → the scaffolder emits
+# nodes [DataId, DataEntityMembership, DataTimestamps] + policies
+# [AuthzEntityMembership all-CRUD permissive, entity_field=entity_id, membership_type=2]
+# on EACH. They are linked many-to-many below.
+data_model:
+  tables:
+    - name: projects
+      policy: org-membership
+      fields:
+        - { name: name, type: { name: text }, required: true }
+
+    - name: tags
+      policy: org-membership
+      fields:
+        - { name: label, type: { name: text }, required: true }
+
+  # ─── Relations ─────────────────────────────────────────────
+  # Org-scoped MANY-TO-MANY: each project carries many tags, each tag many projects,
+  # via a `project_tags` junction. The nested `data:` block requests org-membership
+  # junction security; the generator MATERIALIZES entity_id (Pattern 3) so the junction
+  # emits the REAL AuthzEntityMembership policy + authenticated grants — NOT AuthzAllowAll,
+  # and brief.warnings[] stays empty. (Equivalent shorthand: `junction_policy: org-membership`.)
+  relations:
+    - $type: RelationManyToMany
+      source_table: projects
+      target_table: tags
+      junction_table_name: project_tags
+      data: { policy_type: AuthzEntityMembership, policy_data: { entity_field: entity_id, membership_type: 2 } }
+
+# ─── UI ─────────────────────────────────────────────────────────
+# Two CRUD surfaces (typed list + DynamicFormCard meta-forms). entity is the singular of
+# each table so the generated `<entity>-*` testids fall out (project-* / tag-*). The
+# projects page also mounts the N:M relation manager (attach/detach tags); since the
+# junction is org-scoped, its create supplies a non-null entityId.
+ui:
+  routes:
+    - { path: /projects, label: Projects, kind: crud, entity: project }
+    - { path: /tags, label: Tags, kind: crud, entity: tag }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: the single flow with a FULLY-implemented Chrome QA driver in
+# scripts/live-qa.mjs, and email-free so it runs on a bare warm hub. organization /
+# org-members are PROVISIONED (above) but have no live-QA driver yet — listing them here
+# would be a hard coverage-gap FAIL; they are verified structurally by the Phase-2 gates.
+# The Pattern-3 junction is verified by the cheap unit gate (check:scaffold) AND, when a
+# warm b2b hub is up, the live RLS round-trip (attach/detach/list under org membership).
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend with the b2b/org modules is up on :3000.
+  - Org policies (AuthzEntityMembership) require the b2b preset's memberships module — provided here.
+  - The org-scoped M:N junction is secured via Pattern 3 (entity_id materialized + AuthzEntityMembership forwarded).

@@ -1,0 +1,106 @@
+# GENERICITY FIXTURE — org-hierarchy closure visibility (the PARAMETRIC policy intent).
+#
+# Exercises `policy: org-hierarchy` + its required `policy_params` sub-map — the one intent
+# that is not fully determined by the policy NAME (the closure direction + the user/anchor
+# column are app-specific). Proves the generator emits the platform Authz nodes/policies:
+#   • nodes  MUST be [DataId, DataOwnershipInEntity, DataTimestamps]
+#            (DataOwnershipInEntity materializes BOTH owner_id AND entity_id — the
+#             AuthzOrgHierarchy predicate joins the anchor column ↔ closure within entity_id)
+#   • policies MUST be [AuthzOrgHierarchy{ direction: down, anchor_field: owner_id,
+#                       entity_field: entity_id }] (all-CRUD, permissive)
+#   • the module closure MUST contain hierarchy_module (it backs the closure table)
+#   • the brief MUST validate ONLY under a b2b/full preset — a copy with `preset: auth:email`
+#     MUST fail validation (org-hierarchy is org-scoped; the b2b base carries hierarchy_module).
+# Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-orghierarchy-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-orghierarchy-brief.yaml <app>   # reports CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-orghierarchy
+  label: Test Org Hierarchy
+  description: Reports owned within an org, visible DOWN the org hierarchy (managers see reports).
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testorghierarchy
+  package_scope: "@test-orghierarchy"
+  provision_package: "@test-orghierarchy/provision"
+  schema_package: "@test-orghierarchy/schema"
+  sdk_package: "@test-orghierarchy/sdk"
+  cli_package: "@test-orghierarchy/cli"
+  app_package: "@test-orghierarchy/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# b2b — backs the org-scoped surface AND ships hierarchy_module (the closure table the
+# AuthzOrgHierarchy predicate reads). The generator folds hierarchy_module into the module
+# closure from the table's `policy: org-hierarchy` intent; the b2b base already carries it.
+modules:
+  preset: b2b
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - organization             # create/configure orgs (requires modules.preset: b2b)
+  - org-members              # invite + manage org members (the hierarchy is built over memberships)
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-orghierarchy.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3083
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# ONE org-hierarchy table. policy: org-hierarchy → the scaffolder emits
+# nodes [DataId, DataOwnershipInEntity, DataTimestamps] + policies
+# [AuthzOrgHierarchy all-CRUD permissive, direction=down, anchor_field=owner_id,
+# entity_field=entity_id]. policy_params is REQUIRED for this intent: direction ∈ up|down
+# (down = managers see subordinates' rows) and anchor_field (the user column the closure
+# joins on). entity_field defaults to entity_id; max_depth (optional int) caps depth.
+data_model:
+  tables:
+    - name: reports
+      policy: org-hierarchy
+      policy_params: { direction: down, anchor_field: owner_id }
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: amount, type: { name: numeric } }
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD surface (typed list + DynamicFormCard meta-forms). entity is the singular of
+# the table so the generated `<entity>-*` testids fall out (report-*). An org-hierarchy
+# row needs a non-null entity_id + owner_id on create — the quick-add emits a
+# `// TODO entityId: activeOrgId` SEAM (the active org can't be inferred from the form).
+ui:
+  routes:
+    - { path: /reports, label: Reports, kind: crud, entity: report }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: it is the single flow with a FULLY-implemented Chrome QA script in
+# scripts/live-qa.mjs and it is email-free so it runs on a bare warm hub. organization /
+# org-members are PROVISIONED (above) but have no live-QA driver yet — listing them here
+# would be a hard coverage-gap FAIL; they are verified structurally by the Phase-2 gates.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend with the b2b/org modules (incl. hierarchy_module) is up on :3000.
+  - The org hierarchy closure is populated via the memberships/org-members surface (org-members flow).

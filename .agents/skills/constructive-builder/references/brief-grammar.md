@@ -76,10 +76,12 @@ appends any module not implied by the preset/flows — e.g. a node you use needs
 `extra: ['realtime_module', 'limits_module:org']`.
 
 > 🚨 **Org policies REQUIRE a b2b preset.** Any table using `policy: org-membership`, `policy: member-owner`,
-> or `restrict: [read-only]` needs `modules.preset` ∈ `{ b2b, b2b:storage, full }` — the org-scoped
-> memberships module backs the policy. On a bare `auth:email` app the brief **fails validation** with a
-> legible error, and at provision time such a table would abort `constructBlueprint` with
-> `NOT_FOUND (memberships_module)` (RLS-POLICY-001).
+> `policy: org-hierarchy`, or `restrict: [read-only]` needs `modules.preset` ∈ `{ b2b, b2b:storage, full }` —
+> the org-scoped memberships module backs them (and `org-hierarchy` additionally needs `hierarchy_module`,
+> which ships in the b2b base; the generator folds it into the module closure). On a bare `auth:email` app
+> the brief **fails validation** with a legible error, and at provision time such a table would abort
+> `constructBlueprint` with `NOT_FOUND (memberships_module)` — or, for `org-hierarchy`,
+> `NOT_FOUND (hierarchy_module …)` (RLS-POLICY-001).
 
 ---
 
@@ -89,7 +91,7 @@ Each table is described at INTENT level. The scaffolder always prepends `DataId`
 `DataTimestamps`, emits object-form FieldType `{ name: … }` + object-form FieldDefault `{ value: … }`, and
 resolves your `policy` intent into explicit `nodes[]` + `policies[]`.
 
-### The 5 policy intents
+### The 7 policy intents
 
 These are the **only** mapped `policy` values (`KNOWN_POLICIES` in `scripts/lib/brief.mjs`). Each maps to a
 fixed `{ nodes[], policies[] }` (`DataId` prepended + `DataTimestamps` appended by the assembler):
@@ -99,15 +101,71 @@ fixed `{ nodes[], policies[] }` (`DataId` prepended + `DataTimestamps` appended 
 | `owner` | each row belongs to one user; **only the owner** reads/writes it | `DataDirectOwner` | `AuthzDirectOwner` (all-CRUD, permissive, `data.entity_field='owner_id'`) |
 | `org-membership` | **any member of the row's OWN owning org/team** reads+writes it (FLAT own-entity access — NOT parent-derived). **b2b only** | `DataEntityMembership` | `AuthzEntityMembership` (all-CRUD, permissive, `data.entity_field='entity_id'`, `membership_type=2`) |
 | `member-owner` | the row is BOTH user-owned AND org-scoped: only the author, within their org, sees it. **b2b only** | `DataOwnershipInEntity` | `AuthzMemberOwner` (all-CRUD, permissive, `data.owner_field='owner_id'`, `entity_field='entity_id'`, `membership_type=2`) |
+| `org-hierarchy` | managers see subordinates' rows (`direction: down`) or subordinates see managers' rows (`direction: up`) via the org hierarchy **closure table**. **b2b/full only; requires `hierarchy_module`** (in the b2b base). Needs a `policy_params` sub-map (below) | `DataOwnershipInEntity` (materializes BOTH `owner_id` + `entity_id` — the closure join needs both) | `AuthzOrgHierarchy` (all-CRUD, permissive, `data.direction=<policy_params.direction>`, `anchor_field=<policy_params.anchor_field>`, `entity_field=<policy_params.entity_field ?? 'entity_id'>`, `max_depth` only when set) |
+| `related-membership` | members of the entity reached by JOINing this row's FK up to a parent/join table can read+write (**parent-derived** — the case `org-membership`'s FLAT model cannot express). **b2b/full only.** Needs a `policy_params` sub-map (below) | (no data node — the FK column already exists on the row from its `RelationBelongsTo`) | `AuthzRelatedEntityMembership` (all-CRUD, permissive, `data.entity_field=<policy_params.entity_field>`, `obj_table=<policy_params.join_table>`, `obj_field=<policy_params.join_entity_field>`, `membership_type=<policy_params.membership_type ?? 2>`, **`sel_obj:true`+`sel_field:'id'`** (project the parent PK the FK references — the deny-all fix, GAP-15), `obj_schema=<policy_params.join_schema ?? 'app_public'>` (the `app_public` sentinel is rewritten to the physical domain schema by the blueprint engine before construct)) |
 | `public-read+owner-write` | published rows readable by **anyone authenticated**; only the owner creates/edits/unpublishes (the blog / public-SaaS case). Works on `auth:email` (reads open on publish, not org membership) | `DataDirectOwner`, `DataPublishable` | TWO-policy stack: `AuthzDirectOwner` (all-CRUD permissive) + `AuthzPublishable` (select-only permissive, `is_published_field='is_published'`, `published_at_field='published_at'`) |
 | `public-lookup` | every authenticated user can read **AND WRITE** (no ownership) — `AuthzAllowAll`. This is authenticated read+write, **NOT** public-read. Use sparingly (shared reference data only) | none | `AuthzAllowAll` (all-CRUD, permissive, `data: {}`) |
 
 > **`org-membership` is FLAT, not hierarchical.** It authorizes on the `entity_id` ON the row — it never
-> walks an FK up to a parent's org. For "members of the parent's org can see this child" (parent-derived /
-> hierarchical access) you must opt in explicitly via `policies_raw` (the generator deliberately does NOT
-> infer hierarchy from FKs — that would false-positive on legit FLAT patterns like CRM contacts
-> belongs-to companies). The names `org-hierarchy` and `related-membership` are **recognized but ABORT**
-> with a pointer at `policies_raw` + `AuthzRelatedEntityMembership`/`AuthzOrgHierarchy`.
+> walks an FK up to a parent's org. For "members of the parent's org can see this child" (parent-derived
+> access) use the first-class **`related-membership`** intent (see its row above and the `policy_params`
+> sub-map below) — it JOINs this row's FK up to the parent and authorizes on the PARENT's `entity_id`. The
+> generator deliberately does NOT infer this from FKs (that would false-positive on legit FLAT patterns like
+> CRM contacts belongs-to companies) — you opt in EXPLICITLY via `policy: related-membership` + `policy_params`,
+> so there is no FK-inference false-positive risk. (`org-hierarchy` is likewise a first-class intent for
+> closure-table visibility.)
+
+> **`org-hierarchy` requires a `policy_params` sub-map.** Unlike the other intents (which are fully
+> determined by the `policy` name), `org-hierarchy` is PARAMETRIC — the closure direction and the
+> user/anchor column are app-specific, so you supply them:
+>
+> ```yaml
+> - name: reports
+>   policy: org-hierarchy
+>   policy_params: { direction: down, anchor_field: owner_id }   # direction ∈ up|down (required); anchor_field required
+>   #              optional: entity_field (default entity_id), max_depth: <int>
+>   fields:
+>     - { name: title,  type: { name: text },    required: true }
+>     - { name: amount, type: { name: numeric } }
+> ```
+>
+> `direction` must be `up` or `down`; `anchor_field` is the user column the closure joins on (e.g.
+> `owner_id`); `entity_field` defaults to `entity_id`; `max_depth` (optional int) caps visibility depth. A
+> missing/invalid `direction` or `anchor_field` **fails validation** with a legible error. `DataOwnershipInEntity`
+> materializes both `owner_id` and `entity_id` on the table so the `AuthzOrgHierarchy` predicate can join the
+> anchor column to the closure within the row's entity.
+
+> **`related-membership` requires a `policy_params` sub-map.** Author it on a CHILD table that has an FK into
+> a parent (join) table. The predicate JOINs this row's FK UP to the parent and authorizes on the **parent's**
+> entity/org column — "a member of the org that OWNS THE PARENT can access this CHILD" (parent-derived):
+>
+> ```yaml
+> - name: cards
+>   policy: related-membership
+>   policy_params: { entity_field: board_id, join_table: boards, join_entity_field: entity_id }
+>   #              entity_field      = the FK column ON THIS (child) table that joins up to the parent (required)
+>   #              join_table        = the parent/join table NAME this row's FK points at            (required)
+>   #              join_entity_field = the entity/org column ON THE PARENT the membership SPRT matches (required)
+>   #              optional: membership_type (default 2 = org); join_schema (override the parent's schema — by
+>   #                        default the emitter supplies the 'app_public' sentinel, rewritten to the physical
+>   #                        domain schema by the blueprint engine; pin join_schema only for a non-default schema)
+>   fields:
+>     - { name: title, type: { name: text }, required: true }
+> ```
+>
+> All three of `entity_field` / `join_table` / `join_entity_field` are **required** (a missing one **fails
+> validation** — `parse.sql` itself raises `BAD_RLS_EXPRESSION entity_field` / `obj_field`). There is **no data
+> node**: `AuthzRelatedEntityMembership` materializes nothing (it JOINs at eval time), and the FK column already
+> exists on the row from its `RelationBelongsTo`. The emitter sets **`sel_obj:true` + `sel_field:'id'`** so the
+> predicate projects the **parent PK the FK references** (the platform default `sel_field='entity_id'` projects an
+> org id → compares it to the child's parent-PK FK → **deny-all**; see references/platform-gaps.md GAP-15). It also
+> supplies **`obj_schema`** as the logical `app_public` sentinel — omitting it aborts construct with `relation
+> "<parent>" does not exist` (the platform does NOT auto-resolve a bare `obj_table` name to a schema) — and the
+> generic blueprint engine (`templates/provision/blueprint.ts`) rewrites the sentinel to THIS tenant's physical
+> domain schema right before construct, so no hashed/app-specific literal is ever hard-coded. Pin
+> `policy_params.join_schema` only when the join table lives in a non-default (already-physical) schema (emitted
+> verbatim as `obj_schema`, not rewritten). The **parent** join table must itself carry the entity column the JOIN
+> reads (give it `policy: org-membership`, which materializes `entity_id`).
 
 A table needs **either** a `policy` **or** a `nodes_raw`/`policies_raw` escape hatch — validation fails
 otherwise.
@@ -170,12 +228,44 @@ enum the platform stores. A `RelationManyToMany` carries its junction security u
 top-level keys); the generator lifts it to the flat `nodes`/`grants`/`policies` `construct_blueprint`
 actually reads (a nested-only `data` block ships a deny-all junction).
 
-> 🚨 **M:N junction security is platform-INCOMPLETE (GAP-1d, [platform-gaps.md](./platform-gaps.md)).** A
-> DataId-only junction can't carry an org/owner column, so an `AuthzEntityMembership`/`AuthzMemberOwner`
-> junction policy is **coerced to `AuthzAllowAll`** (any authenticated user) with a LOUD warning recorded
-> on `brief.warnings[]`. To keep parent-matching security, add the matching DATA node to the relation
-> (`nodes: [DataEntityMembership]`). Composite primary keys are NOT a supported intent yet — they ABORT
-> loudly (use `nodes_raw` or a surrogate id + `unique_constraints`).
+> **Org-scoped M:N junctions are fully supported via Pattern 3** — the generator adds
+> `DataEntityMembership` (materializing `entity_id` on the junction) + an `AuthzEntityMembership` policy +
+> `authenticated` grants, forwarded to `secure_table_provision` as-is. Request it either way:
+>
+> - **nested `data:`** (as today) —
+>   `data: { policy_type: AuthzEntityMembership, policy_data: { entity_field: entity_id, membership_type: 2 } }`, or
+> - **`junction_policy:` shorthand** — `junction_policy: org-membership` (mirrors the table `policy`
+>   vocabulary; `member-owner` → `AuthzMemberOwner` + `DataOwnershipInEntity`).
+>
+> No column-management burden on the author: the generator MATERIALIZES the org column on the junction.
+> The emitted relation carries `nodes: [DataEntityMembership{entity_field_name:entity_id, include_id:false,
+> include_user_fk:true}]`, `policies: [AuthzEntityMembership{entity_field:entity_id, membership_type:2}]`,
+> and `grants: [authenticated full-CRUD]`, and **records NO warning**. **Only edge case:** if you hand-write
+> an org policy onto an explicit DataId-only `nodes` set (no org column), the generator coerces to
+> `AuthzAllowAll` with a LOUD `brief.warnings[]` entry (GAP-1d safety net) — let the default Pattern-3 path
+> materialize the column instead. Composite primary keys on a *parent table* are NOT a supported intent yet —
+> they ABORT loudly (use `nodes_raw` or a surrogate id + `unique_constraints`).
+>
+> **`use_composite_key: true` — composite-keyed junctions.** `use_composite_key` is a first-class boolean
+> `RelationManyToMany` param: when `true`, the platform trigger builds the junction's PRIMARY KEY from its
+> two FK columns (e.g. `(project_id, tag_id)`), so the pair IS the identity and **no surrogate `DataId`
+> belongs on the junction**. The platform contract is explicit that this is **mutually exclusive with a
+> `DataId` node** (a `DataId` would add a second, conflicting PK and abort provision). The generator honors
+> this on BOTH junction-security paths:
+>
+> - **plain (no junction policy)** — the default node set drops `DataId` and keeps only `DataTimestamps`
+>   (the FK columns come from the trigger): emitted `nodes: [DataTimestamps{include_id:false}]`.
+> - **org-scoped (Pattern 3)** — the materializing `DataEntityMembership` already carries `include_id:false`,
+>   so it is composite-safe by construction; the org policy + grants are emitted exactly as above. The flag
+>   is forwarded verbatim, so the emitted relation reads
+>   `{ …, use_composite_key: true, nodes: [DataEntityMembership{…include_id:false}], policies:
+>   [AuthzEntityMembership{…}], grants: [authenticated full-CRUD] }`.
+>
+> Setting `use_composite_key: true` AND hand-writing a `DataId` into the junction's `nodes` (or `data.nodes`)
+> is a contradiction (a double PK) — the generator **ABORTS loudly** with a legible `BriefError` rather than
+> ship a blueprint the platform would reject deep inside an atomic provision. Drop the `DataId`, or set
+> `use_composite_key: false` to use a surrogate UUID id. Worked fixture: `fixtures/test-mn-composite-brief.yaml`
+> (composite-keyed org-scoped junction).
 
 ---
 
@@ -289,9 +379,161 @@ writes need — is provisioned natively by the platform; GAP-1b/1c, CLOSED. No r
 > services up ([infra-setup.md](./infra-setup.md)). The other fixtures' `organization`/`org-members`/`profile`
 > are PROVISIONED but verified structurally by the Phase-2 gates, not listed under acceptance.
 
-### member-owner and the escape hatches
+### Tier 3 + M:N — org-scoped many-to-many junction (Pattern 3; `b2b`)
 
-`member-owner` is the same shape as Tier 3 with `policy: member-owner` (b2b). For access models beyond the
-five intents (peer ownership, parent-derived/hierarchical, composite), drop to `nodes_raw` / `policies_raw`
-and the **`constructive-security`** skill. See also `fixtures/test-childfk-brief.yaml` for a multi-table FK
-shape.
+Two org-scoped tables linked many-to-many. The junction inherits the parents' org-membership access via
+**Pattern 3** — the generator materializes `entity_id` on the junction and emits the real
+`AuthzEntityMembership` policy + grants (NO `AuthzAllowAll`, NO warning). Request the junction policy with
+the nested `data:` block OR the `junction_policy: org-membership` shorthand.
+
+```yaml
+modules: { preset: b2b, extra: [] }
+flows:  [ email-password, organization, org-members ]
+data_model:
+  tables:
+    - name: projects
+      policy: org-membership
+      fields: [{ name: name, type: { name: text }, required: true }]
+    - name: tags
+      policy: org-membership
+      fields: [{ name: label, type: { name: text }, required: true }]
+  relations:
+    - $type: RelationManyToMany
+      source_table: projects
+      target_table: tags
+      junction_table_name: project_tags
+      # nested form — equivalently: `junction_policy: org-membership`
+      data: { policy_type: AuthzEntityMembership, policy_data: { entity_field: entity_id, membership_type: 2 } }
+ui:
+  routes:
+    - { path: /projects, label: Projects, kind: crud, entity: project }
+    - { path: /tags,     label: Tags,     kind: crud, entity: tag }
+acceptance: { required_flows: [ email-password ] }
+```
+
+Full file: `fixtures/test-mn-pattern3-brief.yaml`. The emitted `project_tags` relation carries
+`nodes: [DataEntityMembership{…}]` + `policies: [AuthzEntityMembership{entity_field:entity_id,
+membership_type:2}]` + `grants: [authenticated full-CRUD]`, and `brief.warnings[]` stays empty.
+
+### Tier 3 + hierarchy — org-hierarchy closure visibility (`b2b`)
+
+Rows owned by a user within an org, visible UP or DOWN the org hierarchy closure. With `direction: down`
+a manager sees every report owned by someone below them in the hierarchy; with `direction: up` a report's
+owner sees their managers' rows. Emits `DataOwnershipInEntity` (materializes `owner_id` + `entity_id`) +
+`AuthzOrgHierarchy`. REQUIRES `preset: b2b` (the `hierarchy_module` backing the closure ships in the b2b
+base; the generator folds it into the module closure).
+
+```yaml
+modules: { preset: b2b, extra: [] }
+flows:  [ email-password, organization, org-members ]
+data_model:
+  tables:
+    - name: reports
+      policy: org-hierarchy
+      policy_params: { direction: down, anchor_field: owner_id }   # direction ∈ up|down (req); anchor_field req
+      fields:
+        - { name: title,  type: { name: text },    required: true }
+        - { name: amount, type: { name: numeric } }
+ui:
+  routes:
+    - { path: /reports, label: Reports, kind: crud, entity: report }
+acceptance: { required_flows: [ email-password ] }
+```
+
+Full file: `fixtures/test-orghierarchy-brief.yaml`. The emitted `reports` table carries
+`nodes: [DataId, DataOwnershipInEntity, DataTimestamps]` + `policies: [AuthzOrgHierarchy{direction:down,
+anchor_field:owner_id, entity_field:entity_id}]`, and the module closure includes `hierarchy_module`. The
+same brief on a non-b2b preset (e.g. `auth:email`) **fails validation**.
+
+### Tier 3 + parent-derived — related-membership (the parent-owns-the-child case; `b2b`)
+
+A CHILD table whose access derives from the org that owns its PARENT — the case the FLAT `org-membership`
+intent cannot express. The child carries only an FK to the parent (no `entity_id` of its own); a member of
+the parent's org reads+writes the child. Emits `AuthzRelatedEntityMembership` (which JOINs the FK up to the
+parent and authorizes on the parent's `entity_id`) and **no** data node on the child. The parent table is a
+normal `org-membership` table (it carries the `entity_id` the JOIN reads). REQUIRES `preset: b2b`.
+
+```yaml
+modules: { preset: b2b, extra: [] }
+flows:  [ email-password, organization, org-members ]
+data_model:
+  tables:
+    - name: boards               # the PARENT/join table — FLAT org-membership (carries entity_id)
+      policy: org-membership
+      fields: [{ name: name, type: { name: text }, required: true }]
+    - name: cards                # the CHILD — parent-derived access via the board_id FK
+      policy: related-membership
+      policy_params: { entity_field: board_id, join_table: boards, join_entity_field: entity_id }
+      fields: [{ name: title, type: { name: text }, required: true }]
+  relations:
+    - $type: RelationBelongsTo
+      source_table: cards
+      target_table: boards
+      field_name: board_id
+      delete_action: CASCADE
+      is_required: true
+ui:
+  routes:
+    - { path: /boards, label: Boards, kind: crud, entity: board }
+    - { path: /cards,  label: Cards,  kind: crud, entity: card }
+acceptance: { required_flows: [ email-password ] }
+```
+
+Full file: `fixtures/test-relatedmembership-brief.yaml`. The emitted `cards` table carries
+`nodes: [DataId, DataTimestamps]` (NO `DataEntityMembership`/`DataOwnershipInEntity` — a child has no
+`entity_id` of its own; the `board_id` FK comes from the relation) + `policies:
+[AuthzRelatedEntityMembership{entity_field:board_id, obj_table:boards, obj_field:entity_id,
+membership_type:2, sel_obj:true, sel_field:id, obj_schema:app_public}]`, and the module closure includes
+`memberships_module`. The `sel_obj:true`+`sel_field:'id'` project the parent PK the FK references (the deny-all
+fix — GAP-15); `obj_schema:'app_public'` is the logical sentinel the blueprint engine rewrites to this tenant's
+physical domain schema before construct (omitting it would abort construct with `relation "boards" does not
+exist`). The same brief on a non-b2b preset **fails validation**.
+
+### member-owner (compound: user-owned AND org-scoped)
+
+`member-owner` (b2b) is the COMPOUND intent: a row is owned by ONE user **and** lives within an org, and only
+that author, only within an org they belong to, may read/write it. It maps to the platform's **`AuthzMemberOwner`**
+— a predicate the SQL builder (`ast_helpers.cpt_member_owner`) **ANDs** from two halves:
+
+```
+( owner_id = current_user_id() )                                                   -- half 1: ownership
+  AND
+( entity_id = ANY( SELECT org_sprt.entity_id FROM org_sprt                          -- half 2: org membership
+                    WHERE org_sprt.actor_id = current_user_id() ) )
+```
+
+**RLS behavior (the contract):** the OWNER who is a MEMBER of the row's org **sees + writes** (both halves true);
+a *different* member of the same org (a NON-owner) is **denied** (half 1 false: `owner_id ≠ actor`); a NON-member
+is **denied** (half 2 false: the row's org is not in the actor's memberships).
+
+```yaml
+- name: notes
+  policy: member-owner             # fully determined by the name — no policy_params
+  fields:
+    - { name: title, type: { name: text }, required: true }
+    - { name: body,  type: { name: text } }
+```
+
+The emitted `notes` table carries `nodes: [DataId, DataOwnershipInEntity, DataTimestamps]` + `policies:
+[AuthzMemberOwner{owner_field:owner_id, entity_field:entity_id, membership_type:2}]` (all-CRUD, permissive), and
+the module closure includes `memberships_module`. Two things make this correct:
+
+> - **`DataOwnershipInEntity` materializes BOTH `owner_id` + `entity_id`** — the two columns the compound policy
+>   dereferences (it is the platform's canonical owner_id+entity_id data module). A single-column node
+>   (`DataDirectOwner`→`owner_id` only, or `DataEntityMembership`→`entity_id` only) would leave the other column
+>   unmaterialized and abort construct with `column "<col>" does not exist`.
+> - **No `sel_obj`/`sel_field` projection** (the contrast with `related-membership`). member-owner is the
+>   FLAT-own-entity shape: the row carries its OWN `entity_id` (an org id), and the org SPRT also projects
+>   `entity_id`, so the platform default `sel_field='entity_id'` makes half 2 `row.entity_id = ANY(my org ids)` —
+>   correct as-is. (`related-membership` is the OTHER shape — the row's FK is a *parent PK*, not an org id — which
+>   is why ONLY that intent sets `sel_obj:true`+`sel_field:'id'`; member-owner must NOT carry those keys.)
+
+`membership_type:2` selects the ORG SPRT (`get_sprt_alias` maps `2 → org_sprt`); the `rls_parser` resolves
+`sprt_table`/`sprt_schema` from it at provision time, so no physical literal is emitted. The same brief on a
+non-b2b preset **fails validation**. Full file: `fixtures/test-memberowner-brief.yaml`.
+
+### escape hatches
+
+For access models beyond the seven intents (peer ownership, composite, related-member-list, …), drop to
+`nodes_raw` / `policies_raw` and the **`constructive-security`** skill. See also `fixtures/test-childfk-brief.yaml`
+for a multi-table FK shape.

@@ -1,0 +1,139 @@
+# GENERICITY FIXTURE — related-membership (PARENT-DERIVED access; the PARAMETRIC intent that
+# org-membership's FLAT model cannot express).
+#
+# Exercises `policy: related-membership` + its required `policy_params` sub-map on a CHILD
+# table (`cards`) that has an FK into a parent/join table (`boards`). The intent expresses
+# "a member of the org that OWNS THE PARENT can access this CHILD" — the predicate JOINs the
+# child's FK up to the parent and matches the parent's entity/org column against the actor's
+# membership SPRT. Maps to the platform's AuthzRelatedEntityMembership. Proves the generator:
+#   • on `cards` emits NO flat ownership data node — NO DataEntityMembership / NO
+#     DataOwnershipInEntity (a child row has NO entity_id of its own; access derives from the
+#     parent). The ONLY nodes are [DataId, DataTimestamps]; the board_id FK comes from the
+#     RelationBelongsTo, not a hallucinated entity_id.
+#   • on `cards` emits policies [AuthzRelatedEntityMembership{ entity_field: board_id,
+#     obj_table: boards, obj_field: entity_id, membership_type: 2, sel_obj: true, sel_field: id,
+#     obj_schema: app_public }] (all-CRUD, permissive). THE TWO CORRECTNESS PARAMS:
+#       - sel_obj:true + sel_field:'id' PROJECT THE PARENT PK the FK references (boards.id). The
+#         platform DEFAULT (sel_field='entity_id') would project an ORG id and compare it to the
+#         board PK → always FALSE → broken-CLOSED deny-all (references/platform-gaps.md
+#         GAP-RELMEMBERSHIP-PROJ). With sel_obj/sel_field set, A=see / A2=see / B=deny / N=deny.
+#       - obj_schema is REQUIRED (omitting it aborts construct with 'relation "boards" does not
+#         exist' — parse.sql does NOT auto-resolve a bare obj_table name). It is emitted as the
+#         logical 'app_public' sentinel and rewritten to this tenant's PHYSICAL domain schema by
+#         the generic blueprint engine (templates/provision/blueprint.ts) right before construct —
+#         so NO app-/hash-specific literal is hard-coded. An author with a non-default (already-
+#         physical) schema overrides via policy_params.join_schema (emitted verbatim, not rewritten).
+#   • on `boards` (the parent/join table) emits the FLAT org-membership shape
+#     [DataEntityMembership] + [AuthzEntityMembership{entity_field:entity_id, membership_type:2}]
+#     so the parent actually carries the entity_id the child's JOIN reads.
+#   • the module closure contains the b2b memberships_module (the SPRT the JOIN resolves through).
+#   • the brief validates ONLY under a b2b/full preset — a copy with `preset: auth:email` MUST
+#     fail validation (related-membership is org-scoped; the b2b base backs memberships_module).
+# Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-relatedmembership-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-relatedmembership-brief.yaml <app>   # boards + cards CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-relatedmembership
+  label: Test Related Membership
+  description: Cards whose access derives from membership in the org that owns the parent Board (parent-derived).
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testrelatedmembership
+  package_scope: "@test-relatedmembership"
+  provision_package: "@test-relatedmembership/provision"
+  schema_package: "@test-relatedmembership/schema"
+  sdk_package: "@test-relatedmembership/sdk"
+  cli_package: "@test-relatedmembership/cli"
+  app_package: "@test-relatedmembership/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# b2b — backs the org-scoped surface AND carries memberships_module (the SPRT the
+# AuthzRelatedEntityMembership JOIN resolves membership through). related-membership carries
+# the SAME b2b gate as the FLAT org-membership intent; the b2b base already supplies the module.
+modules:
+  preset: b2b
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - organization             # create/configure orgs (requires modules.preset: b2b)
+  - org-members              # invite + manage org members (the membership the JOIN reads)
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-relatedmembership.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3084
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# TWO tables joined by a real FK:
+#   • boards — the PARENT/join table. policy: org-membership (FLAT) → it carries entity_id
+#     (DataEntityMembership) so a member of the owning org reads+writes it; this entity_id is
+#     exactly what the child's JOIN matches against.
+#   • cards  — the CHILD. policy: related-membership → parent-derived access. policy_params is
+#     REQUIRED: entity_field (the FK ON cards that joins up to boards), join_table (the parent
+#     table NAME), join_entity_field (the entity/org column ON boards the SPRT matches).
+#     membership_type defaults to 2 (org); join_schema is omitted (auto-resolve same-DB).
+#     The card carries NO entity_id of its own — only board_id (from the relation) + DataId +
+#     DataTimestamps; its access is derived entirely from the board's org.
+data_model:
+  tables:
+    - name: boards
+      policy: org-membership
+      fields:
+        - { name: name, type: { name: text }, required: true }
+    - name: cards
+      policy: related-membership
+      policy_params: { entity_field: board_id, join_table: boards, join_entity_field: entity_id }
+      fields:
+        - { name: title, type: { name: text }, required: true }
+  relations:
+    - $type: RelationBelongsTo
+      source_table: cards
+      target_table: boards
+      field_name: board_id
+      delete_action: CASCADE
+      is_required: true
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD surface per table (typed list + DynamicFormCard meta-forms). entity is the singular
+# of the table so the generated `<entity>-*` testids fall out (board-* / card-*). A card needs a
+# non-null board_id on create — the quick-add emits a `// TODO board_id` SEAM (the parent board
+# can't be inferred from the form alone).
+ui:
+  routes:
+    - { path: /boards, label: Boards, kind: crud, entity: board }
+    - { path: /cards,  label: Cards,  kind: crud, entity: card }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: it is the single flow with a FULLY-implemented Chrome QA script in
+# scripts/live-qa.mjs and it is email-free so it runs on a bare warm hub. organization /
+# org-members are PROVISIONED (above) but have no live-QA driver yet — listing them here would
+# be a hard coverage-gap FAIL; they are verified structurally by the Phase-2 gates.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend with the b2b/org modules (incl. memberships_module) is up on :3000.
+  - Boards carry an org (entity_id) via the org-members surface; cards inherit access from their board's org.
