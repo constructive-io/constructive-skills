@@ -82,6 +82,40 @@ that is COLD bring-up and throws away the warm pnpm store.
 
 ---
 
+## Unmanaged-hub mode (embedders that don't own the backend)
+
+The restart-once recipe above assumes **this runner owns the hub's lifecycle** — it may boot/kill/restart
+the GraphQL server. A non-operator embedder (a runner that consumes a hub it does **not** manage, e.g. a
+shared/long-lived backend it must never bounce) needs the opposite: smoke the hub, but **never** start or
+restart it. That is the **`hub.managed`** infra-policy toggle in `constructive.config.json`.
+
+| `hub.managed` | env override | S0 behavior |
+|---------------|--------------|-------------|
+| `true` (default) | `CONSTRUCTIVE_HUB_MANAGED=true` | **operator path** — smoke; restart **once** with an 8 GB heap on down/OOM (today's behavior, unchanged) |
+| `false` | `CONSTRUCTIVE_HUB_MANAGED=false` | **unmanaged path** — smoke **only**; a down hub is an **external outage**: bring it up out-of-band, this run will not start it |
+
+```bash
+# Run as a non-operator embedder: verify the hub is reachable, but never boot/kill/restart it.
+CONSTRUCTIVE_HUB_MANAGED=false ./scripts/golden-path.sh   # (or any S0-gated entry script)
+```
+
+When `hub.managed=false`, S0 (`pr_s0_smoke_and_restart`) forces the no-restart branch: it runs the same
+reachability smoke and, if the hub is down, **fails with a "bring it up out-of-band" hint** instead of
+trying to locate a `constructive` CLI and spawn a server. Use this mode whenever the runner is **not** the
+hub's operator. The flag is a pure infra-policy toggle — it names no app, entity, or flow — and the default
+(`true`) keeps the operator restart-on-OOM path byte-identical, so existing operator runs and the
+golden-path / genericity canaries are unaffected. The embedder sets `CONSTRUCTIVE_HUB_MANAGED=false` from
+**outside** the skill; the skill ships `true`.
+
+> **For a future GraphQL verify-mode (not yet implemented):** the modules control-plane
+> (`modules` role endpoint) exposes `blueprintConstructions(...).tableMap` as a **flat `{ table_name: uuid }`**
+> map (each value a bare table database-id string) — it proves **table existence/construction only**, and
+> carries **NO grant or policy metadata** (the `BlueprintConstruction` node has no grant/policy field). So a
+> future psql-free verify mode can assert *tables exist* from `tableMap`, but grant/RLS-policy facts must be
+> proven by the Phase-4 live-QA round-trip, not statically from this endpoint.
+
+---
+
 ## Endpoint map (what routes where)
 
 Routing is driven by the HTTP **`Host` header** (a role-subdomain on a `dot-localhost` host), **NOT** by

@@ -80,6 +80,12 @@ smoke_backend() {
 pr_s0_smoke_and_restart() {
   local no_restart="$1" log_file="$2" warm_tail="$3" norestart_env="$4" norestart_actor="$5"
   local code up
+  # Unmanaged-hub mode (hub.managed=false / CONSTRUCTIVE_HUB_MANAGED=false): a non-operator runner that
+  # never owns the backend's lifecycle. VERIFY reachability (smoke) but NEVER boot/kill/restart the hub —
+  # force no_restart so the existing down-fail branch is taken and the restart spawn is never reached.
+  # Default 'true' preserves today's restart-on-OOM operator behavior (degrades to true if node can't run).
+  local hub_managed; hub_managed="$(cfg hub.managed true)"
+  [ "$hub_managed" = "false" ] && no_restart="1"
   echo "S0: smoke the shared warm backend (:3000)"
   code="$(smoke_backend)"
   if [ "$code" = "200" ]; then
@@ -88,6 +94,10 @@ pr_s0_smoke_and_restart() {
   fi
   warn "backend :3000 returned HTTP $code (down / non-200 / OOM)"
   if [ "$no_restart" = "1" ]; then
+    if [ "$hub_managed" = "false" ]; then
+      fail "backend :3000 is not healthy and the hub is configured unmanaged (hub.managed=false)" \
+        "treat a down hub as an external outage — bring it up out-of-band, this run will not start it"
+    fi
     fail "backend :3000 is not healthy and --no-restart/$norestart_env is set" \
       "start it yourself (SKILL.md S0) or drop --no-restart to let $norestart_actor restart it once with an 8GB heap"
   fi

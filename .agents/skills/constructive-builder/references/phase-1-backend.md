@@ -11,6 +11,10 @@
 > ([phase-2-data-model.md](./phase-2-data-model.md)). Phase 1 is the cold-infra floor (Docker pull +
 > `pgpm deploy`); reusing a live backend is the single biggest wall-clock saver. The speedrun
 > ([speedrun.md](./speedrun.md) S0) smokes the warm hub first and assumes you skip Phase 1.
+>
+> **Non-operator runner?** If this runner consumes a hub it must **never** start or restart (a shared
+> backend it does not own), set `CONSTRUCTIVE_HUB_MANAGED=false` so S0 smokes only and treats a down hub
+> as an external outage — see [infra-setup.md](./infra-setup.md) "Unmanaged-hub mode".
 
 ## Bring the hub up (constructive-hub is the standard local backend)
 

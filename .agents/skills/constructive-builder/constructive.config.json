@@ -2,7 +2,8 @@
   "$comment": "constructive.config.json — single per-ENVIRONMENT source of truth for the infrastructure coordinates a Constructive app build talks to (the GraphQL hub, the component registry, the local dev server, the mail catcher). One file, app-domain key names, every value overridable by an environment variable so a different machine/environment can relocate the whole stack without touching code. Defaults below are the standard local-development coordinates; changing WHERE a value is read does not change WHAT it defaults to.",
 
   "hub": {
-    "$comment": "The Constructive GraphQL hub the app reads/writes against. The public hub serves the per-app GraphQL APIs; routing is driven by the HTTP Host header (a role-subdomain on a dot-localhost host), NOT by the URL path. The {role} segment is the API role (api / auth / admin / modules) and {sub} is the per-app subdomain (== the app database name with hyphens). PostGraphile maps {sub} back to the physical database by converting hyphens to underscores.",
+    "$comment": "The Constructive GraphQL hub the app reads/writes against. The public hub serves the per-app GraphQL APIs; routing is driven by the HTTP Host header (a role-subdomain on a dot-localhost host), NOT by the URL path. The {role} segment is the API role (api / auth / admin / modules) and {sub} is the per-app subdomain (== the app database name with hyphens). PostGraphile maps {sub} back to the physical database by converting hyphens to underscores. 'managed' is a pure infra-policy toggle: does THIS runner own the hub's lifecycle? true (default) = the operator path — S0 may boot/kill/restart the hub once with a big heap on OOM. false (CONSTRUCTIVE_HUB_MANAGED=false) = unmanaged mode for a non-operator embedder that never starts the backend — S0 verifies reachability only and treats a down hub as an external outage to resolve out-of-band; it never boots/kills/restarts. Default true keeps today's restart-on-OOM behavior byte-identical.",
+    "managed": true,
     "scheme": "http",
     "host": "localhost",
     "port": 3000,
@@ -11,6 +12,7 @@
     "platformHostPattern": "{role}.{host}",
     "graphqlPath": "/graphql",
     "env": {
+      "managed": "CONSTRUCTIVE_HUB_MANAGED",
       "scheme": "CONSTRUCTIVE_HUB_SCHEME",
       "host": "CONSTRUCTIVE_HUB_HOST",
       "port": "CONSTRUCTIVE_HUB_PORT",
