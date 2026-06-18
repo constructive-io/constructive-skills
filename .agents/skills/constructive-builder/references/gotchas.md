@@ -696,13 +696,38 @@ The grant is one of **two** independent requirements for working per-DB writes �
 
 ## PROVISION-RERUN-001
 
-If the provision script fails with `already exists` errors (e.g., `function "uuid_generate_v4" already exists with same argument types`), this means the database was already partially or fully provisioned from a previous run. This is NOT a platform mismatch.
+**Re-running `pnpm run provision` against an already-provisioned DB is SAFE and IDEMPOTENT for ADDITIVE
+changes — this is the foundation of the day-2 evolve workflow (`references/day2-evolve.md`).** The earlier
+guidance here ("do NOT re-run / drop-and-rebuild because `constructBlueprint` aborts on the first duplicate
+`CREATE POLICY`") was **adversarially DISPROVEN on the live hub (2026-06-18)** and has been removed.
 
-Recovery:
+**Verified truth:** a re-run of provision against an already-provisioned DB returns **exit 0**, does **NOT**
+duplicate policies (verified `4 → 4` identical policy names on an owner-scoped table — the emission is
+guarded, not a bare `CREATE POLICY`), and **preserves every row** (`12 → 12`). Add-column, add-table, and
+add-required-FK all land **clean, skill-only** on a re-run and re-sync to the UI via `pnpm codegen` + the
+runtime-generic `DynamicFormCard` (NOT bespoke page code, which is never regenerated). So the day-2 loop is:
+**edit the brief → `scaffold-provision` → `pnpm run provision` (idempotent) → `pnpm codegen` →
+`scaffold-frontend` → verify** — no drop-and-rebuild. See `references/day2-evolve.md` for the full workflow.
 
-1. If the previous provision succeeded (tables exist, endpoints work), skip the provision step and continue from post-provision workarounds.
-2. If you need a clean re-provision, drop the database via SQL or the SDK, then re-run `pnpm run create-db && pnpm run provision`.
-3. Do NOT re-run provision against an already-provisioned database — extensions and schemas are created once.
+**The ONE real caveat — NOT idempotency:** adding a **`NOT NULL` (required) column to a table that already
+holds rows** aborts atomically with `column "<col>" of relation "<t>" contains null values`, because the
+platform sequences the day-2 DDL as `ADD COLUMN` (nullable, no default) → `SET NOT NULL` → `SET DEFAULT` — the
+`DEFAULT` lands **after** the NOT-NULL check, so it never backfills the existing rows. A brief `default:`
+cannot rescue this. **Workarounds:** (1) add the column **nullable** first (omit `required`) with a `default:`
+so new rows get a value and existing rows stay NULL, backfill, then tighten to `required`; or (2) make the
+change on an **empty** table / pre-backfill before tightening. The generator **auto-handles the one case it
+can detect generically** — the **publishable** columns (`is_published`/`published_at`): it pre-materializes
+them as nullable+default so `policy: public-read+owner-write` / `features: [publishable]` can be added to a
+populated table day-2 (the column stays nullable — a documented trade-off). This caveat is the upstream defect
+**`references/platform-gaps.md` → GAP-16** (and the author-level workarounds + the publishable auto-handling
+are in `references/brief-grammar.md`).
+
+**If you genuinely see an `already exists` error** (rare; not the additive re-run path — e.g. a hand-edited
+provision that re-declares an extension/function outside the guarded blueprint emission): the DB was already
+provisioned. Verify the previous provision succeeded (tables exist, endpoints work) and continue from the
+post-provision workarounds; only drop-and-rebuild if you truly need a clean slate (`pnpm run create-db &&
+pnpm run provision` on a fresh db name). Do **not** reach for drop-and-rebuild as the *default* day-2 path —
+the additive re-run is the supported path.
 
 ## SUBDOMAIN-001
 

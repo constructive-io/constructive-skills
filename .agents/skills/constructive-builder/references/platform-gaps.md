@@ -22,11 +22,20 @@
 >
 > **2026-06-05 stress-test escalation:** the generic-brief stress run (`.scratch-stress/{townboard,orgdesk,
 > devvault,mailflow}`) added **GAP-1d** (M:N junction security not forwarded), **GAP-6** (`createUser(type=2)`
-> org-create RLS), **GAP-7** (OOM handler-cache leak), a **`constructBlueprint` idempotency** note under
-> GAP-1, a **GAP-2** re-confirm (missing `userSessions` list + session table split), and **GAP-8** (read-only/
+> org-create RLS), **GAP-7** (OOM handler-cache leak), a ~~`constructBlueprint` idempotency~~ note under
+> GAP-1 (**FALSIFIED 2026-06-18** — additive re-provision IS idempotent; see the falsified idempotency note
+> under GAP-1), a **GAP-2** re-confirm (missing `userSessions` list + session table split), and **GAP-8** (read-only/
 > soft-delete semantics). Their full owner/severity/close-out write-up lives in the upstream-escalation
 > doc **`planning/upstream-gaps-stress-test-2026-06-05.md`** (an upstream-team artifact, not part of this
 > skill); the entries below are the standard-channel pointers into it.
+>
+> **2026-06-18 day-2 evolve verification:** adversarially **FALSIFIED** the `constructBlueprint` idempotency
+> note (additive re-provision is idempotent — exit 0, `4→4` policies, `12→12` rows) and added **GAP-16**
+> (`ADD COLUMN … DEFAULT` not honored on a populated table — the one real day-2 caveat), **GAP-PUBLISHABLE-ROLE**
+> (`public-read+owner-write` is anonymous-read, not authenticated-second-user read), **GAP-17** (Blocks `_meta`
+> Edit form loads blank — `@constructive-io/ui` `DynamicFormCard` record-load), and **GAP-18** (cross-app
+> `localStorage` token collision on a shared `localhost`). The verified day-2 EVOLVE workflow is documented in
+> **`references/day2-evolve.md`**.
 >
 > **2026-06-05 Wave-2 fix-validation escalation:** two FRESH builds against the FIXED harness — **`mail2`**
 > (`auth:email`, the EMAIL flows) and **`desk2`** (b2b / M:N) — cleared the site-domain prerequisite (now
@@ -179,13 +188,22 @@ Three concrete faces of the same gap:
 > RE-INSTATED (targeted, in the `provision.ts` b2b/full appendix) until the provisioner emits those grants
 > deterministically upstream.
 
-> **Idempotency note (same family — `constructBlueprint` is not re-runnable).** A re-run of `provision.ts`
-> against an **already-provisioned** DB **aborts** on the first duplicate `CREATE POLICY` (the 2026-06-05
-> stress test hit `policy "auth_sel_temporal" already exists`) — there is no `IF NOT EXISTS` / drop-first, so
-> provisioning is run-once and any partial-failure retry means dropping the whole DB. Owner: **constructive-db**
-> (guard blueprint policy/object emission so a re-run converges as a no-op). This is the re-run-safety half of
-> GAP-1's determinism ask. Close-out: re-run `provision.ts` unchanged → clean no-op (exit 0, no `already
-> exists`). Full escalation: **`planning/upstream-gaps-stress-test-2026-06-05.md` → G4**.
+> **Idempotency note — ~~`constructBlueprint` is not re-runnable~~ FALSIFIED (2026-06-18).** The earlier
+> claim here (and in gotchas PROVISION-RERUN-001) — that a re-run of `provision.ts` against an
+> already-provisioned DB **aborts** on the first duplicate `CREATE POLICY`, so provisioning is run-once and any
+> retry means dropping the whole DB — was **adversarially DISPROVEN on the live hub**. **Additive re-provision
+> is IDEMPOTENT:** re-running `pnpm run provision` against an already-provisioned DB returns **exit 0**, does
+> **NOT** duplicate policies (verified `4 → 4` identical policy names on the owner-scoped recipes table — the
+> emission is guarded, not a bare `CREATE POLICY`), and **preserves every row** (`12 → 12`). The 2026-06-05
+> `policy "auth_sel_temporal" already exists` symptom was **not** the additive-re-run path — it does not
+> reproduce on a clean additive re-run. **This is the foundation of the day-2 evolve workflow**
+> (`references/day2-evolve.md`): you can edit the brief, re-run provision, re-codegen, and the change lands
+> without a drop-and-rebuild. The **one** real day-2 caveat is **NOT idempotency** but **GAP-16** below
+> (adding a `NOT NULL` column with a default to a *populated* table aborts atomically — the ADD-COLUMN default
+> is applied after the SET-NOT-NULL check). Owner of the (now non-existent) idempotency concern: closed — the
+> blueprint policy/object emission already converges as a no-op on re-run. The earlier G4 escalation
+> (`planning/upstream-gaps-stress-test-2026-06-05.md → G4`) is **superseded by this falsification** for the
+> additive case; only the populated-table NOT-NULL ordering (GAP-16) remains a real upstream defect.
 
 > **Owner / status / re-verify (GAP-1b + GAP-1c).**
 > - **Owner:** constructive-db (per-tenant provisioner grant/policy + `org_memberships_sprt` seed on
@@ -788,6 +806,201 @@ Three concrete faces of the same gap:
 
 ---
 
+## GAP-16 — `ADD COLUMN … DEFAULT` not honored on a POPULATED table → a day-2 required-with-default field (e.g. `DataPublishable`) aborts the whole provision
+
+> New from the **2026-06-18** day-2 evolve verification (adversarial, on the live hub; `recipeboxb1.recipes`,
+> 13 rows). Owner is **constructive-db**. The harness is **consume-only**: the brief and the provision
+> generator both emit the field correctly; the fatal DDL ordering is **entirely inside** the platform's field
+> trigger, so there is no brief-grammar / scaffolder change that prevents it for a *generic* required column.
+> The harness DOES auto-handle the **one** case it can detect generically (the publishable columns) — see the
+> workaround below. **This is the ONE real day-2 caveat** (idempotency is NOT a caveat — see the falsified
+> idempotency note under GAP-1).
+
+- **Symptom:** on a tenant app whose table **already holds rows**, adding a required-with-default column day-2
+  and re-provisioning **aborts atomically** with `column "<col>" of relation "<t>" contains null values`. The
+  canonical trigger is turning a populated table **publishable**: add `policy: public-read+owner-write` (or
+  `features: [publishable]`) to a table that already has rows → `constructBlueprint` aborts with
+  `column "is_published" of relation "<t>" contains null values`, **full rollback** (proven live on
+  `recipeboxb1.recipes`: 13 rows, exit 1, the 13 rows intact, `is_published`/`published_at` absent, the 4
+  `AuthzDirectOwner` policies unchanged, no `AuthzPublishable`). On a **fresh/empty** table the same add is
+  fine (the column is created `NOT NULL` with no rows to violate).
+- **Root (two platform files, the DEFAULT lands too late to backfill):**
+  1. The DDL/default for `is_published` is decided **entirely platform-side**:
+     `packages/metaschema-generators/deploy/schemas/metaschema_generators/procedures/data_publishable.sql`
+     calls `metaschema.create_field(… is_required := true, default_value := '{"value":false}')`.
+  2. The fatal ordering is in
+     `packages/metaschema/deploy/schemas/metaschema_public/tables/field/triggers/after_insert_field_trigger.sql`:
+     on field INSERT it runs `alter_table_add_column` (a bare `ADD COLUMN <name> <type>` with **no inline
+     DEFAULT** — `actions_public.alter_table_add_column` takes only schema/table/column/type) → **then**
+     `alter_table_set_column_not_null` (because `is_required`) → **then** `alter_table_set_column_default`. So on
+     a populated table: `ADD COLUMN is_published boolean` (all existing rows NULL) → `SET NOT NULL` → abort; the
+     DEFAULT is applied **after** the NOT-NULL check, so it never backfills. **The brief cannot carry a default
+     onto the `DataPublishable` column** — `node-type-registry` `DataPublishable.parameter_schema` exposes only
+     `is_published_field_name`/`published_at_field_name`/`include_id` (no `required`/`default` override), so the
+     skill brief never decides this DDL.
+- **Harness workaround (consume-only, IN PLACE for the publishable case only):**
+  `scripts/lib/brief-blueprint.mjs` `buildTableDefinition` — when the assembled node set contains a
+  `DataPublishable` node (from `policy: public-read+owner-write` OR `features: [publishable]`) — **pre-materializes
+  the publish-state columns as NULLABLE blueprint fields BEFORE the platform generator runs**:
+  `is_published { type:{name:boolean}, default:{value:false} }` (nullable) + `published_at
+  { type:{name:timestamptz} }` (nullable), pushed via `featureFields` (an author who declares either column
+  explicitly still wins — `addField` dedups by name). Field names are **derived** from the emitted
+  `AuthzPublishable` policy data (`is_published_field`/`published_at_field`), falling back to platform defaults —
+  **no app-specific literal**. **Mechanism:** the platform's `data_publishable.sql` is idempotent (`IF
+  existing_field_id IS NULL` guard), so when the field already exists it **SKIPS** `create_field` and with it the
+  `SET-NOT-NULL` alteration → the column stays nullable, no `SET-NOT-NULL` runs, and provision succeeds on a
+  populated OR fresh table. `NULL` is the safe unpublished state (`AuthzPublishable`'s qual is `is_published =
+  true AND …`, FALSE for NULL); `default:false` keeps NEW inserts at false. **GENERIC** — works for ANY table
+  getting publishable day-2, not recipe-specific. Proven: scaffolder auto-emits both fields; `check-scaffold`
+  canary PASS (incl. the blog public-read divergent); the nullable+default shape **landed on the 13-row
+  populated `recipes` table** (2 tables / 1 relation / public-read), DID-IT-LAND probe = yes.
+  **Trade-off (documented):** the column is **nullable** rather than `NOT NULL` even on a fresh table — the only
+  skill-side way to make day-2 publishable adds work; the durable `NOT-NULL-with-backfill` fix is upstream.
+- **For a GENERIC required column** (not publishable — which the generator can't detect from a node type), there
+  is **no auto-fix**; two author-level workarounds are documented in `references/brief-grammar.md` (the "Adding a
+  `required: true` column DAY-2 to a table that already holds rows" 🚨 note) and in `references/day2-evolve.md`:
+  (1) add the column **nullable** first (omit `required`) with a `default:` so new rows get a value and existing
+  rows stay NULL, backfill, then tighten to `required`; or (2) make the change on an empty table / pre-backfill
+  the rows before tightening.
+- **Owner:** **constructive-db**. **Proposed fix (pick one):** (i) in `after_insert_field_trigger`, when BOTH
+  `is_required` AND `default_value` are present, emit a single `ADD COLUMN <name> <type> NOT NULL DEFAULT <expr>`
+  (Postgres backfills existing rows from the default in one statement) — i.e. fold the default into the
+  ADD COLUMN, OR reorder to `SET DEFAULT` + a backfill (`UPDATE <t> SET <col>=<default> WHERE <col> IS NULL`)
+  **before** the `SET NOT NULL`; (ii) failing a general fix, make `data_publishable.sql` add `is_published` with
+  the column-creation default **inline** so a day-2 add backfills.
+- **Severity:** **MEDIUM** — blocks turning any populated table publishable (and any day-2 required-with-default
+  add) until worked around; the publishable case is auto-handled by the skill (nullable trade-off), the general
+  case needs the author-level nullable-then-tighten dance.
+- **Close-out probe:** on a populated table, add a required-with-default field (or `policy:
+  public-read+owner-write`) and re-provision → `constructBlueprint` succeeds and the existing rows are backfilled
+  to the default (today it aborts `column "<col>" … contains null values`). When a day-2 required-with-default
+  add backfills a populated table, GAP-16 is closed.
+
+> **Status / expiry / re-verify.** OPEN as of **2026-06-18** (day-2 evolve verification; Owner is
+> **constructive-db** — the `after_insert_field_trigger` DDL ordering + `data_publishable.sql`, consume-only —
+> see above). The skill ships the publishable nullable-pre-materialize workaround so the publishable day-2 add
+> works today (nullable trade-off). Re-verify by **~2026-09-18** (one quarter): either the trigger folds the
+> default into the ADD COLUMN (or backfills before SET-NOT-NULL) — then the skill can drop the nullable
+> pre-materialize and emit the publishable columns `NOT NULL` like the platform intends — or this entry is
+> re-confirmed still-needed with a fresh date.
+
+---
+
+## GAP-PUBLISHABLE-ROLE — `public-read+owner-write` is ANONYMOUS-read, not authenticated-second-user read
+
+> New from the **2026-06-18** day-2 evolve verification (live, after the publishable column landed). MINOR /
+> semantics. Owner straddles **constructive-db** (the `AuthzPublishable` reconcile role binding) + the harness
+> docs/fixtures (wording alignment). **Not a security hole** — recorded so app authors and fixtures don't
+> over-claim "any authenticated user can read published rows".
+
+- **Symptom (semantic, verified live):** after the flip, the platform's `public-read+owner-write` semantic is
+  **anonymous-read**, NOT authenticated-second-user read. Live `pg_policy` on `recipes`:
+  `auth_sel_publishable` is bound to role **`{anonymous}` ONLY** (`cmd=r`, qual
+  `((is_published=true) AND (published_at IS NOT NULL) AND (published_at <= now()))`), while the four
+  `auth_*_direct_owner` policies stay `{authenticated}`. The `provision.ts` public-read reconcile GRANTs
+  `anonymous` SELECT + (idempotently) adds `anonymous` to the policy roles, but does **NOT** add
+  `authenticated`. **Consequence (verified with two minted users + anon):** a logged-OUT visitor reads a
+  published row (`status 200, sees=true`), but a **second authenticated non-owner** user reading the same
+  published row gets `status 200, sees=false` (empty) — their `authenticated` reads are still owner-scoped by
+  `AuthzDirectOwner`. So "public read" = the **unauthenticated public** (a superset of any logged-in user), NOT
+  a second authed user. Drafts stay hidden from the public (anon/B see only published; the owner's unpublished
+  draft `sees=false` for both).
+- **Full policy-coexistence verdict (live, recorded as the ground truth for the tier):** `public_read_anonymous
+  = true`, `owner_write_ok = true` (owner update own → 200, returned), `non_owner_write_denied = true` (B update
+  A's row → 200 errors null `recipe=null`, 0 rows under owner-scope; A read-back unchanged — no hijack),
+  `draft_hidden_from_public = true`, `no_hijack = true`. The `AuthzPublishable` + 4 `AuthzDirectOwner` stack
+  **coexists correctly**; the flip's only blocker was ever the **column** (GAP-16), not the policy.
+- **Root:** the platform's public-read reconcile binds `AuthzPublishable`'s SELECT policy to `anonymous` only,
+  not `{anonymous, authenticated}`.
+- **Harness handling (IN PLACE):** `references/brief-grammar.md` (the `public-read+owner-write` policy-intent
+  row + the Tier-2 section) is already corrected to the live-verified anonymous-read semantic. **Fixtures
+  alignment owed:** `fixtures/test-blog-brief.yaml`'s header comment (and any doc) that says published rows are
+  "readable by ANYONE authenticated" should be aligned to "readable by the anonymous/logged-out public" — that
+  file is **C2/fixtures territory**, flagged here for that owner.
+- **Owner:** **constructive-db** — IF product intent is BOTH anon AND authenticated reads, bind
+  `AuthzPublishable` to `{anonymous, authenticated}` (or have the reconcile ADD `authenticated`, not just
+  `anonymous`). If anonymous-only is the intended semantic, no code change — only the docs/fixtures wording
+  alignment above.
+- **Severity:** **LOW** — semantics/docs clarification, no security hole (drafts hidden, owner writes scoped,
+  no hijack).
+
+> **Status / expiry / re-verify.** OPEN (semantics/docs) as of **2026-06-18**. Re-verify by **~2026-09-18**:
+> either the product confirms anonymous-only (close as docs-only, fixtures aligned) or binds
+> `AuthzPublishable` to `{anonymous, authenticated}` (then update the brief-grammar semantic row to "any
+> authenticated user OR the anonymous public reads published rows").
+
+---
+
+## GAP-17 — Blocks `_meta` Edit form loads BLANK (record-load `_meta.query.one` inflection mismatch)
+
+> New from the **2026-06-18** day-2 evolve verification. Owner is **`@constructive-io/ui`** (the
+> `DynamicFormCard` record-load path) — **consume-only** (the skill never edits `packages/ui`). ESCALATE; do
+> **not** attempt to fix it here.
+
+- **Symptom:** the runtime-generic `DynamicFormCard` / CRUD-Stack **Edit** form opens **blank** (no existing
+  field values pre-filled) when editing an existing row, even though the row exists and the detail view shows
+  its values. Create works; Edit fails to hydrate the form from the record.
+- **Root (suspected, for the upstream owner to confirm):** the record-load step resolves the wrong
+  `_meta.query.one` field — an **inflection mismatch** between the table's generated single-record query name
+  and the name `DynamicFormCard` derives to fetch the record for editing. The query the form issues does not
+  match the generated schema's single-record field, so it returns nothing and the form hydrates empty.
+- **Harness handling:** **NONE** — this is in `packages/ui`'s `DynamicFormCard`, which the skill consumes and
+  must not edit. A day-2-added field surfaces in the **detail** view fine; the **Edit** hydration is the broken
+  surface.
+- **Owner:** **`@constructive-io/ui`** — reconcile the `DynamicFormCard` record-load query name with the
+  generated `_meta.query.one` inflection so the Edit form hydrates from the record.
+- **Severity:** **MEDIUM** — Edit is a core CRUD verb; a blank Edit form is a real correctness gap (users
+  silently blank fields they don't re-type on save). Distinct from "the new field doesn't appear" — the field
+  **does** appear in the runtime form; it's the **existing-value hydration** that fails.
+- **Close-out probe:** from a clean `@constructive-io/ui` install, open the CRUD-Stack Edit form for an
+  existing row → every field is pre-filled with the row's current values. Today the form opens blank.
+
+> **Status / expiry / re-verify.** OPEN / escalated as of **2026-06-18** (day-2 verification; Owner is
+> **`@constructive-io/ui`**, consume-only). No in-skill workaround. Re-verify by **~2026-09-18**: either the
+> `DynamicFormCard` record-load inflection is fixed upstream, or this entry is re-confirmed with a fresh date.
+
+---
+
+## GAP-18 — Cross-app `localStorage` token collision (`constructive-auth-token:admin`) wedges the `_meta` form when apps share `localhost`
+
+> New from the **2026-06-18** day-2 evolve verification. Related to (but distinct from) **GAP-13**: GAP-13 is
+> the auth **client bearering** a stale token onto `signUp`/`signIn`; this is the **cross-app collision** of the
+> token key itself across two Constructive apps on the **same `localhost` origin**. Owner is the
+> **SDK / dashboard-blocks auth client** (the storage-key scheme) — consume-only.
+
+- **Symptom:** when **two Constructive apps** run on `localhost` (different ports, but `localStorage` is keyed by
+  **origin = scheme+host**, not port — so `http://localhost:3001` and `http://localhost:3002` SHARE storage),
+  they both read/write the **same** `localStorage` key `constructive-auth-token:admin`. App B's session token
+  overwrites App A's; App A's `_meta`-driven form (and any `app`-token-bearing request) then runs with **App B's
+  token** (wrong tenant) or a logged-out/stale token — the `_meta` form **wedges** (loads blank / 200-but-0-rows
+  / `UNAUTHENTICATED`) for reasons that look like an RLS or codegen bug but are actually a clobbered token.
+- **Root:** the auth client's storage key (`constructive-auth-token:admin`) is **not namespaced per app/db** —
+  it is a single fixed key on the shared `localhost` origin, so concurrent Constructive apps on `localhost`
+  collide. (`localStorage` is origin-scoped; the port does not separate them.)
+- **Harness handling / mitigation (developer-side, NOT a code fix here):** when verifying or developing **one**
+  app at a time, this doesn't bite. It bites when a **second** Constructive app is open in the same browser on
+  `localhost`. Mitigations: (a) verify one app at a time / close other Constructive `localhost` tabs; (b) use
+  separate browser profiles (or an incognito window) per app; (c) clear `constructive-auth-token:admin` before
+  switching apps. The skill's generated `auth-page.tsx` already **clears** the `admin` token on the
+  unauthenticated entry pages (GAP-13 guard), which incidentally reduces — but does not eliminate — the
+  cross-app clobber (a logged-in App B still writes the key while App A is mid-session).
+- **Owner:** **SDK / dashboard-blocks auth client** — **namespace the storage key per app/database**
+  (e.g. `constructive-auth-token:admin:<db>` or per-origin-port), so two Constructive apps on `localhost` don't
+  share one token slot.
+- **Severity:** **MEDIUM** (development/QA footgun) — undiscoverable: a clobbered token reads as an RLS/codegen
+  bug in App A while the real cause is App B sharing the storage key. On a deployed app (distinct origin) it does
+  not occur.
+- **Close-out probe:** run two Constructive apps on `localhost` (different ports), sign into both → each app's
+  requests carry **its own** token (App A is unaffected by signing into App B). Today both share
+  `constructive-auth-token:admin` and the later sign-in clobbers the earlier app's session.
+
+> **Status / expiry / re-verify.** OPEN / escalated as of **2026-06-18** (day-2 verification; Owner is the
+> **SDK / dashboard-blocks auth client**, consume-only). Mitigated developer-side (one app at a time / separate
+> profiles). Re-verify by **~2026-09-18**: either the auth client namespaces the token storage key per app/db,
+> or this entry is re-confirmed with a fresh date.
+
+---
+
 ## Priority for the platform team
 
 1. **GAP-1** (per-tenant provisioner grants/policies + the `org_memberships_sprt` personal-org seed on
@@ -829,17 +1042,28 @@ Three concrete faces of the same gap:
    from the 2026-06-15 owner-tier dogfood, **MEDIUM**: a stale token in storage makes a clean signup/signin fail
    with a misleading `UNAUTHENTICATED`. In-skill guard (`auth-page.tsx` mount-clear) papers over it; durable fix
    is the auth client not bearering the auth-entry mutations.
-7. **GAP-14** (`construct_blueprint` strips the `_` before a trailing single char — `elevation_m` → `elevationm`)
-   — new from the 2026-06-15 Cleome benchmark, **MEDIUM**: breaks the brief↔codegen column-name identity (TS
-   not-assignable on a valid units-suffixed column) with **no in-harness fix that keeps the name** (only re-spell
-   to a multi-char suffix or accept the mangled name). GAP-14b (payload N:M security) is a cross-reference to GAP-1d.
+7. **GAP-16** (`ADD COLUMN … DEFAULT` not honored on a POPULATED table — a day-2 required-with-default field
+   aborts the whole provision) and **GAP-14** (`construct_blueprint` strips the `_` before a trailing single
+   char — `elevation_m` → `elevationm`) — both **MEDIUM** blueprint-materialization defects. GAP-16 (new from
+   the 2026-06-18 day-2 verification) is **the one real day-2 caveat**: turning a populated table publishable (or
+   any day-2 required-with-default add) aborts atomically because the ADD-COLUMN default lands after the
+   SET-NOT-NULL check; the skill auto-handles the **publishable** case (nullable pre-materialize, trade-off:
+   column is nullable) and documents a nullable-then-tighten dance for the general case. GAP-14 breaks the
+   brief↔codegen column-name identity. GAP-14b (payload N:M security) is a cross-reference to GAP-1d.
 8. **GAP-3** (`revokeApiKey` no-op) and **GAP-2** (`revokeSession` id + the missing `userSessions` list /
    table split, re-confirmed 2026-06-05) — security-relevant: ops that lie about completing.
 9. **GAP-4** (`useSignOutMutation` codegen) — one codegen fix unblocks a core auth op everywhere.
 10. **GAP-5** (pending org procs) — completes the b2b admin surface.
-11. **`constructBlueprint` idempotency** (note under GAP-1) — re-run safety; **GAP-8** (`AuthzNotReadOnly` /
-   soft-delete semantics, LOW) and **GAP-12** (reset link param + reset-success redirect, LOW) — docs /
-   convention clarification.
+11. **GAP-17** (Blocks `_meta` Edit form loads blank — `DynamicFormCard` record-load inflection, *`@constructive-io/ui`
+   repo*) and **GAP-18** (cross-app `localStorage` token collision `constructive-auth-token:admin` on a shared
+   `localhost`, *SDK/dashboard-blocks repo*) — both **MEDIUM**, both new from the 2026-06-18 day-2 verification,
+   both consume-only (no in-skill fix; GAP-18 is developer-side mitigated). **GAP-PUBLISHABLE-ROLE** (LOW —
+   `public-read+owner-write` is anonymous-read, not authenticated-second-user read; docs/fixtures wording),
+   **GAP-8** (`AuthzNotReadOnly` / soft-delete semantics, LOW) and **GAP-12** (reset link param + reset-success
+   redirect, LOW) — docs / convention clarification. **NOTE:** the former *"`constructBlueprint` idempotency —
+   re-run safety"* item has been **REMOVED** — additive re-provision is **idempotent** (verified 2026-06-18: exit
+   0, `4→4` policies, `12→12` rows); see the **falsified idempotency note** under GAP-1. Only the populated-table
+   NOT-NULL ordering (GAP-16) remains a real re-run-blocking defect.
 
 > **Full escalation for the 2026-06-05 stress-test findings (GAP-1d, GAP-6, GAP-7, idempotency, GAP-8, and
 > the GAP-2 re-confirm) AND the Wave-2 fix-validation findings (GAP-9, GAP-10, GAP-11, GAP-12 + the GAP-1d /

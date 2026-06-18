@@ -15,10 +15,21 @@ set -euo pipefail
 # ── MODES ─────────────────────────────────────────────────────────────────────
 #   skill-only   FULLY BUILT. Each turn is applied the way the SKILL prescribes (apply the turn's
 #                brief_patch_ops to the brief copy, re-scaffold the provision files, re-provision),
-#                exactly per the turn's skill_only_path. A turn whose skill_only_path documents an
-#                EXPECTED abort ("[EXPECT abort: …]") is run anyway and the exact abort is captured
-#                VERBATIM (a real day-2 finding: skill-only re-provision replays CREATE POLICY on an
-#                already-provisioned DB and dies — PROVISION-RERUN-001), never papered over.
+#                exactly per the turn's skill_only_path. The VERDICT is decided EMPIRICALLY — by what
+#                actually happened to the live app — NOT by any prediction the fixture wrote:
+#                  • provision exit 0  AND  the new column/table/relation/policy ACTUALLY APPEARS in
+#                    the tenant's live schema (the generic "did-it-land" probe below)  AND  the dual
+#                    re-verify passes                              → clean
+#                  • the change landed only after a manual edit / extra mechanism              → hand-fixed
+#                  • the change did NOT land (whatever the cause — capture the REAL error VERBATIM)→ impossible
+#                  • some layers synced and others drifted (e.g. modules unchanged but Blocks/ops
+#                    wired, or schema landed but a regression flow broke)                       → partial
+#                The runner does NOT read a "[EXPECT abort: …]" marker as a verdict signal; the abort
+#                code a fixture once guessed (PROVISION-RERUN-001) is irrelevant — only DID-IT-LAND
+#                decides. (Verified day-2 reality: additive re-provision is IDEMPOTENT — an additive
+#                column/table/relation lands CLEAN skill-only; the real wall is a NOT-NULL column on a
+#                populated table, and a no-module flow add is PARTIAL — Blocks install, re-provision
+#                leg is a no-op. The runner measures this rather than asserting it.)
 #   hybrid       STUB this stage. Requires the Stage-C day-2 driver (scripts/day2-sync.sh). When
 #                that script is absent, every turn records verdict=blocked-stage-c and the run
 #                prints "hybrid mode requires Stage C day2-driver". (Stage C fills this in.)
@@ -31,18 +42,26 @@ set -euo pipefail
 #           turn-0-green. Record turn-0 time.
 #   TURN N  (sequential; each RESUMES the prior workspace) Start a per-turn timer. Apply the turn's
 #           brief_patch_ops to the brief copy + re-scaffold (skill-only) — or the hybrid stub. Run
-#           the skill_only_path command, capturing its exit + output. If it aborts as the fixture
-#           EXPECTS → verdict impossible (recorded verbatim). Otherwise best-effort re-verify, then
-#           call lib/day2-verify.mjs for the DUAL assertion (new capability round-trips AND every
-#           regression flow still passes), pick a verdict, write a scorecard row, tag turn-<N>-<v>.
+#           the skill_only_path command, capturing its exit + output. THEN probe the live tenant
+#           schema to see if the turn's change ACTUALLY LANDED (did_change_land — generic over the
+#           brief_patch_ops). If provision exited non-zero AND the change did not land → verdict
+#           impossible, with the REAL error captured VERBATIM (no marker, no predicted code). If the
+#           change landed (or provision was a no-op for a no-module flow add), restart dev CLEAN (the
+#           mid-session codegen+scaffold guard), best-effort re-verify, then call lib/day2-verify.mjs
+#           for the DUAL assertion (new capability round-trips AND every regression flow still
+#           passes), fold land×dual into a verdict, write a scorecard row, tag turn-<N>-<v>. If the
+#           change did NOT land, REVERT this turn's brief patch + partial scaffold before the next
+#           turn so a failed turn never poisons a later re-provision (LAND-OR-REVERT).
 #   Report  Print the scorecard markdown table + total + per-turn elapsed.
 #
 # ── turns.json CONTRACT (what this GENERIC runner reads — author A's schema) ───
 #   app:   { turn0_brief, db_name_base, owner_entity, owner_entity_singular, turn0_flows[] }
 #   turns[]: each {
 #     id, title, layer,
-#     skill_only_path:  STRING — the literal skill-only steps; a "[EXPECT abort: …]" marker means a
-#                       non-zero provision exit is EXPECTED (→ verdict impossible, captured verbatim).
+#     skill_only_path:  STRING — the literal skill-only steps the runner executes (edit brief →
+#                       scaffold-provision → re-provision). It is DOCUMENTATION of the steps, NOT a
+#                       verdict oracle: any "[EXPECT …]"/"[NOTE …]" prose in it is ignored for
+#                       scoring — the verdict comes from the live did-it-land probe + dual-verify.
 #     hybrid_path:      STRING — the Stage-C day2-driver steps (driven only in hybrid mode = stub here).
 #     brief_patch_ops[]: the MACHINE-PARSEABLE change the runner applies to the per-run brief copy:
 #                        { op: add_field,        table, field:{name,type:{name},required?,default?} }
@@ -84,9 +103,11 @@ set -euo pipefail
 #   CONSTRUCTIVE_CLI  abs path to the constructive CLI (only if :3000 must restart; see S0)
 #   MTR_NO_RESTART=1  never restart :3000 (smoke only; fail if down)
 #
-# Exit: 0 = turn 0 green AND no turn produced an UNEXPECTED failure (an EXPECTED-abort 'impossible'
-#       turn or a hybrid 'blocked-stage-c' turn does NOT fail the run — they are recorded findings);
-#       non-zero = turn-0 build failed, or a turn failed in a way turns.json did not mark expected.
+# Exit: 0 = turn 0 green AND every turn was MEASURED to a recorded verdict (clean / hand-fixed /
+#       partial / impossible) without the runner itself erroring; a turn whose change did not land
+#       (impossible — real error captured) or a hybrid 'blocked-stage-c' turn is a recorded FINDING,
+#       not a run failure. Non-zero = turn-0 build failed, or the runner could not measure a turn
+#       (e.g. could not even apply the brief patch / probe the schema / drive the dual-verify).
 
 # ── shared preamble + phase-runner machinery (one copy, in lib/) ────────────────
 # sh-common.sh: RED/GREEN/YELLOW/NC + pass/fail/warn/info/hr + SCRIPT_DIR/REPO_ROOT.
@@ -107,6 +128,11 @@ SCORECARD_LIB="$REPO_ROOT/scripts/lib/day2-scorecard.mjs"
 VERIFY_LIB="$REPO_ROOT/scripts/lib/day2-verify.mjs"
 DAY2_SYNC="$REPO_ROOT/scripts/day2-sync.sh"  # Stage-C hybrid driver (absent this stage → hybrid is a stub)
 
+# Physical hub Postgres database that holds the metaschema + every per-tenant schema (config
+# db.hubDatabase, env-overridable). The did-it-land probe connects here to inspect the tenant's
+# live schema. Single source of truth — never a literal db name.
+HUB_PG_DB="$(cfg db.hubDatabase constructive)"
+
 # ── args ─────────────────────────────────────────────────────────────────────
 MODE=""
 TURNS_FILE=""
@@ -121,7 +147,11 @@ while [ "$#" -gt 0 ]; do
     --up-to) UP_TO="$2"; shift 2 ;;
     --no-restart) NO_RESTART=1; shift ;;
     -h|--help)
-      sed -n '3,89p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+      # Print the header doc block (lines 3 .. the line before the "shared preamble" marker), so the
+      # help text auto-tracks header edits — no brittle hard-coded end line.
+      _hdr_end="$(grep -n '^# ── shared preamble' "${BASH_SOURCE[0]}" | head -n1 | cut -d: -f1)"
+      [ -n "$_hdr_end" ] || _hdr_end=110
+      sed -n "3,$((_hdr_end - 2))p" "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
       exit 0
       ;;
     *) fail "Unknown argument: $1" "see ./scripts/multi-turn-run.sh --help" ;;
@@ -377,7 +407,68 @@ apply_brief_patch_ops() {
       }
     }
     fs.writeFileSync(file,text);
-  ' 2>&1 | sed 's/^/    /' || warn "brief_patch_ops application reported issues (continuing — skill-only re-provision is expected to abort anyway)"
+  ' 2>&1 | sed 's/^/    /' || warn "brief_patch_ops application reported issues (continuing — the did-it-land probe will tell us whether the change actually took effect)"
+}
+
+# ── BRIEF SNAPSHOT / REVERT (cumulative-brief LAND-OR-REVERT) ───────────────────
+# The turns are cumulative: each turn edits the SAME run-brief on top of the prior turn's. If a
+# turn's change FAILS TO LAND, its half-applied brief patch (and any provision files re-scaffolded
+# from it) must NOT carry into the next turn's re-provision — otherwise a failed turn poisons every
+# later turn (the Stage-B turn-4 inherited turn-3's residue). So before applying a turn we SNAPSHOT
+# the run-brief; if the change did not land we RESTORE that snapshot and re-scaffold the provision
+# files from the restored (good) brief, leaving the next turn a clean cumulative base. Generic: it
+# snapshots/restores a file + re-runs the same scaffolder — nothing app-specific.
+BRIEF_SNAPSHOT="$STATE_DIR/.brief-snapshot.yaml"
+snapshot_run_brief() { cp "$RUN_BRIEF" "$BRIEF_SNAPSHOT" 2>/dev/null || true; }
+revert_run_brief() {
+  [ -f "$BRIEF_SNAPSHOT" ] || { warn "no brief snapshot to revert to (continuing)"; return 0; }
+  cp "$BRIEF_SNAPSHOT" "$RUN_BRIEF" 2>/dev/null || true
+  info "land-or-revert: restored the run-brief to its pre-turn snapshot (the failed turn's patch is dropped)"
+  # Re-scaffold the provision files from the restored brief so the next turn's re-provision starts
+  # from the LAST-GOOD schema, not the failed turn's half-written one. Best-effort + quiet.
+  node "$REPO_ROOT/scripts/scaffold-app.mjs" "$RUN_BRIEF" "$APP_DIR" --phase provision >/dev/null 2>&1 \
+    || warn "re-scaffold from the reverted brief reported issues (the next turn still starts from the good brief)"
+}
+
+# ── DEV RESTART CLEAN (mid-session codegen+scaffold guard) ──────────────────────
+# A day-2 turn that lands its change re-runs codegen + scaffold-frontend while a Next.js dev server
+# (`next dev`, Turbopack) is still serving the app. That dev server's PostCSS/Tailwind HOT-RELOAD
+# chokes on a mid-session regen and starts serving HTTP 500 for the app's CSS (a documented day-2
+# derailer) — which then fails Chrome live-QA for reasons that have NOTHING to do with the change.
+# The fix is to restart dev CLEAN after the regen: (1) KILL any process bound to the app's resolved
+# port — the stale hot-reloading dev server — and (2) remove the stale .next build cache. We do NOT
+# start a server here: the very NEXT step the runner takes is the re-verify phase sweep, whose public
+# phase 2.6 runs a fresh `next build` (rebuilding .next from scratch) and whose phase 3 live-QA gate
+# then `next start`s that clean build — so this teardown is what makes that next build+start clean.
+# (rm -rf .next is safe precisely because phase 2.6 rebuilds it before anything serves it.) Generic +
+# best-effort: it derives the port from run-state/brief (never a literal) and never fails the run.
+# Skipped when the hub/app lifecycle is unmanaged (CONSTRUCTIVE_HUB_MANAGED=false / hub.managed=false)
+# — an embedder owns its own dev server and we must not kill it.
+restart_dev_clean() {
+  local why="${1:-mid-session codegen+scaffold}"
+  local hub_managed; hub_managed="$(cfg hub.managed true)"
+  if [ "${CONSTRUCTIVE_HUB_MANAGED:-$hub_managed}" = "false" ]; then
+    info "dev-restart: skipped (unmanaged lifecycle) — restart the app's dev server yourself after $why so a stale PostCSS hot-reload (HTTP 500 on CSS) doesn't derail Chrome QA"
+    return 0
+  fi
+  info "dev-restart CLEAN after $why (avoids the PostCSS hot-reload 500 that derails Chrome QA)"
+  # Kill any dev server bound to THIS app's resolved port (derived, never a literal). Best-effort.
+  resolve_app_url
+  local port; port="${APP_PORT:-}"
+  if [ -n "$port" ]; then
+    local pids; pids="$(lsof -ti tcp:"$port" 2>/dev/null || true)"
+    if [ -n "$pids" ]; then
+      # shellcheck disable=SC2086
+      kill $pids >/dev/null 2>&1 || true
+      info "dev-restart: stopped dev server(s) on port $port (pids: $(printf '%s' "$pids" | tr '\n' ' '))"
+    fi
+  fi
+  # Remove the stale Next.js build cache; the re-verify phase 2.6 (`next build`) regenerates it from
+  # scratch before phase 3 serves it, so the served CSS is clean (no stale hot-reload state).
+  local nextdir
+  for nextdir in "$APP_DIR/packages/app/.next" "$APP_DIR/.next"; do
+    [ -d "$nextdir" ] && { rm -rf "$nextdir" >/dev/null 2>&1 && info "dev-restart: removed stale build cache $nextdir" || true; }
+  done
 }
 
 # ── run a turn's skill_only_path. skill_only_path is a human STRING; the runner executes the
@@ -403,11 +494,120 @@ run_skill_only_steps() {
   return 0
 }
 
-# Does this turn's skill_only_path DOCUMENT an expected abort? Generic: scan the string for the
-# "[EXPECT abort" marker author A uses — no specific error code is hard-coded here.
-turn_expects_abort() {
-  local s; s="$(tj "turns[$1].skill_only_path")"
-  printf '%s' "$s" | grep -qiE '\[EXPECT abort'
+# ── did_change_land — the GENERIC "DID-IT-LAND" probe (the verdict's ground truth) ──────────────
+# After a turn's re-provision, ask the LIVE tenant schema whether the turn's change ACTUALLY took
+# effect — NOT whether a fixture predicted it would. It is generic over author A's brief_patch_ops:
+# each op maps to an existence check in the tenant's own `app_public` schema (resolved exactly the
+# way provision.ts does — by DATABASE_ID from the app's .env, with a db-name LIKE fallback), using
+# only catalog/information_schema queries. NOTHING app-specific is hard-coded: the table/column/
+# relation/policy names all come from the ops.
+#   add_field        → the column field.name exists on `table`  (also reports its nullability, so the
+#                      caller can tell a clean add from a NOT-NULL-on-populated-table failure)
+#   add_table        → the table table.name exists
+#   add_relation     → the FK column relation.field_name exists on relation.source_table
+#   set_table_policy → (to public-read+owner-write) a `_publishable$` SELECT policy exists on `table`
+#                      (the platform's AuthzPublishable derivation — the SAME signal provision.ts
+#                      discovers); other policy targets check the table simply still has policies
+#   add_ui_route     → no DB artifact (frontend-only) → not a DB landing signal (dual-verify judges it)
+#   add_flow         → no DB artifact when the flow adds zero modules (Blocks+ops only) → not a DB
+#                      landing signal (dual-verify + the no-module note judge it)
+# Sets DID_LAND ∈ { yes | no | unknown | n/a } and DID_LAND_DETAIL (a one-line human summary):
+#   yes      every DB-checkable op for this turn is present
+#   no       at least one DB-checkable op is absent (the change did NOT land)
+#   n/a      this turn has NO DB-checkable op (e.g. a pure add_flow / add_ui_route) — landing is
+#            judged downstream by the dual-verify, not here
+#   unknown  the probe could not run (no PG env, no .env/DATABASE_ID, schema unresolved, pg missing) —
+#            the caller must NOT treat unknown as a failure; it falls back to exit-code + dual-verify
+# Reads: APP_DIR (.env), HUB_PG_DB, the turn's brief_patch_ops. Pure read; never mutates anything.
+did_change_land() {
+  local idx="$1" ops_json
+  DID_LAND="unknown"; DID_LAND_DETAIL=""
+  ops_json="$(tj "turns[$idx].brief_patch_ops")"
+  if [ -z "$ops_json" ] || [ "$ops_json" = "null" ]; then DID_LAND="n/a"; DID_LAND_DETAIL="no brief_patch_ops to probe"; return 0; fi
+  # Resolve `pg` from the provision package the templates installed it into (same module the
+  # provisioner uses). If it isn't there, the probe degrades to 'unknown' (never a false 'no').
+  local pg_dir="$APP_DIR/packages/provision/node_modules"
+  local probe_out
+  probe_out="$(APP_DIR="$APP_DIR" HUB_PG_DB="$HUB_PG_DB" OPS_JSON="$ops_json" NODE_PATH="$pg_dir" node -e '
+    const fs=require("fs"), path=require("path");
+    const out=(o)=>{ process.stdout.write(JSON.stringify(o)); };
+    // Whole body in ONE async IIFE so the early-exit `return`s are function-scoped (node -e does
+    // NOT allow top-level return). Every exit path calls out(...) exactly once.
+    (async()=>{
+      let ops; try{ ops=JSON.parse(process.env.OPS_JSON); }catch{ ops=[]; }
+      if(!Array.isArray(ops)) ops=[ops];
+      // DB-checkable ops only — a turn of pure add_flow/add_ui_route has none.
+      const dbOps=ops.filter(o=>o&&["add_field","add_table","add_relation","set_table_policy"].includes(o.op));
+      if(dbOps.length===0){ return out({landed:"n/a",detail:"no DB-checkable op (frontend-only change)"}); }
+      if(!process.env.PGHOST){ return out({landed:"unknown",detail:"PGHOST unset — cannot probe the live schema"}); }
+      // Read DATABASE_ID/DATABASE_NAME from the app .env (workspace root).
+      let envText=""; try{ envText=fs.readFileSync(path.join(process.env.APP_DIR,".env"),"utf8"); }catch{}
+      const envOf=(k)=>{ const m=envText.match(new RegExp("^"+k+"=(.*)$","m")); return m?m[1].trim():""; };
+      const dbId=envOf("DATABASE_ID"), dbName=envOf("DATABASE_NAME");
+      if(!dbId && !dbName){ return out({landed:"unknown",detail:".env has no DATABASE_ID/DATABASE_NAME — app not provisioned yet?"}); }
+      let Pool; try{ ({Pool}=require("pg")); }catch{ return out({landed:"unknown",detail:"pg module not resolvable from the provision package — cannot probe"}); }
+      const pool=new Pool({ database: process.env.HUB_PG_DB });
+      try{
+        // Resolve THIS tenant app_public schema — DATABASE_ID first (exact), db-name LIKE fallback.
+        let schema;
+        if(dbId){
+          const r=await pool.query("SELECT schema_name FROM metaschema_public.schema WHERE database_id=$1 AND name=$2 LIMIT 1",[dbId,"app_public"]);
+          schema=r.rows[0]&&r.rows[0].schema_name;
+        }
+        if(!schema && dbName){
+          const like=dbName.replace(/_/g,"%").replace(/-/g,"%")+"%app%public";
+          const r=await pool.query("SELECT schema_name FROM information_schema.schemata WHERE schema_name LIKE $1 ORDER BY length(schema_name) LIMIT 1",[like]);
+          schema=r.rows[0]&&r.rows[0].schema_name;
+        }
+        if(!schema){ await pool.end(); return out({landed:"unknown",detail:"could not resolve the tenant app_public schema (db "+(dbName||dbId)+")"}); }
+        const checks=[]; let allPresent=true;
+        for(const op of dbOps){
+          if(op.op==="add_field"){
+            const r=await pool.query("SELECT is_nullable FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name=$3 LIMIT 1",[schema,op.table,op.field&&op.field.name]);
+            const present=r.rows.length>0; allPresent=allPresent&&present;
+            checks.push({op:"add_field",target:op.table+"."+(op.field&&op.field.name),present,nullable:present?(r.rows[0].is_nullable==="YES"):null});
+          } else if(op.op==="add_table"){
+            const t=op.table&&op.table.name;
+            const r=await pool.query("SELECT 1 FROM information_schema.tables WHERE table_schema=$1 AND table_name=$2 LIMIT 1",[schema,t]);
+            const present=r.rows.length>0; allPresent=allPresent&&present;
+            checks.push({op:"add_table",target:t,present});
+          } else if(op.op==="add_relation"){
+            const r=op.relation||{};
+            const q=await pool.query("SELECT 1 FROM information_schema.columns WHERE table_schema=$1 AND table_name=$2 AND column_name=$3 LIMIT 1",[schema,r.source_table,r.field_name]);
+            const present=q.rows.length>0; allPresent=allPresent&&present;
+            checks.push({op:"add_relation",target:(r.source_table||"?")+"."+(r.field_name||"?")+"->"+(r.target_table||"?"),present});
+          } else if(op.op==="set_table_policy"){
+            // public-read+owner-write lands an AuthzPublishable SELECT policy (name ~ _publishable$).
+            const wantPub=/public-read/.test(String(op.to_policy||""));
+            if(wantPub){
+              const r=await pool.query("SELECT 1 FROM pg_policies WHERE schemaname=$1 AND tablename=$2 AND cmd=$3 AND policyname ~ $4 LIMIT 1",[schema,op.table,"SELECT","_publishable$"]);
+              const present=r.rows.length>0; allPresent=allPresent&&present;
+              checks.push({op:"set_table_policy",target:op.table+" -> "+op.to_policy,present,signal:"AuthzPublishable SELECT policy"});
+            } else {
+              // A non-public policy flip — assert the table at least still carries policies.
+              const r=await pool.query("SELECT count(*)::int n FROM pg_policies WHERE schemaname=$1 AND tablename=$2",[schema,op.table]);
+              const present=(r.rows[0]&&r.rows[0].n)>0; allPresent=allPresent&&present;
+              checks.push({op:"set_table_policy",target:op.table+" -> "+op.to_policy,present,signal:r.rows[0]&&r.rows[0].n+" policies"});
+            }
+          }
+        }
+        const absent=checks.filter(c=>!c.present).map(c=>c.target);
+        const nn=checks.filter(c=>c.op==="add_field"&&c.present&&c.nullable===false).map(c=>c.target);
+        const detail = allPresent
+          ? ("all "+checks.length+" DB artifact(s) present in "+schema+(nn.length?(" (NOT NULL: "+nn.join(", ")+")"):""))
+          : ("MISSING in "+schema+": "+absent.join(", "));
+        out({landed: allPresent?"yes":"no", schema, checks, detail});
+      } catch(e){
+        out({landed:"unknown",detail:"probe query failed: "+String(e&&e.message||e).slice(0,160)});
+      } finally { try{ await pool.end(); }catch{} }
+    })();
+  ' 2>/dev/null || true)"
+  # Parse the probe JSON's landed + detail (single Node pass; tolerate empty/garbled → unknown).
+  local parsed
+  parsed="$(printf '%s' "$probe_out" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const j=JSON.parse(s.trim());process.stdout.write((j.landed||"unknown")+"\t"+(j.detail||""))}catch{process.stdout.write("unknown\t")}})' 2>/dev/null || printf 'unknown\t')"
+  DID_LAND="$(printf '%s' "$parsed" | cut -f1)"
+  DID_LAND_DETAIL="$(printf '%s' "$parsed" | cut -f2-)"
+  [ -n "$DID_LAND" ] || DID_LAND="unknown"
 }
 
 # Derive the NEW-capability flow set for a turn (csv). GENERIC: a turn that adds a flow (a `flow.id`
@@ -535,6 +735,7 @@ while [ "$ti" -lt "$NTURNS" ]; do
   hr
   TURN_START="$(date +%s)"
   VERDICT=""; BLOCKER=""; SYNCED="[]"; DRIFTED="[]"
+  DID_LAND=""; DID_LAND_DETAIL=""
 
   if [ "$MODE" = "hybrid" ]; then
     # ── HYBRID — STUB this stage. Requires the Stage-C day-2 driver. ───────────
@@ -547,36 +748,62 @@ while [ "$ti" -lt "$NTURNS" ]; do
     BLOCKER="hybrid mode requires the Stage-C day2-driver/day2-sync.sh (not built this stage); hybrid_path: $(tj "turns[$ti].hybrid_path" | cut -c1-100)"
     DRIFTED="[\"${LAYER:-schema}\"]"
   else
-    # ── SKILL-ONLY — apply the turn's brief_patch_ops, then run the skill-only steps. ──
+    # ── SKILL-ONLY — apply the turn's brief_patch_ops, run the skill-only steps, then DECIDE THE
+    #    VERDICT EMPIRICALLY: probe the live tenant schema for whether the change actually landed
+    #    (did_change_land), NOT from any fixture prediction or "[EXPECT abort]" marker. ──
+    snapshot_run_brief                 # land-or-revert base: the pre-turn (good) brief
     apply_brief_patch_ops "$ti"
-    run_skill_only_steps
+    run_skill_only_steps               # sets CMD_EXIT + CMD_TAIL (the REAL provision exit + output)
 
-    if [ "${CMD_EXIT:-0}" -ne 0 ]; then
-      if turn_expects_abort "$ti"; then
-        # EXPECTED day-2 abort (PROVISION-RERUN-001 etc.) — record VERBATIM. This is the FINDING:
-        # the skill-only re-provision cannot land an incremental change on an already-provisioned DB.
-        VERDICT="impossible"
-        ABORT_TAIL="$(printf '%s' "$CMD_TAIL" | grep -iE 'policy|PROVISION-RERUN|error|abort|duplicate' | tail -n 1)"
-        [ -n "$ABORT_TAIL" ] || ABORT_TAIL="$(printf '%s' "$CMD_TAIL" | tail -n 1)"
-        BLOCKER="skill-only re-provision aborted (exit ${CMD_EXIT}) AS EXPECTED: ${ABORT_TAIL}"
-        DRIFTED="[\"${LAYER:-schema}\"]"
-        warn "turn $N: skill-only path aborted as EXPECTED (exit ${CMD_EXIT}) — verdict 'impossible' (a day-2 finding, not a run failure)"
-        echo "  ── captured abort (verbatim tail) ──"
-        printf '%s\n' "$CMD_TAIL" | sed 's/^/    /'
+    info "did-it-land probe: inspect the live tenant schema for this turn's change"
+    did_change_land "$ti"
+    info "did-it-land: $DID_LAND — ${DID_LAND_DETAIL:-(no detail)}"
+
+    if [ "$DID_LAND" = "no" ]; then
+      # The change did NOT land. This is the FINDING — whatever the cause. Capture the REAL error
+      # VERBATIM from the provision tail (no predicted code, no marker). A non-zero provision exit is
+      # the usual cause but not required: a silent no-op that left the artifact absent is ALSO 'no'.
+      VERDICT="impossible"
+      DRIFTED="[\"${LAYER:-schema}\"]"
+      local_err="$(printf '%s' "$CMD_TAIL" | grep -iE 'error|abort|already exists|null value|not-null|not null|violates|duplicate|permission denied|cannot' | tail -n 1)"
+      [ -n "$local_err" ] || local_err="$(printf '%s' "$CMD_TAIL" | tail -n 1)"
+      if [ "${CMD_EXIT:-0}" -ne 0 ]; then
+        BLOCKER="change did NOT land (skill-only). provision exit ${CMD_EXIT}; ${DID_LAND_DETAIL}. REAL error: ${local_err:-<none captured>}"
       else
-        # UNEXPECTED failure — record + fail the run.
-        VERDICT="impossible"
-        BLOCKER="skill-only re-provision failed UNEXPECTEDLY (exit ${CMD_EXIT}): $(printf '%s' "$CMD_TAIL" | tail -n 1)"
-        DRIFTED="[\"${LAYER:-schema}\"]"
-        RUN_EXIT=1
-        echo -e "  ${RED}turn $N: skill-only step failed unexpectedly (exit ${CMD_EXIT})${NC}"
-        printf '%s\n' "$CMD_TAIL" | sed 's/^/    /'
+        BLOCKER="change did NOT land (skill-only) even though provision exit 0 (silent no-op); ${DID_LAND_DETAIL}. tail: ${local_err:-<none>}"
       fi
+      warn "turn $N: change did NOT land — verdict 'impossible' (a day-2 finding, not a run failure)"
+      echo "  ── captured provision tail (verbatim) ──"
+      printf '%s\n' "$CMD_TAIL" | sed 's/^/    /'
+      # LAND-OR-REVERT: drop this turn's brief patch so it does not poison the next turn's re-provision.
+      revert_run_brief
+    elif [ "$DID_LAND" = "unknown" ] && [ "${CMD_EXIT:-0}" -ne 0 ]; then
+      # The probe could not run (no PG / no .env / pg missing) AND provision failed. We cannot prove
+      # the change landed, and provision errored — treat as impossible, REAL error verbatim, and
+      # revert so the run can still proceed cleanly. (If the probe were available this would be
+      # decided by landing; without it we fall back to the exit code — never inventing a cause.)
+      VERDICT="impossible"
+      DRIFTED="[\"${LAYER:-schema}\"]"
+      local_err="$(printf '%s' "$CMD_TAIL" | grep -iE 'error|abort|already exists|null value|violates|duplicate|permission denied|cannot' | tail -n 1)"
+      [ -n "$local_err" ] || local_err="$(printf '%s' "$CMD_TAIL" | tail -n 1)"
+      BLOCKER="change unverifiable (probe ${DID_LAND}: ${DID_LAND_DETAIL}) and provision exit ${CMD_EXIT}. REAL error: ${local_err:-<none captured>}"
+      warn "turn $N: could not probe landing AND provision failed — verdict 'impossible' (real error captured)"
+      echo "  ── captured provision tail (verbatim) ──"
+      printf '%s\n' "$CMD_TAIL" | sed 's/^/    /'
+      revert_run_brief
     fi
+    # else: DID_LAND ∈ {yes, n/a, or unknown-with-exit-0} → the change either provably landed, has no
+    # DB artifact to probe (frontend-only — judged by dual-verify), or was a clean no-op. Fall through
+    # to the dual assertion, which decides clean vs partial vs hand-fixed.
   fi
 
-  # ── if the apply step did NOT abort the turn, best-effort re-verify + the DUAL assertion. ──
+  # ── if the apply step did NOT already conclude 'impossible'/'blocked', restart dev CLEAN (the
+  #    mid-session codegen+scaffold guard) then best-effort re-verify + the DUAL assertion. ──
   if [ -z "$VERDICT" ]; then
+    # Guard the documented PostCSS hot-reload 500: a landed change just re-ran codegen+scaffold on a
+    # live dev server; tear the dirty one down so the next live-QA start serves clean CSS.
+    restart_dev_clean "turn $N codegen+scaffold"
+
     resolve_app_url
     STATE_ARGS=()
     [ -f "$STATE_DIR/run-state.json" ] && STATE_ARGS=(--state "$STATE_DIR/run-state.json")
@@ -596,17 +823,30 @@ while [ "$ti" -lt "$NTURNS" ]; do
     DV_NEW="$(printf '%s' "$DV_TRIPLE" | cut -f2)"
     DV_REG="$(printf '%s' "$DV_TRIPLE" | cut -f3)"
 
+    # ── fold (did-it-land × re-verify × dual-verify) into a GROUNDED verdict ──
+    #   clean      DB change present (or n/a) AND re-verify green AND dual-verify pass.
+    #   partial    a meaningful part synced but another part drifted — e.g. a no-module flow add whose
+    #              Blocks/ops wired (DB n/a, no regression) but whose NEW capability did not round-trip
+    #              skill-only, OR the schema landed but the new-capability leg didn't (frontend not
+    #              wired) while the regression still passes. NOT a hard failure, NOT fully clean.
+    #   hand-fixed landed only after intervention / a regression broke / a re-verify gate failed.
     if [ "$DV_OVERALL" = "pass" ] && [ -z "$REVERIFY_FAILED" ]; then
       VERDICT="clean"; SYNCED="[\"${LAYER:-schema}\"]"; BLOCKER=""
-      pass "turn $N: change landed cleanly (new-capability=$DV_NEW, regression=$DV_REG, re-verify green)"
+      pass "turn $N: change landed cleanly (did-it-land=$DID_LAND, new-capability=$DV_NEW, regression=$DV_REG, re-verify green)"
+    elif [ "$DV_REG" != "fail" ] && [ -z "$REVERIFY_FAILED" ] && { [ "$DID_LAND" = "yes" ] || [ "$DID_LAND" = "n/a" ]; }; then
+      # The baseline still passes and re-verify is green; the only gap is the NEW capability not
+      # rounding-trip skill-only (e.g. a flow whose Blocks/ops the skill-only re-provision cannot wire,
+      # or a frontend-only change not yet surfaced). Some layers synced, others drifted → partial.
+      VERDICT="partial"; SYNCED="[\"${LAYER:-schema}\"]"; DRIFTED="[\"frontend\"]"
+      BLOCKER="partial: backing change present (did-it-land=$DID_LAND) + regression intact (regression=$DV_REG), but the NEW capability did not round-trip skill-only (new=$DV_NEW) — the frontend wiring (Blocks/ops/codegen) is the Stage-C day2-driver's job"
+      warn "turn $N: $BLOCKER"
     else
       VERDICT="hand-fixed"; DRIFTED="[\"${LAYER:-schema}\"]"
-      if [ "$DV_REG" = "fail" ]; then BLOCKER="REGRESSION: a baseline flow broke after the change (regression=$DV_REG; new=$DV_NEW)"
-      elif [ "$DV_NEW" = "fail" ]; then BLOCKER="new capability did NOT round-trip (new=$DV_NEW; regression=$DV_REG)"
-      elif [ -n "$REVERIFY_FAILED" ]; then BLOCKER="re-verify gate failed at phase $REVERIFY_FAILED after the change"
-      else BLOCKER="dual-assert inconclusive (driver produced no verdict) — see output above"; fi
+      if [ "$DV_REG" = "fail" ]; then BLOCKER="REGRESSION: a baseline flow broke after the change (regression=$DV_REG; new=$DV_NEW; did-it-land=$DID_LAND)"
+      elif [ "$DV_NEW" = "fail" ]; then BLOCKER="new capability did NOT round-trip (new=$DV_NEW; regression=$DV_REG; did-it-land=$DID_LAND)"
+      elif [ -n "$REVERIFY_FAILED" ]; then BLOCKER="re-verify gate failed at phase $REVERIFY_FAILED after the change (did-it-land=$DID_LAND)"
+      else BLOCKER="dual-assert inconclusive (driver produced no verdict; did-it-land=$DID_LAND) — see output above"; fi
       warn "turn $N: $BLOCKER"
-      RUN_EXIT=1
     fi
   fi
 
@@ -639,9 +879,9 @@ echo "  scorecard JSON : $SCORECARD_FILE"
 echo -e "  total elapsed  : ${MM}m${SS}s  (turn 0 + ${NTURNS} turn(s))"
 hr
 if [ "$RUN_EXIT" -eq 0 ]; then
-  echo -e "${GREEN}OVERALL: PASS${NC}   (turn 0 green; every turn landed as the fixture expected)"
+  echo -e "${GREEN}OVERALL: PASS${NC}   (turn 0 green; every turn was MEASURED to a recorded verdict — see the scorecard. clean/partial/hand-fixed/impossible are FINDINGS about what the skill-only path actually did, not run failures.)"
 else
-  echo -e "${RED}OVERALL: FAIL${NC}   (a turn failed in a way turns.json did not mark expected — see the scorecard 'Blocker' column)"
+  echo -e "${RED}OVERALL: FAIL${NC}   (turn 0 failed, or a turn could not be measured at all — see the scorecard 'Blocker' column)"
 fi
 hr
 exit "$RUN_EXIT"

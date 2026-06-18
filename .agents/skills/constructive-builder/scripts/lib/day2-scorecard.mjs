@@ -4,9 +4,11 @@
  * day2-scorecard.mjs — the DAY-2 SCORECARD store + renderer.
  *
  * The multi-turn runner (scripts/multi-turn-run.sh) applies one change per turn and, after
- * each, records HOW that change landed: did the skill path absorb it cleanly, did it need a
- * hand-fix, did it force a full rebuild, was it impossible skill-only, or is a leg still
- * STUBBED (hybrid mode → blocked-stage-c). This module owns that ledger. It is the single
+ * each, records HOW that change landed: did the skill path absorb it cleanly (the change
+ * actually appears in the DB AND the dual-verify passes), did it need a hand-fix, did it force
+ * a full rebuild, did the change FAIL to land at all (impossible — the real error captured
+ * verbatim), did some layers sync while others drifted (partial), or is a leg still STUBBED
+ * (hybrid mode → blocked-stage-c). This module owns that ledger. It is the single
  * place that (1) appends a row, (2) persists the whole scorecard to
  * build/<app-id>/day2-scorecard.json, and (3) renders the markdown table the runner prints.
  *
@@ -20,7 +22,7 @@
  *     title: <string>,             // human title from turns.json (e.g. "Add prep_minutes column")
  *     layer: <string>,             // which layer the change touches (e.g. "schema" | "frontend" | "auth")
  *     mechanism: <string>,         // how it was applied (e.g. "additive-column" | "child-table+fk")
- *     verdict: <enum>,             // clean | hand-fixed | rebuild-forced | impossible | blocked-stage-c
+ *     verdict: <enum>,             // clean | hand-fixed | rebuild-forced | impossible | partial | blocked-stage-c
  *     seconds: <number>,           // wall-clock for the turn
  *     layers_synced: <string[]>,   // layers that absorbed the change cleanly
  *     layers_drifted: <string[]>,  // layers that drifted / needed intervention
@@ -50,7 +52,11 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const VERDICTS = ['clean', 'hand-fixed', 'rebuild-forced', 'impossible', 'blocked-stage-c'];
+// 'partial' = some layers synced, others drifted (a turn whose literal skill_only_path leg
+// failed but whose real change still landed via another documented skill mechanism, or vice
+// versa). It is part of the day-2 verdict vocabulary the runner/evaluator agree on, so the
+// store must accept it (a real measurement was being rejected otherwise).
+export const VERDICTS = ['clean', 'hand-fixed', 'rebuild-forced', 'impossible', 'partial', 'blocked-stage-c'];
 
 // Glyph + (optional) ANSI for each verdict, used only by the stdout renderer (not the .json).
 const useColor = process.stdout.isTTY && process.env.NO_COLOR == null;
@@ -60,6 +66,7 @@ const VERDICT_GLYPH = {
   'hand-fixed': '🔧',
   'rebuild-forced': '♻️',
   impossible: '⛔',
+  partial: '◐',
   'blocked-stage-c': '⏸️',
 };
 const VERDICT_COLOR = {
@@ -67,6 +74,7 @@ const VERDICT_COLOR = {
   'hand-fixed': '1;33', // yellow
   'rebuild-forced': '1;33', // yellow
   impossible: '0;31', // red
+  partial: '1;33', // yellow
   'blocked-stage-c': '2', // dim
 };
 

@@ -77,6 +77,12 @@ Each table declares a **policy intent**, which maps to one of three tiers:
 
 > Picking flows is part of authoring the brief: map each capability ("sign in", "reset password", "manage org members") to a **flow id** in `references/flows.json`, and provision the **union** of those flows' `backend.modules[]` — never `['all']`. The b2b tier's org membership is provisioned natively by the platform (`references/platform-gaps.md` GAP-1b/1c, CLOSED) — no extra reconcile step. See `references/brief-grammar.md` and `references/flow-catalog.md`.
 
+## Day-2 / evolving a built app
+
+**Additive evolution IS supported and IDEMPOTENT** — once an app is built, you can add an entity/field/relation or flip a table's policy without a drop-and-rebuild. The loop is: **edit the brief → `scaffold-provision` → `pnpm run provision` → `pnpm codegen` → `scaffold-frontend` → verify**. Re-running `provision` against the existing DB is verified idempotent (exit 0, no duplicate policies, rows preserved — do **not** `create-db` again). The new field reaches the UI via the runtime-generic `DynamicFormCard`/`_meta` forms after codegen, **not** hand-edited page code (which is never regenerated), so restart the dev server clean after a mid-session codegen.
+
+> **The ONE caveat:** adding a **`NOT NULL` (required) column to a table that already holds rows** aborts atomically (`contains null values`) — the platform applies the day-2 ADD-COLUMN default too late to backfill. Add it **nullable first → backfill → tighten**, or change it on an empty table. The **publishable** case (`policy: public-read+owner-write` / `features: [publishable]`) is **auto-handled** (columns pre-materialized nullable). Upstream defect = `references/platform-gaps.md` GAP-16. **Full workflow → [`references/day2-evolve.md`](./references/day2-evolve.md).**
+
 ## Verification
 
 **Verification is the definition of done — never self-grade a green build.**
@@ -103,6 +109,7 @@ Each table declares a **policy intent**, which maps to one of three tiers:
 | [troubleshooting.md](./references/troubleshooting.md) | Known problems → solutions, keyed by phase | Only on a failure — grep your phase / symptom |
 | [error-index.md](./references/error-index.md) | Flat `symptom → cause → fix pointer` lookup | Ctrl-F the literal error string you got |
 | [platform-gaps.md](./references/platform-gaps.md) | Confirmed upstream platform gaps + the build-side workarounds (GAP-N) | A flow fails for a reason that smells upstream (org reconcile, sessions, email) |
+| [day2-evolve.md](./references/day2-evolve.md) | The verified additive day-2 evolve loop: re-provision is idempotent; the one NOT-NULL caveat; how a new field reaches the UI | Evolving an already-built app — add an entity/field/relation or flip a policy |
 | [benchmark-findings.md](./references/benchmark-findings.md) | The maximal-app benchmark result: what PASSED, the generic primitives DISTILLED (SG-*), what's DEFERRED, what was ESCALATED | Understanding the generator's proven coverage + the known scoped deferrals (SG-3/4/5/7/8/9) |
 | [evaluator-role.md](./references/evaluator-role.md) | Independent acceptance evaluator: rationale + exact fresh-sub-agent spawn prompt | The Phase 4 final acceptance gate |
 | [secrets-and-config.md](./references/secrets-and-config.md) | Index of platform plumbing — site-domain, email ports, secrets/KMS, app env keys | Wiring `.env`, standing up email, a secret/API-key flow, a config error |

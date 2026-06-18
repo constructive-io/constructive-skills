@@ -103,7 +103,7 @@ fixed `{ nodes[], policies[] }` (`DataId` prepended + `DataTimestamps` appended 
 | `member-owner` | the row is BOTH user-owned AND org-scoped: only the author, within their org, sees it. **b2b only** | `DataOwnershipInEntity` | `AuthzMemberOwner` (all-CRUD, permissive, `data.owner_field='owner_id'`, `entity_field='entity_id'`, `membership_type=2`) |
 | `org-hierarchy` | managers see subordinates' rows (`direction: down`) or subordinates see managers' rows (`direction: up`) via the org hierarchy **closure table**. **b2b/full only; requires `hierarchy_module`** (in the b2b base). Needs a `policy_params` sub-map (below) | `DataOwnershipInEntity` (materializes BOTH `owner_id` + `entity_id` — the closure join needs both) | `AuthzOrgHierarchy` (all-CRUD, permissive, `data.direction=<policy_params.direction>`, `anchor_field=<policy_params.anchor_field>`, `entity_field=<policy_params.entity_field ?? 'entity_id'>`, `max_depth` only when set) |
 | `related-membership` | members of the entity reached by JOINing this row's FK up to a parent/join table can read+write (**parent-derived** — the case `org-membership`'s FLAT model cannot express). **b2b/full only.** Needs a `policy_params` sub-map (below) | (no data node — the FK column already exists on the row from its `RelationBelongsTo`) | `AuthzRelatedEntityMembership` (all-CRUD, permissive, `data.entity_field=<policy_params.entity_field>`, `obj_table=<policy_params.join_table>`, `obj_field=<policy_params.join_entity_field>`, `membership_type=<policy_params.membership_type ?? 2>`, **`sel_obj:true`+`sel_field:'id'`** (project the parent PK the FK references — the deny-all fix, GAP-15), `obj_schema=<policy_params.join_schema ?? 'app_public'>` (the `app_public` sentinel is rewritten to the physical domain schema by the blueprint engine before construct)) |
-| `public-read+owner-write` | published rows readable by **anyone authenticated**; only the owner creates/edits/unpublishes (the blog / public-SaaS case). Works on `auth:email` (reads open on publish, not org membership) | `DataDirectOwner`, `DataPublishable` | TWO-policy stack: `AuthzDirectOwner` (all-CRUD permissive) + `AuthzPublishable` (select-only permissive, `is_published_field='is_published'`, `published_at_field='published_at'`) |
+| `public-read+owner-write` | published rows readable by the **anonymous (logged-out) public**; only the owner creates/edits/unpublishes (the blog / public-SaaS case). Works on `auth:email` (reads open on publish, not org membership). **LIVE-VERIFIED semantic:** the provision step's public-read reconcile binds `AuthzPublishable`'s SELECT policy to the **`anonymous`** role + GRANTs `anonymous` SELECT, so a logged-OUT visitor reads published rows. NOTE: it is bound to `anonymous`, **not** `authenticated` — so a *second authenticated, non-owner* user does NOT see another user's published rows through this policy (their `authenticated` reads are still owner-scoped by `AuthzDirectOwner`). "Public read" here = the unauthenticated public, the superset of "any logged-in user". | `DataDirectOwner`, `DataPublishable` | TWO-policy stack: `AuthzDirectOwner` (all-CRUD permissive) + `AuthzPublishable` (select-only permissive, `is_published_field='is_published'`, `published_at_field='published_at'`). The assembler also materializes `is_published` (nullable, `default:false`) + `published_at` so this policy can be added day-2 to a **populated** table (see the publishable feature row + the NOT-NULL note) |
 | `public-lookup` | every authenticated user can read **AND WRITE** (no ownership) — `AuthzAllowAll`. This is authenticated read+write, **NOT** public-read. Use sparingly (shared reference data only) | none | `AuthzAllowAll` (all-CRUD, permissive, `data: {}`) |
 
 > **`org-membership` is FLAT, not hierarchical.** It authorizes on the `entity_id` ON the row — it never
@@ -191,7 +191,7 @@ otherwise.
 | `tags` | `DataTags` (a `tags` text[] + GIN index) |
 | `jsonb` | `DataJsonb` (a `data` jsonb column) |
 | `fts` | a top-level `full_text_searches[]` entry over the table's text fields. The assembler MATERIALIZES a `search` tsvector COLUMN (the live procedure only resolves an existing one) fed by the weighted text sources |
-| `publishable` | `DataPublishable` (implied by `public-read+owner-write`; list it to add the toggle without opening public reads). A duplicate node is collapsed by `$type` |
+| `publishable` | `DataPublishable` (implied by `public-read+owner-write`; list it to add the toggle without opening public reads). A duplicate node is collapsed by `$type`. The assembler ALSO MATERIALIZES the publish-state columns itself — `is_published` (boolean, **nullable**, `default: false`) + `published_at` (timestamptz, nullable) — so the platform's own `data_publishable` generator finds them present and SKIPS its `NOT NULL` column path. This is what makes "turn an existing, **populated** table publishable" work day-2 (see the NOT-NULL backfill note under [Field shape rules](#field-shape-rules-objects-not-bare-strings--field-type-001--f5)). An author who declares `is_published`/`published_at` explicitly in `fields` wins (deduped by name) |
 
 ### Escape hatches (the long tail)
 
@@ -216,8 +216,24 @@ fields:
 - `type` is a FieldType **OBJECT** `{ name: 'text' }` — **never** a bare string `type: text`. Validation
   rejects a non-object `type` with a FIELD-TYPE-001 error.
 - The boolean type name is **`boolean`**, not `bool`.
-- `default` is a FieldDefault **OBJECT** `{ value: <literal> }` — never a bare string.
+- `default` is a FieldDefault **OBJECT** `{ value: <literal> }` — never a bare string. The default is
+  forwarded verbatim to the blueprint and applied as the column's `DEFAULT`.
 - Other per-field keys: `required: true` (→ `is_required`), `description`, `index`.
+
+> 🚨 **Adding a `required: true` column DAY-2 to a table that already holds rows.** On a **fresh** table
+> a required column is fine (created NOT NULL). On a table that **already has rows**, the platform
+> sequences the DDL as `ADD COLUMN` (nullable, no default) → `SET NOT NULL` → `SET DEFAULT` — the
+> `DEFAULT` lands AFTER the NOT-NULL check, so it does **not** backfill the existing rows, and the
+> whole (atomic) `constructBlueprint` ABORTS with `column "<col>" of relation "<t>" contains null
+> values` (an upstream platform DDL-ordering limitation — see references/platform-gaps.md). The brief's
+> `default:` cannot rescue this: the platform applies a day-2 ADD COLUMN's default too late to backfill.
+> **Workarounds for a day-2 required column on a populated table:** (1) add it **nullable** first
+> (`required` omitted) — give it a `default:` so NEW rows get a value and existing rows stay NULL; later
+> backfill + tighten to `required` only once every row has a value; or (2) make the change on an empty
+> table / pre-backfill the rows before tightening. The generator does this for you automatically for the
+> ONE case it can detect generically — the **publishable** columns (`is_published`/`published_at`), which
+> it pre-materializes as nullable+default so `policy: public-read+owner-write` / `features: [publishable]`
+> can be added to a populated table day-2 (see the `publishable` feature row above).
 
 ### Relations
 

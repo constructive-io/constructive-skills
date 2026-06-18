@@ -116,6 +116,46 @@ export function buildTableDefinition(t) {
     if (out.fts) wantsFts = true;
   }
 
+  // DAY-2 NOT-NULL-BACKFILL FIX (generic). When a table carries a DataPublishable node
+  // (from `policy: public-read+owner-write` or `features: [publishable]`), the platform's
+  // data_publishable generator creates the publish-state columns as `is_published boolean
+  // NOT NULL default false` + `published_at timestamptz`. Adding a NOT-NULL column to a
+  // table that ALREADY holds rows ABORTS the whole (atomic) constructBlueprint with
+  //   column "<is_published_field>" of relation "<t>" contains null values
+  // because the platform sequences ADD COLUMN (nullable, no default) → SET NOT NULL → SET
+  // DEFAULT (the default lands AFTER the NOT-NULL check, so it never backfills existing
+  // rows; root cause: constructive-db after_insert_field_trigger ordering — see the
+  // escalation in references/platform-gaps.md). This makes ANY day-2 "make this table
+  // publishable" change impossible on a populated table, NOT just recipes.
+  //
+  // THE GENERIC FIX: pre-materialize the publish-state columns OURSELVES as NULLABLE
+  // (with default:false on is_published) BEFORE the platform's generator runs. The
+  // platform's data_publishable.sql is idempotent — it creates each field only `IF
+  // existing_field_id IS NULL`, otherwise it just refreshes the description — so when the
+  // field already exists it SKIPS the create_field call entirely (and with it the NOT-NULL
+  // alteration). The column is then nullable, no SET-NOT-NULL runs, and the provision
+  // succeeds whether the table is fresh (0 rows) or populated (day-2). NULL is the safe
+  // unpublished state: AuthzPublishable's predicate is `is_published = true AND …`, which
+  // is FALSE for NULL → a NULL/pre-existing row is treated as NOT published (correct
+  // default). default:false keeps NEW inserts at false exactly like the NOT-NULL shape.
+  //
+  // The field NAMES are derived from the table's emitted AuthzPublishable policy data
+  // (is_published_field / published_at_field), falling back to the platform defaults — so
+  // this stays generic if the policy ever parameterizes the column names, and never
+  // hard-codes 'is_published'/'published_at'. These go through featureFields, so an
+  // author who explicitly declared either column in the brief still wins (addField dedups
+  // by name). NB: a fresh-table contract change — the column is nullable rather than
+  // NOT NULL — accepted as the only skill-side way to make day-2 publishable adds work;
+  // the durable NOT-NULL-with-backfill fix is the upstream platform escalation.
+  if (nodeSeen.has('DataPublishable')) {
+    const pubPolicy = policies.find((p) => p && p.$type === 'AuthzPublishable');
+    const pubData = (pubPolicy && pubPolicy.data && typeof pubPolicy.data === 'object') ? pubPolicy.data : {};
+    const isPublishedField = pubData.is_published_field || 'is_published';
+    const publishedAtField = pubData.published_at_field || 'published_at';
+    featureFields.push({ name: isPublishedField, type: { name: 'boolean' }, default: { value: false } });
+    featureFields.push({ name: publishedAtField, type: { name: 'timestamptz' } });
+  }
+
   // brief-declared custom fields FIRST (object-form type/default → blueprint field)
   for (const fld of t.fields ?? []) {
     const out = { name: fld.name, type: fld.type ?? { name: 'text' } };
