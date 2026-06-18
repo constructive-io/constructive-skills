@@ -1,0 +1,160 @@
+{
+  "$comment": "DAY-2 turn spec — the SINGLE source of turn semantics the day-2 runner consumes (author A writes it; author B's runner/scorecard/verify treat it as the only source of truth, hard-coding nothing about recipes). Each turn is a SELF-CONTAINED change applied cumulatively on top of the previous turn's brief, starting from app.turn0_brief. The runner builds turn 0 once, then for each turn: applies brief_patch -> runs skill_only_path (skill-only mode) -> on hybrid mode runs hybrid_path (a Stage-C day2-driver STUB this stage) -> asserts new_capability_assert AND re-runs regression_flows. brief_patch is described declaratively (a precise, machine-parseable instruction) because the day-2 layer being probed differs per turn; the runner edits the per-run brief accordingly. All field types/policies/relation shapes/flow ids/modules below were validated against scripts/lib/brief.mjs via a DRY scaffold-provision (see ../day2/README.md).",
+  "app": {
+    "domain": "recipe-box",
+    "db_name_base": "recipebox",
+    "turn0_brief": "turn0-recipebox-brief.yaml",
+    "owner_entity": "recipes",
+    "owner_entity_singular": "recipe",
+    "turn0_flows": ["email-password"]
+  },
+  "turns": [
+    {
+      "id": 1,
+      "title": "additive column",
+      "layer": "db-column",
+      "change_request": "Add a prep time (in minutes) field to recipes so a cook can record how long a recipe takes to prepare.",
+      "brief_patch": "In data_model.tables[name=recipes].fields, append a new field: { name: prep_minutes, type: { name: numeric } } (optional — no `required`, no `default`).",
+      "brief_patch_ops": [
+        {
+          "op": "add_field",
+          "table": "recipes",
+          "field": { "name": "prep_minutes", "type": { "name": "numeric" }, "required": false }
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision  [EXPECT abort: PROVISION-RERUN-001 duplicate CREATE POLICY — a full re-provision of an already-provisioned database replays CREATE POLICY for the existing recipes policies and aborts; the additive column never lands skill-only]",
+      "hybrid_path": "day2-driver add-column recipes.prep_minutes:numeric -> pnpm codegen -> scaffold-frontend --refresh-entity recipes -> day2-verify",
+      "new_capability_assert": "create a recipe with prep_minutes=30, reload the page, and the value both PERSISTS (round-trips from the DB) AND RENDERS in the recipe list/detail.",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "a recipe created with prep_minutes=30 persists and renders after reload",
+        "regression": "the email-password flow still round-trips (signup -> create recipe -> reload -> assert persisted + authed) on /recipes with the recipe-* testids"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes"]
+    },
+    {
+      "id": 2,
+      "title": "new entity + relation",
+      "layer": "db-table-relation",
+      "change_request": "Let a recipe have a list of ingredients. Add an ingredients entity where each ingredient belongs to exactly one recipe (the recipe is required), and is private to its owner like recipes.",
+      "brief_patch": "Add a new owner-scoped table `ingredients` with fields { name: text required } and { quantity: text }, and add a RelationBelongsTo from ingredients -> recipes via a REQUIRED FK column recipe_id (delete_action CASCADE). Add a CRUD ui.route { path: /ingredients, label: Ingredients, kind: crud, entity: ingredient }.",
+      "brief_patch_ops": [
+        {
+          "op": "add_table",
+          "table": {
+            "name": "ingredients",
+            "policy": "owner",
+            "fields": [
+              { "name": "name", "type": { "name": "text" }, "required": true },
+              { "name": "quantity", "type": { "name": "text" } }
+            ]
+          }
+        },
+        {
+          "op": "add_relation",
+          "relation": {
+            "$type": "RelationBelongsTo",
+            "source_table": "ingredients",
+            "target_table": "recipes",
+            "field_name": "recipe_id",
+            "delete_action": "CASCADE",
+            "is_required": true
+          }
+        },
+        {
+          "op": "add_ui_route",
+          "route": { "path": "/ingredients", "label": "Ingredients", "kind": "crud", "entity": "ingredient" }
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision  [EXPECT abort: PROVISION-RERUN-001 duplicate CREATE POLICY — the re-provision replays the existing recipes policies before it ever reaches the new ingredients table; the new table + relation never land skill-only]",
+      "hybrid_path": "day2-driver add-table ingredients (owner) -> day2-driver add-relation ingredients.recipe_id->recipes required CASCADE -> pnpm codegen -> scaffold-frontend --add-entity ingredient -> day2-verify",
+      "new_capability_assert": "create a recipe, then create an ingredient that picks that recipe via the required recipe_id FK picker (camelCase recipeId spread into the create), reload, and the ingredient PERSISTS bound to its parent recipe; a create with NO recipe selected is rejected (the FK is NOT NULL).",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "an ingredient created against a parent recipe (required recipe_id FK) persists and renders bound to that recipe; an ingredient create with no parent is rejected",
+        "regression": "the email-password flow still round-trips on the original recipes entity (recipe-* testids), and recipes still CRUD-persist"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"],
+      "expected_relations": [
+        { "$type": "RelationBelongsTo", "source_table": "ingredients", "target_table": "recipes", "field_name": "recipe_id", "is_required": true, "delete_action_coded": "c" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "RLS policy flip",
+      "layer": "rls-policy",
+      "change_request": "Make recipes shareable: a published recipe should be readable by any signed-in user, but only its author may create, edit, or unpublish it. Ingredients stay private to their owner.",
+      "brief_patch": "Change data_model.tables[name=recipes].policy from `owner` to `public-read+owner-write`. This swaps the single AuthzDirectOwner policy for the two-policy stack (AuthzDirectOwner all-CRUD + AuthzPublishable select-only) and adds the DataPublishable node (is_published / published_at). Leave ingredients on policy: owner. No preset change — public-read+owner-write works on auth:email (no b2b).",
+      "brief_patch_ops": [
+        {
+          "op": "set_table_policy",
+          "table": "recipes",
+          "from_policy": "owner",
+          "to_policy": "public-read+owner-write"
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision  [EXPECT abort: PROVISION-RERUN-001 duplicate CREATE POLICY — re-provision replays the EXISTING recipes AuthzDirectOwner CREATE POLICY and aborts; the policy flip (drop owner-only read, add AuthzPublishable + DataPublishable columns) never lands skill-only, so a second user still cannot read another user's recipe]",
+      "hybrid_path": "day2-driver set-policy recipes public-read+owner-write (drops the owner-only SELECT policy, adds DataPublishable columns is_published/published_at, applies AuthzDirectOwner all-CRUD + AuthzPublishable select-only) -> pnpm codegen -> scaffold-frontend --refresh-entity recipes -> day2-verify",
+      "new_capability_assert": "user A publishes a recipe (is_published=true); a SECOND user B can READ user A's published recipe; user A (owner) can still write/unpublish it; user B (non-owner) still CANNOT write it; ingredients remain owner-private (B cannot read A's ingredients).",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "a published recipe is readable by a second user while writes stay owner-locked (non-owner write denied), and ingredients stay owner-private",
+        "regression": "the email-password flow still round-trips for the OWNER on /recipes (owner can still create/read/edit their own recipes; recipe-* testids)"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"]
+    },
+    {
+      "id": 4,
+      "title": "add a flow",
+      "layer": "flow-modules",
+      "change_request": "Add a self-serve password reset: a user who forgot their password can request a reset email and set a new password from the emailed link.",
+      "brief_patch": "Append `password-reset` to the top-level flows list (alongside email-password). password-reset rides the same auth:email base — it adds ZERO new modules (its backend.modules are identical to email-password's auth:email 13-module set) and contributes the forgotPassword/resetPassword ops + the forgot-password / reset-password Blocks. Do NOT add it to acceptance.required_flows (no live-QA driver for it yet — email-password stays the only acceptance flow).",
+      "brief_patch_ops": [
+        {
+          "op": "add_flow",
+          "flow": "password-reset"
+        }
+      ],
+      "flow": {
+        "id": "password-reset",
+        "exposed_ops": ["forgotPassword", "resetPassword"],
+        "blocks": [
+          "auth-forgot-password-card",
+          "auth-forgot-password-page",
+          "auth-reset-password-card",
+          "auth-reset-password-page"
+        ],
+        "needs_email": true,
+        "mailpit_url": "http://localhost:8025"
+      },
+      "backend_modules": [
+        "users_module",
+        "membership_types_module",
+        ["permissions_module", { "scope": "app" }],
+        ["limits_module", { "scope": "app" }],
+        ["levels_module", { "scope": "app" }],
+        ["memberships_module", { "scope": "app" }],
+        "sessions_module",
+        "user_state_module",
+        "user_credentials_module",
+        "config_secrets_module",
+        "emails_module",
+        "rls_module",
+        "user_auth_module"
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision  [EXPECT abort: PROVISION-RERUN-001 duplicate CREATE POLICY — the re-provision replays the existing recipes/ingredients policies and aborts before wiring the new flow's Blocks; password-reset never lands skill-only. (Note: the flow adds NO modules, so even an idempotent create-db is a no-op here — the change is purely the frontend Blocks + ops surface, which the skill-only re-provision cannot wire onto an already-built app.)]",
+      "hybrid_path": "day2-driver add-flow password-reset (union its modules into create-db — a no-op here since password-reset adds none; wire forgot-password/reset-password Blocks + routes) -> pnpm codegen -> scaffold-frontend --add-flow password-reset -> day2-verify",
+      "new_capability_assert": "the password-reset happy path round-trips: request a reset for the signed-up email (forgotPassword) -> open the reset link from Mailpit (:8025) -> set a new password (resetPassword) -> sign in with the NEW password succeeds and the OLD password fails.",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "password-reset happy path round-trips end-to-end (forgotPassword -> Mailpit link -> resetPassword -> sign in with new password works, old fails)",
+        "regression": "the email-password flow still round-trips (signup + sign-in + create recipe + reload) unchanged"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"]
+    }
+  ]
+}
