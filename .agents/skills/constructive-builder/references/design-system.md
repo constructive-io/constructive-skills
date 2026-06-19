@@ -65,7 +65,14 @@ Classify the natural-language style words into a row. The preset is the **anchor
 > app that works beats a beautiful one that fails contrast.
 
 Each dial maps to one of the named presets in §4. The dials are also threaded into the layout pass
-(DENSITY → `data-density` on entity pages, MOTION → gated transitions) — see §8.
+(DENSITY → spacing literals baked into the generated entity pages at emit time) — see §8.
+
+> **Single source of truth for the dials:** `brief.design.dials` (specifically `dials.density`).
+> `scaffold-frontend` reads density from `brief.design.dials.density`; if it is absent there it
+> falls back to the emitted `design.md` frontmatter's `dials.density` (§8). The `design.md` itself
+> carries the *palette / type / radius* tokens; `dials` carries the *layout* dials. Record the dials
+> in the brief by preference — the design.md fallback exists so an auto-propose agent that recorded
+> them in the emitted design.md still threads density correctly.
 
 ---
 
@@ -131,7 +138,7 @@ as the durable design record + day-2 input.
 | `typography` | optional | map | `{ sans, mono, serif? }` — font *family names* (resolved against the allowlist, §7) |
 | `rounded` | optional | map or scalar | `{ sm, md, lg }` or a single radius; `md` (or the scalar) seeds `--radius` |
 | `spacing` | optional | map | base spacing scale (informational; density rides the dials, §8) |
-| `dials` | optional | map | `{ variance, motion, density }` — recorded so the layout pass + day-2 reads them |
+| `dials` | optional | map | `{ variance, motion, density }` — recorded so the layout pass + day-2 reads them. **Canonical home is `brief.design.dials`**; this frontmatter `dials` is the *fallback* `scaffold-frontend` reads for DENSITY when the brief omits it (§8) |
 | `components` | optional | map | per-component hints (advisory; the compile contract is token-level) |
 | `dark` | optional | map | explicit dark-mode overrides — **escape hatch** when OKLCH auto-derivation (§6) isn't pretty enough |
 | `default_mode` | optional | `light` \| `dark` | which theme loads first (→ `layout.tsx` `ThemeProvider defaultTheme`) |
@@ -290,9 +297,18 @@ literals** ever (the page/state code is derived from the brief's tables, not har
   skeleton that *matches the real layout* (not a spinner), an **empty** state (clear "nothing yet" +
   the primary create action), and an **error** state (legible message + retry). The boilerplate already
   ships skeleton/`[data-slot]` animation primitives — reuse them.
-- **DENSITY → a `data-density` attribute** on the page/layout root + Tailwind utility classes keyed off
-  it (padding / gap / row-height / font-size step). **No new `globals.css` rules** — density is expressed
-  in the markup the frontend scaffolder owns, so it never collides with the token override block.
+- **DENSITY → Tailwind spacing literals baked in at emit time.** `scaffold-frontend` resolves the
+  DENSITY dial to one of three spacing tiers (`comfortable` / `cozy` / `compact`; `cozy` is the
+  default == the historical literals) and substitutes whole Tailwind class strings (padding / gap /
+  row-height / page rhythm) directly into the generated entity + stub pages. It is **emit-time**
+  substitution, **not** a runtime `data-density` attribute and **not** a `globals.css` rule — so it
+  never collides with the token override block, but it also means **a generated entity page is
+  emit-once / idempotent: changing the density after the first scaffold requires a re-emit** (delete
+  the page or run on a fresh app dir) for the new spacing tier to take effect. The DENSITY dial is
+  resolved from `brief.design.dials.density`, falling back to the emitted `design.md`'s
+  `dials.density` (resolution order, §2 + §5.1) — **the single source of truth is `brief.design.dials`**;
+  the design.md fallback only exists so an auto-propose agent that recorded the dials in the design.md
+  still threads density correctly.
 - **Hierarchy via weight + color, not just size.** Lead with `font-medium`/`foreground` vs
   `muted-foreground`; reserve large sizes for true page titles.
 - **One accent.** Use the accent for the single primary action per view; everything else is

@@ -96,6 +96,7 @@ import { emitEntityPage, emitStubPage, tableFor } from './lib/scaffold-frontend/
 import { appendRoute, appendNavItem } from './lib/scaffold-frontend/routes-nav.mjs';
 import { emitAuthPages } from './lib/scaffold-frontend/auth-pages.mjs';
 import { emitFlowSurfaces } from './lib/scaffold-frontend/flow-surfaces.mjs';
+import { parseDesignMd } from './lib/design/design-md.mjs';
 
 // ════════════════════════════════════════════════════════════════════════════
 // App-dir detection — mirror verify-phase.sh app_rel(): the app may live at
@@ -116,6 +117,54 @@ function resolveAppSrc(appDir) {
   // still gets a deterministic target; the caller wires this at Phase 4 when the
   // scaffold already exists, so this branch is the genuinely-empty fallback.
   return path.join(appDir, 'packages', 'app', 'src');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DENSITY RESOLUTION (generic, robust to WHERE the agent recorded the dial).
+//
+// The DENSITY dial drives LAYOUT density (see entity-page.mjs DENSITY_SCALES). The
+// canonical home for the dials is the brief: `brief.design.dials.density`. But an
+// auto-propose agent may instead record the dials in the EMITTED design.md (the
+// durable, lint-gated design record) under its frontmatter `dials:` map. Either home
+// must "just work". So density resolves in this order:
+//   1. brief.design.dials.density            (the canonical, single source of truth)
+//   2. <emitted design.md>.dials.density     (fallback — same convention wire-design
+//                                             uses to discover a design.md next to the app)
+// Anything else ⇒ undefined ⇒ entity-page.mjs defaults to the 'cozy' tier (the
+// pre-wave literals) so a design-less build is byte-identical. GENERIC: density is a
+// single integer/tier name — no entity/app literal is ever read here.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Discover an emitted design.md next to the app, mirroring wire-design's discovery
+ *  order. Returns the parsed frontmatter object, or null when none is found. */
+function discoverDesignMdFrontmatter(appDir) {
+  const candidates = [
+    path.join(appDir, 'design.md'),
+    path.join(appDir, '..', 'design.md'),
+    path.join(appDir, 'app', 'design.md'),
+    path.join(appDir, 'packages', 'app', 'design.md'),
+  ];
+  for (const cand of candidates) {
+    if (!fs.existsSync(cand)) continue;
+    try {
+      return parseDesignMd(fs.readFileSync(cand, 'utf8')).frontmatter || null;
+    } catch {
+      // A malformed design.md is not fatal for scaffolding — fall through to the
+      // 'cozy' default rather than abort the whole frontend emit.
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Resolve the DENSITY dial from the brief, falling back to an emitted design.md's
+ *  `dials.density`. Returns the raw dial (number | tier string) or undefined; the
+ *  page emitters clamp/default it (resolveDensity). GENERIC — no entity input. */
+function resolveDensityDial(brief, appDir) {
+  const fromBrief = brief.design?.dials?.density;
+  if (fromBrief != null) return fromBrief;
+  const fm = discoverDesignMdFrontmatter(appDir);
+  return fm?.dials?.density;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -224,14 +273,15 @@ function main() {
   const srcDir = resolveAppSrc(appDir);
   const ctx = { dryRun, written: [], skipped: [], warnings: [] };
 
-  // DESIGN DENSITY (generic, dial-driven). The DENSITY dial (brief.design.dials.density, 1–10)
-  // sets the spacing/padding/rhythm scale the generated CRUD + stub pages bake into their
-  // Tailwind classes at emit time. It is read HERE (loadBrief already returned the whole brief,
-  // including any `design` block — zero new parsing) and threaded into the page emitters. Absent
-  // ⇒ undefined ⇒ the emitters default to the 'cozy' tier, which reproduces the historical
-  // spacing literals, so a brief with no design block emits byte-identical pages. No entity/app
-  // literal is involved — density is a single number that maps to a generic scale.
-  const density = brief.design?.dials?.density;
+  // DESIGN DENSITY (generic, dial-driven). The DENSITY dial (1–10) sets the spacing/padding/
+  // rhythm scale the generated CRUD + stub pages bake into their Tailwind classes at emit time.
+  // It is resolved from the canonical brief.design.dials.density, OR (fallback) from an emitted
+  // design.md's `dials.density` next to the app — so density "just works" regardless of which home
+  // an auto-propose agent recorded the dials in. Absent ⇒ undefined ⇒ the emitters default to the
+  // 'cozy' tier, which reproduces the historical spacing literals, so a brief with no design block
+  // emits byte-identical pages. No entity/app literal is involved — density is a single number that
+  // maps to a generic scale. See resolveDensityDial() for the resolution order.
+  const density = resolveDensityDial(brief, appDir);
 
   const routes = brief.ui?.routes ?? [];
   const crudRoutes = routes.filter((r) => (r.kind || 'crud') === 'crud');

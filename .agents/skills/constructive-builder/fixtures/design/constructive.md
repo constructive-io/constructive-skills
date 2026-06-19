@@ -1,7 +1,8 @@
 ---
 version: 1
 name: constructive
-description: The current default Constructive look — the opt-out preset.
+preset: constructive
+description: The current default Constructive look — the opt-out preset. The `preset: constructive` key above makes this design.md self-identify as the opt-out, so `wire-design --design …/constructive.md` (and a brief `design: { preset: constructive }`) both resolve to a byte NO-OP that keeps today's look.
 colors:
   primary: "oklch(0.688 0.1754 245.6151)"
   primary-foreground: "oklch(0.979 0.021 166.113)"

@@ -23,6 +23,10 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 > scalars (bare / "double" / 'single' / int / float / true|false|null), full-line and trailing comments,
 > and bare tokens with internal `+` / `/` / `:` (so `public-read+owner-write` parses). If a brief needs a
 > construct beyond this, add to the grammar in that one module — don't reach for a dep.
+>
+> **Not supported: folded/literal block scalars** (`>-`, `>`, `|`, `|-`). Write every multi-word string
+> value (e.g. `app.description`, `design.brief`) as a **single-line quoted string** — never spread it
+> across following indented lines with a `>`/`|` indicator (it would be mis-parsed as a nested block).
 
 ---
 
@@ -607,6 +611,22 @@ to pin and let the engine synthesize the rest. The three common shapes:
   `preset: constructive` is the special no-op opt-out.
 - **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to dials, then pin the
   brand color explicitly; the engine derives everything else and enforces the invariants + contrast.
+
+> **`design.brief` must be a single-line quoted string.** The zero-dep brief YAML reader
+> (`scripts/lib/brief-yaml.mjs`) does **not** support folded/literal block scalars (`>-`, `>`, `|`, `|-`).
+> Write the style words on one line: `brief: "warm editorial, calm, trustworthy"` — never
+> `brief: >-` / `brief: |` with the text on following indented lines (those would be mis-parsed as a
+> nested block). The same applies to every other string value in the brief.
+
+> **DENSITY dial — where to put it (resolution order).** The DENSITY dial drives the generated entity
+> pages' **layout density** and is read by `scaffold-frontend`. Its **single source of truth is
+> `design.dials.density`** here in the brief. As a robustness fallback, if `design.dials.density` is
+> absent, `scaffold-frontend` reads `dials.density` from the **emitted `design.md`** discovered next to
+> the app — so an auto-propose agent that recorded the dials in the design.md (rather than the brief)
+> still threads density correctly. Resolution order: **(1) `brief.design.dials.density` → (2) emitted
+> `design.md` `dials.density` → (3) the `cozy` default** (byte-identical to a design-less build). See
+> [design-system.md §8](./design-system.md). (The emitted `design.md` holds the palette / type / radius
+> *tokens*; the `dials` hold the *layout* dials.)
 
 ### Validation (optional strictness — `validateDesign`)
 
