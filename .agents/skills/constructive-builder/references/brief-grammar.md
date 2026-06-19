@@ -590,6 +590,11 @@ design:
   preset: minimalist                  # a named archetype anchor: constructive | minimalist | trust-first |
                                        #   editorial | soft | brutalist | playful  (constructive = opt-out / no-op)
   dials: { variance: 5, motion: 3, density: 3 }                     # explicit override of the inferred dials (each 1–10)
+  art_direction:                       # OPTIONAL structural pin — which shell + page composition to restructure to
+    shell: top-nav                     #   sidebar | top-nav | minimal | editorial-wide | dense-dashboard
+    composition: data-table            #   list | data-table | gallery | split-pane | editorial | board (default per entity)
+    density: compact                   #   comfortable | cozy | compact (human echo of the DENSITY dial)
+    notes: "scanning-first admin"      #   single-line free text — why this shell/composition
   colors:                              # role-level palette overrides (semantic roles, NOT shadcn var names)
     primary: "oklch(0.55 0.11 162)"   # the ONE brand/action color (required if you give `colors`)
     accent:  "oklch(0.7 0.12 250)"    # at most ONE accent
@@ -611,6 +616,19 @@ to pin and let the engine synthesize the rest. The three common shapes:
   `preset: constructive` is the special no-op opt-out.
 - **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to dials, then pin the
   brand color explicitly; the engine derives everything else and enforces the invariants + contrast.
+
+> **`design.art_direction` — pinning the STRUCTURE (optional).** Beyond the theme tokens + dials,
+> `design.art_direction` records the *structural* direction — the **shell** + per-entity **page composition** +
+> **density** the build restructures the app to (`shell` ∈ sidebar | top-nav | minimal | editorial-wide |
+> dense-dashboard; `composition` ∈ list | data-table | gallery | split-pane | editorial | board; `density` ∈
+> comfortable | cozy | compact; `notes` free single-line text). It is **GUIDANCE-level** — no scaffolder
+> consumes it as a token; it is the durable record so re-runs / day-2 turns reproduce the same layout. **Default
+> = auto-propose** (the agent picks shell/composition/density from the dials + prose and writes them into the
+> emitted `design.md`); pin it here only to constrain that. Every key is optional. The structural rules + the
+> preserve-contract checklist live in [art-direction.md](./art-direction.md); the block's shape +
+> single-source-of-truth note for `density` are in [design-system.md §5.3](./design-system.md). (The emit-time
+> spacing tier still resolves from `design.dials.density` first — `art_direction.density` is the human echo of
+> that choice, not a second input.)
 
 > **`design.brief` must be a single-line quoted string.** The zero-dep brief YAML reader
 > (`scripts/lib/brief-yaml.mjs`) does **not** support folded/literal block scalars (`>-`, `>`, `|`, `|-`).

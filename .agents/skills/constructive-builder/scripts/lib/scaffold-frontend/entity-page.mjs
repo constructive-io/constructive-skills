@@ -288,6 +288,11 @@ export function emitStubPage(srcDir, route, ctx, density) {
  * //   (CRUD Stack cards, meta-forms, the 50+ Base UI components). For a read list
  * //   use the typed @sdk/app hooks directly; for create/edit reuse DynamicFormCard
  * //   from @/components/crud/dynamic-form-card.
+ *
+ * PRESENTATION SEAM: restructure this page freely per the design.md (see
+ * references/art-direction.md) — re-compose the layout, the shell, the width clamp.
+ * PRESERVE the functional contract for whatever you mount: any <entity>-* testids,
+ * row-scoping, the hooks/selection/refetch/Stack-pushes, and the scoping const(s).
  */
 export default function ${componentName}() {
   return (

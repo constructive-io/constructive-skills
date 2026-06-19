@@ -222,6 +222,14 @@ export default function __Entities__Page() {
     });
   }
 
+  // PRESENTATION SEAM: restructure this return(...) block freely per the design.md — swap the
+  // card+divided-list wholesale to a data-table / gallery / split-pane / editorial / board layout,
+  // re-arrange the shell, change the width clamp (see references/art-direction.md). PRESERVE the
+  // functional contract: the <entity>-* testids (title-input / create-submit / details / row [must
+  // contain the row title] / edit / delete / loading / error[role=alert, not -empty] / retry) and
+  // <entities>-empty; row-scoping (edit/delete inside the row); the hooks + selection.fields +
+  // refetch + the three useCardStack pushes (openEdit/openDetailedCreate/openDelete); and the policy
+  // scoping const(s) (ownerId / activeOrgId / validFrom) spread into the create. Restyle, don't hide.
   return (
     <div data-testid="authed-shell" className="mx-auto max-w-2xl __D_PAGE__">
       <header className="__D_HEAD_MB__">

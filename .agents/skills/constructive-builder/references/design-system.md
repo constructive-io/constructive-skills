@@ -15,7 +15,17 @@
 > **The contract in one line.** `design.md` (intent) → `compileDesign` (role-remap + OKLCH
 > dark-derivation + WCAG repair) → a single **marked override block** of shadcn token *values* in the
 > app's `globals.css`. Overriding token *values* restyles the template UI **and every installed Block
-> at once** (they all read `var(--…)`). Structure is off-limits.
+> at once** (they all read `var(--…)`). The **CSS compiler is TOKEN-ONLY** — structure is off-limits *to it*.
+
+> **CSS compiler vs. frontend structure — two DIFFERENT layers (do not conflate).** The **CSS design
+> compiler** (`wire-design.mjs` / `compile.mjs`) is **token-only**: "structure off-limits" means it never
+> emits `@theme inline` / `@source` / `--z-layer-*` / `@layer` (it touches only the token *values* in the
+> marked override block — §6.3). That is correct; keep it. The **frontend STRUCTURE** — the agent's
+> hand-authored React **shell + page composition** (the JSX in `app-shell.tsx` and each entity page's
+> `return(...)`) — is a **separate layer with its own latitude**: it is free to vary per the `design.md`,
+> within the functional contract. That latitude is governed by **[art-direction.md](./art-direction.md)**, NOT
+> by this token compiler. This doc = the *theme* (token values); art-direction.md = the *layout* (JSX shell +
+> composition).
 
 ---
 
@@ -23,7 +33,11 @@
 
 - **Default (the `design:` block is ABSENT):** **auto-propose** a full, domain-fitting theme on every
   build. This is the new baseline — a generated app should not ship the stock Constructive blue unless
-  asked. Author a `design.md`, lint it, compile it.
+  asked. Author a `design.md`, lint it, compile it. **Auto-propose now covers STRUCTURE too** — not just the
+  theme: propose a fitting **shell + page composition + density** (the archetypes differ structurally, not
+  just chromatically) and **record** the choice in the `design.md` `art_direction` block (§5.3) so re-runs and
+  day-2 turns stay consistent. The structural reasoning + the preserve-contract checklist live in
+  **[art-direction.md](./art-direction.md)**.
 - **Opt-out (`design: { preset: constructive }`):** **keep today's look exactly.** `wire-design` is a
   **no-op** — the boilerplate `globals.css` is left untouched. Use this when the brief explicitly wants
   the stock theme, or when a downstream consumer pins the default.
@@ -41,7 +55,7 @@ Every look reduces to three integer dials, **1–10**. They are the bridge from 
 
 | Dial | 1 ………………… 10 | Drives |
 |---|---|---|
-| **VARIANCE** | flat / monochrome → bold / high-contrast / saturated | palette chroma + accent strength, surface↔foreground ΔL, border visibility |
+| **VARIANCE** | flat / monochrome / predictable → bold / high-contrast / unconventional | palette chroma + accent strength, surface↔foreground ΔL, border visibility — **AND structural boldness** (the shell + page composition the agent hand-authors; see [art-direction.md](./art-direction.md)) |
 | **MOTION** | none / instant → lively / springy | transition durations, hover/enter animation (always `prefers-reduced-motion`-gated) |
 | **DENSITY** | airy / generous whitespace → compact / data-dense | padding, gap, row height, font-size step on entity pages |
 
@@ -139,6 +153,7 @@ as the durable design record + day-2 input.
 | `rounded` | optional | map or scalar | `{ sm, md, lg }` or a single radius; `md` (or the scalar) seeds `--radius` |
 | `spacing` | optional | map | base spacing scale (informational; density rides the dials, §8) |
 | `dials` | optional | map | `{ variance, motion, density }` — recorded so the layout pass + day-2 reads them. **Canonical home is `brief.design.dials`**; this frontmatter `dials` is the *fallback* `scaffold-frontend` reads for DENSITY when the brief omits it (§8) |
+| `art_direction` | optional | map | `{ shell, composition, density, notes }` — the recorded **structural** direction (which shell + page composition + density tier the agent restructured to). Auto-proposed by default + the durable record a re-run reads so structure stays consistent. GUIDANCE-level (no compile step consumes it). Shape + values in **§5.3**; rules in [art-direction.md](./art-direction.md) |
 | `components` | optional | map | per-component hints (advisory; the compile contract is token-level) |
 | `dark` | optional | map | explicit dark-mode overrides — **escape hatch** when OKLCH auto-derivation (§6) isn't pretty enough |
 | `default_mode` | optional | `light` \| `dark` | which theme loads first (→ `layout.tsx` `ThemeProvider defaultTheme`) |
@@ -186,6 +201,28 @@ spacing. Dark mode derives automatically by lightness inversion.
 Everything is optional except `name` + `colors.primary`. The compiler synthesizes the missing tokens
 (border, input, ring, muted-foreground, card/popover elevation, sidebar, chart ramp) from
 primary/surface/neutral via OKLCH math.
+
+### 5.3 The `art_direction` block (the recorded STRUCTURAL direction)
+
+Optional, GUIDANCE-level, additive. While `colors`/`typography`/`dials` carry the *theme*, `art_direction`
+records the *structure* the agent restructured the app to — so a re-run / day-2 turn reproduces the same shell
++ composition instead of silently reverting to the stock list-on-sidebar. **No compile step consumes it** (it
+is not a token surface); it is the durable record the rules in [art-direction.md](./art-direction.md) read.
+
+```markdown
+art_direction:
+  shell: top-nav           # sidebar | top-nav | minimal | editorial-wide | dense-dashboard
+  composition: data-table  # list | data-table | gallery | split-pane | editorial | board (default per entity)
+  density: compact         # comfortable | cozy | compact — mirrors the DENSITY dial / spacing tier
+  notes: "scanning-first admin; wide canvas, columnar rows"   # single-line; why this shell/composition
+```
+
+Every key is optional. **Default = auto-propose** the shell/composition/density from the dials + the prose
+Overview and write them here; a brief can pin them via `design.art_direction` ([brief-grammar.md](./brief-grammar.md)).
+The `density` here mirrors the DENSITY dial — the single source of truth for the emit-time spacing tier is
+still `brief.design.dials.density`, then the `design.md` (§2 + §8); `art_direction.density` is the
+human-readable echo of that choice, not a second input. See [art-direction.md](./art-direction.md) for the
+shell/composition archetypes, the edit seams, and the preserve-contract checklist.
 
 ---
 
@@ -244,6 +281,12 @@ and naturally wins over the Blocks `@import` (which sits above it). Re-running l
 (`--z-layer-*`), `@layer base`, `@layer utilities`, the `[data-slot=…]` skeleton/portal rules,
 `--shadow-*`, `--font-serif`, and the `--radius-*` derivations inside `@theme inline`. Touching any of
 these breaks Tailwind wiring, overlay stacking, or skeleton animation.
+
+> **"Structural" here = CSS wiring, not the React layout.** This off-limits set is what the **CSS compiler**
+> must never emit. It does **not** constrain the agent's hand-authored React **shell + page composition** —
+> that is a different layer with its own latitude under [art-direction.md](./art-direction.md). Re-arranging
+> `app-shell.tsx` or an entity page's `return(...)` is fully allowed; emitting `@theme inline` from the token
+> compiler is not.
 
 ### 6.4 Dark-mode derivation
 
@@ -328,8 +371,10 @@ literals** ever (the page/state code is derived from the brief's tables, not har
 - **A deliberate purple/blue brand hue?** `allow_brand_hue: true` silences the AI-purple-band warning
   (§3) — use it only when that hue is genuinely the brand, not as a blanket mute.
 - **Off-allowlist font?** Accept the Geist fallback, or pick an allowlisted family (§7).
-- **A token the override surface can't express?** It is almost certainly **structural** (§6.3) — leave
-  it. The override surface is the complete set of *thematic* tokens; anything outside it is wiring.
+- **A token the override surface can't express?** It is almost certainly **CSS-structural** (§6.3) — the
+  override surface is the complete set of *thematic* tokens; anything outside it is Tailwind wiring the
+  *compiler* leaves alone. (This is NOT a constraint on the React **layout** — re-arranging the shell or a
+  page's composition is the separate, allowed latitude under [art-direction.md](./art-direction.md).)
 
 ---
 
@@ -344,10 +389,15 @@ literals** ever (the page/state code is derived from the brief's tables, not har
 5. **Lint:** `node scripts/check-design.mjs` (invariants + WCAG). Fix any **error**; weigh the warns.
 6. **Compile + wire:** `node scripts/wire-design.mjs --app <app>` (or `--dry-run` first) writes the
    override block + optional font/`defaultTheme` swap. `preset: constructive` ⇒ no-op.
-7. **Thread the dials into the layout** (§8) when scaffolding the CRUD body (DENSITY → `data-density`,
+7. **Propose + record the STRUCTURE** (default auto-propose): pick the shell + page composition the dials +
+   prose imply (VARIANCE → structural boldness; DENSITY → list vs data-table; §4), restructure within the
+   functional contract, and write the choice into the `design.md` `art_direction` block (§5.3). Full rules +
+   the preserve-contract checklist → [art-direction.md](./art-direction.md).
+8. **Thread the dials into the layout** (§8) when scaffolding the CRUD body (DENSITY → emit-time spacing tier,
    mandatory states, MOTION gated).
-8. **Verify in the browser, light AND dark** — the standing Chrome-QA rule. The restyle must render, and
-   contrast must hold, across every flow the app was built with.
+9. **Verify in the browser, light AND dark** — the standing Chrome-QA rule. The restyle AND the restructure
+   must render, and contrast must hold, across every flow the app was built with. After a structural change,
+   also re-run `check-flow-surfaces` + `check-frontend-scaffold` + live-QA (art-direction.md §8).
 
 > **The genericity contract holds end to end.** Nothing here hard-codes a domain → palette. The agent
 > *reasons* (words → dials → adapted preset → `design.md`); the engine *enforces* (invariants + WCAG +
