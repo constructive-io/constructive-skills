@@ -11,6 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Description |
 |-------|-------------|
 | **constructive-features** | Feature catalog — router mapping every app capability to the authoritative skill |
+| **constructive-builder** | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, and Chrome-verify a working CRUD app on Constructive in under 10 minutes (4 phases, 3 policy tiers) |
 | **constructive-blueprints** | Declarative schema definition — blueprints, node type registry, module presets |
 | **constructive-auth** | Identity, login, sessions, MFA, devices, auth settings, service settings |
 | **constructive-security** | Authorization — Safegres protocol, 18 Authz* types, RLS, grants, storage policies |

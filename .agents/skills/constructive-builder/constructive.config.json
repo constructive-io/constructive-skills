@@ -1,0 +1,77 @@
+{
+  "$comment": "constructive.config.json — single per-ENVIRONMENT source of truth for the infrastructure coordinates a Constructive app build talks to (the GraphQL hub, the component registry, the local dev server, the mail catcher). One file, app-domain key names, every value overridable by an environment variable so a different machine/environment can relocate the whole stack without touching code. Defaults below are the standard local-development coordinates; changing WHERE a value is read does not change WHAT it defaults to.",
+
+  "hub": {
+    "$comment": "The Constructive GraphQL hub the app reads/writes against. The public hub serves the per-app GraphQL APIs; routing is driven by the HTTP Host header (a role-subdomain on a dot-localhost host), NOT by the URL path. The {role} segment is the API role (api / auth / admin / modules) and {sub} is the per-app subdomain (== the app database name with hyphens). PostGraphile maps {sub} back to the physical database by converting hyphens to underscores. 'managed' is a pure infra-policy toggle: does THIS runner own the hub's lifecycle? true (default) = the operator path — S0 may boot/kill/restart the hub once with a big heap on OOM. false (CONSTRUCTIVE_HUB_MANAGED=false) = unmanaged mode for a non-operator embedder that never starts the backend — S0 verifies reachability only and treats a down hub as an external outage to resolve out-of-band; it never boots/kills/restarts. Default true keeps today's restart-on-OOM behavior byte-identical.",
+    "managed": true,
+    "scheme": "http",
+    "host": "localhost",
+    "port": 3000,
+    "privatePort": 3002,
+    "hostPattern": "{role}-{sub}.{host}",
+    "platformHostPattern": "{role}.{host}",
+    "graphqlPath": "/graphql",
+    "env": {
+      "managed": "CONSTRUCTIVE_HUB_MANAGED",
+      "scheme": "CONSTRUCTIVE_HUB_SCHEME",
+      "host": "CONSTRUCTIVE_HUB_HOST",
+      "port": "CONSTRUCTIVE_HUB_PORT",
+      "privatePort": "CONSTRUCTIVE_HUB_PRIVATE_PORT",
+      "hostPattern": "CONSTRUCTIVE_HUB_HOST_PATTERN",
+      "platformHostPattern": "CONSTRUCTIVE_HUB_PLATFORM_HOST_PATTERN",
+      "graphqlPath": "CONSTRUCTIVE_HUB_GRAPHQL_PATH"
+    }
+  },
+
+  "db": {
+    "$comment": "The PHYSICAL Postgres database on the hub that holds the metaschema (control plane) AND every per-app schema. This is the hub-wide database name, not a per-app database. Provisioning a new app creates a new schema inside this same physical database.",
+    "hubDatabase": "constructive",
+    "env": {
+      "hubDatabase": "CONSTRUCTIVE_HUB_DATABASE"
+    }
+  },
+
+  "registry": {
+    "$comment": "The component (Blocks) registry the app installs UI from. GITHUB-PAGES-FIRST: baseUrl defaults to the LIVE @constructive registry published to GitHub Pages (https://constructive-io.github.io/dashboard) — the app's components.json points straight at it and installs each block from <baseUrl>/r/<name>.json (e.g. https://constructive-io.github.io/dashboard/r/auth-sign-in-card.json). Verify it is reachable with a single curl to <baseUrl>/r/<name>.json before installing; no local server needed on the primary path. The LOCAL static server (serve-registry.sh on `port` 4081) is the FALLBACK only (offline, or pinning to an unmerged registry build); set baseUrl=http://localhost:<port> + run serve-registry.sh to use it. `source` governs WHERE the LOCAL fallback server gets its block JSON from: 'sibling' (default) auto-discovers a registry checkout beside this skill; an absolute PATH serves apps/registry/public from a local registry repo/dir; a 'git:<url>#<branch>' value (or the url+branch keys below) fetches the built public tree into a local cache and serves from there. url/branch are only read when source is a git value; publicSubpath is the path WITHIN the source repo whose contents (the r/<slug>.json block files + any index) are served.",
+    "scheme": "https",
+    "host": "constructive-io.github.io",
+    "port": 4081,
+    "baseUrl": "https://constructive-io.github.io/dashboard",
+    "source": "sibling",
+    "url": "",
+    "branch": "",
+    "publicSubpath": "apps/registry/public",
+    "env": {
+      "scheme": "CONSTRUCTIVE_REGISTRY_SCHEME",
+      "host": "CONSTRUCTIVE_REGISTRY_HOST",
+      "port": "CONSTRUCTIVE_REGISTRY_PORT",
+      "baseUrl": "CONSTRUCTIVE_REGISTRY_BASE_URL",
+      "source": "CONSTRUCTIVE_REGISTRY_SOURCE",
+      "url": "CONSTRUCTIVE_REGISTRY_URL",
+      "branch": "CONSTRUCTIVE_REGISTRY_BRANCH",
+      "publicSubpath": "CONSTRUCTIVE_REGISTRY_PUBLIC_SUBPATH"
+    }
+  },
+
+  "app": {
+    "$comment": "The generated app's own Next.js dev server. portBase is the canonical documented app port (the brief may override it with frontend_port; consumers fall back to it). devPortBase is the BASE from which a concrete free dev-server port is dynamically allocated at run time so two concurrent apps never collide — it matches the `${PORT:-3011}` floor the generated app's dev/start script honors, and the actually-chosen port is persisted per-app (run-state frontend.frontend_port). The app's browser-facing GraphQL URLs are NOT stored here — the app derives them at runtime from its database name plus the hub coordinates above (NEXT_PUBLIC_API_PORT etc.), so the app is relocatable by changing port/subdomain alone.",
+    "scheme": "http",
+    "host": "localhost",
+    "portBase": 3081,
+    "devPortBase": 3011,
+    "env": {
+      "scheme": "CONSTRUCTIVE_APP_SCHEME",
+      "host": "CONSTRUCTIVE_APP_HOST",
+      "portBase": "CONSTRUCTIVE_APP_PORT_BASE",
+      "devPortBase": "CONSTRUCTIVE_APP_DEV_PORT_BASE"
+    }
+  },
+
+  "mail": {
+    "$comment": "The local mail catcher (Mailpit) the app's email flows deliver to. url is the Mailpit web/API base; email-driven flows (verify-email, password-reset, invites) poll its API to confirm a message arrived.",
+    "url": "http://localhost:8025",
+    "env": {
+      "url": "CONSTRUCTIVE_MAILPIT_URL"
+    }
+  }
+}

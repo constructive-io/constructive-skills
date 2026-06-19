@@ -1,0 +1,100 @@
+# GENERICITY FIXTURE — public-read/owner-write (the #1 missing pattern).
+#
+# Wave-3 genericity proof input #2. A blog the scaffolders were NOT tuned against:
+# ONE table whose published rows are readable by ANYONE authenticated while only the
+# author can create / edit / unpublish. This is the pattern single-owner CRUD (the
+# canary) cannot express — it forces the TWO-policy stack (AuthzDirectOwner all-CRUD
+# + AuthzPublishable select-only) plus the DataPublishable / DataSlug / DataTags /
+# fts data-behavior nodes. Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-blog-brief.yaml <app>   # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-blog-brief.yaml <app>   # posts CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-blog
+  label: Test Blog
+  description: A blog — anyone authenticated reads published posts, only the author writes.
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testblog
+  package_scope: "@test-blog"
+  provision_package: "@test-blog/provision"
+  schema_package: "@test-blog/schema"
+  sdk_package: "@test-blog/sdk"
+  cli_package: "@test-blog/cli"
+  app_package: "@test-blog/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# auth:email ONLY — public-read+owner-write needs NO b2b/org modules (reads open on
+# publish, not on org membership). Unioned with the email-password + profile flows.
+modules:
+  preset: auth:email
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+  - profile                  # let the signed-in author edit name + avatar
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-blog.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3083
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# ONE public-read+owner-write table. The scaffolder emits nodes
+# [DataId, DataDirectOwner, DataPublishable, DataSlug, DataTags, DataTimestamps]
+# (publishable is implied by the policy; slug/tags/fts are the blog extras — listing
+# `publishable` is a harmless explicit no-op that collapses by $type) and a TWO-policy
+# stack [AuthzDirectOwner all-CRUD permissive, AuthzPublishable select-only permissive].
+# DataSlug fills `slug` from `title`; fts spans the table's text fields (title, body).
+data_model:
+  tables:
+    - name: posts
+      policy: public-read+owner-write
+      features: [slug, tags, fts, publishable]
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: body, type: { name: text } }
+
+  relations: []
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD surface. entity: post → the generated post-* testids (post-title-input /
+# post-create-submit / post-row). The owner-scoped create needs owner_id; the quick-add
+# spreads `ownerId` (DataDirectOwner.owner_id) automatically for this policy.
+ui:
+  routes:
+    - { path: /posts, label: Posts, kind: crud, entity: post }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY (the single flow with a FULLY-implemented Chrome live-QA script:
+# signup → create a post → reload → assert persisted + auth). It is email-free so it
+# runs on a bare warm hub; the driver exercises this app's OWN entity via
+# LIVE_QA_CRUD_PATH=/posts + the generated post-* testids. `profile` is provisioned
+# but has no live-QA driver yet — listing it would be a hard coverage-gap FAIL.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend is up on :3000 (auth:email modules suffice — no org/email services).
+  - public-read+owner-write needs no b2b preset; reads open on publish, not org membership.

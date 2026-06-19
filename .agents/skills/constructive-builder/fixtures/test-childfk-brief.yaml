@@ -1,0 +1,119 @@
+# GENERICITY FIXTURE — child table with a REQUIRED parent FK (the FIX-1 rot canary).
+#
+# The COMMITTED rot-canary for the child-plus-required-FK frontend emission (FIX-1).
+# A two-table owner-scoped app where `posts` BELONGS-TO `topics` via a REQUIRED FK
+# (topic_id). This is the shape the plain todos canary cannot express: a create that
+# must supply a non-null parent FK, so the child entity page must emit an FK PICKER
+# (a parent-list-driven <select>) and spread the camelCase FK key (topicId) into the
+# create mutate — otherwise every child create RLS/NOT-NULL-rejects.
+#
+# scripts/check-frontend-scaffold.mjs dry-scaffolds THIS brief and asserts the posts
+# page emits: the camelCase FK key in the create mutate, the parent topics list-hook
+# import, and the post-topic-select FK picker testid. genericity-check.sh --canary
+# childfk verifies it end-to-end (signup → pick a topic → create a post → reload).
+# Drive it with:
+#   node scripts/scaffold-provision.mjs build/test-childfk-brief.yaml <app>  # provision/blueprint
+#   node scripts/scaffold-frontend.mjs  build/test-childfk-brief.yaml <app>  # topics + posts CRUD
+version: 1
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: test-childfk
+  label: Test Child-FK
+  description: A two-table owner app — posts belong to a required parent topic (the FIX-1 canary).
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+naming:
+  db_name: testchildfk
+  package_scope: "@test-childfk"
+  provision_package: "@test-childfk/provision"
+  schema_package: "@test-childfk/schema"
+  sdk_package: "@test-childfk/sdk"
+  cli_package: "@test-childfk/cli"
+  app_package: "@test-childfk/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# auth:email ONLY — owner-scoped tables need no b2b/org modules. Unioned with the
+# email-password flow into the native-tuple auth:email module closure (never ['all']).
+modules:
+  preset: auth:email
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+flows:
+  - email-password           # the reference sign-in surface (register / sign-in / sign-out)
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+auth:
+  admin_email: admin@test-childfk.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+generated:
+  frontend_port: 3084
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# Two owner-scoped tables. policy: owner → nodes [DataId, DataDirectOwner,
+# DataTimestamps] + policies [AuthzDirectOwner all-CRUD permissive] on EACH. posts
+# BELONGS-TO topics via a REQUIRED FK (topic_id) — so the posts create must supply a
+# non-null topicId. The child page derives the FK picker from this relation.
+data_model:
+  tables:
+    - name: topics
+      policy: owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+
+    - name: posts
+      policy: owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: body, type: { name: text } }
+
+  # ─── Relations ─────────────────────────────────────────────
+  # Each post belongs to ONE topic, and the FK is REQUIRED (is_required: true) — so
+  # the generated posts page must emit an FK picker bound to the topics list and spread
+  # the camelCase `topicId` into the create. field_name topic_id is the FK column on
+  # posts; CASCADE removes a post when its topic is deleted (required FK can't be NULL).
+  relations:
+    - $type: RelationBelongsTo
+      source_table: posts
+      target_table: topics
+      field_name: topic_id
+      delete_action: CASCADE
+      is_required: true
+
+# ─── UI ─────────────────────────────────────────────────────────
+# Two CRUD surfaces. entity is the singular of each table so the generated `<entity>-*`
+# testids fall out (topic-* / post-*). The posts create needs a non-null topic_id — the
+# quick-add emits an FK picker (the post-topic-select <select> bound to the topics list)
+# and spreads topicId; the detailed-create DynamicFormCard also prompts for it.
+ui:
+  routes:
+    - { path: /topics, label: Topics, kind: crud, entity: topic }
+    - { path: /posts, label: Posts, kind: crud, entity: post }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# email-password ONLY: the single flow with a FULLY-implemented Chrome live-QA script
+# (signup → create → reload → assert persisted + auth), and it is email-free so it runs
+# on a bare warm hub. The driver exercises the CHILD entity (posts) via LIVE_QA_CRUD_PATH
+# =/posts + the generated post-* testids, picking a parent topic first via post-topic-select.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend is already up on :3000 (auth:email modules suffice — no org/email services).
+  - A parent topic must exist (or be created) before a post can be created — the FK is required.

@@ -1,0 +1,282 @@
+version: 1
+
+# ════════════════════════════════════════════════════════════════════════════
+# APP BRIEF — the GENERIC, hand-writable + machine-consumable spec for building
+# ANY app on the Constructive platform. Copy this file to build/app-brief.yaml,
+# fill it in for YOUR app, and the scaffolders read it verbatim:
+#
+#   node scripts/scaffold-provision.mjs build/app-brief.yaml <app>   # → packages/provision/src/*
+#   node scripts/scaffold-frontend.mjs  build/app-brief.yaml <app>   # → src/app/<entity>/* (after Phase-3 codegen)
+#
+# The brief is the ONLY thing you hand-author. Everything below is intent-level:
+# you pick WHAT (a `modules.preset`, a set of `flows`, a per-table access `policy`)
+# and the generator emits the COMMON CASE as explicit, editable literal arrays
+# (`nodes[]` / `policies[]`) with `// TODO: advanced — see <skill>` seams for the
+# long tail. Nothing here hard-codes a domain — `todos`/`posts`/`projects` below
+# are just filled-in examples of the same three reusable patterns.
+#
+# This is NOT the frozen canary. build/golden-app-brief.yaml is the frozen
+# rot-canary (one todos table); leave it alone and edit a copy of THIS file.
+# ════════════════════════════════════════════════════════════════════════════
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: example-app            # kebab-case identifier (used for pgpm init --name)
+  label: Example App         # human-readable label (used as the blueprint description)
+  description: Short description of the app.
+  workspace_root: .          # path (relative to repo root) where the app is built
+
+# ─── Naming Conventions ────────────────────────────────────────
+# All downstream phases derive package names from this block.
+naming:
+  db_name: exampleapp        # no hyphens, no underscores — plain lowercase
+  package_scope: "@example-app"
+  provision_package: "@example-app/provision"
+  schema_package: "@example-app/schema"
+  sdk_package: "@example-app/sdk"
+  cli_package: "@example-app/cli"
+  app_package: "@example-app/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# `modules.preset` is the FIRST-CLASS driver of what backend modules are
+# provisioned onto your database (replaces the old scalar auth.strategy). The
+# scaffolder unions this preset with the `backend.modules` of every `flow` you
+# list below, plus any node/relation module dependencies — and emits a native
+# tuple module list (NEVER `modules: ['all']`, which is not a sentinel and
+# installs nothing).
+#
+#   preset            adds (on top of the auth:email base)              use for
+#   ───────────────   ──────────────────────────────────────────────   ─────────────────────
+#   auth:email        email+password, sessions, account, API keys       solo / single-user apps
+#   auth:email+magic  + magic-link / passwordless sign-in                email-first, no password
+#   auth:sso          + connected_accounts + identity_providers (OAuth)  "Sign in with Google/GitHub"
+#   auth:passkey      + webauthn credentials/auth (passkeys)             passwordless WebAuthn
+#   b2b               + org-scoped memberships/permissions/invites/…     multi-tenant / orgs / teams
+#   b2b:storage       b2b + org-scoped file storage buckets              teams that upload files
+#   full              everything (all auth + b2b + storage + extras)     kitchen-sink / prototyping
+#
+# `extra` appends any module not implied by the preset/flows — e.g. a node you
+# use needs its module (LimitCounter/LimitFeatureFlag → 'limits_module:<scope>';
+# DataRealtime → 'realtime_module'; DataI18n → 'i18n_module'; Search* → their
+# modules). Scoped modules are native tuples, written here as 'name:scope'
+# strings the scaffolder expands to ['name', { scope }].
+modules:
+  preset: auth:email
+  extra: []                  # e.g. ['realtime_module', 'limits_module:org']
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+# A "flow" is a backend-capability bundle from references/flow-catalog.md: a
+# preset to provision, the GraphQL ops it exposes, and the Blocks that wire the
+# UI. Flows are AUTH / ACCOUNT / ORG surfaces ONLY — they are NOT your domain
+# entity UI. For YOUR tables' CRUD, use the `data_model` + `ui.routes` below
+# (the scaffolder stamps the constructive-frontend CRUD Stack + meta-forms).
+#
+# List the REAL flow ids you want (see references/flow-catalog.md for all GA
+# flows). The scaffolder unions their modules into the provision list and wires
+# their blocks. Common picks:
+#   Authentication : email-password · email-verification · password-reset ·
+#                    social-oauth · cross-origin
+#   Account/session: profile · account-emails · change-password · sessions ·
+#                    api-keys · account-deletion · step-up · connected-accounts
+#   Authorization  : organization · org-members · org-roles · org-invites ·
+#                    app-memberships          (these require modules.preset: b2b)
+flows:
+  - email-password           # the reference sign-in surface (register/sign-in/sign-out)
+  # - profile                # let the signed-in user edit name + avatar
+  # - organization           # create/configure orgs — requires modules.preset: b2b
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+# The first user the provisioner signs up (owns the database). The actual auth
+# CAPABILITIES come from modules.preset + flows above — this block is just the
+# seed account.
+auth:
+  admin_email: admin@example.com
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+# pgpm template nextjs/constructive-app unpacks the Next.js app into a NESTED
+# packages/app (package 'constructive-boilerplate'); workspace_root stays '.' (the
+# pnpm workspace root). The toolkit auto-detects packages/app OR a root-level app
+# (verify-phase.sh app_rel()), so app_path is documentation. Leave env_file UNSET
+# to let the gate resolve it against the auto-detected app dir (<app>/.env.local),
+# or set it explicitly to <app>/.env.local. Canonical dev port 3081.
+generated:
+  frontend_port: 3081
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# Define every domain table the provisioner creates. You describe each table at
+# INTENT level — pick the `policy` that matches YOUR access model — and the
+# scaffolder resolves it into the blueprint's explicit `nodes[]` + `policies[]`
+# (always prepending DataId and appending DataTimestamps, with object-form
+# FieldType `{ name: … }` and object-form FieldDefault `{ value: … }`).
+#
+#   ┌─ policy (access model) ────────────┬─ who can do what ────────────────────────────────┐
+#   │ owner                              │ each row belongs to one user; only the owner can  │
+#   │                                    │ read/write it (DataDirectOwner + AuthzDirectOwner)│
+#   │ org-membership                     │ any member of the owning org/team can read+write  │
+#   │                                    │ the row (DataEntityMembership + AuthzEntity-       │
+#   │                                    │ Membership) — REQUIRES modules.preset: b2b        │
+#   │ member-owner                       │ the row is BOTH user-owned AND org-scoped: only   │
+#   │                                    │ the author, and only within their org, sees it    │
+#   │                                    │ (DataOwnershipInEntity + AuthzMemberOwner) — b2b  │
+#   │ public-read+owner-write            │ anyone authenticated can READ published rows; only│
+#   │                                    │ the owner can write/unpublish (DataDirectOwner +  │
+#   │                                    │ DataPublishable; AuthzDirectOwner all-CRUD +      │
+#   │                                    │ AuthzPublishable select-only). The blog/SaaS case │
+#   │ public-lookup                      │ every authenticated user can read AND WRITE (no   │
+#   │                                    │ ownership) — AuthzAllowAll. This is authenticated │
+#   │                                    │ read+write, NOT public-read. For public-read use  │
+#   │                                    │ public-read+owner-write instead. Use sparingly    │
+#   │                                    │ (shared reference data only).                     │
+#   └────────────────────────────────────┴───────────────────────────────────────────────────┘
+#
+# Optional per-table modifiers:
+#   restrict: [...]   RESTRICTIVE policies ANDed on top of the access model:
+#                       temporal   → adds valid_from / valid_until fields +
+#                                    AuthzTemporal (row visible only inside its
+#                                    time window)
+#                       read-only  → adds AuthzNotReadOnly (org members flagged
+#                                    is_read_only can read but not write) — b2b
+#   features: [...]   data-behavior nodes layered on:
+#                       soft-delete → DataSoftDelete (deleted_at / is_deleted)
+#                       slug        → a `slug` text field + DataSlug (URL slugs)
+#                       tags        → DataTags (text[] + GIN index)
+#                       jsonb       → DataJsonb (a `data` jsonb column)
+#                       fts         → a top-level full_text_search[] entry over
+#                                     the table's text fields
+#                       publishable → DataPublishable (implied by
+#                                     public-read+owner-write; list it to add the
+#                                     toggle without opening public reads)
+#
+# Escape hatches (the long tail — for anything the intents above don't cover):
+#   nodes_raw:    [...]   passed through verbatim into the table's nodes[]
+#   policies_raw: [...]   passed through verbatim into the table's policies[]
+# Use these for the 14 advanced Authz* types (AuthzPeerOwnership,
+# AuthzRelatedEntityMembership, AuthzOrgHierarchy, AuthzComposite, …) and the
+# advanced nodes (SearchVector, EventTracker, DataRealtime, …). See
+# constructive-security/references/authz-types.md and
+# constructive-blueprints/references/blueprint-definition-format.md.
+#
+# Field shape (always objects): { name, type: { name }, required?, default? }
+#   type is a FieldType OBJECT `{ name: 'text' }` (use 'boolean', not 'bool') —
+#   never a bare string; default is a FieldDefault OBJECT `{ value: … }`.
+data_model:
+  tables:
+    # ── Pattern 1 (owner): personal, single-user rows ──
+    # Each user owns their rows; nobody else can see them. The safe default for a
+    # solo app — round-trips CRUD with zero org modules under modules.preset:
+    # auth:email. (This is the golden canary's pattern, here named `todos`.)
+    - name: todos
+      policy: owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: notes, type: { name: text } }
+        - { name: is_done, type: { name: boolean }, default: { value: false } }
+
+    # ── Pattern 2 (public-read+owner-write): the blog / public-SaaS case ──
+    # The #1 pattern the platform supports that single-owner CRUD does not:
+    # published rows are readable by anyone authenticated, but only the author can
+    # create / edit / unpublish. The scaffolder emits a TWO-POLICY stack —
+    # AuthzDirectOwner (all CRUD, permissive) + AuthzPublishable (select-only,
+    # permissive) — so authorship is owner-locked while reads open on publish.
+    # `features: [publishable]` is implied by this policy; slug/tags/fts are the
+    # usual blog extras. Works under modules.preset: auth:email (no b2b needed).
+    - name: posts
+      policy: public-read+owner-write
+      features: [slug, tags, fts]
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: slug, type: { name: text } }            # DataSlug fills this from `title`
+        - { name: body, type: { name: text } }
+        - { name: excerpt, type: { name: text } }
+
+    # ── Pattern 3 (org-membership): multi-tenant / team rows ──
+    # Any member of the owning org/team can read+write the row. REQUIRES
+    # modules.preset: b2b — the org-scoped memberships module backs the policy; on
+    # a bare auth:email app the table fails to create (NOT_FOUND memberships_module).
+    # That is the ONE precise note on b2b: org policies need the b2b preset.
+    # (Uncomment together with `preset: b2b` and the org flows above.)
+    # - name: projects
+    #   policy: org-membership
+    #   fields:
+    #     - { name: name, type: { name: text }, required: true }
+    #     - { name: status, type: { name: text }, default: { value: "active" } }
+
+  # ─── Relations ─────────────────────────────────────────────
+  # FK + junction relationships between the tables above. $type is one of
+  # RelationBelongsTo · RelationHasMany · RelationHasOne · RelationManyToMany.
+  relations: []
+  # ── belongs-to (the common FK) ──
+  # - $type: RelationBelongsTo
+  #   source_table: posts        # the table that gets the FK column
+  #   target_table: todos        # the table it points at
+  #   field_name: todo_id        # FK column on source (optional; derived if omitted)
+  #   delete_action: SET NULL    # CASCADE | RESTRICT | SET NULL
+  #   is_required: false
+  #
+  # ── many-to-many ──
+  # Match the junction's policy to the parent tables' policy. Under b2b an
+  # org-scoped junction pulls the b2b modules into the closure automatically.
+  # - $type: RelationManyToMany
+  #   source_table: posts
+  #   target_table: projects
+  #   junction_table_name: post_projects
+  #   data:
+  #     nodes: [{ $type: DataId, data: {} }]
+  #     policy_type: AuthzDirectOwner      # match the parents (NOT AuthzAllowAll)
+  #     policy_data: { entity_field: owner_id }
+  #     grants:
+  #       - roles: [authenticated]
+  #         privileges: [[select, "*"], [insert, "*"], [delete, "*"]]
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One route per surface. `kind` selects how the scaffolder emits the page:
+#   crud      → a typed list + DynamicFormCard (meta-forms) bound to the
+#               entity's generated SDK hooks. Set `entity` to the singular form
+#               of the table name; testids are emitted as `<entity>-*`.
+#   dashboard → a stub landing/overview page + `// TODO: custom UI` seam
+#   detail    → a stub single-record page + `// TODO: custom UI` seam
+#   custom    → a stub page you fill in yourself + `// TODO: custom UI` seam
+# Auth/account/org routes come from the `flows` above (their Blocks) — you do not
+# list them here.
+#
+# `entity` vs `table` (alias routes): by default the scaffolder matches `entity`
+# to a data_model table by INFLECTION (todo↔todos). When you want the UI name to
+# DIFFER from the backing table — a product label like `ledger-entry` over a table
+# named `accounting_entries` — `entity` won't inflect to it. Add an explicit
+# `table:` naming the backing table; the SDK hooks + `_meta` form bind to that real
+# table while the testids/heading still use `entity`. Without `table:`, an
+# un-inflectable alias resolves positionally (the next unconsumed table in order)
+# or HARD-FAILS — the scaffolder never silently binds the wrong table.
+ui:
+  routes:
+    - { path: /todos, label: Todos, kind: crud, entity: todo }
+    - { path: /posts, label: Posts, kind: crud, entity: post }
+    # - { path: /, label: Home, kind: dashboard }
+    # - { path: /projects, label: Projects, kind: crud, entity: project }
+    # Alias route — UI name `ledger-entry`, backing table `accounting_entries`:
+    # - { path: /ledger, label: Ledger, kind: crud, entity: ledger-entry, table: accounting_entries }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# The flows the live-QA gate must verify end-to-end (signup → action → reload →
+# assert persisted + auth). These are the SAME real flow ids as `flows` above —
+# the gate iterates over every id here. (`email-password` is email-free, so it
+# runs on a bare warm hub; flows needing email/OAuth/org need those services up.)
+acceptance:
+  required_flows:
+    - email-password
+    # - profile
+    # - organization
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions: []

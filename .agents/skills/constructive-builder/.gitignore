@@ -1,0 +1,5 @@
+# Runtime / per-app scratch the skill's scripts write at build time — never shipped.
+build/
+.scratch*/
+*.bak
+node_modules/

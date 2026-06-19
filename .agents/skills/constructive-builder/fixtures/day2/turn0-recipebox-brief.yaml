@@ -1,0 +1,119 @@
+version: 1
+
+# ════════════════════════════════════════════════════════════════════════════
+# DAY-2 FIXTURE — TURN 0 (the baseline app the day-2 runner mutates).
+#
+# A MINIMAL, GENERIC, owner-scoped "recipe box": ONE table `recipes`, owner tier,
+# email-password only. This is the SEED the day-2 runner builds first (turn 0);
+# turns 1-4 (see ../day2/turns.json + changes.md) then apply one schema/flow change
+# each and re-verify, so the brief is deliberately small + plain (no features, no
+# org modules, no relations) — every later turn ADDS to it.
+#
+# It mirrors the golden/childfk owner pattern exactly:
+#   • policy: owner → nodes [DataId, DataDirectOwner, DataTimestamps] +
+#     policies [AuthzDirectOwner all-CRUD permissive, entity_field=owner_id].
+#   • modules.preset: auth:email + flows: [email-password] → acceptance.required_flows:
+#     [email-password], which is EMAIL-FREE, so it runs on a bare warm hub.
+#
+# db_name here is the BASE; the runner substitutes a per-run alphanumeric tag
+# (e.g. recipeboxa1b2c3 — see ../day2/README.md) so concurrent runs never collide.
+# Field/grant/policy shapes mirror SKILL.md F5 + the brief grammar exactly.
+# ════════════════════════════════════════════════════════════════════════════
+
+# ─── App Identity ───────────────────────────────────────────────
+app:
+  id: recipe-box
+  label: Recipe Box
+  description: A minimal owner-scoped recipe box — the day-2 build baseline (turn 0).
+  workspace_root: .
+
+# ─── Naming Conventions ────────────────────────────────────────
+# db_name is the BASE "recipebox" (plain lowercase, no hyphens/underscores). The
+# day-2 runner appends a per-run tag (alphanumeric only) before building so each
+# run gets an isolated database; the rest of the package names derive from app.id.
+naming:
+  db_name: recipebox
+  package_scope: "@recipe-box"
+  provision_package: "@recipe-box/provision"
+  schema_package: "@recipe-box/schema"
+  sdk_package: "@recipe-box/sdk"
+  cli_package: "@recipe-box/cli"
+  app_package: "@recipe-box/app"
+
+# ─── Modules (the provisioning driver) ─────────────────────────
+# auth:email ONLY — owner-scoped tables need no b2b/org modules. Unioned with the
+# email-password flow into the native-tuple auth:email module closure (never ['all']).
+# Turn 4 (add password-reset) adds NO modules — password-reset rides the same
+# auth:email base (see ../day2/turns.json turn 4 backend_modules).
+modules:
+  preset: auth:email
+  extra: []
+
+# ─── Flows (auth / account / org capability bundles) ───────────
+# The single reference sign-in surface (register / sign-in / sign-out / currentUser).
+# Email-free; its blocks are auth-sign-in/up-card etc.
+flows:
+  - email-password
+
+# ─── Platform (do not change unless local ports differ) ────────
+platform:
+  base_url: http://localhost:3000
+  endpoints:
+    platform_auth: http://auth.localhost:3000/graphql
+    platform_api: http://api.localhost:3000/graphql
+
+# ─── Auth credentials (the bootstrap admin) ────────────────────
+# The seed account the provisioner signs up. Capabilities come from
+# modules.preset + flows above.
+auth:
+  admin_email: admin@recipe-box.example
+  admin_password: change-me-before-build
+  roles:
+    - authenticated
+
+# ─── Generated App Config ──────────────────────────────────────
+# Canonical app port. The toolkit auto-detects packages/app OR a root-level app,
+# so app_path is documentation only.
+generated:
+  frontend_port: 3085
+  app_path: packages/app
+
+# ─── Data Model ─────────────────────────────────────────────────
+# ONE owner-only table. policy: owner → the scaffolder emits nodes
+# [DataId, DataDirectOwner, DataTimestamps] (DataDirectOwner adds owner_id; DataId
+# gives the id PK for update/delete) and policies [AuthzDirectOwner all-CRUD
+# permissive, entity_field=owner_id]. A handful of plain fields only — turns 1-4
+# add the prep_minutes column, the ingredients child + FK, the RLS flip, and the
+# password-reset flow. Field shapes are OBJECTS (FIELD-TYPE-001 / F5): type =
+# { name: <type> }, default = { value: <literal> }; the int type name is `numeric`.
+data_model:
+  tables:
+    - name: recipes
+      policy: owner
+      fields:
+        - { name: title, type: { name: text }, required: true }
+        - { name: notes, type: { name: text } }
+        - { name: servings, type: { name: numeric } }
+
+  relations: []
+
+# ─── UI ─────────────────────────────────────────────────────────
+# One CRUD route. kind: crud → a typed list + DynamicFormCard bound to the recipe
+# SDK hooks; entity: recipe emits the `recipe-*` testids the live-QA driver asserts
+# on /recipes (the LIVE_QA_CRUD_PATH for the email-password flow on this app).
+ui:
+  routes:
+    - { path: /recipes, label: Recipes, kind: crud, entity: recipe }
+
+# ─── Acceptance ─────────────────────────────────────────────────
+# Email-free, single flow → runs on a bare warm hub. live-qa has a fully-implemented
+# QA script for 'email-password' (signup → create → reload → assert persisted + auth).
+# This is the REGRESSION flow every day-2 turn re-asserts after its change.
+acceptance:
+  required_flows:
+    - email-password
+
+# ─── Assumptions ────────────────────────────────────────────────
+assumptions:
+  - A warm Constructive backend is already up on :3000 (auth:email modules suffice — no org services).
+  - agent-browser is installed so the live-QA gate can drive Chrome.

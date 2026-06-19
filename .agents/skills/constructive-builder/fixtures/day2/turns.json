@@ -1,0 +1,164 @@
+{
+  "$comment": "DAY-2 turn spec — the SINGLE source of turn semantics the day-2 runner consumes (author A writes it; author B's runner/scorecard/verify treat it as the only source of truth, hard-coding nothing about recipes). Each turn is a SELF-CONTAINED change applied cumulatively on top of the previous turn's brief, starting from app.turn0_brief. The runner builds turn 0 once, then for each turn: applies brief_patch -> runs skill_only_path (skill-only mode) -> on hybrid mode runs hybrid_path (a Stage-C day2-driver STUB this stage) -> PROBES the live tenant schema for whether the change actually landed (DID-IT-LAND) -> asserts new_capability_assert AND re-runs regression_flows. brief_patch is described declaratively (a precise, machine-parseable instruction) because the day-2 layer being probed differs per turn; the runner edits the per-run brief accordingly. All field types/policies/relation shapes/flow ids/modules below were validated against scripts/lib/brief.mjs via a DRY scaffold-provision (see ../day2/README.md). IMPORTANT — verdicts are EMPIRICAL: the skill_only_path strings below DOCUMENT the steps the runner runs; they are NOT verdict oracles. The runner decides clean/partial/impossible from the live did-it-land probe + the dual-verify, never from any prediction in this file. The `verified_outcome` field on each turn records what a Stage-B baseline ACTUALLY observed on a warm hub (see ../day2/changes.md): additive re-provision is IDEMPOTENT (T1/T2 land clean additive — confirmed in the live tenant: the new column/table/FK all appear); the real wall is a NOT-NULL column added to an ALREADY-POPULATED table (T3 is_published); a no-module flow add (T4) is PARTIAL (Blocks/ops install; the re-provision leg is a no-op since it adds zero modules). The earlier claim that EVERY turn aborts with a duplicate-CREATE-POLICY 'PROVISION-RERUN-001' was FALSIFIED and has been removed.",
+  "app": {
+    "domain": "recipe-box",
+    "db_name_base": "recipebox",
+    "turn0_brief": "turn0-recipebox-brief.yaml",
+    "owner_entity": "recipes",
+    "owner_entity_singular": "recipe",
+    "turn0_flows": ["email-password"]
+  },
+  "turns": [
+    {
+      "id": 1,
+      "title": "additive column",
+      "layer": "db-column",
+      "change_request": "Add a prep time (in minutes) field to recipes so a cook can record how long a recipe takes to prepare.",
+      "brief_patch": "In data_model.tables[name=recipes].fields, append a new field: { name: prep_minutes, type: { name: numeric } } (optional — no `required`, no `default`).",
+      "brief_patch_ops": [
+        {
+          "op": "add_field",
+          "table": "recipes",
+          "field": { "name": "prep_minutes", "type": { "name": "numeric" }, "required": false }
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision. (Steps only — NOT a verdict prediction. The runner decides the verdict from the live did-it-land probe + dual-verify.)",
+      "verified_outcome": "clean. VERIFIED (Stage-B, warm hub): additive re-provision is IDEMPOTENT — an optional plain column lands skill-only. Confirmed in the live tenant: information_schema.columns shows recipes.prep_minutes present (nullable). provision exits 0; existing policies are NOT duplicated; no data loss. The earlier 'PROVISION-RERUN-001 duplicate CREATE POLICY abort' prediction was FALSE for this turn.",
+      "hybrid_path": "day2-driver add-column recipes.prep_minutes:numeric -> pnpm codegen -> scaffold-frontend --refresh-entity recipes -> day2-verify",
+      "new_capability_assert": "create a recipe with prep_minutes=30, reload the page, and the value both PERSISTS (round-trips from the DB) AND RENDERS in the recipe list/detail.",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "a recipe created with prep_minutes=30 persists and renders after reload",
+        "regression": "the email-password flow still round-trips (signup -> create recipe -> reload -> assert persisted + authed) on /recipes with the recipe-* testids"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes"]
+    },
+    {
+      "id": 2,
+      "title": "new entity + relation",
+      "layer": "db-table-relation",
+      "change_request": "Let a recipe have a list of ingredients. Add an ingredients entity where each ingredient belongs to exactly one recipe (the recipe is required), and is private to its owner like recipes.",
+      "brief_patch": "Add a new owner-scoped table `ingredients` with fields { name: text required } and { quantity: text }, and add a RelationBelongsTo from ingredients -> recipes via a REQUIRED FK column recipe_id (delete_action CASCADE). Add a CRUD ui.route { path: /ingredients, label: Ingredients, kind: crud, entity: ingredient }.",
+      "brief_patch_ops": [
+        {
+          "op": "add_table",
+          "table": {
+            "name": "ingredients",
+            "policy": "owner",
+            "fields": [
+              { "name": "name", "type": { "name": "text" }, "required": true },
+              { "name": "quantity", "type": { "name": "text" } }
+            ]
+          }
+        },
+        {
+          "op": "add_relation",
+          "relation": {
+            "$type": "RelationBelongsTo",
+            "source_table": "ingredients",
+            "target_table": "recipes",
+            "field_name": "recipe_id",
+            "delete_action": "CASCADE",
+            "is_required": true
+          }
+        },
+        {
+          "op": "add_ui_route",
+          "route": { "path": "/ingredients", "label": "Ingredients", "kind": "crud", "entity": "ingredient" }
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision. (Steps only — NOT a verdict prediction. The runner decides the verdict from the live did-it-land probe + dual-verify.)",
+      "verified_outcome": "clean. VERIFIED (Stage-B, warm hub): a NEW owner-scoped table + a REQUIRED-FK relation are ADDITIVE — they land skill-only on the already-provisioned DB. Confirmed in the live tenant: the `ingredients` table exists (information_schema.tables) and its `recipe_id` FK column exists (information_schema.columns). Re-provisioning the existing recipes table is idempotent (no duplicate-policy abort).",
+      "hybrid_path": "day2-driver add-table ingredients (owner) -> day2-driver add-relation ingredients.recipe_id->recipes required CASCADE -> pnpm codegen -> scaffold-frontend --add-entity ingredient -> day2-verify",
+      "new_capability_assert": "create a recipe, then create an ingredient that picks that recipe via the required recipe_id FK picker (camelCase recipeId spread into the create), reload, and the ingredient PERSISTS bound to its parent recipe; a create with NO recipe selected is rejected (the FK is NOT NULL).",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "an ingredient created against a parent recipe (required recipe_id FK) persists and renders bound to that recipe; an ingredient create with no parent is rejected",
+        "regression": "the email-password flow still round-trips on the original recipes entity (recipe-* testids), and recipes still CRUD-persist"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"],
+      "expected_relations": [
+        { "$type": "RelationBelongsTo", "source_table": "ingredients", "target_table": "recipes", "field_name": "recipe_id", "is_required": true, "delete_action_coded": "c" }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "RLS policy flip",
+      "layer": "rls-policy",
+      "change_request": "Make recipes shareable: a published recipe should be readable by any signed-in user, but only its author may create, edit, or unpublish it. Ingredients stay private to their owner.",
+      "brief_patch": "Change data_model.tables[name=recipes].policy from `owner` to `public-read+owner-write`. This swaps the single AuthzDirectOwner policy for the two-policy stack (AuthzDirectOwner all-CRUD + AuthzPublishable select-only) and adds the DataPublishable node (is_published / published_at). Leave ingredients on policy: owner. No preset change — public-read+owner-write works on auth:email (no b2b).",
+      "brief_patch_ops": [
+        {
+          "op": "set_table_policy",
+          "table": "recipes",
+          "from_policy": "owner",
+          "to_policy": "public-read+owner-write"
+        }
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision. (Steps only — NOT a verdict prediction. The runner decides the verdict from the live did-it-land probe + dual-verify.)",
+      "verified_outcome": "impossible (skill-only) on the VERIFIED cause — NOT a duplicate-policy abort. VERIFIED (Stage-B): re-provision is idempotent for the policy stack itself (the AuthzPublishable SELECT policy + the additive DataPublishable columns is_published/published_at CAN land additively — confirmed in the live tenant: pg_policies shows auth_sel_publishable on recipes, and both columns are present). The REAL day-2 wall is the NOT-NULL backfill: turning an EXISTING populated table public-readable wants is_published NOT NULL, and adding a NOT-NULL column to a table that already has rows fails ('column \"is_published\" contains null values' / NOT-NULL backfill) unless the column is added NULLABLE or WITH A DEFAULT and backfilled. NOTE: this may be FIXED by C1 (if C1 emits is_published as nullable / DEFAULT false and backfills) — in which case the runner's did-it-land probe will report landed=yes and the verdict becomes clean. The runner measures whichever is true; it does not assume. (The earlier 'duplicate CREATE POLICY' prediction was FALSE and is removed.)",
+      "hybrid_path": "day2-driver set-policy recipes public-read+owner-write (adds the DataPublishable columns is_published NULLABLE/DEFAULT false + published_at and backfills, applies AuthzDirectOwner all-CRUD + AuthzPublishable select-only) -> pnpm codegen -> scaffold-frontend --refresh-entity recipes -> day2-verify",
+      "new_capability_assert": "user A publishes a recipe (is_published=true); a SECOND user B can READ user A's published recipe; user A (owner) can still write/unpublish it; user B (non-owner) still CANNOT write it; ingredients remain owner-private (B cannot read A's ingredients).",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "a published recipe is readable by a second user while writes stay owner-locked (non-owner write denied), and ingredients stay owner-private",
+        "regression": "the email-password flow still round-trips for the OWNER on /recipes (owner can still create/read/edit their own recipes; recipe-* testids)"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"]
+    },
+    {
+      "id": 4,
+      "title": "add a flow",
+      "layer": "flow-modules",
+      "change_request": "Add a self-serve password reset: a user who forgot their password can request a reset email and set a new password from the emailed link.",
+      "brief_patch": "Append `password-reset` to the top-level flows list (alongside email-password). password-reset rides the same auth:email base — it adds ZERO new modules (its backend.modules are identical to email-password's auth:email 13-module set) and contributes the forgotPassword/resetPassword ops + the forgot-password / reset-password Blocks. Do NOT add it to acceptance.required_flows (no live-QA driver for it yet — email-password stays the only acceptance flow).",
+      "brief_patch_ops": [
+        {
+          "op": "add_flow",
+          "flow": "password-reset"
+        }
+      ],
+      "flow": {
+        "id": "password-reset",
+        "exposed_ops": ["forgotPassword", "resetPassword"],
+        "blocks": [
+          "auth-forgot-password-card",
+          "auth-forgot-password-page",
+          "auth-reset-password-card",
+          "auth-reset-password-page"
+        ],
+        "needs_email": true,
+        "mailpit_url": "http://localhost:8025"
+      },
+      "backend_modules": [
+        "users_module",
+        "membership_types_module",
+        ["permissions_module", { "scope": "app" }],
+        ["limits_module", { "scope": "app" }],
+        ["levels_module", { "scope": "app" }],
+        ["memberships_module", { "scope": "app" }],
+        "sessions_module",
+        "user_state_module",
+        "user_credentials_module",
+        "config_secrets_module",
+        "emails_module",
+        "rls_module",
+        "user_auth_module"
+      ],
+      "skill_only_path": "edit brief -> scaffold-provision -> (cd packages/provision) pnpm run provision. (Steps only — NOT a verdict prediction. The runner decides the verdict from the live did-it-land probe + dual-verify.)",
+      "verified_outcome": "partial. VERIFIED (Stage-B): password-reset adds ZERO new modules (its backend.modules are byte-identical to email-password's auth:email 13-module set), so the re-provision leg is a NO-OP / not-applicable — there is no schema change to land (the did-it-land probe reports landed=n/a: no DB-checkable op). The real change is purely the FRONTEND surface (the forgot-password / reset-password Blocks install + the forgotPassword/resetPassword ops). Those Blocks install fine; what the skill-only path does NOT do hands-free is wire+codegen them onto the already-built app so the new capability round-trips end-to-end (Mailpit link -> resetPassword -> sign in with new password). So: backing/regression intact, new capability not driven skill-only => PARTIAL. (The earlier 'duplicate CREATE POLICY abort before wiring Blocks' prediction was FALSE — there are no new policies to replay; the re-provision simply has nothing to do.)",
+      "hybrid_path": "day2-driver add-flow password-reset (union its modules into create-db — a no-op here since password-reset adds none; wire forgot-password/reset-password Blocks + routes) -> pnpm codegen -> scaffold-frontend --add-flow password-reset -> day2-verify",
+      "new_capability_assert": "the password-reset happy path round-trips: request a reset for the signed-up email (forgotPassword) -> open the reset link from Mailpit (:8025) -> set a new password (resetPassword) -> sign in with the NEW password succeeds and the OLD password fails.",
+      "regression_flows": ["email-password"],
+      "dual_assertion": {
+        "new_capability": "password-reset happy path round-trips end-to-end (forgotPassword -> Mailpit link -> resetPassword -> sign in with new password works, old fails)",
+        "regression": "the email-password flow still round-trips (signup + sign-in + create recipe + reload) unchanged"
+      },
+      "expected_modules_count": 13,
+      "expected_tables": ["recipes", "ingredients"]
+    }
+  ]
+}
