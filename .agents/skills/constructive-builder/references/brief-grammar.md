@@ -41,6 +41,7 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 | `data_model` | `data_model.tables` non-empty | your domain tables + relations — see [Data model](#data-model-tables) |
 | `ui` | optional | one route per surface (`ui.routes[]`); `kind` selects how the page is emitted — see [UI routes](#ui-routes) |
 | `acceptance` | optional | `required_flows[]` the live-QA gate verifies end-to-end (the SAME flow ids as `flows`) |
+| `design` | optional | look-and-feel intent (theme + layout dials). **ABSENT ⇒ auto-propose** a domain-fitting theme; `{ preset: constructive }` ⇒ keep today's look. See [design (optional)](#design-optional) + [design-system.md](./design-system.md) |
 | `assumptions` | optional | free-text notes |
 
 > **App-id / per-app state.** The build-state id (`APP_ID`) is derived from `naming.db_name`, sanitized to
@@ -553,3 +554,80 @@ non-b2b preset **fails validation**. Full file: `fixtures/test-memberowner-brief
 For access models beyond the seven intents (peer ownership, composite, related-member-list, …), drop to
 `nodes_raw` / `policies_raw` and the **`constructive-security`** skill. See also `fixtures/test-childfk-brief.yaml`
 for a multi-table FK shape.
+
+---
+
+## design (optional)
+
+`design:` is an **additive, optional** top-level block that shapes the generated app's **look and feel**
+— the theme tokens (colors / radius / fonts) plus the layout **dials** (variance / motion / density). It
+sits alongside the other top-level sections (logically near `ui`, since it shapes presentation). It is
+purely additive: a brief **without** a `design:` block is fully valid and predates this feature.
+
+> **Default = auto-propose.** When `design:` is **absent**, the build **auto-proposes** a full,
+> domain-fitting theme (the new baseline — a generated app should not ship the stock Constructive blue
+> unless asked). The build agent reads `app.label`/`app.description` + entity names, classifies the look
+> into the three dials, picks/adapts a preset, and authors a `design.md` that the deterministic engine
+> lints (invariants + WCAG contrast) and compiles into the app's `globals.css` token overrides. The
+> reasoning methodology — dials, the words→dials table, the color invariants, the `design.md` format, the
+> preset catalog, and the compile/override contract — lives in **[design-system.md](./design-system.md)**.
+> This block is how a brief *constrains or overrides* that auto-proposal; it is **not** required to get a
+> theme.
+
+> **Opt-out = keep today's look.** `design: { preset: constructive }` is the explicit opt-out: the design
+> step is a **no-op** and the boilerplate `globals.css` is left exactly as shipped (the stock blue,
+> light-first theme). Use it when a brief deliberately wants the default look.
+
+### Shape (every field optional)
+
+```yaml
+design:
+  brief: "warm editorial, calm, trustworthy, high-end print feel"   # natural-language style words → dials
+  preset: minimalist                  # a named archetype anchor: constructive | minimalist | trust-first |
+                                       #   editorial | soft | brutalist | playful  (constructive = opt-out / no-op)
+  dials: { variance: 5, motion: 3, density: 3 }                     # explicit override of the inferred dials (each 1–10)
+  colors:                              # role-level palette overrides (semantic roles, NOT shadcn var names)
+    primary: "oklch(0.55 0.11 162)"   # the ONE brand/action color (required if you give `colors`)
+    accent:  "oklch(0.7 0.12 250)"    # at most ONE accent
+    neutral: "oklch(0.55 0.01 250)"   # ONE gray temperature
+    surface: "oklch(0.99 0.004 250)"
+    on-surface: "oklch(0.27 0.01 250)"
+    error: "oklch(0.55 0.2 25)"
+  font:   { sans: "Geist", mono: "Geist Mono" }                     # next/font/google allowlist (off-list → Geist + warn)
+  radius: "0.5rem"                     # seeds --radius (px / em / rem)
+  default_mode: dark                   # which theme loads first → layout.tsx ThemeProvider defaultTheme (light | dark)
+  allow_brand_hue: true                # opt out of the "AI purple/blue" hue-band warning for a deliberate brand hue
+```
+
+Colors accept `oklch(L C H)`, `#rrggbb`, or `rgb(…)`. Every key is optional — supply only what you want
+to pin and let the engine synthesize the rest. The three common shapes:
+
+- **`design:` absent** → auto-propose a theme (default).
+- **`design: { preset: <name> }`** → anchor on a named preset, auto-fill the palette/dials from it.
+  `preset: constructive` is the special no-op opt-out.
+- **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to dials, then pin the
+  brand color explicitly; the engine derives everything else and enforces the invariants + contrast.
+
+### Validation (optional strictness — `validateDesign`)
+
+The `design:` block has **no required keys**, so any brief with a syntactically valid `design:` mapping
+passes. When the block is present, `scripts/lib/brief-policy.mjs` runs an **optional** `validateDesign`
+pass that fails fast with a **legible** error on a *malformed* block (so a typo never silently reaches the
+compiler) while **tolerating unknown keys** (forward-compatible):
+
+- `design` must be a mapping (not a list/scalar).
+- `preset`, if set, must be one of the known anchors (`constructive | minimalist | trust-first |
+  editorial | soft | brutalist | playful`).
+- `dials`, if set, must be a mapping; each present dial (`variance`/`motion`/`density`) must be an integer
+  in **1–10**.
+- `colors`, if set, must be a mapping; each value (e.g. `primary`/`accent`/`neutral`/`surface`/
+  `on-surface`/`error`) must be a string color token. (Deeper invariants — ≤1 accent, chroma cap,
+  AI-purple ban, **WCAG contrast** — are enforced by the deterministic linter `check-design.mjs`, not
+  here; this is shape-validation only.)
+- `font`, if set, must be a mapping (`sans`/`mono` string family names).
+- `radius`, if set, must be a string (px/em/rem).
+- `default_mode`, if set, must be `light` or `dark`.
+- `allow_brand_hue`, if set, must be a boolean.
+
+Anything not listed is passed through untouched (unknown keys tolerated). The full reasoning + the
+compile/override contract are in **[design-system.md](./design-system.md)**.

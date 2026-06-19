@@ -402,6 +402,42 @@ node scripts/check-sdk.mjs --project <app>
 
 ---
 
+## S6.5 — Apply the design theme (look-and-feel; after the Blocks @import, before the CRUD body)
+
+Give the app a coherent, legible, non-generic look in one idempotent codemod. It writes a
+**contrast-repaired token-override block** into the app's `globals.css` — restyling the template UI
+**and every installed Block at once** (they all read `var(--…)` shadcn tokens).
+
+```bash
+# Derives/compiles the app's design.md → a single MARKED override block of shadcn token VALUES in
+# <app>/src/app/globals.css (+ an optional next/font loader swap + ThemeProvider defaultTheme). <app>
+# = the WORKSPACE ROOT (resolves packages/app). Run it AFTER the Blocks @import (S5) so the override
+# sits below it and wins by source order, and BEFORE the CRUD body (S7). Idempotent + --dry-run-able.
+node scripts/wire-design.mjs --app <app>            # or: node scripts/wire-design.mjs <brief> <app> [--dry-run]
+```
+
+- **Default = auto-propose.** With **no `design:` block** in the brief, the build authors a
+  domain-fitting `design.md` (3 dials → palette + radius + fonts), lints it (invariants + **WCAG
+  contrast**), and compiles it. A generated app should not ship the stock Constructive blue unless asked.
+- **Opt-out = keep today's look.** `design: { preset: constructive }` ⇒ **no-op** (boilerplate
+  `globals.css` untouched). A compile failure / impossible contrast also no-ops (loud warning) — never a
+  half-written theme.
+- **Structure stays off-limits.** The codemod only emits the **override-surface** tokens between its
+  `>>>`/`<<< constructive-builder design overrides` sentinels (placed after `.dark`, before `@theme
+  inline`). It never touches `@theme inline` / `@source` / `--z-layer-*` / `@layer base`. Fonts change
+  **only** via the `layout.tsx` loader swap (the `:root --font-sans` literal is dead — shadowed by
+  `@theme inline`).
+- **Brief control.** The optional `design:` block (`brief`/`preset`/`dials`/`colors`/`font`/`radius`/
+  `default_mode`) constrains or overrides the auto-proposal — see
+  [brief-grammar.md](./brief-grammar.md) "design (optional)".
+
+> **The full methodology — dials, the words→dials table, the color invariants, the `design.md` format,
+> the preset catalog, and the compile/override contract — is in [design-system.md](./design-system.md).**
+> Read it when authoring/adapting a theme or when the lint flags a contrast/invariant issue. The DENSITY
+> dial is also threaded into the CRUD body (S7) as a `data-density` root attribute.
+
+---
+
 ## S7 — Build the app CRUD body (the DOMAIN entity UI — always; this is surface (3))
 
 **Generate the CRUD body from the brief (the default path):**
@@ -465,7 +501,7 @@ there** in the browser and assert the mutation fired **2xx** and the row **persi
 > **Stuck on a step?** Drop into the matching detailed phase reference (S1→[phase-2-data-model.md](./phase-2-data-model.md)
 > §2.1, S2→[phase-2-data-model.md](./phase-2-data-model.md), S3/S4→[phase-3-frontend-sdk.md](./phase-3-frontend-sdk.md),
 > S5/S6→[phase-4-blocks.md](./phase-4-blocks.md) Branch A / [blocks-onramp.md](./blocks-onramp.md),
-> S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body) and consult [troubleshooting.md](./troubleshooting.md)
+> S6.5→[design-system.md](./design-system.md), S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body) and consult [troubleshooting.md](./troubleshooting.md)
 > / [gotchas.md](./gotchas.md) / [error-index.md](./error-index.md) for that step. The detailed sections are
 > the fallback; the speedrun is the path.
 

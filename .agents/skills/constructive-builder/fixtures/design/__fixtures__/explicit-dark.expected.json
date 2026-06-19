@@ -1,0 +1,28 @@
+{
+  "describe": "Explicit dark: block is honored verbatim (no re-derivation) for dark direct-copy vars.",
+  "compileOptions": { "defaultMode": "light" },
+  "light": {
+    "--background": "oklch(0.99 0.004 70)",
+    "--foreground": "oklch(0.26 0.012 50)",
+    "--primary": "oklch(0.50 0.10 28)"
+  },
+  "dark": {
+    "--background": "oklch(0.22 0.010 50)",
+    "--foreground": "oklch(0.95 0.006 70)",
+    "--primary": "oklch(0.70 0.11 35)",
+    "--primary-foreground": "oklch(0.20 0.02 35)"
+  },
+  "radius": "0.25rem",
+  "overrideSurfaceOnly": true,
+  "mustContain": [
+    "/* >>> constructive-builder design overrides (generated) */",
+    "/* <<< constructive-builder design overrides */",
+    ".dark"
+  ],
+  "contrast": [
+    { "mode": "light", "fg": "--foreground", "bg": "--background", "min": 4.5 },
+    { "mode": "dark", "fg": "--foreground", "bg": "--background", "min": 4.5 },
+    { "mode": "dark", "fg": "--primary-foreground", "bg": "--primary", "min": 4.5 }
+  ],
+  "notes": "Asserting dark direct-copies equal the authored dark: values is the core check — it distinguishes 'honored explicit dark' from 'derived dark'."
+}

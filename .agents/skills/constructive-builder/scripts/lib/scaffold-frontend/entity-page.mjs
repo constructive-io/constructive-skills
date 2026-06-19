@@ -40,6 +40,81 @@ import { buildFkSeams } from './relations-fk.mjs';
 import { buildRelationManagerSeams } from './relations-m2m.mjs';
 import { routeSegments } from './routes-nav.mjs';
 
+// ════════════════════════════════════════════════════════════════════════════
+// DENSITY SCALE (generic, dial-driven — NO entity/app literals).
+//
+// The DENSITY dial (brief.design.dials.density, 1–10) picks a SPACING scale that the
+// generated pages bake into their Tailwind className strings at EMIT time. Three tiers,
+// biased toward the trust-first / minimalist app rows (apps, not landing pages):
+//   • density 1–3  → 'comfortable' (roomy — more padding, taller rhythm)
+//   • density 4–6  → 'cozy'        (the DEFAULT, == the historical template literals)
+//   • density 7–10 → 'compact'     (tight — dense rows, smaller gaps)
+//
+// The COZY tier reproduces the values the template used before this wave EXACTLY, so a
+// brief with NO design block (density absent) emits byte-identical pages. Every token is
+// a whole Tailwind class string (no arbitrary values), so the output stays within the
+// boilerplate's compiled utility set. This is purely emit-time substitution — there is no
+// `data-*` attribute and no globals.css rule, so it never couples to another agent's CSS.
+// ════════════════════════════════════════════════════════════════════════════
+
+const DENSITY_SCALES = {
+  comfortable: {
+    D_PAGE: 'px-6 py-16',
+    D_HEAD_MB: 'mb-8',
+    D_SECTION_MB: 'mb-10',
+    D_FORM_GAP: 'gap-4',
+    D_ROW_GAP: 'gap-4',
+    D_ROW_PAD: 'px-5 py-4',
+    D_EMPTY_PAD: 'px-6 py-16',
+  },
+  cozy: {
+    // DEFAULT — these are the pre-wave literals, verbatim, so a design-less build is
+    // byte-identical.
+    D_PAGE: 'px-6 py-12',
+    D_HEAD_MB: 'mb-6',
+    D_SECTION_MB: 'mb-8',
+    D_FORM_GAP: 'gap-3',
+    D_ROW_GAP: 'gap-3',
+    D_ROW_PAD: 'px-4 py-3',
+    D_EMPTY_PAD: 'px-6 py-12',
+  },
+  compact: {
+    D_PAGE: 'px-5 py-8',
+    D_HEAD_MB: 'mb-4',
+    D_SECTION_MB: 'mb-6',
+    D_FORM_GAP: 'gap-2',
+    D_ROW_GAP: 'gap-2',
+    D_ROW_PAD: 'px-3 py-2',
+    D_EMPTY_PAD: 'px-5 py-8',
+  },
+};
+
+/**
+ * Resolve the DENSITY dial (1–10, or a tier name) to a spacing-token bundle. Defaults to
+ * 'cozy' (the historical look) when the dial is absent or unrecognized, so a brief with no
+ * `design` block is unchanged. Accepts the numeric dial, a tier name ('comfortable'/'cozy'/
+ * 'compact'), or undefined. Clamps out-of-range numbers. GENERIC — no entity input.
+ */
+export function resolveDensity(density) {
+  if (typeof density === 'string') {
+    const tier = density.toLowerCase();
+    if (DENSITY_SCALES[tier]) return { tier, tokens: DENSITY_SCALES[tier] };
+    return { tier: 'cozy', tokens: DENSITY_SCALES.cozy };
+  }
+  const n = Number(density);
+  if (!Number.isFinite(n)) return { tier: 'cozy', tokens: DENSITY_SCALES.cozy };
+  if (n <= 3) return { tier: 'comfortable', tokens: DENSITY_SCALES.comfortable };
+  if (n >= 7) return { tier: 'compact', tokens: DENSITY_SCALES.compact };
+  return { tier: 'cozy', tokens: DENSITY_SCALES.cozy };
+}
+
+/** The density token substitution pairs (__D_*__ → class string) for the given resolved
+ *  density. Shared by emitEntityPage + emitStubPage so both pages share one spacing scale. */
+function densitySubs(resolved) {
+  const t = resolved?.tokens || DENSITY_SCALES.cozy;
+  return Object.entries(t).map(([k, v]) => [`__${k}__`, v]);
+}
+
 /**
  * (b) Emit one entity page from the entity-page template, substituting the
  * per-entity identifiers. Idempotent: skips if the page already exists.
@@ -56,8 +131,13 @@ import { routeSegments } from './routes-nav.mjs';
  * UI) and a relation-manager component is stamped under components/crud/relations/. The
  * EMPTY-ARRAY DEFAULT is equally load-bearing: both N:M seams collapse to '' when the table
  * owns no junction, so a non-N:M table (every canary) stays byte-identical.
+ *
+ * `density` (default undefined → 'cozy') is the resolved DENSITY scale (resolveDensity()),
+ * threaded from scaffold-frontend.mjs which reads brief.design.dials.density. It only changes
+ * spacing class strings; the DEFAULT ('cozy') reproduces the pre-wave literals, so a build with
+ * no design block is byte-identical.
  */
-export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []) {
+export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = [], density) {
   const entity = route.entity || singularFromTable(table?.name) || kebab(route.path);
   // SG-A — the SDK hooks (use<Entities>Query / useCreate<Entity>Mutation), the data accessor
   // (data.<entities>) and the DynamicFormCard `_meta` tableName ALL derive from the TABLE name
@@ -70,6 +150,12 @@ export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []
   const sdkIds = entityIdentifiers(tableEntity); // SDK/_meta-facing identifiers (from the table)
   const ids = entityIdentifiers(entity); // UI/testid-facing identifiers (from the route entity)
   const label = route.label || titleCase(entity);
+  // Lower-cased label for the prose copy (subtext / empty / error). Derived from the label,
+  // so it tracks an explicit `route.label` ("Field Guides" → "field guides") AND a derived one.
+  const labelLower = label.toLowerCase();
+  // Resolved DENSITY scale → the spacing class strings the page bakes in. Defaults to 'cozy'
+  // (the historical literals) when no design dial is present, so the page is byte-identical.
+  const dSubs = densitySubs(resolveDensity(density));
   // SG-A for COLUMNS — remap every brief-derived column name to the name codegen ACTUALLY
   // emitted for THIS table's SDK row interface (sdkIds.EntityPascal, the same `_meta` type the
   // page already names). When the SDK isn't present (dry-run / canary) this is the identity, so
@@ -121,6 +207,9 @@ export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []
     // table) this equals the old camel-plural for single-word entities → byte-identical canary.
     ['__entity__', ids.entityKebab],
     ['__ENTITIES_EMPTY_TESTID__', `${pluralizeWords(entity).join('-')}-empty`],
+    // The lower-cased label (for the subtext / empty / error prose) goes BEFORE __ENTITY_LABEL__
+    // so the longer token matches first (the split/join convention) — purely cosmetic copy.
+    ['__ENTITY_LABEL_LOWER__', labelLower],
     ['__ENTITY_LABEL__', label],
     ['__TITLE_FIELD__', titleField],
     ['__SELECTION_FIELDS__', selectionFields],
@@ -156,6 +245,9 @@ export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []
     // import); __RELATION_MANAGER_JSX__ mounts the manager sections after the entity list.
     ['__RELATION_MANAGER_IMPORT__', relSeams.relationManagerImport],
     ['__RELATION_MANAGER_JSX__', relSeams.relationManagerJsx],
+    // DENSITY spacing tokens (__D_*__ → Tailwind class strings) — resolved from the design
+    // dial; 'cozy' default == the pre-wave literals (byte-identical when no design block).
+    ...dSubs,
   ];
   for (const [tok, val] of subs) {
     body = body.split(tok).join(val);
@@ -168,14 +260,19 @@ export function emitEntityPage(srcDir, route, table, ctx, fks = [], m2mRels = []
 /**
  * (d) Emit a stub page for a non-CRUD route (dashboard|detail|custom) with a
  * clearly-marked seam. Idempotent.
+ *
+ * `density` (default undefined → 'cozy') is the resolved DENSITY scale, so the stub's page
+ * spacing matches the CRUD pages. The 'cozy' default reproduces the pre-wave padding, and the
+ * heading hierarchy (weight+muted-subtext) matches the entity pages so a mixed app reads as one.
  */
-export function emitStubPage(srcDir, route, ctx) {
+export function emitStubPage(srcDir, route, ctx, density) {
   const label = route.label || titleCase(kebab(route.path || 'page'));
   const dest = path.join(srcDir, 'app', ...routeSegments(route.path), 'page.tsx');
   if (fs.existsSync(dest)) {
     skip(dest, ctx);
     return;
   }
+  const { tokens } = resolveDensity(density);
   const componentName = pascal(label || 'Page') + 'Page';
   const kind = route.kind || 'custom';
   const body = `'use client';
@@ -194,12 +291,14 @@ export function emitStubPage(srcDir, route, ctx) {
  */
 export default function ${componentName}() {
   return (
-    <div data-testid="authed-shell" className="mx-auto max-w-2xl px-6 py-12">
-      <h1 className="mb-4 text-2xl font-bold tracking-tight">${label}</h1>
-      <p className="text-muted-foreground text-sm">
-        {/* TODO: custom UI — build with @constructive-io/ui; see constructive-frontend */}
-        This ${kind} page is a scaffold stub. Replace it with your UI.
-      </p>
+    <div data-testid="authed-shell" className="mx-auto max-w-2xl ${tokens.D_PAGE}">
+      <header className="${tokens.D_HEAD_MB}">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">${label}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          {/* TODO: custom UI — build with @constructive-io/ui; see constructive-frontend */}
+          This ${kind} page is a scaffold stub. Replace it with your UI.
+        </p>
+      </header>
     </div>
   );
 }

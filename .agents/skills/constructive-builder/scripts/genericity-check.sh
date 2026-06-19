@@ -232,6 +232,76 @@ info "phases     : $PHASES  (+ live-QA gate on Phase 3)"
 [ -n "${LIVE_QA_CRUD_PATH:-}" ] && info "live-QA CRUD path (override): $LIVE_QA_CRUD_PATH"
 hr
 
+# ── DESIGN rot-canary (hermetic — no backend / no built app needed) ──────────────
+# Proves the design theming subsystem stays GENERIC + correct as a standing canary,
+# the same way the four app tiers above guard the build span. Two assertions, both
+# self-contained (fixtures + a temp globals.css; no network, no DB):
+#   1. NON-DEFAULT preset → a real theme: wire-design writes a marked override block
+#      whose compiled tokens DIFFER from the boilerplate, and the design's own
+#      check-design verdict is ok (lint + compile-ability). Catches the silent
+#      "lint-clean design degrades to the default look" regression this canary exists for.
+#   2. `constructive` opt-out preset → a byte NO-OP: wire-design writes NOTHING (the
+#      override sentinels never appear), so selecting the opt-out reproduces today's look.
+# Skips gracefully (warn, never fail the canary) only if node or the fixtures are absent.
+design_rot_canary() {
+  command -v node >/dev/null 2>&1 || { warn "design rot-canary: 'node' not on PATH — skipped (not failing)"; return 0; }
+  local fix_dir="$REPO_ROOT/fixtures/design"
+  local non_default="$fix_dir/editorial.md"   # any shipped NON-constructive preset
+  local opt_out="$fix_dir/constructive.md"
+  local check_design="$REPO_ROOT/scripts/check-design.mjs"
+  local wire_design="$REPO_ROOT/scripts/wire-design.mjs"
+  if [ ! -f "$non_default" ] || [ ! -f "$opt_out" ] || [ ! -f "$wire_design" ] || [ ! -f "$check_design" ]; then
+    warn "design rot-canary: fixtures/design or design scripts missing — skipped (not failing)"
+    return 0
+  fi
+
+  # A throwaway app skeleton (the minimal shape wire-design's globals step needs).
+  local tmp; tmp="$(mktemp -d)"
+  mkdir -p "$tmp/src/app"
+  # wire-design's appUnder() requires package.json + src/ at the app root to recognize it.
+  printf '{ "name": "design-canary-app" }\n' > "$tmp/package.json"
+  # A template-shaped globals.css with the structural @theme inline anchor.
+  printf ':root {\n  --background: oklch(1 0 0);\n}\n.dark {\n  --background: oklch(0.21 0.006 285.885);\n}\n@theme inline {\n  --color-background: var(--background);\n}\n' > "$tmp/src/app/globals.css"
+
+  # 1) the design itself must be ok (lint + compile-ability) AND wire into a non-default theme.
+  if node "$check_design" --design "$non_default" >/dev/null 2>&1; then
+    pass "design rot-canary: non-default preset (editorial) passes check-design (lint + compile-ability)"
+  else
+    rm -rf "$tmp"
+    fail "design rot-canary: non-default preset failed check-design" "run 'node scripts/check-design.mjs --design fixtures/design/editorial.md' and fix the flagged role(s) — a shipped preset must lint + compile into a theme."
+  fi
+  if node "$wire_design" --app "$tmp" --design "$non_default" >/dev/null 2>&1 \
+     && grep -q 'constructive-builder design overrides (generated)' "$tmp/src/app/globals.css"; then
+    # And it must DIFFER from the boilerplate (a real theme was applied, not a no-op).
+    if grep -qE '^[[:space:]]*--primary:' "$tmp/src/app/globals.css"; then
+      pass "design rot-canary: non-default preset wrote a real (non-default) override block into globals.css"
+    else
+      rm -rf "$tmp"
+      fail "design rot-canary: override block written but carries no themed tokens" "wire-design emitted an empty/default override region — check compile.mjs (compileDesign should emit the full override surface for a non-constructive preset)."
+    fi
+  else
+    rm -rf "$tmp"
+    fail "design rot-canary: a non-default preset did NOT produce a theme override block" "wire-design must write the marked :root/.dark override region for a non-constructive preset (it currently degrades to the default look — see compile.mjs / check-design.mjs)."
+  fi
+
+  # 2) the opt-out preset must be a byte NO-OP (no override sentinels written).
+  local tmp2; tmp2="$(mktemp -d)"
+  mkdir -p "$tmp2/src/app"
+  printf '{ "name": "design-canary-app" }\n' > "$tmp2/package.json"
+  printf ':root {\n  --background: oklch(1 0 0);\n}\n.dark {\n  --background: oklch(0.21 0.006 285.885);\n}\n@theme inline {\n  --color-background: var(--background);\n}\n' > "$tmp2/src/app/globals.css"
+  local before; before="$(cat "$tmp2/src/app/globals.css")"
+  node "$wire_design" --app "$tmp2" --design "$opt_out" >/dev/null 2>&1 || true
+  if [ "$(cat "$tmp2/src/app/globals.css")" = "$before" ] && ! grep -q 'constructive-builder design overrides' "$tmp2/src/app/globals.css"; then
+    pass "design rot-canary: opt-out preset (constructive) is a byte NO-OP (globals.css unchanged)"
+  else
+    rm -rf "$tmp" "$tmp2"
+    fail "design rot-canary: the 'constructive' opt-out preset modified globals.css" "the opt-out must reproduce today's look as a NO-OP (wire-design.mjs: preset==='constructive' → write nothing, exit 0)."
+  fi
+  rm -rf "$tmp" "$tmp2"
+}
+design_rot_canary
+hr
+
 # ── S0 — smoke the warm backend on :3000; restart ONCE with a big heap if down ──
 # pr_s0_smoke_and_restart (lib/phase-runner.sh) does the smoke + one-shot 8GB-heap restart; the
 # constructive CLI is auto-discovered the AGENTS.md sibling way (never a hardcoded path). Args:

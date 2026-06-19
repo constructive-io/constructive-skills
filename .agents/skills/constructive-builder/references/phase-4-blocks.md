@@ -14,9 +14,19 @@
 > not change it). When blocks are installed, the additive block-coverage gate also runs under
 > `./scripts/verify-phase.sh 2.6` (it self-disables when no `.constructive/blocks/*.requires.json` exists).
 
-> **Speedrun shortcut:** [speedrun.md](./speedrun.md) S5–S7 collapse this into the blocks on-ramp +
-> `node scripts/scaffold-frontend.mjs build/app-brief.yaml <app>` for the CRUD body. This file is the
-> detailed reference / hand-edit fallback.
+> **Speedrun shortcut:** [speedrun.md](./speedrun.md) S5–S7 collapse this into the blocks on-ramp + the
+> **design-theme pass** (S6.5, [design-system.md](./design-system.md)) + `node
+> scripts/scaffold-frontend.mjs build/app-brief.yaml <app>` for the CRUD body. This file is the detailed
+> reference / hand-edit fallback.
+
+> **Between Branch A and the CRUD body: the design-theme pass (S6.5).** After the Blocks `@import` is in
+> place and **before** the CRUD body, run **`node scripts/wire-design.mjs --app <app>`** to apply the
+> app's look-and-feel: it compiles the app's `design.md` into a contrast-repaired **token-override block**
+> in `globals.css`, restyling the template **and** every installed Block at once (all read the shadcn
+> `var(--…)` tokens). **Default = auto-propose** a domain-fitting theme; `design: { preset: constructive }`
+> (or a compile failure) ⇒ **no-op**, today's look preserved. It only touches the override-surface tokens
+> (never `@theme inline`/`@source`/`--z-layer-*`/`@layer base`); fonts swap via the `layout.tsx` loader.
+> Full methodology + the override contract: **[design-system.md](./design-system.md)**.
 
 ---
 

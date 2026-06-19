@@ -351,6 +351,67 @@ check_harness_drift() {
   fi
 }
 
+# Additive DESIGN subsystem gate. Two independent checks, each self-disabling:
+#   (A) ROT-CANARY — run the design compiler's own unit + fixture suite
+#       (scripts/lib/design/*.test.mjs) so the contrast-repair / no-throw / override-surface
+#       contracts cannot rot unnoticed. This is the subsystem's rot-canary: it ships in the
+#       skill, so it runs whenever this gate fires (no app needed). Self-disables only if the
+#       suite is absent or `node` cannot run it.
+#   (B) EMITTED-DESIGN LINT — if the app emitted a design.md (the durable, lint-gated theme
+#       record), run check-design.mjs on it. check-design now folds COMPILE-ABILITY into its
+#       verdict (a design wire-design cannot theme → ERROR), so a lint-clean-but-untheme-able
+#       design is caught HERE instead of silently degrading to the default look at wire time.
+# No design.md present → (B) is a clean no-op (absent-design is the default-look path).
+# Wired into Phase 1 (the canary, app-independent) and Phase 2.4 (the emitted-design lint).
+check_design() {
+  command -v node >/dev/null 2>&1 || { warn "Design gate: 'node' not on PATH — skipped the design subsystem checks (not failing)"; return 0; }
+
+  # (A) the design subsystem rot-canary — the compiler's own test suite.
+  local design_lib="$REPO_ROOT/scripts/lib/design"
+  if [ -d "$design_lib" ] && ls "$design_lib"/*.test.mjs >/dev/null 2>&1; then
+    local out status=0
+    out="/tmp/check-design-tests.$$"
+    node --test "$design_lib"/*.test.mjs >"$out" 2>&1 || status="$?"
+    if [ "$status" -eq 0 ]; then
+      pass "Design: compiler test suite green (contrast-repair / no-throw / override-surface contracts hold)"
+      rm -f "$out"
+    else
+      tail -n 40 "$out" 2>/dev/null | sed 's/^/  /' || true
+      rm -f "$out"
+      fail "Design: the design compiler test suite FAILED (scripts/lib/design/*.test.mjs)" "A design-compiler contract regressed (most often a critical text pair under AA on its RENDERED surface, or compileDesign throwing instead of using the graceful best-pole fallback). See the failing assertion above; fix scripts/lib/design/compile.mjs (or the fixture) until 'node --test scripts/lib/design/*.test.mjs' is green."
+    fi
+  fi
+
+  # (B) lint+compile-check any design.md the app emitted (no app/no design.md → no-op).
+  local checker="$REPO_ROOT/scripts/check-design.mjs"
+  [ -f "$checker" ] || return 0
+  local app_root design_md
+  app_root="$(workspace_path "$(app_rel)")"
+  [ -d "$app_root" ] || return 0
+  design_md=""
+  for cand in "$app_root/design.md" "$app_root/packages/app/design.md" "$app_root/src/design.md"; do
+    if [ -f "$cand" ]; then design_md="$cand"; break; fi
+  done
+  [ -n "$design_md" ] || return 0
+
+  echo "  INFO: Design gate — linting emitted design.md at $design_md"
+  local dout dstatus=0
+  dout="/tmp/check-design-emitted.$$"
+  node "$checker" --design "$design_md" >"$dout" 2>&1 || dstatus="$?"
+  if [ "$dstatus" -eq 0 ]; then
+    pass "Design: emitted design.md lints + compiles into a contrast-passing theme (check-design.mjs ok)"
+    rm -f "$dout"
+  elif [ "$dstatus" -eq 2 ]; then
+    cat "$dout" 2>/dev/null || true
+    rm -f "$dout"
+    warn "Design: check-design.mjs could not run on $design_md (exit 2) — skipped (not failing)"
+  else
+    cat "$dout" 2>/dev/null || true
+    rm -f "$dout"
+    fail "Design: emitted design.md failed check-design.mjs (exit $dstatus)" "The design has an ERROR finding (missing primary, a hard contrast floor breach, or it cannot be compiled into a theme — wire-design would then silently degrade to the default look). Fix the flagged role(s) in design.md and re-run 'node scripts/check-design.mjs --design <design.md>' until ok."
+  fi
+}
+
 # Additive self-lint: every fail() CALL-SITE in this script must pass a 2nd arg = a self-correcting
 # FIX hint, so an agent that trips a gate always gets a concrete next action (cite the gotcha CODE +
 # the one-liner / SKILL anchor). This keeps the hint-coverage ratio from regressing as call-sites are

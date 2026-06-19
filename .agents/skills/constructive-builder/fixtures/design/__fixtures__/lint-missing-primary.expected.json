@@ -1,0 +1,10 @@
+{
+  "describe": "lintDesign on a design with no primary -> ok:false, missing-primary error.",
+  "lint": {
+    "ok": false,
+    "expectFindings": [
+      { "rule": "missing-primary", "severity": "error" }
+    ]
+  },
+  "notes": "This fixture is NOT compiled (a missing primary cannot map --primary); only lintDesign is asserted."
+}

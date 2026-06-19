@@ -224,6 +224,15 @@ function main() {
   const srcDir = resolveAppSrc(appDir);
   const ctx = { dryRun, written: [], skipped: [], warnings: [] };
 
+  // DESIGN DENSITY (generic, dial-driven). The DENSITY dial (brief.design.dials.density, 1–10)
+  // sets the spacing/padding/rhythm scale the generated CRUD + stub pages bake into their
+  // Tailwind classes at emit time. It is read HERE (loadBrief already returned the whole brief,
+  // including any `design` block — zero new parsing) and threaded into the page emitters. Absent
+  // ⇒ undefined ⇒ the emitters default to the 'cozy' tier, which reproduces the historical
+  // spacing literals, so a brief with no design block emits byte-identical pages. No entity/app
+  // literal is involved — density is a single number that maps to a generic scale.
+  const density = brief.design?.dials?.density;
+
   const routes = brief.ui?.routes ?? [];
   const crudRoutes = routes.filter((r) => (r.kind || 'crud') === 'crud');
 
@@ -248,11 +257,11 @@ function main() {
       // junction. [] for a non-N:M table → the page emits no manager (byte-identical canary).
       // srcDir + ctx so the linked table's label column resolves to its codegen-actual name.
       const m2mRels = manyToManyRelations(brief, table, srcDir, ctx);
-      const { label } = emitEntityPage(srcDir, route, table, ctx, fks, m2mRels);
+      const { label } = emitEntityPage(srcDir, route, table, ctx, fks, m2mRels, density);
       appendRoute(srcDir, route, ctx, { context: 'app', access: 'protected' });
       appendNavItem(srcDir, route, label, ctx);
     } else {
-      emitStubPage(srcDir, route, ctx);
+      emitStubPage(srcDir, route, ctx, density);
       // A primary dashboard at '/' is the root — don't add a route/nav (the root
       // already exists). Other non-CRUD surfaces get a protected route entry.
       if (route.path && route.path !== '/') {

@@ -1,0 +1,36 @@
+{
+  "describe": "Direct role->var copies, radius, override-surface allowlist, structural-safety, sentinels.",
+  "compileOptions": { "defaultMode": "light" },
+  "light": {
+    "--background": "oklch(1 0 0)",
+    "--foreground": "oklch(0.30 0.005 250)",
+    "--card": "oklch(1 0 0)",
+    "--popover": "oklch(1 0 0)",
+    "--primary": "oklch(0.55 0.16 250)",
+    "--primary-foreground": "oklch(0.99 0 0)",
+    "--destructive": "oklch(0.55 0.18 27)",
+    "--ring": "oklch(0.55 0.16 250)"
+  },
+  "radius": "0.5rem",
+  "fonts": { "sans": "Geist", "mono": "Geist Mono" },
+  "overrideSurfaceOnly": true,
+  "mustNotContain": [
+    "@theme inline", "@source", "@custom-variant", "@plugin",
+    "--z-layer-", "--shadow-", "--font-sans", "--font-serif", "--font-mono",
+    "@layer base", "@layer utilities", "--radius-xs", "--radius-sm", "--radius-md"
+  ],
+  "mustContain": [
+    "/* >>> constructive-builder design overrides (generated) */",
+    "/* <<< constructive-builder design overrides */",
+    ":root",
+    ".dark"
+  ],
+  "contrast": [
+    { "mode": "light", "fg": "--foreground", "bg": "--background", "min": 4.5 },
+    { "mode": "light", "fg": "--primary-foreground", "bg": "--primary", "min": 4.5 },
+    { "mode": "light", "fg": "--muted-foreground", "bg": "--background", "min": 4.5 },
+    { "mode": "light", "fg": "--destructive-foreground", "bg": "--destructive", "min": 4.5 },
+    { "mode": "dark", "fg": "--foreground", "bg": "--background", "min": 4.5 }
+  ],
+  "notes": "card/popover equal surface here (zero or tiny elevation deltaL acceptable; compare within epsilon). The 36-key override surface allowlist is the only legal emit set."
+}

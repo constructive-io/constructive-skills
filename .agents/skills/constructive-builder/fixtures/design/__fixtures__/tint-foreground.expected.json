@@ -1,0 +1,21 @@
+{
+  "describe": "success/warning *-foreground flip dark-on-tint (light) vs light-on-tint (dark); both clear contrast.",
+  "compileOptions": { "defaultMode": "light" },
+  "overrideSurfaceOnly": true,
+  "mustContain": [
+    "--success", "--success-foreground", "--warning", "--warning-foreground"
+  ],
+  "contrast": [
+    { "mode": "light", "fg": "--success-foreground", "bg": "--success", "min": 4.5 },
+    { "mode": "light", "fg": "--warning-foreground", "bg": "--warning", "min": 4.5 },
+    { "mode": "dark", "fg": "--success-foreground", "bg": "--success", "min": 4.5 },
+    { "mode": "dark", "fg": "--warning-foreground", "bg": "--warning", "min": 4.5 }
+  ],
+  "lightnessOrder": [
+    { "mode": "light", "darker": "--success-foreground", "lighter": "--success", "why": "light mode: dark text on a light tint" },
+    { "mode": "light", "darker": "--warning-foreground", "lighter": "--warning" },
+    { "mode": "dark", "darker": "--success", "lighter": "--success-foreground", "why": "dark mode: light text on a deep tint" },
+    { "mode": "dark", "darker": "--warning", "lighter": "--warning-foreground" }
+  ],
+  "notes": "lightnessOrder asserts OKLCH L(darker) < L(lighter). A naive 'always near-white foreground' implementation fails the LIGHT pairs. If a test runner does not implement lightnessOrder, the four contrast pairs alone already force the flip because a near-white fg on a light tint cannot reach 4.5 in light mode."
+}

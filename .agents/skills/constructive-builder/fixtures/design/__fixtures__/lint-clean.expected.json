@@ -1,0 +1,21 @@
+{
+  "describe": "Fully invariant-clean design -> lintDesign ok:true, zero error findings.",
+  "lint": {
+    "ok": true,
+    "expectFindings": [],
+    "forbidFindings": [
+      { "rule": "missing-primary" },
+      { "rule": "ai-purple-band" },
+      { "anyRule": ["pure-black", "min-lightness", "pure-black-banned"] }
+    ],
+    "maxSeverity": "warn"
+  },
+  "compileOptions": { "defaultMode": "light" },
+  "overrideSurfaceOnly": true,
+  "contrast": [
+    { "mode": "light", "fg": "--foreground", "bg": "--background", "min": 4.5 },
+    { "mode": "light", "fg": "--primary-foreground", "bg": "--primary", "min": 4.5 },
+    { "mode": "dark", "fg": "--foreground", "bg": "--background", "min": 4.5 }
+  ],
+  "notes": "Positive control. maxSeverity:'warn' asserts no finding is an error. Also compiles cleanly so it doubles as a second happy-path compile fixture."
+}

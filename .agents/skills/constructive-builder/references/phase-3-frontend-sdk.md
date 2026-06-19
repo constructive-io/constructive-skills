@@ -12,6 +12,15 @@ place — there is **no standalone SDK step** on the mainline path.
 > `pgpm init … nextjs/constructive-app` + `node scripts/wire-app.mjs --app <app> --sub <sub>` + the four
 > S4 one-liners + `pnpm codegen`. This file is the detailed reference / hand-edit fallback.
 
+> **Theme/look comes later (S6.5), not here.** This phase scaffolds the app and its stock
+> `src/app/globals.css` (the light-first Constructive blue). The **design-theme pass** —
+> `node scripts/wire-design.mjs --app <app>` — runs in Phase 4 (after the Blocks `@import`, before the
+> CRUD body): it writes a contrast-repaired shadcn-token **override block** into this `globals.css` to
+> restyle the app + all Blocks. **Default = auto-propose** a domain-fitting theme; `design: { preset:
+> constructive }` keeps this stock look. So **do not hand-edit `globals.css` token values here** — let
+> S6.5 own the override block. Methodology: [design-system.md](./design-system.md); brief shape:
+> [brief-grammar.md](./brief-grammar.md) "design (optional)".
+
 ## Phase 2.6: Create Frontend (Phase 3 step)
 
 **Goal:** Scaffold a Next.js frontend from the Constructive sandbox template and wire it to the generated SDK.
