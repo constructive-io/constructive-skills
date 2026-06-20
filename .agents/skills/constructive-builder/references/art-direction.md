@@ -114,7 +114,7 @@ is still satisfiable. (Every clause is verified against the real generator/drive
 10. **Static gates that must stay green** (authoring must not red any of these): `check-frontend-scaffold`
     (the required-FK emission), `check-flow-surfaces` (the 4 mounter↔driver assertions), `check-scaffold`
     (the backend blueprint), `check-sdk` (import-presence), `assertNoUnsubstituted` (no leftover `__TOKEN__`),
-    plus the **50 design unit tests** and the **design rot-canary**.
+    plus the **design unit-test suite** (`node --test scripts/lib/design/*.test.mjs`) and the **design rot-canary**.
 
 ---
 

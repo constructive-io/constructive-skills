@@ -45,6 +45,9 @@ type:
     body: "0"
   measure: "68ch"
   pairing: "Serif display over sans body — the masthead + page titles in a warm transitional serif, body + UI in IBM Plex Sans. This serif/sans contrast IS the editorial signal; don't flatten it to one face."
+tokens:
+  --rule-hairline: "1px solid oklch(0.85 0.01 60)"
+  --measure: "68ch"
 rounded:
   md: "0.25rem"
 radius: "0.25rem"
