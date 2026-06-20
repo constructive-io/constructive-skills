@@ -1,6 +1,12 @@
 /**
  * scripts/lib/scaffold-frontend/entity-page.mjs — the per-entity domain UI emitter.
  *
+ * Emits the FUNCTIONAL SKELETON the agent then AUTHORS the presentation from (see
+ * scripts/templates/frontend/entity-page.tsx PRESENTATION SEAM + references/art-direction.md):
+ * the data wiring, the testids, the four states, the row-scoping, and the RLS scoping are
+ * the working contract; the default look is a neutral, replaceable starting point — NOT the
+ * final UI. The frontend phase = "scaffold this skeleton, THEN author the design.md faithfully".
+ *
  *   emitEntityPage  (step b) stamps a thin app/<route>/page.tsx from entity-page.tsx, wiring the
  *                   codegen'd SDK hooks + DynamicFormCard and splicing in the policy scoping,
  *                   belongs-to FK, and N:M relation-manager seams. EVERY seam collapses to the
@@ -280,19 +286,21 @@ export function emitStubPage(srcDir, route, ctx, density) {
 /**
  * ${route.path || '/'} — ${label} (kind: ${kind}).
  *
- * STUB emitted by scripts/scaffold-frontend.mjs for a non-CRUD route. The generic
- * CRUD path (typed list + DynamicFormCard) only covers \`kind: crud\`; richer
- * surfaces are yours to build.
+ * STUB emitted by scripts/scaffold-frontend.mjs for a non-CRUD route — a SKELETON to
+ * AUTHOR FROM, not a finished page. The generic CRUD path (typed list + DynamicFormCard)
+ * only covers \`kind: crud\`; this richer surface is yours to author from the design.md.
  *
- * // TODO: custom UI — build with @constructive-io/ui; see constructive-frontend
- * //   (CRUD Stack cards, meta-forms, the 50+ Base UI components). For a read list
- * //   use the typed @sdk/app hooks directly; for create/edit reuse DynamicFormCard
- * //   from @/components/crud/dynamic-form-card.
+ * // TODO: AUTHOR this surface — build with @constructive-io/ui; see constructive-frontend
+ * //   (CRUD Stack cards, meta-forms, the 50+ Base UI components) and compose Blocks as
+ * //   ingredients. For a read list use the typed @sdk/app hooks directly; for create/edit
+ * //   reuse DynamicFormCard from @/components/crud/dynamic-form-card.
  *
- * PRESENTATION SEAM: restructure this page freely per the design.md (see
- * references/art-direction.md) — re-compose the layout, the shell, the width clamp.
- * PRESERVE the functional contract for whatever you mount: any <entity>-* testids,
- * row-scoping, the hooks/selection/refetch/Stack-pushes, and the scoping const(s).
+ * PRESENTATION SEAM — AUTHOR THE UI FROM HERE per the app's design.md (see
+ * references/art-direction.md): customize/replace stock components, set the type, compose
+ * the layout, add intentional hierarchy/spacing/ornament + subtle (reduced-motion) motion.
+ * PRESERVE (RAIL 1) the functional contract for whatever you mount: any <entity>-* testids,
+ * row-scoping, the hooks/selection/refetch/Stack-pushes, and the scoping const(s); and
+ * (RAIL 2) the shadcn token names the components read. Restyle freely — don't hide a control.
  */
 export default function ${componentName}() {
   return (

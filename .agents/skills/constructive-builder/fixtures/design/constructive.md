@@ -3,6 +3,16 @@ version: 1
 name: constructive
 preset: constructive
 description: The current default Constructive look — the opt-out preset. The `preset: constructive` key above makes this design.md self-identify as the opt-out, so `wire-design --design …/constructive.md` (and a brief `design: { preset: constructive }`) both resolve to a byte NO-OP that keeps today's look.
+atmosphere: "the stock Constructive baseline — calm sky-blue trust-first dashboard, unchanged"
+dials:
+  variance: 3
+  motion: 3
+  density: 4
+art_direction:
+  shell: sidebar
+  composition: list
+  density: cozy
+  notes: "OPT-OUT — keep the shipped shell/composition exactly; this preset authors NO custom frontend"
 colors:
   primary: "oklch(0.688 0.1754 245.6151)"
   primary-foreground: "oklch(0.979 0.021 166.113)"
@@ -16,6 +26,17 @@ colors:
 typography:
   sans: Geist
   mono: Geist Mono
+type:
+  sans: Geist
+  mono: Geist Mono
+  scale:
+    base: "1rem"
+    ratio: "1.25"
+  weights:
+    body: 400
+    medium: 500
+    heading: 600
+  pairing: "Stock Geist sans / Geist Mono — the shipped boilerplate type. This preset changes nothing."
 rounded:
   md: "0.5rem"
 spacing:
@@ -55,10 +76,17 @@ Geist mono.
 
 Use it when you want zero restyling — the dependable, trust-first dashboard baseline.
 
+> **Opt-out semantics (the new model).** Every *other* preset is a rich art-direction the agent
+> AUTHORS the whole frontend from (customized components, distinctive type, intentional layout). This
+> one is the deliberate exception: `preset: constructive` authors **nothing** — `wire-design` is a byte
+> NO-OP, the shipped shell + composition stay exactly as scaffolded, and the boilerplate `globals.css`
+> is untouched. The rich keys above (`type`, `art_direction`, dials) are documentary only; they record
+> what the stock look *is*, not a restyle to apply.
+
 > Fidelity note: `primary-foreground` is transcribed verbatim from the boilerplate
-> (`oklch(0.979 0.021 166.113)`, a near-white greenish tint). Its measured contrast on
-> the sky-blue primary is ~2.6:1, *below* WCAG AA for small text — this is a property of
-> the **current** default, preserved here so the opt-out is byte-faithful. When this
-> preset is actually compiled (rather than treated as a pure no-op), the compiler's
-> `ensureContrast` may nudge `primary-foreground` to pass; that nudge is the only place
-> the rendered result can differ from today's pixels, and only for the on-primary label.
+> (`oklch(0.979 0.021 166.113)`, a near-white greenish tint). Its measured contrast on the sky-blue
+> primary is ~2.6:1, *below* WCAG AA for small text — a property of the **current** default, preserved
+> here so the opt-out is byte-faithful. Under the faithful+advisory compiler this value would now emit
+> **verbatim** if this preset were ever compiled (the contrast clamp is gone; low contrast is an
+> ADVISORY warning, not a repair) — but as the opt-out it is never compiled, so today's pixels are
+> reproduced exactly, sub-AA on-primary label and all.

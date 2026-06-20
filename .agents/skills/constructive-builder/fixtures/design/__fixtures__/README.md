@@ -9,15 +9,24 @@ pair:
 <name>.expected.json  # assertions a test runner checks against the compile/lint output
 ```
 
-Authored by build-agent **D** so the engine (agent A) and the static self-test (P2)
-have a shared, version-controlled contract to assert against. **These intentionally do
-NOT pin every derived token value** — the exact OKLCH math for derived vars
-(`--border`, `--muted-foreground`, `--chart-*`, `.dark` inversion, elevation ΔL) is
-Agent A's to tune, and over-pinning it would make the tests brittle and couple D's
-guesses to A's implementation. Instead each `expected.json` pins only what the SHARED
-CONTRACT makes **deterministic**: direct role→var copies, the radius, the
-override-surface allowlist, the structural off-limits set, the marked-region sentinels,
-and (for lint fixtures) the exact invariant findings.
+A shared, version-controlled contract the engine (`compile`/`invariants`) and the static
+self-test assert against. **These intentionally do NOT pin every derived token value** —
+the exact OKLCH math for derived vars (`--border`, `--muted-foreground`, `--chart-*`,
+`.dark` inversion, elevation ΔL) is the engine's to tune, and over-pinning it would make
+the tests brittle. Instead each `expected.json` pins only what the SHARED CONTRACT makes
+**deterministic**: direct role→var copies (emitted **verbatim** under the faithful
+compiler), the radius, the Rail-2 synthesis guarantee + custom-token pass-through, the
+structural off-limits set, the marked-region sentinels, and (for lint fixtures) the exact
+invariant findings.
+
+> **POST-PIVOT contract.** The compiler is now **faithful + advisory**: an authored value
+> emits **verbatim** (no contrast clamp), custom `tokens:`/`extra:` props **pass through**,
+> and the taste rules (contrast / AI-purple / pure-black / accent-count) are **advisory
+> warnings**, never errors. The only hard `lint` error left is structural **`missing-primary`**.
+> So lint fixtures that exercise a TASTE rule assert `lint.ok:true` + a `warn`/`info` finding
+> (not `ok:false`); only `lint-missing-primary` asserts `ok:false`. `overrideSurfaceOnly` now
+> means "all shadcn contract names present" (tolerating extra custom vars), and `passThrough`
+> asserts custom tokens emit verbatim.
 
 ## `expected.json` schema
 
@@ -50,10 +59,23 @@ epsilon, not by string equality, since `formatOklch` rounding is Agent A's choic
   // fonts.{sans,mono} resolution (Agent A fonts.mjs allowlist)
   "fonts": { "sans": "Geist", "mono": "Geist Mono" },
 
-  // ── override-surface guard ──
-  // Every var the override block emits MUST be in this allowlist (the ONLY
-  // vars compile may emit). A test asserts: emittedVars ⊆ overrideSurface.
+  // ── RAIL-2 synthesis guarantee (POST-PIVOT semantics) ──
+  // Asserts every shadcn CONTRACT NAME is present in BOTH modes (so Blocks
+  // render). It NO LONGER forbids extra custom vars — under the faithful
+  // compiler a design.md's `tokens:`/`extra:` custom props pass THROUGH, so
+  // the emit set is a SUPERSET of the shadcn names, not an exact allowlist.
   "overrideSurfaceOnly": true,
+
+  // ── custom-token pass-through (POST-PIVOT) ──
+  // { light?:{ '--x':'v' }, dark?:{...} } — custom tokens the design.md
+  // declared via `tokens:`/`extra:` that MUST be emitted VERBATIM. Shared
+  // tokens apply to both modes; a `dark.tokens:`/`dark.extra:` overrides in
+  // dark only. A structural-wiring name (--color-* / --font-* / --z-layer* /
+  // --tw-*) is dropped with a warning (assert its absence via mustNotContain).
+  "passThrough": {
+    "light": { "--elevation-1": "0 1px 2px oklch(0 0 0 / 0.06)" },
+    "dark":  { "--elevation-1": "0 1px 3px oklch(0 0 0 / 0.4)" }
+  },
 
   // ── structural-safety guard ──
   // The rendered override block MUST NOT contain ANY of these substrings.
@@ -106,6 +128,7 @@ epsilon, not by string equality, since `formatOklch` rounding is Agent A's choic
 | `lint-ai-purple.*` | A saturated blue-purple primary (no `allow_brand_hue`) → `ai-purple-band` **warn**; flipping `allow_brand_hue:true` would suppress it (documented, second file). |
 | `lint-pure-black.*` | `on-surface: oklch(0 0 0)` → `pure-black` / min-L **warn**. |
 | `lint-clean.*` | A fully invariant-satisfying design → `lintDesign` `ok:true`, **zero** error findings. |
+| `passthrough.*` | POST-PIVOT: custom `tokens:`/`extra:` props pass through **verbatim** (both modes; `dark.tokens:` overrides in dark); a structural `--font-*` is **dropped**; the authored `--primary` emits verbatim (no contrast clamp); all Rail-2 names still present. |
 
 > Sentinels (must stay byte-identical with `compile.renderOverrideBlock` and
 > `wire-design.mjs`):

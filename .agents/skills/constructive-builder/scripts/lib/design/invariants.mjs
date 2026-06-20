@@ -1,7 +1,14 @@
 /**
- * scripts/lib/design/invariants.mjs — the taste/accessibility rules as code.
+ * scripts/lib/design/invariants.mjs — the taste/accessibility rules as ADVISORY code.
  *
  * `lintDesign(design) -> { ok, findings:[{rule, severity, msg}] }`
+ *
+ * THE PIVOT (ADVISORY): the design.md is the FULL design spec — the agent authors
+ * the frontend faithfully from it. So TASTE rules NEVER fail here. Every taste /
+ * accessibility finding is a WARN or INFO (advisory) — the compiler emits the
+ * authored value verbatim regardless. The ONLY thing that stays an `error` is a
+ * STRUCTURAL problem that leaves nothing to compile: `missing-primary`. With that,
+ * `ok` is `true` for any design that has a primary and parses.
  *
  * `design` is the frontmatter object of a design.md (see design-md.mjs): it has
  * `colors` (a map of role -> css color string), optional `typography`,
@@ -9,15 +16,16 @@
  * `allow_brand_hue`. Rules are intentionally generic — they reference color
  * ROLES, never app/entity/domain literals.
  *
- * Rule set (per the shared contract):
- *   missing-primary                     error
- *   accent-count (<=1)                  warn
- *   saturation/chroma cap (<80%)        warn
- *   pure-black banned (min L >= ~0.18)  warn
- *   ai-purple-band (primary/accent)     warn   (unless design.allow_brand_hue)
- *   dimension units (px/em/rem only)    warn
- *   contrast-pairs                      error (<3:1) / warn (<4.5)
- *   success/warning tint-foreground     warn
+ * Rule set (post-pivot severities):
+ *   missing-primary                     error   (STRUCTURAL — nothing to synthesize)
+ *   color-parse                         warn    (malformed color; compiler falls back)
+ *   accent-count (<=1)                  warn    (advisory taste)
+ *   saturation/chroma cap (<80%)        warn    (advisory taste)
+ *   pure-black banned (min L >= ~0.18)  warn    (advisory taste)
+ *   ai-purple-band (primary/accent)     warn    (advisory; silenceable via allow_brand_hue)
+ *   dimension units (px/em/rem only)    warn    (advisory)
+ *   contrast-pairs                      warn (<3:1) / info (<4.5) — NEVER error
+ *   success/warning tint-foreground     warn/info
  *
  * ZERO-DEP. Node >=18 ESM. Pure.
  */
@@ -126,37 +134,26 @@ export function lintDesign(design) {
     }
   }
 
-  /* --- contrast-pairs (error <3:1, warn <4.5) --- */
+  /* --- contrast-pairs (ADVISORY: warn <3:1, info <4.5 — NEVER error) ---
+   * PIVOT: contrast is the design.md author's call. We SURFACE a low-contrast pair
+   * as advisory (so the agent sees it during AUTHORING) but never fail or clamp —
+   * the agent owns the presentation and may have a deliberate reason. */
   const bg = tryParse(colors.surface || colors.background);
   const fg = tryParse(colors['on-surface'] || colors.foreground);
-  // `floor`: true => below 3:1 is a hard error (the legibility contract per
-  // design-system.md §3: fg/bg, primary/primary-fg, muted-fg/bg, destructive,
-  // status tints). false => the pairing is advisory only (brand pairings like
-  // primary-on-surface, which is a fill color, not a required body-text pairing —
-  // and which the compiler's ensureContrast repairs); never a hard error.
-  const checkPair = (a, b, label, floor = true) => {
+  const checkPair = (a, b, label) => {
     if (!a || !b) return;
     const ratio = contrastRatio(a, b);
     if (ratio < 3) {
-      add('contrast-pairs', floor ? 'error' : 'warn', `${label} contrast ${ratio.toFixed(2)}:1 is below the 3:1 floor.`);
+      add('contrast-pairs', 'warn', `${label} contrast ${ratio.toFixed(2)}:1 is below the 3:1 floor (advisory — verify this is intentional).`);
     } else if (ratio < 4.5) {
-      add('contrast-pairs', 'warn', `${label} contrast ${ratio.toFixed(2)}:1 is below AA 4.5:1.`);
+      add('contrast-pairs', 'info', `${label} contrast ${ratio.toFixed(2)}:1 is below AA 4.5:1 (advisory).`);
     }
   };
   if (bg && fg) checkPair(fg, bg, 'on-surface / surface');
   const primary = tryParse(colors.primary);
-  // primary / primary-foreground IS the documented error pairing (the on-primary
-  // label legibility floor). The compiler auto-repairs it (§6), so lint it on the
-  // SOURCE as advisory (warn), not a hard build-breaking error.
   const primaryFg = tryParse(colors['primary-foreground']);
-  if (primary && primaryFg) {
-    checkPair(primaryFg, primary, 'primary-foreground / primary', false);
-  }
-  if (primary && bg) {
-    // primary-on-surface is a brand pairing, not a required body-text pairing
-    // (per §3 it is NOT in the hard-error contrast list) — advisory only.
-    checkPair(primary, bg, 'primary / surface', false);
-  }
+  if (primary && primaryFg) checkPair(primaryFg, primary, 'primary-foreground / primary');
+  if (primary && bg) checkPair(primary, bg, 'primary / surface');
 
   /* --- success/warning tint-foreground contract (warn) ---
    * The tint roles (success/warning/info) carry text-on-tint foregrounds. If a

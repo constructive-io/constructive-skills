@@ -1,9 +1,21 @@
 /**
- * entity-page.tsx — parameterized per-entity CRUD page.
+ * entity-page.tsx — parameterized per-entity CRUD page (a WORKING SKELETON to AUTHOR FROM).
  *
  * ──────────────────────────────────────────────────────────────────────────
  * TEMPLATE: stamped per CRUD route by scripts/scaffold-frontend.mjs to
  * <app>/src/app/<entity>/page.tsx (one file per `ui.routes[].kind: crud` entry).
+ *
+ * WHAT THIS IS — and IS NOT. This is the FUNCTIONAL SKELETON: the data wiring, the
+ * testids, the four list states, the row-scoping, and the RLS scoping the app needs to
+ * WORK and to compose with Blocks. It is NOT the finished UI. The default presentation
+ * below (a card + a divided list, neutral shadcn surfaces) is a sane, replaceable
+ * starting point — NOT a prescription. The frontend phase is "scaffold this skeleton,
+ * THEN AUTHOR the presentation faithfully from the app's design.md" (customize/replace
+ * the stock components, set the type/scale/weights, compose the layout, add intentional
+ * hierarchy/spacing/ornament). AUTHOR everything below the PRESENTATION SEAM; the ONLY
+ * hard rails are (1) the FUNCTIONAL contract (the testids/hooks/states/scoping/mounts
+ * called out at the seam) and (2) the shadcn-token contract (Blocks read tokens by
+ * name). See references/art-direction.md for the authoring playbook + the preserve list.
  *
  * Two complementary CRUD paths:
  *   • QUICK-ADD + list — the typed, codegen'd SDK hooks (use__Entities__Query /
@@ -21,22 +33,22 @@
  * `entity=todo` makes the canary's `todo-*` testids + single-submit create fall out
  * with zero special-casing.
  *
- * THE FOUR LIST STATES (taste-skill's highest-value app rule — emitted for EVERY entity):
- *   • LOADING — a skeleton that MIRRORS the real list layout (a bordered surface with
- *     divided rows, each a label-line skeleton + two affordance-sized blocks), so the
- *     first paint has the same shape the data will fill (no layout jump). Each skeleton
- *     carries data-slot="skeleton" so the boilerplate's prefers-reduced-motion rule
- *     stills its pulse. Wrapped in data-testid="__entity__-loading".
- *   • ERROR — a quiet, non-card panel (a left-accent divider, weight+color hierarchy)
- *     with the query message + a Retry that re-runs the query. data-testid="__entity__-error".
- *     NOTE the testid does NOT end in "-empty": the live-QA driver detects the empty
- *     state via [data-testid$="-empty"], so the error state is kept distinct.
- *   • EMPTY — a calm dashed panel inviting the first create (data-testid="__ENTITIES_EMPTY_TESTID__",
- *     the kebab PLURAL + "-empty").
- *   • DATA — the rows, in ONE bordered surface with dividers between rows (cards are
- *     reserved for the add surface, where elevation earns its keep; a flat list reads
- *     better with dividers than N stacked cards). Faded in via data-slot="content-fade-in"
- *     (also reduced-motion-honored upstream).
+ * THE FOUR LIST STATES (a FUNCTIONAL invariant — emit all four for EVERY entity; their
+ * LOOK is the design.md's call — author each one, don't ship the stock shape as final):
+ *   • LOADING — a skeleton wrapped in data-testid="__entity__-loading". Author it to
+ *     MIRROR your authored list shape so the first paint has no layout jump. Each skeleton
+ *     carries data-slot="skeleton" so the boilerplate's prefers-reduced-motion rule stills
+ *     its pulse (keep that when you restyle).
+ *   • ERROR — data-testid="__entity__-error", role="alert", with the query message + a
+ *     Retry (data-testid="__entity__-retry") that re-runs the query. The testid MUST NOT
+ *     end in "-empty" (the live-QA driver reserves [data-testid$="-empty"] for the empty
+ *     state) — that constraint is functional; the panel's design is yours.
+ *   • EMPTY — data-testid="__ENTITIES_EMPTY_TESTID__" (the kebab PLURAL + "-empty"),
+ *     inviting the first create. Author the invitation; keep the testid.
+ *   • DATA — the rows. Each repeating record carries data-testid="__entity__-row", CONTAINS
+ *     the row's title text, and scopes its own edit/delete inside it. Compose the list as
+ *     the design.md dictates (rows / table / cards / board / split-pane — see
+ *     art-direction.md). data-slot="content-fade-in" gives a reduced-motion-honored fade.
  *
  * DENSITY (generic, dial-driven). Spacing/padding/rhythm are SUBSTITUTED at scaffold
  * time from brief.design.dials.density (1–10) via the generator's density scale — the
@@ -222,14 +234,29 @@ export default function __Entities__Page() {
     });
   }
 
-  // PRESENTATION SEAM: restructure this return(...) block freely per the design.md — swap the
-  // card+divided-list wholesale to a data-table / gallery / split-pane / editorial / board layout,
-  // re-arrange the shell, change the width clamp (see references/art-direction.md). PRESERVE the
-  // functional contract: the <entity>-* testids (title-input / create-submit / details / row [must
-  // contain the row title] / edit / delete / loading / error[role=alert, not -empty] / retry) and
-  // <entities>-empty; row-scoping (edit/delete inside the row); the hooks + selection.fields +
-  // refetch + the three useCardStack pushes (openEdit/openDetailedCreate/openDelete); and the policy
-  // scoping const(s) (ownerId / activeOrgId / validFrom) spread into the create. Restyle, don't hide.
+  // ╔══════════════════════════════════════════════════════════════════════════════════╗
+  // ║ PRESENTATION SEAM — AUTHOR THE UI FROM HERE.                                        ║
+  // ╚══════════════════════════════════════════════════════════════════════════════════╝
+  // Everything ABOVE this line is the FUNCTIONAL skeleton (data hooks + handlers) — keep it.
+  // Everything in the return(...) BELOW is a neutral DEFAULT, not the final design: AUTHOR it
+  // faithfully from the app's design.md — customize/replace the stock shadcn components, set the
+  // type (the design.md's fonts/scale/weights), compose the layout (rows → data-table / gallery /
+  // split-pane / editorial / board), establish real hierarchy + spacing rhythm + intentional
+  // ornament, add subtle motion (honor prefers-reduced-motion). Blocks compose as INGREDIENTS.
+  // See references/art-direction.md for the authoring playbook.
+  //
+  // The ONLY things you may NOT remove/rename/hide while authoring (RAIL 1 — the functional
+  // contract; the gates + live-QA assert these by testid/role only, never by look):
+  //   • the <entity>-* testids: title-input · create-submit · details · row (MUST contain the
+  //     row's title text) · edit · delete · loading · error (role="alert", NOT "-empty") · retry;
+  //     and <entities>-empty;
+  //   • row-scoping: each row's edit/delete live INSIDE its <entity>-row;
+  //   • the data wiring: the hooks + selection.fields + refetch + the three useCardStack pushes
+  //     (openEdit / openDetailedCreate / openDelete);
+  //   • the policy scoping const(s) (ownerId / activeOrgId / validFrom) spread into the create.
+  // And RAIL 2 — the shadcn-token contract: components read tokens by NAME (bg-primary,
+  // text-muted-foreground, border-border, …). Restyle them, add your own; don't break the names.
+  // Restyle and re-compose freely — just never HIDE a contract control (display:none / 0×0 fails).
   return (
     <div data-testid="authed-shell" className="mx-auto max-w-2xl __D_PAGE__">
       <header className="__D_HEAD_MB__">
@@ -271,9 +298,9 @@ export default function __Entities__Page() {
       </Card>
 
       {isLoading ? (
-        // LOADING — skeleton that mirrors the real list shape (a bordered surface with
-        // divided rows), so the first paint has no layout jump. data-slot="skeleton" lets
-        // the boilerplate's prefers-reduced-motion rule still the pulse.
+        // LOADING (default to author) — a skeleton that mirrors the list shape so the first
+        // paint has no layout jump. Re-author it to match your authored list. KEEP the
+        // data-testid="__entity__-loading" wrapper + data-slot="skeleton" (reduced-motion).
         <div data-testid="__entity__-loading" className="divide-y divide-border rounded-lg border">
           {[0, 1, 2].map((i) => (
             <div key={i} className="flex items-center __D_ROW_GAP__ __D_ROW_PAD__">
@@ -284,9 +311,9 @@ export default function __Entities__Page() {
           ))}
         </div>
       ) : isError ? (
-        // ERROR — a quiet, non-card panel (left-accent divider; weight+color hierarchy, not a
-        // shouty box) with the query message + Retry. The testid is __entity__-error (NOT a
-        // "-empty" suffix, which the live-QA driver reserves for the empty state).
+        // ERROR (default to author) — the query message + a Retry. KEEP data-testid="__entity__-error"
+        // (role="alert", and NOT a "-empty" suffix, which the live-QA driver reserves for the empty
+        // state) + the __entity__-retry control. Design the panel however the design.md dictates.
         <div
           data-testid="__entity__-error"
           role="alert"
@@ -308,8 +335,8 @@ export default function __Entities__Page() {
           </Button>
         </div>
       ) : rows.length === 0 ? (
-        // EMPTY — a calm dashed panel inviting the first create. data-slot="content-fade-in"
-        // gives a subtle, reduced-motion-honored fade.
+        // EMPTY (default to author) — invite the first create. KEEP the kebab-PLURAL "-empty"
+        // testid (the driver's empty-state sentinel). data-slot="content-fade-in" = reduced-motion fade.
         <div
           data-testid="__ENTITIES_EMPTY_TESTID__"
           data-slot="content-fade-in"
@@ -321,8 +348,9 @@ export default function __Entities__Page() {
           </p>
         </div>
       ) : (
-        // DATA — one bordered surface, rows separated by dividers (cards are reserved for the
-        // add surface above, where elevation earns its keep).
+        // DATA (default to author) — the rows. Compose this however the design.md dictates
+        // (list / data-table / cards / board / split-pane). KEEP each repeating record as an
+        // <entity>-row that CONTAINS its title text and scopes its own edit/delete inside it.
         <ul data-slot="content-fade-in" className="divide-y divide-border rounded-lg border">
           {rows.map((row) => (
             <li

@@ -45,7 +45,7 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 | `data_model` | `data_model.tables` non-empty | your domain tables + relations — see [Data model](#data-model-tables) |
 | `ui` | optional | one route per surface (`ui.routes[]`); `kind` selects how the page is emitted — see [UI routes](#ui-routes) |
 | `acceptance` | optional | `required_flows[]` the live-QA gate verifies end-to-end (the SAME flow ids as `flows`) |
-| `design` | optional | look-and-feel intent (theme + layout dials). **ABSENT ⇒ auto-propose** a domain-fitting theme; `{ preset: constructive }` ⇒ keep today's look. See [design (optional)](#design-optional) + [design-system.md](./design-system.md) |
+| `design` | optional | look-and-feel intent (theme + layout dials). **ABSENT ⇒ auto-propose a RICH `design.md`** + author the frontend from it; `{ preset: constructive }` ⇒ keep today's look (no-op). The compiler is **faithful + advisory** (emits your values verbatim, warns rather than clamps). See [design (optional)](#design-optional) + [design-system.md](./design-system.md) |
 | `assumptions` | optional | free-text notes |
 
 > **App-id / per-app state.** The build-state id (`APP_ID`) is derived from `naming.db_name`, sanitized to
@@ -568,15 +568,22 @@ for a multi-table FK shape.
 sits alongside the other top-level sections (logically near `ui`, since it shapes presentation). It is
 purely additive: a brief **without** a `design:` block is fully valid and predates this feature.
 
-> **Default = auto-propose.** When `design:` is **absent**, the build **auto-proposes** a full,
-> domain-fitting theme (the new baseline — a generated app should not ship the stock Constructive blue
-> unless asked). The build agent reads `app.label`/`app.description` + entity names, classifies the look
-> into the three dials, picks/adapts a preset, and authors a `design.md` that the deterministic engine
-> lints (invariants + WCAG contrast) and compiles into the app's `globals.css` token overrides. The
-> reasoning methodology — dials, the words→dials table, the color invariants, the `design.md` format, the
-> preset catalog, and the compile/override contract — lives in **[design-system.md](./design-system.md)**.
-> This block is how a brief *constrains or overrides* that auto-proposal; it is **not** required to get a
-> theme.
+> **Default = auto-propose a RICH design.md.** When `design:` is **absent**, the build **auto-proposes a
+> full, opinionated `design.md`** (the new baseline — a generated app should not ship the stock
+> Constructive blue, nor a token-swapped generic template). The build agent reads
+> `app.label`/`app.description` + entity names, names an **atmosphere**, classifies it into the three
+> dials, picks/adapts a rich preset, and **authors a full `design.md`** — palette-with-intent, a type
+> system (pairing/scale/weights), spacing rhythm, component treatments, motion, ornament, banned patterns,
+> an `art_direction` block, and a prose Overview — then **AUTHORS the whole frontend from it** (customizing
+> real shadcn components, distinctive type, intentional layout). **The quality of the `design.md` is the
+> quality ceiling of the app.** The deterministic engine is a **faithful, advisory HELPER**: it maps the
+> palette into the app's `globals.css` token block (so Blocks render), synthesizes anything left
+> unspecified, and **warns** on contrast/taste rather than clamping. The full methodology — atmosphere +
+> dials, the rich `design.md` format, the preset catalog, the two hard rails, and the faithful/advisory
+> compile contract — lives in **[design-system.md](./design-system.md)**; the authoring playbook lives in
+> **[art-direction.md](./art-direction.md)**. This brief block is how you *constrain or override* that
+> auto-proposal at intent level; it is **not** required to get a theme, and it is **not** where the rich
+> spec lives (that is authored into the emitted `design.md`).
 
 > **Opt-out = keep today's look.** `design: { preset: constructive }` is the explicit opt-out: the design
 > step is a **no-op** and the boilerplate `globals.css` is left exactly as shipped (the stock blue,
@@ -611,11 +618,21 @@ design:
 Colors accept `oklch(L C H)`, `#rrggbb`, or `rgb(…)`. Every key is optional — supply only what you want
 to pin and let the engine synthesize the rest. The three common shapes:
 
-- **`design:` absent** → auto-propose a theme (default).
-- **`design: { preset: <name> }`** → anchor on a named preset, auto-fill the palette/dials from it.
-  `preset: constructive` is the special no-op opt-out.
-- **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to dials, then pin the
-  brand color explicitly; the engine derives everything else and enforces the invariants + contrast.
+- **`design:` absent** → auto-propose a **rich** `design.md` + author the frontend from it (default).
+- **`design: { preset: <name> }`** → anchor on a named rich preset, adapt the palette/dials from it.
+  `preset: constructive` is the special no-op opt-out (authors nothing).
+- **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to atmosphere/dials,
+  then pin the brand color explicitly; the engine **synthesizes** everything else (faithful) and
+  **warns** (advisory) on contrast/taste — it does not clamp your authored values.
+
+> **Intent here, the rich spec in the emitted `design.md`.** This brief block is deliberately **thin /
+> intent-level** — `brief` words, a `preset` anchor, dial overrides, a few pinned `colors`, an optional
+> `art_direction` pin. The **full art direction** (the type system, spacing rhythm, component treatments,
+> motion, ornament, banned patterns, prose Overview — [design-system.md §5](./design-system.md)) is
+> **authored by the agent into the emitted `design.md`**, not crammed into the brief. Pin only what you
+> want to constrain; auto-propose authors the rest richly. (The compiler reads only `colors` / `radius` /
+> `font` / `dark` from whatever ends up in the `design.md`; the rest of the rich spec is authoring guidance
+> the agent reads to build the frontend.)
 
 > **`design.art_direction` — pinning the STRUCTURE (optional).** Beyond the theme tokens + dials,
 > `design.art_direction` records the *structural* direction — the **shell** + per-entity **page composition** +
@@ -643,8 +660,10 @@ to pin and let the engine synthesize the rest. The three common shapes:
 > the app — so an auto-propose agent that recorded the dials in the design.md (rather than the brief)
 > still threads density correctly. Resolution order: **(1) `brief.design.dials.density` → (2) emitted
 > `design.md` `dials.density` → (3) the `cozy` default** (byte-identical to a design-less build). See
-> [design-system.md §8](./design-system.md). (The emitted `design.md` holds the palette / type / radius
-> *tokens*; the `dials` hold the *layout* dials.)
+> [design-system.md §8](./design-system.md). (The emitted `design.md` holds the palette / radius / font
+> *tokens* the compiler reads, PLUS the rich authoring blocks — `type` / `spacing` / `components` /
+> `motion` / `ornament` / `banned` / `art_direction` — the agent reads to author the frontend; the `dials`
+> hold the *layout* dials.)
 
 ### Validation (optional strictness — `validateDesign`)
 
@@ -659,9 +678,11 @@ compiler) while **tolerating unknown keys** (forward-compatible):
 - `dials`, if set, must be a mapping; each present dial (`variance`/`motion`/`density`) must be an integer
   in **1–10**.
 - `colors`, if set, must be a mapping; each value (e.g. `primary`/`accent`/`neutral`/`surface`/
-  `on-surface`/`error`) must be a string color token. (Deeper invariants — ≤1 accent, chroma cap,
-  AI-purple ban, **WCAG contrast** — are enforced by the deterministic linter `check-design.mjs`, not
-  here; this is shape-validation only.)
+  `on-surface`/`error`) must be a string color token. (Deeper taste rules — ≤1 accent, chroma cap,
+  AI-purple ban, **WCAG contrast** — are now **ADVISORY**: the deterministic linter `check-design.mjs`
+  surfaces them as **warnings**, never failures, and the faithful compiler emits your authored values
+  verbatim. Only a structural `missing-primary` is a hard error. This brief pass is shape-validation only;
+  run `check-design.mjs --strict` if you want the taste rules re-escalated to errors.)
 - `font`, if set, must be a mapping (`sans`/`mono` string family names).
 - `radius`, if set, must be a string (px/em/rem).
 - `default_mode`, if set, must be `light` or `dark`.

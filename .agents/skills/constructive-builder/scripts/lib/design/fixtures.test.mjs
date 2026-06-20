@@ -7,7 +7,11 @@
  *   light/dark         — deterministic role→var copies (epsilon-compared in OKLCH)
  *   radius             — exact radius string
  *   fonts.{sans,mono}  — resolved family names
- *   overrideSurfaceOnly— every emitted var ∈ OVERRIDE_SURFACE
+ *   overrideSurfaceOnly— POST-PIVOT: every shadcn CONTRACT NAME is present in both
+ *                        modes (RAIL 2 synthesis guarantee). It NO LONGER forbids
+ *                        extra custom vars (those now pass through by design).
+ *   passThrough        — POST-PIVOT: { light?:{ '--x':'v' }, dark?:{...} } custom
+ *                        tokens that MUST be emitted verbatim.
  *   mustContain/Not    — substring presence/absence in the rendered override block
  *   contrast           — WCAG ratio of named pairs meets `min`
  *   lightnessOrder     — L(darker) < L(lighter)
@@ -89,8 +93,8 @@ for (const ef of expectedFiles) {
     // Fixtures that are lint-only (no primary cannot compile) skip compile.
     const compileExpected =
       expected.light || expected.dark || expected.radius || expected.fonts ||
-      expected.overrideSurfaceOnly || expected.mustContain || expected.mustNotContain ||
-      expected.contrast || expected.lightnessOrder;
+      expected.overrideSurfaceOnly || expected.passThrough || expected.mustContain ||
+      expected.mustNotContain || expected.contrast || expected.lightnessOrder;
     if (!compileExpected) return;
 
     const opts = expected.compileOptions || {};
@@ -121,11 +125,25 @@ for (const ef of expectedFiles) {
       if (expected.fonts.mono) assert.equal(compiled.fonts.mono.family, expected.fonts.mono);
     }
 
-    // ── override-surface allowlist ──
+    // ── RAIL 2 synthesis guarantee (post-pivot semantics of `overrideSurfaceOnly`):
+    //    every shadcn CONTRACT NAME must be present in BOTH modes. Extra custom vars
+    //    are allowed (they pass through by design), so we no longer forbid them. ──
     if (expected.overrideSurfaceOnly) {
       for (const map of [light, dark]) {
-        for (const key of Object.keys(map)) {
-          assert.ok(OVERRIDE_SURFACE.has(key.replace(/^--/, '')), `non-override-surface var emitted: ${key}`);
+        for (const bare of OVERRIDE_SURFACE) {
+          assert.ok(map[`--${bare}`] != null, `RAIL 2: contract name --${bare} missing from emitted ${map === dark ? 'dark' : 'light'}`);
+        }
+      }
+    }
+
+    // ── custom-token pass-through (verbatim) ──
+    if (expected.passThrough) {
+      for (const mode of ['light', 'dark']) {
+        const want = expected.passThrough[mode];
+        if (!want) continue;
+        const map = mode === 'dark' ? dark : light;
+        for (const [k, v] of Object.entries(want)) {
+          assert.equal(map[k], v, `passThrough ${mode} ${k}: got ${map[k]}, expected verbatim ${v}`);
         }
       }
     }

@@ -23,6 +23,12 @@
  * The generator fills these seams: the block + hook imports (__ORG_IMPORTS__), any
  * extra page hooks (__ORG_HOOKS__), the page title, the shell testid, and the block
  * JSX body (which reads the `orgId` const).
+ *
+ * AUTHOR THE PRESENTATION. The block(s) are INGREDIENTS; this wrapper is a neutral default —
+ * author each /org/[orgId]/<sub> surface from the app's design.md, per
+ * references/art-direction.md. PRESERVE the contract: the /org/[orgId]/<sub> path shape, the
+ * org-<sub>-page shell testid, the mounted block(s), and the orgId-from-useParams wiring.
+ * Restyle freely; keep the path + block + sentinel.
  * ──────────────────────────────────────────────────────────────────────────
  */
 'use client';

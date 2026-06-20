@@ -2,8 +2,18 @@
 /**
  * scripts/scaffold-frontend.mjs <brief> <appDir>
  *
- * Brief → the per-entity domain UI, AFTER Phase-3 codegen has produced the typed
- * SDK hooks (@sdk/app). Runs at PHASE 4 (see scaffold-app.mjs for the staging).
+ * Brief → the per-entity domain UI as a WORKING SKELETON TO AUTHOR FROM, AFTER Phase-3
+ * codegen has produced the typed SDK hooks (@sdk/app). Runs at PHASE 4 (see scaffold-app.mjs
+ * for the staging).
+ *
+ * SKELETON, NOT FINAL UI. Everything below emits the FUNCTIONAL contract — the data wiring,
+ * the testids, the four list states, row-scoping, the RLS scoping, and the Blocks mounts —
+ * correct and working, so the app FUNCTIONS and composes with Blocks. The DEFAULT presentation
+ * is a neutral, replaceable starting point. The frontend phase is then: AUTHOR the presentation
+ * faithfully from the app's design.md (customize/replace stock components, set the type, compose
+ * the layout, intentional hierarchy/spacing/ornament, subtle + reduced-motion). The ONLY hard
+ * rails are (1) this FUNCTIONAL contract and (2) the shadcn-token contract (Blocks read tokens by
+ * name). See references/art-direction.md for the authoring playbook + the full preserve list.
  *
  * It does SIX things, each independently idempotent (re-running is a safe no-op):
  *   (a) CRUD INFRA (once) — stamps the runtime-generic meta-form stack from
