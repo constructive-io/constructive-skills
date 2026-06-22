@@ -2,7 +2,7 @@
  * scripts/lib/scaffold-frontend/entity-page.mjs — the per-entity domain UI emitter.
  *
  * Emits the FUNCTIONAL SKELETON the agent then AUTHORS the presentation from (see
- * scripts/templates/frontend/entity-page.tsx PRESENTATION SEAM + references/art-direction.md):
+ * scripts/templates/frontend/entity-page.tsx PRESENTATION SEAM + references/design-guide.md):
  * the data wiring, the testids, the four states, the row-scoping, and the RLS scoping are
  * the working contract; the default look is a neutral, replaceable starting point — NOT the
  * final UI. The frontend phase = "scaffold this skeleton, THEN author the design.md faithfully".
@@ -296,7 +296,7 @@ export function emitStubPage(srcDir, route, ctx, density) {
  * //   reuse DynamicFormCard from @/components/crud/dynamic-form-card.
  *
  * PRESENTATION SEAM — AUTHOR THE UI FROM HERE per the app's design.md (see
- * references/art-direction.md): customize/replace stock components, set the type, compose
+ * references/design-guide.md): customize/replace stock components, set the type, compose
  * the layout, add intentional hierarchy/spacing/ornament + subtle (reduced-motion) motion.
  * PRESERVE (RAIL 1) the functional contract for whatever you mount: any <entity>-* testids,
  * row-scoping, the hooks/selection/refetch/Stack-pushes, and the scoping const(s); and

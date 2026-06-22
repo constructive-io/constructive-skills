@@ -351,64 +351,68 @@ check_harness_drift() {
   fi
 }
 
-# Additive DESIGN subsystem gate. Two independent checks, each self-disabling:
-#   (A) ROT-CANARY — run the design compiler's own unit + fixture suite
-#       (scripts/lib/design/*.test.mjs) so the contrast-repair / no-throw / override-surface
-#       contracts cannot rot unnoticed. This is the subsystem's rot-canary: it ships in the
-#       skill, so it runs whenever this gate fires (no app needed). Self-disables only if the
-#       suite is absent or `node` cannot run it.
-#   (B) EMITTED-DESIGN LINT — if the app emitted a design.md (the durable, lint-gated theme
-#       record), run check-design.mjs on it. check-design now folds COMPILE-ABILITY into its
-#       verdict (a design wire-design cannot theme → ERROR), so a lint-clean-but-untheme-able
-#       design is caught HERE instead of silently degrading to the default look at wire time.
-# No design.md present → (B) is a clean no-op (absent-design is the default-look path).
-# Wired into Phase 1 (the canary, app-independent) and Phase 2.4 (the emitted-design lint).
+# Additive DESIGN subsystem gate. Post-pivot the design COMPILER is gone: the design.md is the
+# full spec the AGENT authors the frontend from, Blocks compose, and the ONLY surviving machine
+# check is FUNCTIONAL — does the BUILT app's globals.css still satisfy the shadcn-token +
+# Tailwind-v4 contract so Blocks render? Two independent checks, each self-disabling:
+#   (A) ROT-CANARY — run the surviving Blocks token-contract validator's own test
+#       (scripts/lib/design/blocks-contract.test.mjs) so the validator's pass/fail behaviour
+#       (every shadcn name in :root + .dark, the @theme inline / @custom-variant / @source
+#       wiring) cannot rot unnoticed. It ships in the skill, so it runs whenever this gate
+#       fires — NO app needed. Self-disables only if that test is absent or `node` can't run it.
+#   (B) FUNCTIONAL BLOCKS-CONTRACT GATE — once the frontend exists, validate the BUILT
+#       <app>/src/app/globals.css with `check-design.mjs --app <app_root>` (RAIL 2): a dropped /
+#       renamed shadcn token name or broken Tailwind-v4 wiring = ERROR, because Blocks would then
+#       render unstyled. This is what the agent authors TOWARD, not a lint of any design.md.
+# No app / no built globals.css yet → (B) is a clean no-op (pre-frontend phases). Wired into
+# Phase 1 (the canary, app-independent) and Phase 2.4 (the functional --app check, post-frontend).
 check_design() {
   command -v node >/dev/null 2>&1 || { warn "Design gate: 'node' not on PATH — skipped the design subsystem checks (not failing)"; return 0; }
 
-  # (A) the design subsystem rot-canary — the compiler's own test suite.
-  local design_lib="$REPO_ROOT/scripts/lib/design"
-  if [ -d "$design_lib" ] && ls "$design_lib"/*.test.mjs >/dev/null 2>&1; then
+  # (A) the rot-canary — the ONE surviving design test: the Blocks token-contract validator's
+  #     own test (the compiler + its suite are deleted; this is all that remains).
+  local canary_test="$REPO_ROOT/scripts/lib/design/blocks-contract.test.mjs"
+  if [ -f "$canary_test" ]; then
     local out status=0
     out="/tmp/check-design-tests.$$"
-    node --test "$design_lib"/*.test.mjs >"$out" 2>&1 || status="$?"
+    node --test "$canary_test" >"$out" 2>&1 || status="$?"
     if [ "$status" -eq 0 ]; then
-      pass "Design: compiler test suite green (contrast-repair / no-throw / override-surface contracts hold)"
+      pass "Design: Blocks token-contract validator green (the shadcn-name + Tailwind-v4 wiring contract holds)"
       rm -f "$out"
     else
       tail -n 40 "$out" 2>/dev/null | sed 's/^/  /' || true
       rm -f "$out"
-      fail "Design: the design compiler test suite FAILED (scripts/lib/design/*.test.mjs)" "A design-compiler contract regressed (most often a critical text pair under AA on its RENDERED surface, or compileDesign throwing instead of using the graceful best-pole fallback). See the failing assertion above; fix scripts/lib/design/compile.mjs (or the fixture) until 'node --test scripts/lib/design/*.test.mjs' is green."
+      fail "Design: the Blocks token-contract validator test FAILED (scripts/lib/design/blocks-contract.test.mjs)" "The Blocks-contract validator (check-design.mjs --globals) changed behaviour — it no longer PASSES a complete globals.css or no longer FAILS a broken one (a dropped shadcn token name, or missing @theme inline / @custom-variant dark / @source wiring). See the failing assertion above; fix scripts/check-design.mjs (or the test fixture) until 'node --test scripts/lib/design/blocks-contract.test.mjs' is green."
     fi
   fi
 
-  # (B) lint+compile-check any design.md the app emitted (no app/no design.md → no-op).
+  # (B) FUNCTIONAL gate — validate the BUILT app's globals.css against the Blocks contract.
+  #     No app / no built globals.css yet (pre-frontend phases) → clean no-op (return 0); the
+  #     pre-check below means the checker is only invoked once there is something to validate,
+  #     so its own exit-2 "globals.css not found" never reaches us here.
   local checker="$REPO_ROOT/scripts/check-design.mjs"
   [ -f "$checker" ] || return 0
-  local app_root design_md
+  local app_root globals_css
   app_root="$(workspace_path "$(app_rel)")"
   [ -d "$app_root" ] || return 0
-  design_md=""
-  for cand in "$app_root/design.md" "$app_root/packages/app/design.md" "$app_root/src/design.md"; do
-    if [ -f "$cand" ]; then design_md="$cand"; break; fi
-  done
-  [ -n "$design_md" ] || return 0
+  globals_css="$app_root/src/app/globals.css"
+  [ -f "$globals_css" ] || return 0
 
-  echo "  INFO: Design gate — linting emitted design.md at $design_md"
+  echo "  INFO: Design gate — validating the BUILT app globals.css against the Blocks token contract ($globals_css)"
   local dout dstatus=0
-  dout="/tmp/check-design-emitted.$$"
-  node "$checker" --design "$design_md" >"$dout" 2>&1 || dstatus="$?"
+  dout="/tmp/check-design-globals.$$"
+  node "$checker" --app "$app_root" >"$dout" 2>&1 || dstatus="$?"
   if [ "$dstatus" -eq 0 ]; then
-    pass "Design: emitted design.md lints + compiles into a contrast-passing theme (check-design.mjs ok)"
+    pass "Design: built app globals.css satisfies the shadcn-token + Tailwind-v4 contract — Blocks render (check-design.mjs --app ok)"
     rm -f "$dout"
   elif [ "$dstatus" -eq 2 ]; then
     cat "$dout" 2>/dev/null || true
     rm -f "$dout"
-    warn "Design: check-design.mjs could not run on $design_md (exit 2) — skipped (not failing)"
+    warn "Design: check-design.mjs could not run on $globals_css (exit 2) — skipped (not failing)"
   else
     cat "$dout" 2>/dev/null || true
     rm -f "$dout"
-    fail "Design: emitted design.md failed check-design.mjs (exit $dstatus)" "The design has an ERROR finding (missing primary, a hard contrast floor breach, or it cannot be compiled into a theme — wire-design would then silently degrade to the default look). Fix the flagged role(s) in design.md and re-run 'node scripts/check-design.mjs --design <design.md>' until ok."
+    fail "Design: built app globals.css fails the Blocks token contract (check-design.mjs --app, exit $dstatus)" "A shadcn token name or the @theme inline/@custom-variant/@source wiring is missing from the built globals.css — Blocks will render unstyled; restore the token contract in src/app/globals.css. See the finding(s) above and re-run 'node scripts/check-design.mjs --app <app_root>' until ok."
   fi
 }
 

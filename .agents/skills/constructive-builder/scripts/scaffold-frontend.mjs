@@ -13,7 +13,7 @@
  * faithfully from the app's design.md (customize/replace stock components, set the type, compose
  * the layout, intentional hierarchy/spacing/ornament, subtle + reduced-motion). The ONLY hard
  * rails are (1) this FUNCTIONAL contract and (2) the shadcn-token contract (Blocks read tokens by
- * name). See references/art-direction.md for the authoring playbook + the full preserve list.
+ * name). See references/design-guide.md for the authoring playbook + the full preserve list.
  *
  * It does SIX things, each independently idempotent (re-running is a safe no-op):
  *   (a) CRUD INFRA (once) — stamps the runtime-generic meta-form stack from
@@ -138,15 +138,17 @@ function resolveAppSrc(appDir) {
 // durable, lint-gated design record) under its frontmatter `dials:` map. Either home
 // must "just work". So density resolves in this order:
 //   1. brief.design.dials.density            (the canonical, single source of truth)
-//   2. <emitted design.md>.dials.density     (fallback — same convention wire-design
-//                                             uses to discover a design.md next to the app)
+//   2. <emitted design.md>.dials.density     (fallback — read straight from a design.md
+//                                             sitting next to the app, if the agent put one there)
 // Anything else ⇒ undefined ⇒ entity-page.mjs defaults to the 'cozy' tier (the
 // pre-wave literals) so a design-less build is byte-identical. GENERIC: density is a
 // single integer/tier name — no entity/app literal is ever read here.
 // ════════════════════════════════════════════════════════════════════════════
 
-/** Discover an emitted design.md next to the app, mirroring wire-design's discovery
- *  order. Returns the parsed frontmatter object, or null when none is found. */
+/** Discover a design.md the agent authored next to the app and return its parsed
+ *  frontmatter object (so the density dial can be read from it), or null when none
+ *  is found. This density discovery is self-standing — it is the only reason this
+ *  scaffolder reads a design.md at all. */
 function discoverDesignMdFrontmatter(appDir) {
   const candidates = [
     path.join(appDir, 'design.md'),

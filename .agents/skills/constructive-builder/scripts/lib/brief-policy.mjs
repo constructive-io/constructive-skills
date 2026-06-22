@@ -205,7 +205,7 @@ export function validateBrief(brief, where = 'brief') {
   // MALFORMED design block with a legible message before it reaches the compiler. Unknown keys are
   // TOLERATED (forward-compatible). Deeper invariants (≤1 accent, chroma cap, AI-purple ban, WCAG
   // contrast) are enforced by the deterministic linter (check-design.mjs), NOT here — this is
-  // shape-validation only. See references/design-system.md + brief-grammar.md "design (optional)".
+  // shape-validation only. See references/design-guide.md + brief-grammar.md "design (optional)".
   if (brief.design != null) validateDesign(brief.design, where);
   return brief;
 }
@@ -218,7 +218,7 @@ export function validateBrief(brief, where = 'brief') {
 // auto-propose; `{ preset: constructive }` ⇒ keep today's look), so this is purely "if a key is
 // present, is it well-formed?" — never a gate that would reject a valid/absent design block.
 
-// The named preset anchors documented in references/design-system.md §4 / brief-grammar.md
+// The named preset anchors documented in references/design-guide.md / brief-grammar.md
 // "design (optional)". `constructive` is the explicit no-op opt-out. Kept in sync with the doc.
 const KNOWN_DESIGN_PRESETS = new Set([
   'constructive', 'minimalist', 'trust-first', 'editorial', 'soft', 'brutalist', 'playful',

@@ -1,9 +1,0 @@
-{
-  "describe": "Saturated blue-purple primary without allow_brand_hue -> ai-purple-band warn.",
-  "lint": {
-    "expectFindings": [
-      { "rule": "ai-purple-band", "severity": "warn" }
-    ]
-  },
-  "notes": "ai-purple-band is a WARN, not an error — the design still compiles. The companion lint-ai-purple-allowed fixture proves allow_brand_hue:true suppresses it."
-}

@@ -196,7 +196,8 @@ case "$PHASE" in
     # Additive: only fires if this harness ships scripts/check-harness-drift.mjs.
     check_harness_drift
 
-    # Additive: design subsystem rot-canary (the compiler test suite) — app-independent, runs early.
+    # Additive: design subsystem rot-canary (the Blocks token-contract validator test) — app-independent,
+    # runs early. The functional --app globals.css check inside check_design no-ops here (no app yet).
     check_design
 
     # Additive self-lint: assert every fail() call-site carries a 2nd-arg FIX hint (no regress).
@@ -666,7 +667,8 @@ case "$PHASE" in
     # Additive: only fires if this harness ships a generated references/flows.json.
     check_flows_drift
 
-    # Additive: lint+compile-check any design.md the app emitted (no design.md → no-op).
+    # Additive: validate the BUILT app's globals.css against the Blocks token + Tailwind-v4 contract
+    # (no built globals.css → no-op). The frontend exists by this phase, so the functional check fires.
     check_design
 
     check_state_fields

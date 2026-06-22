@@ -1,9 +1,0 @@
-{
-  "describe": "allow_brand_hue:true suppresses the ai-purple-band warning for an in-band primary.",
-  "lint": {
-    "forbidFindings": [
-      { "rule": "ai-purple-band" }
-    ]
-  },
-  "notes": "Pairs with lint-ai-purple. Same color, opposite allow_brand_hue -> opposite verdict on the ai-purple rule."
-}

@@ -12,14 +12,13 @@ place — there is **no standalone SDK step** on the mainline path.
 > `pgpm init … nextjs/constructive-app` + `node scripts/wire-app.mjs --app <app> --sub <sub>` + the four
 > S4 one-liners + `pnpm codegen`. This file is the detailed reference / hand-edit fallback.
 
-> **Theme/look comes later (S6.5), not here.** This phase scaffolds the app and its stock
-> `src/app/globals.css` (the light-first Constructive blue). The **design-theme pass** —
-> `node scripts/wire-design.mjs --app <app>` — runs in Phase 4 (after the Blocks `@import`, before the
-> CRUD body): it writes a contrast-repaired shadcn-token **override block** into this `globals.css` to
-> restyle the app + all Blocks. **Default = auto-propose** a domain-fitting theme; `design: { preset:
-> constructive }` keeps this stock look. So **do not hand-edit `globals.css` token values here** — let
-> S6.5 own the override block. Methodology: [design-system.md](./design-system.md); brief shape:
-> [brief-grammar.md](./brief-grammar.md) "design (optional)".
+> **Look-and-feel comes later (in the Phase-4 authoring step), not here.** This phase scaffolds the app
+> and its stock `src/app/globals.css`. You **author the presentation** — including the `globals.css`
+> shadcn-token values — in Phase 4, after the Blocks `@import` and skeleton are in place, working from the
+> app's `design.md`. The only machine check is the FUNCTIONAL gate: the built `globals.css` must still
+> define the shadcn token names + Tailwind-v4 wiring so Blocks render (`node scripts/check-design.mjs
+> --app <app>`). So **do not theme `globals.css` here** — leave that to the authoring step. Methodology:
+> [design-guide.md](./design-guide.md); brief shape: [brief-grammar.md](./brief-grammar.md) "design (optional)".
 
 ## Phase 2.6: Create Frontend (Phase 3 step)
 

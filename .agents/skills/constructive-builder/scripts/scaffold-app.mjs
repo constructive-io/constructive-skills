@@ -14,21 +14,18 @@
  *   └────────────────────────────────────────────────────────────────────────┘
  *   ┌─ PHASE 3 (Wire + Codegen) ─ wire-app.mjs + graphql-codegen ──────────────┐
  *   │  NOT done here. The build wires env/providers (scripts/wire-app.mjs) and   │
- *   │  runs codegen so the typed @sdk/app hooks (useTodosQuery, …) exist.        │
- *   └────────────────────────────────────────────────────────────────────────┘
- *   ┌─ DESIGN (Theme) ─ wire-design.mjs ───────────────────────────────────────┐
- *   │  Compiles the resolved design (brief `design:` block and/or an emitted     │
- *   │  design.md) into the app's globals.css override block (+ optional font /    │
- *   │  defaultTheme / branding). Runs AFTER wire-app/Blocks @import and          │
- *   │  before/with the frontend pass so the override wins by source order. It is  │
- *   │  SELF-GATING: absent design OR `design: { preset: constructive }` ⇒ no-op   │
- *   │  (today's look preserved), so sequencing it unconditionally is safe.        │
+ *   │  runs codegen so the typed @sdk/app hooks exist.                           │
  *   └────────────────────────────────────────────────────────────────────────┘
  *   ┌─ PHASE 4 (Frontend) ─ scaffold-frontend.mjs ─────────────────────────────┐
  *   │  brief → per-entity CRUD pages + CRUD infra + routes/nav. REQUIRES the     │
  *   │  Phase-3 SDK hooks. Auth/account/org UI is the Blocks on-ramp (shadcn add  │
  *   │  + wire-app), NOT this generator.                                          │
  *   └────────────────────────────────────────────────────────────────────────┘
+ *
+ * The presentation (theme) is NOT a pass here: the agent hand-authors the app's
+ * globals.css + frontend from its design.md (guided by references/design-guide.md +
+ * references/examples/), and the only surviving machine check on it is the FUNCTIONAL
+ * Blocks-token gate in check-design.mjs — there is no theme-compiler step to sequence.
  *
  * So: `--phase provision` runs at Phase 2; `--phase frontend` at Phase 4;
  * `--phase all` (default) runs BOTH back-to-back — only correct in a re-run when
@@ -50,7 +47,6 @@
  *   node scripts/scaffold-app.mjs build/app-brief.yaml ./my-app                    # both (re-run)
  *   node scripts/scaffold-app.mjs build/app-brief.yaml ./my-app --phase provision  # Phase 2
  *   node scripts/scaffold-app.mjs build/app-brief.yaml ./my-app --phase frontend   # Phase 4
- *   node scripts/scaffold-app.mjs build/app-brief.yaml ./my-app --phase design     # theme only
  *   node scripts/scaffold-app.mjs build/app-brief.yaml ./my-app --dry-run
  */
 
@@ -62,7 +58,7 @@ import { spawnSync } from 'child_process';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PHASES = new Set(['provision', 'design', 'frontend', 'all']);
+const PHASES = new Set(['provision', 'frontend', 'all']);
 
 function parseArgs(argv) {
   const out = { phase: 'all', dryRun: false, positionals: [] };
@@ -112,7 +108,7 @@ function main() {
     process.exit(2);
   }
   if (!PHASES.has(phase)) {
-    console.error(`scaffold-app: unknown --phase "${phase}". Use provision | design | frontend | all.`);
+    console.error(`scaffold-app: unknown --phase "${phase}". Use provision | frontend | all.`);
     process.exit(2);
   }
   if (!fs.existsSync(briefPath)) {
@@ -121,23 +117,11 @@ function main() {
   }
 
   const doProvision = phase === 'provision' || phase === 'all';
-  const doDesign = phase === 'design' || phase === 'all';
   const doFrontend = phase === 'frontend' || phase === 'all';
 
   if (doProvision) {
     console.log('── scaffold-app: PHASE 2 (provision) ───────────────────────────');
     runScaffolder('scaffold-provision.mjs', briefPath, appDir, dryRun);
-  }
-
-  if (doDesign) {
-    // THEME pass — runs AFTER provision (and, on the cold path, after wire-app + the
-    // Blocks @import) and BEFORE the frontend pass, so the compiled override block wins
-    // by source order. wire-design.mjs is SELF-GATING: an absent design block OR
-    // `design: { preset: constructive }` is a clean NO-OP, so calling it unconditionally
-    // here preserves today's look for any brief that does not opt into a custom theme.
-    // It accepts the same `<brief> <appDir>` positional shape runScaffolder spawns.
-    console.log('── scaffold-app: DESIGN (theme) ────────────────────────────────');
-    runScaffolder('wire-design.mjs', briefPath, appDir, dryRun);
   }
 
   if (doFrontend) {

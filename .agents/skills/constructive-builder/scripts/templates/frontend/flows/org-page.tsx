@@ -26,7 +26,7 @@
  *
  * AUTHOR THE PRESENTATION. The block(s) are INGREDIENTS; this wrapper is a neutral default —
  * author each /org/[orgId]/<sub> surface from the app's design.md, per
- * references/art-direction.md. PRESERVE the contract: the /org/[orgId]/<sub> path shape, the
+ * references/design-guide.md. PRESERVE the contract: the /org/[orgId]/<sub> path shape, the
  * org-<sub>-page shell testid, the mounted block(s), and the orgId-from-useParams wiring.
  * Restyle freely; keep the path + block + sentinel.
  * ──────────────────────────────────────────────────────────────────────────

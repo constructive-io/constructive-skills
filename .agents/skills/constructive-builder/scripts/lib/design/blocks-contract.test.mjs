@@ -1,12 +1,14 @@
 /** node --test scripts/lib/design/blocks-contract.test.mjs
  *
  * RAIL 2 — the Blocks-contract validator (the ONE style-side hard rail). Drives the
- * real CLI (`scripts/check-design.mjs --globals <css>`) so the exact gate a build
- * runs is what we assert. A clean globals.css PASSES (exit 0); a globals.css that
- * drops a shadcn name OR breaks the Tailwind-v4 wiring FAILS (exit 1, error finding).
+ * STANDALONE CLI (`scripts/check-design.mjs --globals <css>`) so the exact gate a
+ * build runs is what we assert. A clean globals.css PASSES (exit 0); a globals.css
+ * that drops a shadcn name OR breaks the Tailwind-v4 wiring FAILS (exit 1, error
+ * finding).
  *
  * GENERIC: the fixture css is synthesized here from the contract NAMES — no app /
- * entity / domain literal, no dependency on a checked-in app.
+ * entity / domain literal, no dependency on a checked-in app. The contract names come
+ * from the tiny zero-dep tokens module (the only thing the validator now imports).
  */
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +17,7 @@ import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { OVERRIDE_SURFACE } from './compile.mjs';
+import { OVERRIDE_SURFACE } from './tokens.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CHECK = resolve(HERE, '..', '..', 'check-design.mjs');
@@ -102,6 +104,15 @@ test('a missing .dark block HARD-FAILS (Blocks break in dark mode)', () => {
   const { exit, json } = runValidator(css);
   assert.equal(exit, 1);
   assert.ok(json.findings.some((f) => f.rule === 'rail2-dark-missing' || f.rule === 'rail2-name-missing'));
+});
+
+test('a bad/missing input exits 2 (could-not-run)', () => {
+  const res = spawnSync(process.execPath, [CHECK, '--globals', join(tmpdir(), 'does-not-exist-rail2.css')], {
+    encoding: 'utf8',
+  });
+  assert.equal(res.status, 2);
+  const json = JSON.parse(res.stdout.trim());
+  assert.equal(json.ok, false);
 });
 
 test('the on-ramp UI @source/@import, when PRESENT, clear the advisory warnings', () => {

@@ -45,7 +45,7 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 | `data_model` | `data_model.tables` non-empty | your domain tables + relations — see [Data model](#data-model-tables) |
 | `ui` | optional | one route per surface (`ui.routes[]`); `kind` selects how the page is emitted — see [UI routes](#ui-routes) |
 | `acceptance` | optional | `required_flows[]` the live-QA gate verifies end-to-end (the SAME flow ids as `flows`) |
-| `design` | optional | look-and-feel intent (theme + layout dials). **ABSENT ⇒ auto-propose a RICH `design.md`** + author the frontend from it; `{ preset: constructive }` ⇒ keep today's look (no-op). The compiler is **faithful + advisory** (emits your values verbatim, warns rather than clamps). See [design (optional)](#design-optional) + [design-system.md](./design-system.md) |
+| `design` | optional | look-and-feel intent. **ABSENT ⇒ auto-propose a RICH `design.md`** + AUTHOR the frontend from it; `{ preset: <alias> }` ⇒ start from that named exemplar (`references/examples/<alias>.md`) and adapt. The design.md is the AUTHORED spec — there is no compile step; the only machine check is the functional Rail-2 gate (`node scripts/check-design.mjs --app <app>`). See [design (optional)](#design-optional) + [design-guide.md](./design-guide.md) |
 | `assumptions` | optional | free-text notes |
 
 > **App-id / per-app state.** The build-state id (`APP_ID`) is derived from `naming.db_name`, sanitized to
@@ -563,130 +563,49 @@ for a multi-table FK shape.
 
 ## design (optional)
 
-`design:` is an **additive, optional** top-level block that shapes the generated app's **look and feel**
-— the theme tokens (colors / radius / fonts) plus the layout **dials** (variance / motion / density). It
-sits alongside the other top-level sections (logically near `ui`, since it shapes presentation). It is
-purely additive: a brief **without** a `design:` block is fully valid and predates this feature.
+`design:` is an **additive, optional** top-level block that constrains the generated app's **look and
+feel**. It is purely additive: a brief **without** a `design:` block is fully valid. There is **no
+compile step** — the `design.md` is the AUTHORED design spec and **you (the agent) hand-author the whole
+frontend from it**, guided by **[design-guide.md](./design-guide.md)** + the worked exemplars in
+**[references/examples/](./examples/)**. Blocks (auth / account / org) compose into that frontend. The
+only machine check is the FUNCTIONAL Rail-2 gate — `node scripts/check-design.mjs --app <app>` — which
+asserts the built `globals.css` still defines the shadcn token NAMES + Tailwind-v4 wiring so Blocks
+render. It never judges taste.
 
-> **Default = auto-propose a RICH design.md.** When `design:` is **absent**, the build **auto-proposes a
-> full, opinionated `design.md`** (the new baseline — a generated app should not ship the stock
-> Constructive blue, nor a token-swapped generic template). The build agent reads
-> `app.label`/`app.description` + entity names, names an **atmosphere**, classifies it into the three
-> dials, picks/adapts a rich preset, and **authors a full `design.md`** — palette-with-intent, a type
-> system (pairing/scale/weights), spacing rhythm, component treatments, motion, ornament, banned patterns,
-> an `art_direction` block, and a prose Overview — then **AUTHORS the whole frontend from it** (customizing
-> real shadcn components, distinctive type, intentional layout). **The quality of the `design.md` is the
-> quality ceiling of the app.** The deterministic engine is a **faithful, advisory HELPER**: it maps the
-> palette into the app's `globals.css` token block (so Blocks render), synthesizes anything left
-> unspecified, and **warns** on contrast/taste rather than clamping. The full methodology — atmosphere +
-> dials, the rich `design.md` format, the preset catalog, the two hard rails, and the faithful/advisory
-> compile contract — lives in **[design-system.md](./design-system.md)**; the authoring playbook lives in
-> **[art-direction.md](./art-direction.md)**. This brief block is how you *constrain or override* that
-> auto-proposal at intent level; it is **not** required to get a theme, and it is **not** where the rich
-> spec lives (that is authored into the emitted `design.md`).
+> **Default = auto-propose a RICH design.md, then author from it.** When `design:` is **absent**, the
+> build **proposes a full, opinionated `design.md`** (a generated app should not ship a stock theme nor a
+> token-swapped generic template) and then **authors the whole frontend from it** — the shell, every
+> page's composition, the type, spacing, surfaces, ornament, copy, and `globals.css`. **The quality of
+> the `design.md` is the quality ceiling of the app.**
 
-> **Opt-out = keep today's look.** `design: { preset: constructive }` is the explicit opt-out: the design
-> step is a **no-op** and the boilerplate `globals.css` is left exactly as shipped (the stock blue,
-> light-first theme). Use it when a brief deliberately wants the default look.
+> **`{ preset: <alias> }` = start from a named exemplar and adapt.** Each alias names a worked exemplar
+> under `references/examples/<alias>.md`; the build opens it as the starting point and adapts it for this
+> app. Use this block only to *constrain* the auto-proposal at intent level — you may also pin a few
+> palette **roles** (semantic role names, NOT shadcn var names) or a one-line `brief:` sentence; the
+> agent authors everything else richly. None of it is required to get a theme.
 
 ### Shape (every field optional)
 
 ```yaml
 design:
-  brief: "warm editorial, calm, trustworthy, high-end print feel"   # natural-language style words → dials
-  preset: minimalist                  # a named archetype anchor: constructive | minimalist | trust-first |
-                                       #   editorial | soft | brutalist | playful  (constructive = opt-out / no-op)
-  dials: { variance: 5, motion: 3, density: 3 }                     # explicit override of the inferred dials (each 1–10)
-  art_direction:                       # OPTIONAL structural pin — which shell + page composition to restructure to
-    shell: top-nav                     #   sidebar | top-nav | minimal | editorial-wide | dense-dashboard
-    composition: data-table            #   list | data-table | gallery | split-pane | editorial | board (default per entity)
-    density: compact                   #   comfortable | cozy | compact (human echo of the DENSITY dial)
-    notes: "scanning-first admin"      #   single-line free text — why this shell/composition
-  colors:                              # role-level palette overrides (semantic roles, NOT shadcn var names)
-    primary: "oklch(0.55 0.11 162)"   # the ONE brand/action color (required if you give `colors`)
-    accent:  "oklch(0.7 0.12 250)"    # at most ONE accent
-    neutral: "oklch(0.55 0.01 250)"   # ONE gray temperature
-    surface: "oklch(0.99 0.004 250)"
-    on-surface: "oklch(0.27 0.01 250)"
-    error: "oklch(0.55 0.2 25)"
-  font:   { sans: "Geist", mono: "Geist Mono" }                     # next/font/google allowlist (off-list → Geist + warn)
-  radius: "0.5rem"                     # seeds --radius (px / em / rem)
-  default_mode: dark                   # which theme loads first → layout.tsx ThemeProvider defaultTheme (light | dark)
-  allow_brand_hue: true                # opt out of the "AI purple/blue" hue-band warning for a deliberate brand hue
+  brief: "warm, calm, high-end print feel"   # one-line style sentence that steers the auto-proposal
+  preset: <alias>                            # start from references/examples/<alias>.md and adapt
+  density: compact                           # comfortable | cozy | compact — seeds the scaffold skeleton's spacing
+  colors:                                    # a FEW role-level pins (semantic ROLES, never shadcn var names)
+    primary: "oklch(0.55 0.11 162)"         # the one brand/action color
+    accent:  "oklch(0.70 0.12 250)"         # at most one accent
+    neutral: "oklch(0.55 0.01 250)"         # one gray temperature
+  font:   { sans: <family>, mono: <family> } # type-family hints the authored frontend honors
+  radius: "0.5rem"                           # radius scalar hint (px / em / rem)
 ```
 
-Colors accept `oklch(L C H)`, `#rrggbb`, or `rgb(…)`. Every key is optional — supply only what you want
-to pin and let the engine synthesize the rest. The three common shapes:
+> **`density` seeds the skeleton.** The `density` dial is the one design key the scaffold skeleton reads —
+> it sets the generated entity pages' starting spacing tier (`comfortable | cozy | compact`, default
+> `cozy`). Everything else here is intent the AUTHORED `design.md` + frontend honor; pin only what you
+> want to constrain and author the rest. The full authoring playbook — intent + signature, palette,
+> type, spacing, surfaces, ornament, copy, and the two hard rails — is in
+> **[design-guide.md](./design-guide.md)**.
 
-- **`design:` absent** → auto-propose a **rich** `design.md` + author the frontend from it (default).
-- **`design: { preset: <name> }`** → anchor on a named rich preset, adapt the palette/dials from it.
-  `preset: constructive` is the special no-op opt-out (authors nothing).
-- **`design: { brief: "<words>", colors: { primary: … } }`** → classify the words to atmosphere/dials,
-  then pin the brand color explicitly; the engine **synthesizes** everything else (faithful) and
-  **warns** (advisory) on contrast/taste — it does not clamp your authored values.
-
-> **Intent here, the rich spec in the emitted `design.md`.** This brief block is deliberately **thin /
-> intent-level** — `brief` words, a `preset` anchor, dial overrides, a few pinned `colors`, an optional
-> `art_direction` pin. The **full art direction** (the type system, spacing rhythm, component treatments,
-> motion, ornament, banned patterns, prose Overview — [design-system.md §5](./design-system.md)) is
-> **authored by the agent into the emitted `design.md`**, not crammed into the brief. Pin only what you
-> want to constrain; auto-propose authors the rest richly. (The compiler reads only `colors` / `radius` /
-> `font` / `dark` from whatever ends up in the `design.md`; the rest of the rich spec is authoring guidance
-> the agent reads to build the frontend.)
-
-> **`design.art_direction` — pinning the STRUCTURE (optional).** Beyond the theme tokens + dials,
-> `design.art_direction` records the *structural* direction — the **shell** + per-entity **page composition** +
-> **density** the build restructures the app to (`shell` ∈ sidebar | top-nav | minimal | editorial-wide |
-> dense-dashboard; `composition` ∈ list | data-table | gallery | split-pane | editorial | board; `density` ∈
-> comfortable | cozy | compact; `notes` free single-line text). It is **GUIDANCE-level** — no scaffolder
-> consumes it as a token; it is the durable record so re-runs / day-2 turns reproduce the same layout. **Default
-> = auto-propose** (the agent picks shell/composition/density from the dials + prose and writes them into the
-> emitted `design.md`); pin it here only to constrain that. Every key is optional. The structural rules + the
-> preserve-contract checklist live in [art-direction.md](./art-direction.md); the block's shape +
-> single-source-of-truth note for `density` are in [design-system.md §5.3](./design-system.md). (The emit-time
-> spacing tier still resolves from `design.dials.density` first — `art_direction.density` is the human echo of
-> that choice, not a second input.)
-
-> **`design.brief` must be a single-line quoted string.** The zero-dep brief YAML reader
-> (`scripts/lib/brief-yaml.mjs`) does **not** support folded/literal block scalars (`>-`, `>`, `|`, `|-`).
-> Write the style words on one line: `brief: "warm editorial, calm, trustworthy"` — never
-> `brief: >-` / `brief: |` with the text on following indented lines (those would be mis-parsed as a
-> nested block). The same applies to every other string value in the brief.
-
-> **DENSITY dial — where to put it (resolution order).** The DENSITY dial drives the generated entity
-> pages' **layout density** and is read by `scaffold-frontend`. Its **single source of truth is
-> `design.dials.density`** here in the brief. As a robustness fallback, if `design.dials.density` is
-> absent, `scaffold-frontend` reads `dials.density` from the **emitted `design.md`** discovered next to
-> the app — so an auto-propose agent that recorded the dials in the design.md (rather than the brief)
-> still threads density correctly. Resolution order: **(1) `brief.design.dials.density` → (2) emitted
-> `design.md` `dials.density` → (3) the `cozy` default** (byte-identical to a design-less build). See
-> [design-system.md §8](./design-system.md). (The emitted `design.md` holds the palette / radius / font
-> *tokens* the compiler reads, PLUS the rich authoring blocks — `type` / `spacing` / `components` /
-> `motion` / `ornament` / `banned` / `art_direction` — the agent reads to author the frontend; the `dials`
-> hold the *layout* dials.)
-
-### Validation (optional strictness — `validateDesign`)
-
-The `design:` block has **no required keys**, so any brief with a syntactically valid `design:` mapping
-passes. When the block is present, `scripts/lib/brief-policy.mjs` runs an **optional** `validateDesign`
-pass that fails fast with a **legible** error on a *malformed* block (so a typo never silently reaches the
-compiler) while **tolerating unknown keys** (forward-compatible):
-
-- `design` must be a mapping (not a list/scalar).
-- `preset`, if set, must be one of the known anchors (`constructive | minimalist | trust-first |
-  editorial | soft | brutalist | playful`).
-- `dials`, if set, must be a mapping; each present dial (`variance`/`motion`/`density`) must be an integer
-  in **1–10**.
-- `colors`, if set, must be a mapping; each value (e.g. `primary`/`accent`/`neutral`/`surface`/
-  `on-surface`/`error`) must be a string color token. (Deeper taste rules — ≤1 accent, chroma cap,
-  AI-purple ban, **WCAG contrast** — are now **ADVISORY**: the deterministic linter `check-design.mjs`
-  surfaces them as **warnings**, never failures, and the faithful compiler emits your authored values
-  verbatim. Only a structural `missing-primary` is a hard error. This brief pass is shape-validation only;
-  run `check-design.mjs --strict` if you want the taste rules re-escalated to errors.)
-- `font`, if set, must be a mapping (`sans`/`mono` string family names).
-- `radius`, if set, must be a string (px/em/rem).
-- `default_mode`, if set, must be `light` or `dark`.
-- `allow_brand_hue`, if set, must be a boolean.
-
-Anything not listed is passed through untouched (unknown keys tolerated). The full reasoning + the
-compile/override contract are in **[design-system.md](./design-system.md)**.
+> **All design strings must be single-line quoted strings.** The zero-dep brief YAML reader does **not**
+> support folded/literal block scalars (`>-`, `>`, `|`, `|-`). Write `brief:` (and every other string
+> value) on one line — never spread across following indented lines with a `>`/`|` indicator.

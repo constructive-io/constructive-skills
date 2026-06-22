@@ -1,9 +1,0 @@
-{
-  "describe": "Pure-black on-surface -> pure-black / min-lightness warn.",
-  "lint": {
-    "expectFindings": [
-      { "anyRule": ["pure-black", "min-lightness", "pure-black-banned"], "severity": "warn" }
-    ]
-  },
-  "notes": "anyRule matches if ANY listed rule id appears (the contract names it 'pure-black banned / min L>=~0.18' — Agent A may use either id). A test that only knows 'rule' can treat the first id as canonical."
-}

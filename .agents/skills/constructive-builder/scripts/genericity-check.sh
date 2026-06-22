@@ -233,71 +233,86 @@ info "phases     : $PHASES  (+ live-QA gate on Phase 3)"
 hr
 
 # ── DESIGN rot-canary (hermetic — no backend / no built app needed) ──────────────
-# Proves the design theming subsystem stays GENERIC + correct as a standing canary,
-# the same way the four app tiers above guard the build span. Two assertions, both
-# self-contained (fixtures + a temp globals.css; no network, no DB):
-#   1. NON-DEFAULT preset → a real theme: wire-design writes a marked override block
-#      whose compiled tokens DIFFER from the boilerplate, and the design's own
-#      check-design verdict is ok (lint + compile-ability). Catches the silent
-#      "lint-clean design degrades to the default look" regression this canary exists for.
-#   2. `constructive` opt-out preset → a byte NO-OP: wire-design writes NOTHING (the
-#      override sentinels never appear), so selecting the opt-out reproduces today's look.
-# Skips gracefully (warn, never fail the canary) only if node or the fixtures are absent.
+# Proves the ONE surviving design check stays GENERIC + correct as a standing canary,
+# the same way the four app tiers above guard the build span. Post-pivot there is no
+# compiler and no wire-design step: the design.md is the spec the AGENT authors the
+# frontend from, and the only machine check is FUNCTIONAL — does a built globals.css
+# satisfy the shadcn-token + Tailwind-v4 contract so Blocks render? This canary drives
+# that validator directly (check-design.mjs --globals) on synthesized CSS, self-contained
+# (a temp globals.css; no network, no DB, no fixtures):
+#   1. a COMPLETE globals.css (all shadcn token names in :root + .dark + the Tailwind-v4
+#      wiring) PASSES (exit 0) — the validator accepts a contract-satisfying app.
+#   2. a BROKEN globals.css (one shadcn token name dropped) FAILS (exit 1) — the validator
+#      still catches the regression that would render Blocks unstyled.
+# Skips gracefully (warn, never fail the canary) only if node or check-design.mjs is absent.
 design_rot_canary() {
   command -v node >/dev/null 2>&1 || { warn "design rot-canary: 'node' not on PATH — skipped (not failing)"; return 0; }
-  local fix_dir="$REPO_ROOT/fixtures/design"
-  local non_default="$fix_dir/editorial.md"   # any shipped NON-constructive preset
-  local opt_out="$fix_dir/constructive.md"
   local check_design="$REPO_ROOT/scripts/check-design.mjs"
-  local wire_design="$REPO_ROOT/scripts/wire-design.mjs"
-  if [ ! -f "$non_default" ] || [ ! -f "$opt_out" ] || [ ! -f "$wire_design" ] || [ ! -f "$check_design" ]; then
-    warn "design rot-canary: fixtures/design or design scripts missing — skipped (not failing)"
+  if [ ! -f "$check_design" ]; then
+    warn "design rot-canary: scripts/check-design.mjs missing — skipped (not failing)"
     return 0
   fi
 
-  # A throwaway app skeleton (the minimal shape wire-design's globals step needs).
+  # The canonical shadcn token contract (the 40 names; radius is a scalar handled separately).
+  # GENERIC: token NAMES only — no app/entity/flow/domain literal, no brand name.
+  local names=(
+    background foreground card card-foreground popover popover-foreground
+    primary primary-foreground secondary secondary-foreground muted muted-foreground
+    accent accent-foreground destructive destructive-foreground border input ring
+    chart-1 chart-2 chart-3 chart-4 chart-5
+    sidebar sidebar-foreground sidebar-primary sidebar-primary-foreground
+    sidebar-accent sidebar-accent-foreground sidebar-border sidebar-ring
+    info info-foreground success success-foreground warning warning-foreground
+  )
+
+  # Emit a contract-satisfying globals.css to $1, with the value $2 for every color token.
+  # Includes the Tailwind-v4 wiring the validator hard-requires: @import 'tailwindcss', a
+  # non-empty @theme inline carrying --color-*: var(--*) maps, @custom-variant dark, a @source.
+  _emit_good_globals() {
+    local out="$1" val="$2" n
+    {
+      echo "@import 'tailwindcss';"
+      echo '@custom-variant dark (&:is(.dark *));'
+      echo '@source "../";'
+      echo ':root {'
+      for n in "${names[@]}"; do echo "  --${n}: ${val};"; done
+      echo '  --radius: 0.5rem;'
+      echo '}'
+      echo '.dark {'
+      for n in "${names[@]}"; do echo "  --${n}: ${val};"; done
+      echo '}'
+      echo '@theme inline {'
+      for n in "${names[@]}"; do echo "  --color-${n}: var(--${n});"; done
+      echo '  --radius-md: var(--radius);'
+      echo '}'
+    } > "$out"
+  }
+
   local tmp; tmp="$(mktemp -d)"
-  mkdir -p "$tmp/src/app"
-  # wire-design's appUnder() requires package.json + src/ at the app root to recognize it.
-  printf '{ "name": "design-canary-app" }\n' > "$tmp/package.json"
-  # A template-shaped globals.css with the structural @theme inline anchor.
-  printf ':root {\n  --background: oklch(1 0 0);\n}\n.dark {\n  --background: oklch(0.21 0.006 285.885);\n}\n@theme inline {\n  --color-background: var(--background);\n}\n' > "$tmp/src/app/globals.css"
 
-  # 1) the design itself must be ok (lint + compile-ability) AND wire into a non-default theme.
-  if node "$check_design" --design "$non_default" >/dev/null 2>&1; then
-    pass "design rot-canary: non-default preset (editorial) passes check-design (lint + compile-ability)"
+  # 1) a COMPLETE globals.css must PASS the validator (exit 0).
+  _emit_good_globals "$tmp/good.css" "oklch(0.5 0.05 250)"
+  if node "$check_design" --globals "$tmp/good.css" >/dev/null 2>&1; then
+    pass "design rot-canary: a complete globals.css PASSES the Blocks token-contract validator (exit 0)"
   else
     rm -rf "$tmp"
-    fail "design rot-canary: non-default preset failed check-design" "run 'node scripts/check-design.mjs --design fixtures/design/editorial.md' and fix the flagged role(s) — a shipped preset must lint + compile into a theme."
-  fi
-  if node "$wire_design" --app "$tmp" --design "$non_default" >/dev/null 2>&1 \
-     && grep -q 'constructive-builder design overrides (generated)' "$tmp/src/app/globals.css"; then
-    # And it must DIFFER from the boilerplate (a real theme was applied, not a no-op).
-    if grep -qE '^[[:space:]]*--primary:' "$tmp/src/app/globals.css"; then
-      pass "design rot-canary: non-default preset wrote a real (non-default) override block into globals.css"
-    else
-      rm -rf "$tmp"
-      fail "design rot-canary: override block written but carries no themed tokens" "wire-design emitted an empty/default override region — check compile.mjs (compileDesign should emit the full override surface for a non-constructive preset)."
-    fi
-  else
-    rm -rf "$tmp"
-    fail "design rot-canary: a non-default preset did NOT produce a theme override block" "wire-design must write the marked :root/.dark override region for a non-constructive preset (it currently degrades to the default look — see compile.mjs / check-design.mjs)."
+    fail "design rot-canary: a complete globals.css was REJECTED by check-design.mjs --globals" "the Blocks-contract validator (check-design.mjs --globals) no longer accepts a contract-satisfying globals.css — it should pass when every shadcn token name is in :root + .dark and the @theme inline/@custom-variant dark/@source wiring is present. Fix scripts/check-design.mjs."
   fi
 
-  # 2) the opt-out preset must be a byte NO-OP (no override sentinels written).
-  local tmp2; tmp2="$(mktemp -d)"
-  mkdir -p "$tmp2/src/app"
-  printf '{ "name": "design-canary-app" }\n' > "$tmp2/package.json"
-  printf ':root {\n  --background: oklch(1 0 0);\n}\n.dark {\n  --background: oklch(0.21 0.006 285.885);\n}\n@theme inline {\n  --color-background: var(--background);\n}\n' > "$tmp2/src/app/globals.css"
-  local before; before="$(cat "$tmp2/src/app/globals.css")"
-  node "$wire_design" --app "$tmp2" --design "$opt_out" >/dev/null 2>&1 || true
-  if [ "$(cat "$tmp2/src/app/globals.css")" = "$before" ] && ! grep -q 'constructive-builder design overrides' "$tmp2/src/app/globals.css"; then
-    pass "design rot-canary: opt-out preset (constructive) is a byte NO-OP (globals.css unchanged)"
+  # 2) a BROKEN globals.css (one shadcn token name dropped from :root) must FAIL (exit 1).
+  _emit_good_globals "$tmp/broken.css" "oklch(0.5 0.05 250)"
+  # Drop the FIRST occurrence of --primary: (the :root declaration) so a contract name is missing.
+  awk 'BEGIN{done=0} /^[[:space:]]*--primary:/ && !done {done=1; next} {print}' "$tmp/broken.css" > "$tmp/broken.css.tmp" && mv "$tmp/broken.css.tmp" "$tmp/broken.css"
+  local bstatus=0
+  node "$check_design" --globals "$tmp/broken.css" >/dev/null 2>&1 || bstatus="$?"
+  if [ "$bstatus" -eq 1 ]; then
+    pass "design rot-canary: a globals.css missing a shadcn token name is REJECTED by the validator (exit 1)"
+    rm -rf "$tmp"
   else
-    rm -rf "$tmp" "$tmp2"
-    fail "design rot-canary: the 'constructive' opt-out preset modified globals.css" "the opt-out must reproduce today's look as a NO-OP (wire-design.mjs: preset==='constructive' → write nothing, exit 0)."
+    rm -rf "$tmp"
+    fail "design rot-canary: a broken globals.css (dropped shadcn token name) was NOT rejected (got exit $bstatus, expected 1)" "the Blocks-contract validator must HARD-FAIL (exit 1, rail2-name-missing) when a shadcn token name is missing from :root/.dark — a build that drops one would otherwise ship unstyled Blocks. Fix scripts/check-design.mjs."
   fi
-  rm -rf "$tmp" "$tmp2"
+  unset -f _emit_good_globals
 }
 design_rot_canary
 hr

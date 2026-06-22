@@ -1,12 +1,17 @@
 /**
- * scripts/lib/design/design-md.mjs — parse/serialize a Google-Labs-style
+ * scripts/lib/design/design-md.mjs — PARSE-ONLY reader for a Google-Labs-style
  * `design.md`: a Markdown document with a YAML frontmatter block delimited by
  * `---` fences, followed by free prose.
  *
- * Frontmatter is parsed with the skill's EXISTING zero-dep YAML reader
- * (`parseBrief` from ../brief-yaml.mjs) — NO new dependency.
+ * Sole consumer is scaffold-frontend.mjs, which calls parseDesignMd to read the
+ * LAYOUT-DENSITY dial out of an emitted design.md's frontmatter. The frontmatter is
+ * parsed with the skill's EXISTING zero-dep YAML reader (`parseBrief` from
+ * ../brief-yaml.mjs) — NO new dependency — via the quoteUnquotedCssFunctions helper
+ * that tolerates hand-authored UNQUOTED `oklch()`/`rgb()`/`color-mix()` values, so
+ * the density read never trips over a design.md's color tokens.
  *
- * ZERO-DEP. Node >=18 ESM. Pure functions.
+ * ZERO-DEP. Node >=18 ESM. Pure functions. There is no serializer: the design.md is
+ * authored by the agent, never machine-emitted, so this module only reads.
  */
 
 import { parseBrief } from '../brief-yaml.mjs';
@@ -127,83 +132,4 @@ export function parseDesignMd(text) {
   const frontmatter =
     yamlText.trim() === '' ? {} : parseBrief(quoteUnquotedCssFunctions(yamlText));
   return { frontmatter: frontmatter || {}, prose };
-}
-
-/* ----------------------------------------------------------------------------
- * Serialization — emit a minimal-but-faithful YAML for the frontmatter we own.
- * We only need to round-trip the shapes the compiler produces/consumes (scalars,
- * flat maps, one level of nested maps, and short arrays). Keep it deterministic.
- * ------------------------------------------------------------------------- */
-
-function isPlainObject(v) {
-  return v != null && typeof v === 'object' && !Array.isArray(v);
-}
-
-function scalarToYaml(v) {
-  if (v === null) return 'null';
-  if (typeof v === 'boolean') return v ? 'true' : 'false';
-  if (typeof v === 'number') return String(v);
-  const s = String(v);
-  // Quote when the value could be misparsed (leading symbols, colons, '#',
-  // braces, or looks numeric/boolean).
-  if (
-    s === '' ||
-    /^[\s>|*&!%@`"'{}\[\],#-]/.test(s) ||
-    /:\s|\s#/.test(s) ||
-    /^(true|false|null|~)$/i.test(s) ||
-    /^-?\d/.test(s)
-  ) {
-    return `"${s.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
-  }
-  return s;
-}
-
-function emitValue(value, indent, lines) {
-  const pad = '  '.repeat(indent);
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (isPlainObject(item)) {
-        // Inline as a flow map for compactness + safe re-parse.
-        lines.push(`${pad}- ${flowMap(item)}`);
-      } else {
-        lines.push(`${pad}- ${scalarToYaml(item)}`);
-      }
-    }
-    return;
-  }
-  if (isPlainObject(value)) {
-    for (const [k, v] of Object.entries(value)) {
-      if (isPlainObject(v) && Object.keys(v).length > 0) {
-        lines.push(`${pad}${k}:`);
-        emitValue(v, indent + 1, lines);
-      } else if (Array.isArray(v) && v.length > 0) {
-        lines.push(`${pad}${k}:`);
-        emitValue(v, indent + 1, lines);
-      } else if (isPlainObject(v) || Array.isArray(v)) {
-        lines.push(`${pad}${k}: ${Array.isArray(v) ? '[]' : '{}'}`);
-      } else {
-        lines.push(`${pad}${k}: ${scalarToYaml(v)}`);
-      }
-    }
-    return;
-  }
-  lines.push(`${pad}${scalarToYaml(value)}`);
-}
-
-function flowMap(obj) {
-  const parts = Object.entries(obj).map(([k, v]) => {
-    if (isPlainObject(v)) return `${k}: ${flowMap(v)}`;
-    if (Array.isArray(v)) return `${k}: [${v.map((x) => scalarToYaml(x)).join(', ')}]`;
-    return `${k}: ${scalarToYaml(v)}`;
-  });
-  return `{ ${parts.join(', ')} }`;
-}
-
-/** Serialize { frontmatter, prose } back into a `design.md` text. */
-export function serializeDesignMd({ frontmatter = {}, prose = '' }) {
-  const lines = [];
-  emitValue(frontmatter, 0, lines);
-  const fm = lines.join('\n');
-  const body = (prose || '').trim();
-  return `---\n${fm}\n---\n${body ? `\n${body}\n` : ''}`;
 }

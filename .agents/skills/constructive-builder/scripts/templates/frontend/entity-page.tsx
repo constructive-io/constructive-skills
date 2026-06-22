@@ -15,7 +15,7 @@
  * hierarchy/spacing/ornament). AUTHOR everything below the PRESENTATION SEAM; the ONLY
  * hard rails are (1) the FUNCTIONAL contract (the testids/hooks/states/scoping/mounts
  * called out at the seam) and (2) the shadcn-token contract (Blocks read tokens by
- * name). See references/art-direction.md for the authoring playbook + the preserve list.
+ * name). See references/design-guide.md for the authoring playbook + the preserve list.
  *
  * Two complementary CRUD paths:
  *   • QUICK-ADD + list — the typed, codegen'd SDK hooks (use__Entities__Query /
@@ -48,7 +48,7 @@
  *   • DATA — the rows. Each repeating record carries data-testid="__entity__-row", CONTAINS
  *     the row's title text, and scopes its own edit/delete inside it. Compose the list as
  *     the design.md dictates (rows / table / cards / board / split-pane — see
- *     art-direction.md). data-slot="content-fade-in" gives a reduced-motion-honored fade.
+ *     design-guide.md). data-slot="content-fade-in" gives a reduced-motion-honored fade.
  *
  * DENSITY (generic, dial-driven). Spacing/padding/rhythm are SUBSTITUTED at scaffold
  * time from brief.design.dials.density (1–10) via the generator's density scale — the
@@ -243,7 +243,7 @@ export default function __Entities__Page() {
   // type (the design.md's fonts/scale/weights), compose the layout (rows → data-table / gallery /
   // split-pane / editorial / board), establish real hierarchy + spacing rhythm + intentional
   // ornament, add subtle motion (honor prefers-reduced-motion). Blocks compose as INGREDIENTS.
-  // See references/art-direction.md for the authoring playbook.
+  // See references/design-guide.md for the authoring playbook.
   //
   // The ONLY things you may NOT remove/rename/hide while authoring (RAIL 1 — the functional
   // contract; the gates + live-QA assert these by testid/role only, never by look):

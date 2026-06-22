@@ -20,7 +20,7 @@
  * AUTHOR THE PRESENTATION. The block (SignInCard / SignUpCard) is an INGREDIENT; the
  * <main> wrapper below is a neutral default — author the sign-in/up surface from the app's
  * design.md (the masthead, the layout, type, any split/brand panel), per
- * references/art-direction.md. PRESERVE the contract: the route paths (/sign-in, /sign-up,
+ * references/design-guide.md. PRESERVE the contract: the route paths (/sign-in, /sign-up,
  * outside the shell), the block mount, the token-persist bridge (justAuthenticated latch →
  * TokenManager.setToken('admin') + setAuthenticated → router.push), and any social-btn-* /
  * cross-origin testids the flow add-ons seam in. Restyle freely; don't drop the bridge.

@@ -402,42 +402,6 @@ node scripts/check-sdk.mjs --project <app>
 
 ---
 
-## S6.5 — Apply the design theme (look-and-feel; after the Blocks @import, before the CRUD body)
-
-Give the app a coherent, legible, non-generic look in one idempotent codemod. It writes a
-**contrast-repaired token-override block** into the app's `globals.css` — restyling the template UI
-**and every installed Block at once** (they all read `var(--…)` shadcn tokens).
-
-```bash
-# Derives/compiles the app's design.md → a single MARKED override block of shadcn token VALUES in
-# <app>/src/app/globals.css (+ an optional next/font loader swap + ThemeProvider defaultTheme). <app>
-# = the WORKSPACE ROOT (resolves packages/app). Run it AFTER the Blocks @import (S5) so the override
-# sits below it and wins by source order, and BEFORE the CRUD body (S7). Idempotent + --dry-run-able.
-node scripts/wire-design.mjs --app <app>            # or: node scripts/wire-design.mjs <brief> <app> [--dry-run]
-```
-
-- **Default = auto-propose.** With **no `design:` block** in the brief, the build authors a
-  domain-fitting `design.md` (3 dials → palette + radius + fonts), lints it (invariants + **WCAG
-  contrast**), and compiles it. A generated app should not ship the stock Constructive blue unless asked.
-- **Opt-out = keep today's look.** `design: { preset: constructive }` ⇒ **no-op** (boilerplate
-  `globals.css` untouched). A compile failure / impossible contrast also no-ops (loud warning) — never a
-  half-written theme.
-- **Structure stays off-limits.** The codemod only emits the **override-surface** tokens between its
-  `>>>`/`<<< constructive-builder design overrides` sentinels (placed after `.dark`, before `@theme
-  inline`). It never touches `@theme inline` / `@source` / `--z-layer-*` / `@layer base`. Fonts change
-  **only** via the `layout.tsx` loader swap (the `:root --font-sans` literal is dead — shadowed by
-  `@theme inline`).
-- **Brief control.** The optional `design:` block (`brief`/`preset`/`dials`/`colors`/`font`/`radius`/
-  `default_mode`) constrains or overrides the auto-proposal — see
-  [brief-grammar.md](./brief-grammar.md) "design (optional)".
-
-> **The full methodology — dials, the words→dials table, the color invariants, the `design.md` format,
-> the preset catalog, and the compile/override contract — is in [design-system.md](./design-system.md).**
-> Read it when authoring/adapting a theme or when the lint flags a contrast/invariant issue. The DENSITY
-> dial is also threaded into the CRUD body (S7) as a `data-density` root attribute.
-
----
-
 ## S7 — Build the app CRUD body (the DOMAIN entity UI — always; this is surface (3))
 
 **Generate the CRUD body from the brief (the default path):**
@@ -465,6 +429,42 @@ else AlertDialog; **no `confirm()`/`alert()`**). Import data hooks from `@sdk/ap
 `<app>/src/lib/navigation/sidebar-config.ts` (Edit templates in
 [skill-supplements.md](./skill-supplements.md) "Phase 3"). `orderBy` only supports indexed fields —
 default to `['ID_ASC']`.
+
+---
+
+## S7.5 — AUTHOR the presentation from the app's design.md (always — this is where the app gets its design)
+
+The `design.md` is the **full design spec** and **you author the whole frontend from it** — the shell,
+each entity page's composition, the type (fonts/scale/weights), the spacing rhythm, the surfaces, the
+intentional ornament, the copy, **and** the shadcn token values in `<app>/src/app/globals.css` (so the
+template UI and every installed Block render in the app's voice — they all read the `var(--…)` shadcn
+tokens). **There is no compiler / codemod / theme step — you write the CSS and compose the components
+yourself.**
+
+Two rails frame the work. **Rail 1 is functional:** the CRUD body's behavior contract — the `<entity>-*`
+testids, row-scoping, hooks/selection/refetch, the RLS scoping consts, the route/block/flow surfaces —
+must survive your restyle. **Rail 2 is the token contract:** the built `globals.css` must still define the
+shadcn token **names** + the Tailwind-v4 wiring so Blocks render. Rail 2 is the **only** machine check, and
+it is FUNCTIONAL (it never judges taste):
+
+```bash
+node scripts/check-design.mjs --app <app>     # <app> = the WORKSPACE ROOT (resolves packages/app)
+```
+
+- **Default = author a domain-fitting look.** With **no `design:` block** in the brief, propose and
+  author a `design.md` for the app, then realize it in `globals.css` + the components. A generated app
+  should not ship the stock boilerplate look unless asked.
+- **Opt-out = keep today's look.** `design: { preset: constructive }` ⇒ leave the boilerplate
+  `globals.css` as-is and skip the authoring pass (it already satisfies Rail 2).
+- **Token contract is the rail.** Whatever you author, `globals.css` MUST keep defining the full shadcn
+  token name set (background, foreground, primary, …, radius) under `:root`/`.dark` + the `@theme inline`
+  Tailwind-v4 wiring — that is exactly what `check-design.mjs` asserts and what keeps Blocks rendering.
+- **Brief control.** The optional `design:` block (`brief`/`preset`/`density`/`colors`/`font`/`radius`)
+  guides the look — see [brief-grammar.md](./brief-grammar.md) "design (optional)".
+
+> **The full authoring methodology — the design.md format, the token contract, the words→look guidance,
+> and the preserve list — is in [design-guide.md](./design-guide.md).** Read it when authoring/adapting an
+> app's look or when `check-design.mjs` flags a missing token.
 
 ---
 
@@ -501,7 +501,7 @@ there** in the browser and assert the mutation fired **2xx** and the row **persi
 > **Stuck on a step?** Drop into the matching detailed phase reference (S1→[phase-2-data-model.md](./phase-2-data-model.md)
 > §2.1, S2→[phase-2-data-model.md](./phase-2-data-model.md), S3/S4→[phase-3-frontend-sdk.md](./phase-3-frontend-sdk.md),
 > S5/S6→[phase-4-blocks.md](./phase-4-blocks.md) Branch A / [blocks-onramp.md](./blocks-onramp.md),
-> S6.5→[design-system.md](./design-system.md), S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body) and consult [troubleshooting.md](./troubleshooting.md)
+> S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body, S7.5→[design-guide.md](./design-guide.md)) and consult [troubleshooting.md](./troubleshooting.md)
 > / [gotchas.md](./gotchas.md) / [error-index.md](./error-index.md) for that step. The detailed sections are
 > the fallback; the speedrun is the path.
 
