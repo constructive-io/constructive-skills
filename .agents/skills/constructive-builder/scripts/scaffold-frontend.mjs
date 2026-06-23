@@ -2,8 +2,18 @@
 /**
  * scripts/scaffold-frontend.mjs <brief> <appDir>
  *
- * Brief → the per-entity domain UI, AFTER Phase-3 codegen has produced the typed
- * SDK hooks (@sdk/app). Runs at PHASE 4 (see scaffold-app.mjs for the staging).
+ * Brief → the per-entity domain UI as a WORKING SKELETON TO AUTHOR FROM, AFTER Phase-3
+ * codegen has produced the typed SDK hooks (@sdk/app). Runs at PHASE 4 (see scaffold-app.mjs
+ * for the staging).
+ *
+ * SKELETON, NOT FINAL UI. Everything below emits the FUNCTIONAL contract — the data wiring,
+ * the testids, the four list states, row-scoping, the RLS scoping, and the Blocks mounts —
+ * correct and working, so the app FUNCTIONS and composes with Blocks. The DEFAULT presentation
+ * is a neutral, replaceable starting point. The frontend phase is then: AUTHOR the presentation
+ * faithfully from the app's design.md (customize/replace stock components, set the type, compose
+ * the layout, intentional hierarchy/spacing/ornament, subtle + reduced-motion). The ONLY hard
+ * rails are (1) this FUNCTIONAL contract and (2) the shadcn-token contract (Blocks read tokens by
+ * name). See references/design-guide.md for the authoring playbook + the full preserve list.
  *
  * It does SIX things, each independently idempotent (re-running is a safe no-op):
  *   (a) CRUD INFRA (once) — stamps the runtime-generic meta-form stack from
@@ -96,6 +106,7 @@ import { emitEntityPage, emitStubPage, tableFor } from './lib/scaffold-frontend/
 import { appendRoute, appendNavItem } from './lib/scaffold-frontend/routes-nav.mjs';
 import { emitAuthPages } from './lib/scaffold-frontend/auth-pages.mjs';
 import { emitFlowSurfaces } from './lib/scaffold-frontend/flow-surfaces.mjs';
+import { parseDesignMd } from './lib/design/design-md.mjs';
 
 // ════════════════════════════════════════════════════════════════════════════
 // App-dir detection — mirror verify-phase.sh app_rel(): the app may live at
@@ -116,6 +127,56 @@ function resolveAppSrc(appDir) {
   // still gets a deterministic target; the caller wires this at Phase 4 when the
   // scaffold already exists, so this branch is the genuinely-empty fallback.
   return path.join(appDir, 'packages', 'app', 'src');
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// DENSITY RESOLUTION (generic, robust to WHERE the agent recorded the dial).
+//
+// The DENSITY dial drives LAYOUT density (see entity-page.mjs DENSITY_SCALES). The
+// canonical home for the dials is the brief: `brief.design.dials.density`. But an
+// auto-propose agent may instead record the dials in the EMITTED design.md (the
+// durable, lint-gated design record) under its frontmatter `dials:` map. Either home
+// must "just work". So density resolves in this order:
+//   1. brief.design.dials.density            (the canonical, single source of truth)
+//   2. <emitted design.md>.dials.density     (fallback — read straight from a design.md
+//                                             sitting next to the app, if the agent put one there)
+// Anything else ⇒ undefined ⇒ entity-page.mjs defaults to the 'cozy' tier (the
+// pre-wave literals) so a design-less build is byte-identical. GENERIC: density is a
+// single integer/tier name — no entity/app literal is ever read here.
+// ════════════════════════════════════════════════════════════════════════════
+
+/** Discover a design.md the agent authored next to the app and return its parsed
+ *  frontmatter object (so the density dial can be read from it), or null when none
+ *  is found. This density discovery is self-standing — it is the only reason this
+ *  scaffolder reads a design.md at all. */
+function discoverDesignMdFrontmatter(appDir) {
+  const candidates = [
+    path.join(appDir, 'design.md'),
+    path.join(appDir, '..', 'design.md'),
+    path.join(appDir, 'app', 'design.md'),
+    path.join(appDir, 'packages', 'app', 'design.md'),
+  ];
+  for (const cand of candidates) {
+    if (!fs.existsSync(cand)) continue;
+    try {
+      return parseDesignMd(fs.readFileSync(cand, 'utf8')).frontmatter || null;
+    } catch {
+      // A malformed design.md is not fatal for scaffolding — fall through to the
+      // 'cozy' default rather than abort the whole frontend emit.
+      return null;
+    }
+  }
+  return null;
+}
+
+/** Resolve the DENSITY dial from the brief, falling back to an emitted design.md's
+ *  `dials.density`. Returns the raw dial (number | tier string) or undefined; the
+ *  page emitters clamp/default it (resolveDensity). GENERIC — no entity input. */
+function resolveDensityDial(brief, appDir) {
+  const fromBrief = brief.design?.dials?.density;
+  if (fromBrief != null) return fromBrief;
+  const fm = discoverDesignMdFrontmatter(appDir);
+  return fm?.dials?.density;
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -224,6 +285,16 @@ function main() {
   const srcDir = resolveAppSrc(appDir);
   const ctx = { dryRun, written: [], skipped: [], warnings: [] };
 
+  // DESIGN DENSITY (generic, dial-driven). The DENSITY dial (1–10) sets the spacing/padding/
+  // rhythm scale the generated CRUD + stub pages bake into their Tailwind classes at emit time.
+  // It is resolved from the canonical brief.design.dials.density, OR (fallback) from an emitted
+  // design.md's `dials.density` next to the app — so density "just works" regardless of which home
+  // an auto-propose agent recorded the dials in. Absent ⇒ undefined ⇒ the emitters default to the
+  // 'cozy' tier, which reproduces the historical spacing literals, so a brief with no design block
+  // emits byte-identical pages. No entity/app literal is involved — density is a single number that
+  // maps to a generic scale. See resolveDensityDial() for the resolution order.
+  const density = resolveDensityDial(brief, appDir);
+
   const routes = brief.ui?.routes ?? [];
   const crudRoutes = routes.filter((r) => (r.kind || 'crud') === 'crud');
 
@@ -248,11 +319,11 @@ function main() {
       // junction. [] for a non-N:M table → the page emits no manager (byte-identical canary).
       // srcDir + ctx so the linked table's label column resolves to its codegen-actual name.
       const m2mRels = manyToManyRelations(brief, table, srcDir, ctx);
-      const { label } = emitEntityPage(srcDir, route, table, ctx, fks, m2mRels);
+      const { label } = emitEntityPage(srcDir, route, table, ctx, fks, m2mRels, density);
       appendRoute(srcDir, route, ctx, { context: 'app', access: 'protected' });
       appendNavItem(srcDir, route, label, ctx);
     } else {
-      emitStubPage(srcDir, route, ctx);
+      emitStubPage(srcDir, route, ctx, density);
       // A primary dashboard at '/' is the root — don't add a route/nav (the root
       // already exists). Other non-CRUD surfaces get a protected route entry.
       if (route.path && route.path !== '/') {

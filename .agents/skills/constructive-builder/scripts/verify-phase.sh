@@ -18,7 +18,7 @@ set -euo pipefail
 #   verify-gates.sh   the gate-assertion HELPER functions the dispatch calls (check_state_fields,
 #                     skill_checker_path, check_blocks_coverage, check_app_compiles, app_build_id_file,
 #                     build_app, verify_or_build_app, check_flows_drift, check_harness_drift,
-#                     check_fail_hints, spec_has_required_flows, run_live_qa).
+#                     check_design, check_fail_hints, spec_has_required_flows, run_live_qa).
 # These libs hold ONLY function definitions (bash binds them at source time, before any executable line
 # below runs), so this decomposition is purely structural — the resolution precedence, the phase remap,
 # and every gate's PASS/FAIL output (and each fail() FIX hint) are byte-identical to the pre-split file.
@@ -195,6 +195,10 @@ case "$PHASE" in
 
     # Additive: only fires if this harness ships scripts/check-harness-drift.mjs.
     check_harness_drift
+
+    # Additive: design subsystem rot-canary (the Blocks token-contract validator test) — app-independent,
+    # runs early. The functional --app globals.css check inside check_design no-ops here (no app yet).
+    check_design
 
     # Additive self-lint: assert every fail() call-site carries a 2nd-arg FIX hint (no regress).
     check_fail_hints
@@ -662,6 +666,10 @@ case "$PHASE" in
 
     # Additive: only fires if this harness ships a generated references/flows.json.
     check_flows_drift
+
+    # Additive: validate the BUILT app's globals.css against the Blocks token + Tailwind-v4 contract
+    # (no built globals.css → no-op). The frontend exists by this phase, so the functional check fires.
+    check_design
 
     check_state_fields
     ;;

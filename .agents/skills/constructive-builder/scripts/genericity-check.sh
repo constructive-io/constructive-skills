@@ -232,6 +232,91 @@ info "phases     : $PHASES  (+ live-QA gate on Phase 3)"
 [ -n "${LIVE_QA_CRUD_PATH:-}" ] && info "live-QA CRUD path (override): $LIVE_QA_CRUD_PATH"
 hr
 
+# ── DESIGN rot-canary (hermetic — no backend / no built app needed) ──────────────
+# Proves the ONE surviving design check stays GENERIC + correct as a standing canary,
+# the same way the four app tiers above guard the build span. Post-pivot there is no
+# compiler and no wire-design step: the design.md is the spec the AGENT authors the
+# frontend from, and the only machine check is FUNCTIONAL — does a built globals.css
+# satisfy the shadcn-token + Tailwind-v4 contract so Blocks render? This canary drives
+# that validator directly (check-design.mjs --globals) on synthesized CSS, self-contained
+# (a temp globals.css; no network, no DB, no fixtures):
+#   1. a COMPLETE globals.css (all shadcn token names in :root + .dark + the Tailwind-v4
+#      wiring) PASSES (exit 0) — the validator accepts a contract-satisfying app.
+#   2. a BROKEN globals.css (one shadcn token name dropped) FAILS (exit 1) — the validator
+#      still catches the regression that would render Blocks unstyled.
+# Skips gracefully (warn, never fail the canary) only if node or check-design.mjs is absent.
+design_rot_canary() {
+  command -v node >/dev/null 2>&1 || { warn "design rot-canary: 'node' not on PATH — skipped (not failing)"; return 0; }
+  local check_design="$REPO_ROOT/scripts/check-design.mjs"
+  if [ ! -f "$check_design" ]; then
+    warn "design rot-canary: scripts/check-design.mjs missing — skipped (not failing)"
+    return 0
+  fi
+
+  # The canonical shadcn token contract (the 40 names; radius is a scalar handled separately).
+  # GENERIC: token NAMES only — no app/entity/flow/domain literal, no brand name.
+  local names=(
+    background foreground card card-foreground popover popover-foreground
+    primary primary-foreground secondary secondary-foreground muted muted-foreground
+    accent accent-foreground destructive destructive-foreground border input ring
+    chart-1 chart-2 chart-3 chart-4 chart-5
+    sidebar sidebar-foreground sidebar-primary sidebar-primary-foreground
+    sidebar-accent sidebar-accent-foreground sidebar-border sidebar-ring
+    info info-foreground success success-foreground warning warning-foreground
+  )
+
+  # Emit a contract-satisfying globals.css to $1, with the value $2 for every color token.
+  # Includes the Tailwind-v4 wiring the validator hard-requires: @import 'tailwindcss', a
+  # non-empty @theme inline carrying --color-*: var(--*) maps, @custom-variant dark, a @source.
+  _emit_good_globals() {
+    local out="$1" val="$2" n
+    {
+      echo "@import 'tailwindcss';"
+      echo '@custom-variant dark (&:is(.dark *));'
+      echo '@source "../";'
+      echo ':root {'
+      for n in "${names[@]}"; do echo "  --${n}: ${val};"; done
+      echo '  --radius: 0.5rem;'
+      echo '}'
+      echo '.dark {'
+      for n in "${names[@]}"; do echo "  --${n}: ${val};"; done
+      echo '}'
+      echo '@theme inline {'
+      for n in "${names[@]}"; do echo "  --color-${n}: var(--${n});"; done
+      echo '  --radius-md: var(--radius);'
+      echo '}'
+    } > "$out"
+  }
+
+  local tmp; tmp="$(mktemp -d)"
+
+  # 1) a COMPLETE globals.css must PASS the validator (exit 0).
+  _emit_good_globals "$tmp/good.css" "oklch(0.5 0.05 250)"
+  if node "$check_design" --globals "$tmp/good.css" >/dev/null 2>&1; then
+    pass "design rot-canary: a complete globals.css PASSES the Blocks token-contract validator (exit 0)"
+  else
+    rm -rf "$tmp"
+    fail "design rot-canary: a complete globals.css was REJECTED by check-design.mjs --globals" "the Blocks-contract validator (check-design.mjs --globals) no longer accepts a contract-satisfying globals.css — it should pass when every shadcn token name is in :root + .dark and the @theme inline/@custom-variant dark/@source wiring is present. Fix scripts/check-design.mjs."
+  fi
+
+  # 2) a BROKEN globals.css (one shadcn token name dropped from :root) must FAIL (exit 1).
+  _emit_good_globals "$tmp/broken.css" "oklch(0.5 0.05 250)"
+  # Drop the FIRST occurrence of --primary: (the :root declaration) so a contract name is missing.
+  awk 'BEGIN{done=0} /^[[:space:]]*--primary:/ && !done {done=1; next} {print}' "$tmp/broken.css" > "$tmp/broken.css.tmp" && mv "$tmp/broken.css.tmp" "$tmp/broken.css"
+  local bstatus=0
+  node "$check_design" --globals "$tmp/broken.css" >/dev/null 2>&1 || bstatus="$?"
+  if [ "$bstatus" -eq 1 ]; then
+    pass "design rot-canary: a globals.css missing a shadcn token name is REJECTED by the validator (exit 1)"
+    rm -rf "$tmp"
+  else
+    rm -rf "$tmp"
+    fail "design rot-canary: a broken globals.css (dropped shadcn token name) was NOT rejected (got exit $bstatus, expected 1)" "the Blocks-contract validator must HARD-FAIL (exit 1, rail2-name-missing) when a shadcn token name is missing from :root/.dark — a build that drops one would otherwise ship unstyled Blocks. Fix scripts/check-design.mjs."
+  fi
+  unset -f _emit_good_globals
+}
+design_rot_canary
+hr
+
 # ── S0 — smoke the warm backend on :3000; restart ONCE with a big heap if down ──
 # pr_s0_smoke_and_restart (lib/phase-runner.sh) does the smoke + one-shot 8GB-heap restart; the
 # constructive CLI is auto-discovered the AGENTS.md sibling way (never a hardcoded path). Args:

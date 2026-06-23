@@ -15,8 +15,17 @@
 > `./scripts/verify-phase.sh 2.6` (it self-disables when no `.constructive/blocks/*.requires.json` exists).
 
 > **Speedrun shortcut:** [speedrun.md](./speedrun.md) S5–S7 collapse this into the blocks on-ramp +
-> `node scripts/scaffold-frontend.mjs build/app-brief.yaml <app>` for the CRUD body. This file is the
-> detailed reference / hand-edit fallback.
+> authoring the presentation from the app's `design.md` ([design-guide.md](./design-guide.md)) + `node
+> scripts/scaffold-frontend.mjs build/app-brief.yaml <app>` for the CRUD body. This file is the detailed
+> reference / hand-edit fallback.
+
+> **Between Branch A and the CRUD body: AUTHOR the presentation.** After the Blocks `@import` + skeleton
+> are in place and **before**/alongside the CRUD body, **author the app's look-and-feel by hand** from the
+> app's `design.md` — including the `globals.css` shadcn-token values — so the template **and** every
+> installed Block (all read the shadcn `var(--…)` tokens) render in the app's voice. The ONE machine check
+> is FUNCTIONAL: the built `globals.css` must still define the shadcn token **names** + Tailwind-v4 wiring
+> so Blocks render — validate with **`node scripts/check-design.mjs --app <app>`**. Full authoring
+> methodology + the token contract: **[design-guide.md](./design-guide.md)**.
 
 ---
 

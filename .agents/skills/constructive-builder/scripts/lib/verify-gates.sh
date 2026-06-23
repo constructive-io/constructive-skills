@@ -351,6 +351,71 @@ check_harness_drift() {
   fi
 }
 
+# Additive DESIGN subsystem gate. Post-pivot the design COMPILER is gone: the design.md is the
+# full spec the AGENT authors the frontend from, Blocks compose, and the ONLY surviving machine
+# check is FUNCTIONAL — does the BUILT app's globals.css still satisfy the shadcn-token +
+# Tailwind-v4 contract so Blocks render? Two independent checks, each self-disabling:
+#   (A) ROT-CANARY — run the surviving Blocks token-contract validator's own test
+#       (scripts/lib/design/blocks-contract.test.mjs) so the validator's pass/fail behaviour
+#       (every shadcn name in :root + .dark, the @theme inline / @custom-variant / @source
+#       wiring) cannot rot unnoticed. It ships in the skill, so it runs whenever this gate
+#       fires — NO app needed. Self-disables only if that test is absent or `node` can't run it.
+#   (B) FUNCTIONAL BLOCKS-CONTRACT GATE — once the frontend exists, validate the BUILT
+#       <app>/src/app/globals.css with `check-design.mjs --app <app_root>` (RAIL 2): a dropped /
+#       renamed shadcn token name or broken Tailwind-v4 wiring = ERROR, because Blocks would then
+#       render unstyled. This is what the agent authors TOWARD, not a lint of any design.md.
+# No app / no built globals.css yet → (B) is a clean no-op (pre-frontend phases). Wired into
+# Phase 1 (the canary, app-independent) and Phase 2.4 (the functional --app check, post-frontend).
+check_design() {
+  command -v node >/dev/null 2>&1 || { warn "Design gate: 'node' not on PATH — skipped the design subsystem checks (not failing)"; return 0; }
+
+  # (A) the rot-canary — the ONE surviving design test: the Blocks token-contract validator's
+  #     own test (the compiler + its suite are deleted; this is all that remains).
+  local canary_test="$REPO_ROOT/scripts/lib/design/blocks-contract.test.mjs"
+  if [ -f "$canary_test" ]; then
+    local out status=0
+    out="/tmp/check-design-tests.$$"
+    node --test "$canary_test" >"$out" 2>&1 || status="$?"
+    if [ "$status" -eq 0 ]; then
+      pass "Design: Blocks token-contract validator green (the shadcn-name + Tailwind-v4 wiring contract holds)"
+      rm -f "$out"
+    else
+      tail -n 40 "$out" 2>/dev/null | sed 's/^/  /' || true
+      rm -f "$out"
+      fail "Design: the Blocks token-contract validator test FAILED (scripts/lib/design/blocks-contract.test.mjs)" "The Blocks-contract validator (check-design.mjs --globals) changed behaviour — it no longer PASSES a complete globals.css or no longer FAILS a broken one (a dropped shadcn token name, or missing @theme inline / @custom-variant dark / @source wiring). See the failing assertion above; fix scripts/check-design.mjs (or the test fixture) until 'node --test scripts/lib/design/blocks-contract.test.mjs' is green."
+    fi
+  fi
+
+  # (B) FUNCTIONAL gate — validate the BUILT app's globals.css against the Blocks contract.
+  #     No app / no built globals.css yet (pre-frontend phases) → clean no-op (return 0); the
+  #     pre-check below means the checker is only invoked once there is something to validate,
+  #     so its own exit-2 "globals.css not found" never reaches us here.
+  local checker="$REPO_ROOT/scripts/check-design.mjs"
+  [ -f "$checker" ] || return 0
+  local app_root globals_css
+  app_root="$(workspace_path "$(app_rel)")"
+  [ -d "$app_root" ] || return 0
+  globals_css="$app_root/src/app/globals.css"
+  [ -f "$globals_css" ] || return 0
+
+  echo "  INFO: Design gate — validating the BUILT app globals.css against the Blocks token contract ($globals_css)"
+  local dout dstatus=0
+  dout="/tmp/check-design-globals.$$"
+  node "$checker" --app "$app_root" >"$dout" 2>&1 || dstatus="$?"
+  if [ "$dstatus" -eq 0 ]; then
+    pass "Design: built app globals.css satisfies the shadcn-token + Tailwind-v4 contract — Blocks render (check-design.mjs --app ok)"
+    rm -f "$dout"
+  elif [ "$dstatus" -eq 2 ]; then
+    cat "$dout" 2>/dev/null || true
+    rm -f "$dout"
+    warn "Design: check-design.mjs could not run on $globals_css (exit 2) — skipped (not failing)"
+  else
+    cat "$dout" 2>/dev/null || true
+    rm -f "$dout"
+    fail "Design: built app globals.css fails the Blocks token contract (check-design.mjs --app, exit $dstatus)" "A shadcn token name or the @theme inline/@custom-variant/@source wiring is missing from the built globals.css — Blocks will render unstyled; restore the token contract in src/app/globals.css. See the finding(s) above and re-run 'node scripts/check-design.mjs --app <app_root>' until ok."
+  fi
+}
+
 # Additive self-lint: every fail() CALL-SITE in this script must pass a 2nd arg = a self-correcting
 # FIX hint, so an agent that trips a gate always gets a concrete next action (cite the gotcha CODE +
 # the one-liner / SKILL anchor). This keeps the hint-coverage ratio from regressing as call-sites are
