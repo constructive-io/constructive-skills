@@ -1,6 +1,6 @@
 ---
 name: constructive-realtime
-description: "Subscriptions, notifications, change_log, CursorTracker — real-time data via GraphQL subscriptions, PostGraphile live queries, and change tracking. Use when asked to 'add subscriptions', 'real-time updates', 'live queries', 'notifications', 'change_log', 'CursorTracker', 'websocket', or when working with real-time features in Constructive."
+description: "Subscriptions, notifications, change_log, CursorTracker, ephemeral realtime — real-time data via GraphQL subscriptions, PostGraphile live queries, change tracking, and ephemeral pg_notify delivery. Use when asked to 'add subscriptions', 'real-time updates', 'live queries', 'notifications', 'change_log', 'CursorTracker', 'websocket', 'ephemeral realtime', 'pg_notify', 'high-frequency signals', or when working with real-time features in Constructive."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -17,6 +17,7 @@ Use this skill when:
 - Working with PostGraphile live queries
 - Implementing change tracking and notifications
 - Using WebSocket connections for real-time updates
+- Using ephemeral realtime for high-frequency signals (cursors, presence, live indicators)
 
 ## Core Concepts
 
@@ -34,11 +35,15 @@ PostGraphile's `@stream` and `@live` directives enable:
 
 The `change_log` system records row-level changes (INSERT, UPDATE, DELETE) that power both subscriptions and audit trails.
 
+### Ephemeral Realtime
+
+`DataRealtime({ ephemeral: true })` bypasses `change_log` entirely — events go straight from trigger → `pg_notify` → WebSocket with zero write overhead. Designed for high-frequency signals (cursor positions, presence indicators, live typing) where durability isn't needed.
+
 ## References
 
 | File | Content |
 |------|---------|
-| [realtime-subscriptions.md](./references/realtime-subscriptions.md) | Full subscription setup, WebSocket config, and patterns |
+| [realtime-subscriptions.md](./references/realtime-subscriptions.md) | Full subscription setup, WebSocket config, ephemeral mode, and patterns |
 
 ## Cross-References
 

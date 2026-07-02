@@ -71,6 +71,7 @@ This creates:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `operations` | `string[]` | `['INSERT', 'UPDATE', 'DELETE']` | Which DML operations to track |
+| `ephemeral` | `boolean` | `false` | Skip change_log writes; deliver via pg_notify directly |
 | `subscriber_table_name` | `string` | `{source_table}_subscriber` | Custom name for the subscriber table |
 
 **Tracking only inserts and deletes:**
@@ -81,6 +82,14 @@ This creates:
 }
 ```
 
+**Ephemeral mode (high-frequency signals, no change_log):**
+```json
+{
+  "$type": "DataRealtime",
+  "data": { "ephemeral": true, "operations": ["INSERT"] }
+}
+```
+
 **Custom subscriber table name:**
 ```json
 {
@@ -88,6 +97,64 @@ This creates:
   "data": { "subscriber_table_name": "message_watchers" }
 }
 ```
+
+## Ephemeral Realtime
+
+Ephemeral mode (`ephemeral: true`) is designed for high-frequency, low-durability signals — cursor positions, presence indicators, typing status, live counters — where writing every event to `change_log` would create unnecessary WAL/write overhead.
+
+### How It Differs from Normal Mode
+
+| | Normal mode | Ephemeral mode |
+|---|---|---|
+| **Data path** | DML → `emit_change()` → INSERT change_log + pg_notify(wake) → `drain_changes()` → WebSocket | DML → `emit_change_ephemeral()` → pg_notify(full payload) → WebSocket |
+| **Durability** | Events persisted in partitioned change_log | No persistence — fire-and-forget |
+| **Catch-up** | Clients reconnect and poll from last cursor | No catch-up — missed events are gone |
+| **Write cost** | One INSERT per event into change_log | Zero writes |
+| **Subscriber table** | Created with RLS policies | Created with RLS policies (identical) |
+| **Security** | RLS enforced at delivery time (drain reads subscriptions) | RLS enforced at subscription time (INSERT into subscriber table) |
+
+### Blueprint Usage
+
+```json
+{
+  "table_name": "cursor_positions",
+  "nodes": [
+    "DataId",
+    { "$type": "DataRealtime", "data": { "ephemeral": true, "operations": ["INSERT"] } }
+  ],
+  "fields": [
+    { "name": "user_id", "type": { "name": "uuid" } },
+    { "name": "x", "type": { "name": "float8" } },
+    { "name": "y", "type": { "name": "float8" } }
+  ],
+  "grants": [
+    { "roles": ["authenticated"], "privileges": [["select", "*"], ["insert", "*"]] }
+  ]
+}
+```
+
+### Overflow Safety
+
+The ephemeral trigger includes overflow detection to stay within PostgreSQL's 8KB NOTIFY payload limit:
+
+- **Row count overflow**: If a single statement affects > 50 rows, the payload is `{ op: 'INSERT', overflow: true, count: N }` instead of full row data.
+- **Byte size overflow**: If the serialized row data exceeds 7500 bytes, the same overflow marker is sent.
+
+Clients receiving an overflow payload should refetch the current state rather than applying individual row changes.
+
+### When to Use Ephemeral vs Normal
+
+**Use ephemeral for:**
+- Cursor/pointer positions in collaborative editing
+- Presence indicators (online/typing/idle)
+- Live counters and progress bars
+- Any signal where missing one event doesn't break the experience
+
+**Use normal (default) for:**
+- Chat messages, comments, document changes
+- Anything where every event must be delivered at least once
+- Audit-critical tables
+- Tables where clients may reconnect and need to catch up
 
 ## How Subscription Security Works
 
@@ -105,6 +172,8 @@ Changes flow through two complementary paths:
 2. **Change log polling** — a partitioned `change_log` table provides durable, ordered event storage. Clients that missed NOTIFY events (disconnection, restart) can catch up by polling from their last-seen cursor position.
 
 This dual-path design provides **at-least-once delivery**: NOTIFY for speed, change log for reliability.
+
+**Ephemeral mode** uses only path 1 (NOTIFY with full JSONB payload). There is no change log, so delivery is best-effort — if a client is disconnected when the event fires, it's gone.
 
 ## Partitions
 
