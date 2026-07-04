@@ -26,7 +26,7 @@
  * `policies_raw` escape hatches (passed through verbatim) and `// TODO: advanced`
  * seams the emitter writes. See:
  *   - constructive-blueprints/references/blueprint-definition-format.md (every key)
- *   - constructive-security/references/authz-types.md (the 18 Authz* shapes)
+ *   - constructive-security/references/authz-types.md (the 20 Authz* shapes)
  */
 
 import * as fs from 'fs';

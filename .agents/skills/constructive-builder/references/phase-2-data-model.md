@@ -105,7 +105,7 @@ and `./scripts/verify-phase.sh 2.3` (database + tables + policies).
 >   (every `nodes[]` entry; which Data* node adds `id` / `owner_id` / `entity_id`)
 > - **`constructive-data-modeling`** skill — tables/fields/relations + `secureTableProvision` (Blueprint
 >   shape) and database provisioning
-> - **`constructive-security`** skill — Authz policy protocol (18 Authz* types) + per-policy config keys
+> - **`constructive-security`** skill — Authz policy protocol (20 Authz* types) + per-policy config keys
 >   (e.g. `AuthzDirectOwner` → `entity_field`)
 
 ### Key Packages
@@ -269,7 +269,7 @@ export default async function main() {
 
 ### Common Policy Types
 
-> Full per-policy config shapes (all 18 Authz* types) are in the **`constructive-security`** skill
+> Full per-policy config shapes (all 20 Authz* types) are in the **`constructive-security`** skill
 > `references/authz-types.md`. A few common ones:
 
 | Policy Type | Purpose | Key config |

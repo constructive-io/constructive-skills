@@ -1,6 +1,8 @@
 # Safegres Authz* Policy Types — Detailed Reference
 
-Complete documentation for all 17 leaf policy node types and the `AuthzComposite` meta-node.
+Complete documentation for all 19 leaf policy node types and the `AuthzComposite` meta-node.
+
+> **Registry note:** 18 of these (including `AuthzSystemOnly`) are blueprint-selectable RLS nodes in the `node_type_registry`. `AuthzHumanOnly` is the exception — it is a platform-applied guard on credential/principal mutations rather than a user-selectable node, documented here for completeness.
 
 Each policy is described as:
 - **Intent**: what it's for
@@ -445,6 +447,64 @@ Effective: org members can read; org members with is_read_only=true cannot inser
 ```
 
 **Tags:** `membership`, `authz`, `restrictive`
+
+---
+
+## 18) `AuthzSystemOnly`
+
+> **Restrictive, machine-only.** Restricts a privilege to system-initiated sessions (database triggers, background jobs). Normal API requests — even the owning human or an admin — are denied.
+
+**Intent:** Only the platform itself may write the row.
+
+**Config:**
+```json
+{}
+```
+
+**Semantics:** Authorize only when the session's `role_type` claim equals `'system'`. Generates `jwt_public.current_role_type() = 'system'`. Ordinary `authenticate`/`authenticate_strict` sessions default to `role_type = 'user'`, so they never pass; `role_type` is set to `'system'` only inside trigger/worker execution contexts.
+
+**Use when:**
+- `INSERT`/`UPDATE` policies on append-only event, audit, and usage tables that must only be written by triggers or workers (e.g. event-tracker rows, `*_log` tables, usage rollups, billing meters).
+- A table where humans may `SELECT` (via a separate permissive policy) but only the platform may write.
+
+**Avoid when:**
+- The write should be performed by a user or an agent — use SPRT-based policies (`AuthzEntityMembership`, `AuthzDirectOwner`, …) instead.
+- You want to block only agents/API keys while still allowing humans — that is `AuthzHumanOnly` (below), not `AuthzSystemOnly`.
+
+**Pairing:** Apply as a restrictive write policy alongside a permissive read policy:
+
+```
+Policy 1 (permissive, SELECT): AuthzEntityMembership { entity_field: "org_id", membership_type: 2 }
+Policy 2 (restrictive, INSERT/UPDATE): AuthzSystemOnly {}
+Effective: org members can read; only system sessions (triggers/jobs) can write
+```
+
+**Tags:** `authz`, `system`, `restrictive`
+
+---
+
+## 19) `AuthzHumanOnly`
+
+> **Guard-style, human-only.** Blocks principals (agents / API keys) from a sensitive mutation so that only the owning human can perform it. This is the counterpart to `AuthzSystemOnly`: `AuthzHumanOnly` blocks non-human principals, `AuthzSystemOnly` blocks everyone who is not the platform.
+>
+> **Note:** Unlike the other entries, `AuthzHumanOnly` is not a blueprint-selectable RLS node in the `node_type_registry`; it is applied by the platform as an inline guard inside SECURITY DEFINER credential/principal mutations. It is documented here for completeness. For the SQL-level details see the `constructive-db-principals` and `constructive-db-security` skills.
+
+**Intent:** Only a human session (not a delegated principal) may call the operation.
+
+**Config:**
+```json
+{}
+```
+
+**Semantics:** Authorize only when `current_principal_id() = current_user_id()`. For human sessions the two ids are identical; for principal (agent / API-key) sessions they differ, so the check fails and the mutation is blocked.
+
+**Use when:**
+- Credential and principal lifecycle mutations that a bot must never invoke on its owner's behalf — `createApiKey`/`revokeApiKey`, `createOrgPrincipal`/`deleteOrgPrincipal`, `createOrgApiKey`/`revokeOrgApiKey`.
+
+**Avoid when:**
+- Regular data access — SPRT-based policies already resolve `current_principal_id()` correctly, so principals get exactly their subset of permissions without an extra guard.
+
+**Tags:** `authz`, `principal`, `human-only`
 
 ---
 

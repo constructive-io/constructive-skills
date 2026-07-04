@@ -123,7 +123,7 @@ See `constructive-billing` skill for limits, billing, and plan cascade details.
 
 ## Security Nodes (Authz*)
 
-18 policy types — see `constructive-security` skill for the full reference.
+19 registry-selectable policy types — see `constructive-security` skill for the full reference (it additionally documents the platform-applied `AuthzHumanOnly` guard).
 
 | Node | Description |
 |------|-------------|
@@ -145,6 +145,7 @@ See `constructive-billing` skill for limits, billing, and plan cascade details.
 | `AuthzNotReadOnly` | Blocks mutations for read-only members |
 | `AuthzAllowAll` | Permissive: grants access to all authenticated users |
 | `AuthzDenyAll` | Restrictive: denies all access (explicit block) |
+| `AuthzSystemOnly` | Restrictive: writes allowed only from system sessions (triggers/jobs), `role_type = 'system'` |
 
 ## Module Presets
 

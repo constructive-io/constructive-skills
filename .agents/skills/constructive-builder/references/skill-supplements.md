@@ -103,7 +103,7 @@ The full node-type catalog is in [`constructive-blueprints` → references/node-
 
 ### Common Policy Types
 
-See [`constructive-security` → references/authz-types.md](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-security) for all 18 Authz* types and their config keys. Most-used in a basic app:
+See [`constructive-security` → references/authz-types.md](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-security) for all 20 Authz* types and their config keys. Most-used in a basic app:
 
 | Policy Type | Purpose | Config key |
 |-------------|---------|------------|
