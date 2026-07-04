@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 18 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
+description: "Authorization — Safegres protocol, 20 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'AuthzSystemOnly', 'AuthzHumanOnly', 'system-only policy', 'system-only writes', 'human-only mutation', 'block agents from writing', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -34,7 +34,7 @@ Use this skill when:
 
 Every user has an "org identity" — a personal org with org-level membership. This unifies "user owns it personally" and "org owns it and user is a member" under a single `AuthzEntityMembership` policy.
 
-## The 18 Authz* Policy Types
+## The 20 Authz* Policy Types
 
 | # | Type | Intent | Key Config |
 |---|------|--------|------------|
@@ -56,6 +56,8 @@ Every user has an "org identity" — a personal org with org-level membership. T
 | 16 | `AuthzFilePath` | Path-scoped file sharing (ltree) | `shares_schema`, `shares_table`, `files_table` |
 | 17 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
 | 18 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | nested AST |
+| 19 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
+| 20 | `AuthzHumanOnly` | Block principals (agents/API keys) from a mutation — human sessions only (guard, not a registry node) | `{}` |
 
 See [authz-types.md](./references/authz-types.md) for full config shapes, semantics, and examples.
 
@@ -242,7 +244,7 @@ See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the 
 
 | File | Content |
 |------|---------|
-| [authz-types.md](./references/authz-types.md) | All 18 Authz* types with config shapes and examples |
+| [authz-types.md](./references/authz-types.md) | All 20 Authz* types with config shapes and examples |
 | [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |

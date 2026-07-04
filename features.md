@@ -59,7 +59,7 @@ Three independent toggles that compose freely:
 
 Row-level security on every table, powered by the Safegres authorization protocol. Security policies are expressed as composable Authz* nodes — no hand-written SQL policies required.
 
-### 18 Policy Types
+### 19 Policy Types
 
 | Policy | Purpose |
 |--------|---------|
@@ -81,6 +81,7 @@ Row-level security on every table, powered by the Safegres authorization protoco
 | `AuthzComposite` | Boolean tree (AND / OR / NOT) of other policies |
 | `AuthzAllowAll` | Unconditional allow |
 | `AuthzDenyAll` | Unconditional deny |
+| `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type = 'system'` |
 
 ### Policy Composition
 
@@ -234,7 +235,7 @@ B-tree, GIN, GiST, BRIN, and hash access methods. Partial indexes, unique indexe
 |----------|-------|---------|
 | **Data** (23) | Field generators and triggers | Auto-timestamps, people-stamps, slugs, tags, soft delete, archivable, status fields, JSONB columns, composite fields, publish state, i18n translations, bulk mutations, field protection, value inheritance, entity ownership |
 | **Search** (7) | Search indexes | Full-text (tsvector + GIN), BM25 ranking, trigram fuzzy match, vector embeddings (HNSW/IVFFlat), PostGIS spatial, spatial aggregates, unified multi-algorithm |
-| **Security** (18) | RLS policy types | All 18 Authz* types listed above |
+| **Security** (19) | RLS policy types | All 19 Authz* types listed above |
 | **Relation** (5) | Relation types | BelongsTo, HasMany, HasOne, ManyToMany, Spatial |
 | **View** (5) | Materialized views | Table projections, joined tables, aggregated views, filtered views, composite CTEs |
 | **Process** (5) | File/media processing | File embedding, image embedding, image versions, text chunking, structured extraction |

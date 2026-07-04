@@ -17,7 +17,7 @@
  * `policies_raw` escape hatches (passed through verbatim) and `// TODO: advanced`
  * seams the emitter writes. See:
  *   - constructive-blueprints/references/blueprint-definition-format.md (every key)
- *   - constructive-security/references/authz-types.md (the 18 Authz* shapes)
+ *   - constructive-security/references/authz-types.md (the 20 Authz* shapes)
  *
  * ALL_CRUD and JUNCTION_POLICY_SHORTHAND live here (the policy kernel) and are
  * re-used by the blueprint-assembly module — keeping them here avoids a cycle

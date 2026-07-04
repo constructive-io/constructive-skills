@@ -87,7 +87,7 @@ The node type registry defines all node types available in blueprint definitions
 - **Job nodes** — `JobTrigger`
 - **Event nodes** — `EventTracker`, `EventReferral`
 - **Limit nodes** — `LimitCounter`, `LimitAggregate`, `LimitFeatureFlag`
-- **Security nodes** — all 18 Authz* policy types (see `constructive-security`)
+- **Security nodes** — all 19 registry-selectable Authz* policy types, incl. `AuthzSystemOnly` (see `constructive-security`)
 
 See [node-type-registry.md](./references/node-type-registry.md) for the full catalog.
 
