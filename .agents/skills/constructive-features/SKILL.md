@@ -40,7 +40,10 @@ Want to assemble these features into a working app rather than look one up? Use 
 | Force MFA on new devices | `devices_module` + `app_settings_device.require_mfa_new_device` | `full` | [`constructive-platform`](../constructive-auth/references/device-settings.md) |
 | User settings (extensible 1:1 preferences) | `user_settings_module` | `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Sessions (server-side) | `sessions_module` | all presets except `minimal`-without-auth | [`constructive-platform`](../constructive-platform/SKILL.md) |
-| API keys | `user_state_module` | all presets | [`constructive-platform`](../constructive-platform/SKILL.md) |
+| API keys | `user_state_module` + `principal_auth_module` | all presets | [`constructive-principals`](../constructive-principals/SKILL.md) |
+| Principals (scoped sub-identities for API keys & agents) | `principal_auth_module` (auto with `user_auth_module`) | all auth presets | [`constructive-principals`](../constructive-principals/SKILL.md) |
+| Read-only API keys (transaction-level) | `accessLevel: 'read_only'` on the key | — (per-key) | [`constructive-principals`](../constructive-principals/SKILL.md) |
+| Org-scoped API keys / agent credentials | `createOrgApiKey` + `principalEntity` scoping | `b2b`, `full` | [`constructive-principals`](../constructive-principals/SKILL.md) |
 | Encrypted secrets (per-user) | `config_secrets_user_module` | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Encrypted secrets (org-scoped) | `config_secrets_org_module` | standalone (not in presets yet) | [`constructive-platform`](../constructive-platform/SKILL.md) |
 | Encrypted secrets (app-wide, admin-only) | `app_secrets` (part of `config_secrets_user_module`) | `auth:email`+, `b2b`, `full` | [`constructive-platform`](../constructive-platform/SKILL.md) |

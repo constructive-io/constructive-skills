@@ -14,6 +14,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-builder** | agentic-flow harness | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, Chrome-verify a working CRUD app in under 10 minutes (4 phases, 3 policy tiers) |
 | **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
+| **constructive-principals** | *(standalone)* | Scoped sub-identities for API keys and agents — API key lifecycle, org scoping, read-only keys (SDK ORM) |
 | **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — Safegres, Authz* types, RLS, grants, storage policies |
 | **constructive-access-control** | *(standalone)* | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | constructive-sdk-entities | Multi-tenancy, memberships, invites, entity types, entity-scoped storage |

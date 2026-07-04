@@ -121,3 +121,4 @@ See [identity-linking.md](./references/identity-linking.md) for the full flow di
 - **Security policies (Authz* types):** [`constructive-security`](../constructive-security/SKILL.md)
 - **Entity memberships and invites:** [`constructive-entities`](../constructive-entities/SKILL.md)
 - **Read-only API keys (`accessLevel`):** [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md)
+- **API keys & agent identities (principals):** [`constructive-principals`](../constructive-principals/SKILL.md)

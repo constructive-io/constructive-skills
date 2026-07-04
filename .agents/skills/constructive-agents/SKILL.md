@@ -164,3 +164,4 @@ The agent module auto-registers these permissions on install:
 - **File uploads (storage tables):** [`constructive-storage`](../constructive-storage/SKILL.md)
 - **Background jobs (embedding worker):** [`constructive-jobs`](../constructive-jobs/SKILL.md)
 - **Blueprint definitions:** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
+- **Agent identity & credentials (principals / API keys):** [`constructive-principals`](../constructive-principals/SKILL.md)
