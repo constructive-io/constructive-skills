@@ -39,6 +39,10 @@ Each umbrella skill has a `SKILL.md` router and a `references/` directory with d
 
 ## Creating a New Skill
 
+### Rule: Document the SDK/ORM API Surface Only — Never Direct SQL
+
+Skills in this repository are API documentation for app builders. All examples MUST use the public SDK/ORM surface (`db.table.update(...)`, `db.query.requireStepUp(...)`, blueprint JSON, generated hooks/CLI) — never raw SQL (`UPDATE metaschema_public.table SET ...`, `psql`, direct table access). SQL is an internal implementation detail; showing it teaches agents to bypass the supported API. If a capability is only reachable via SQL, that's an SDK gap to flag — not something to document here. (Describing *generated* SQL behavior, e.g. "generates `WHEN (OLD.created_at < ...)`", is fine; authoring SQL is not.)
+
 ### Directory Structure
 
 ```

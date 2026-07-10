@@ -85,6 +85,8 @@ Optional frontmatter fields:
 
 ## Key Design Principles
 
+- **Document the SDK/ORM API surface only — never direct SQL.** Skills are API documentation for app builders: all examples must use the public SDK/ORM (`db.table.update(...)`, blueprint JSON, generated hooks/CLI), never raw SQL or direct table access. If something is only reachable via SQL, flag it as an SDK gap instead of documenting the SQL. (Describing generated SQL behavior is fine; authoring SQL is not.)
+
 - Skills are loaded on-demand (only name/description at startup, full SKILL.md when activated)
 - Keep SKILL.md under 500 lines; put detailed docs in `references/` directory
 - Write specific descriptions with trigger phrases so agents know when to activate
