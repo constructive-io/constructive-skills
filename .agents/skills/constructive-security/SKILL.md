@@ -174,6 +174,51 @@ const result = await db.query.requireStepUp({ stepUpType: 'password' }).execute(
 
 The `step_up_window` is configured in `appSettingsAuth` (default 30 minutes). After a successful `verifyPassword()` or `verifyTotp()`, mutations on guarded tables are allowed for the duration of the window.
 
+### Declarative `step_up` field (simple front door)
+
+For simple cases, skip the blueprint node and set the `stepUp` field on the table row itself — a map of DML verb → step-up spec. The platform reconciles the field into guard triggers automatically (create, change, and remove are all declarative):
+
+```typescript
+// Require the default (password_or_mfa) step-up on DELETE
+await db.table.update({
+  where: { id: tableId },
+  data: { stepUp: { DELETE: true } },
+}).execute();
+
+// Per-verb types
+await db.table.update({
+  where: { id: tableId },
+  data: { stepUp: { DELETE: 'mfa', UPDATE: 'password_or_mfa' } },
+}).execute();
+
+// min_age: guard only fires for rows older than the interval —
+// freshly created rows can be deleted/updated without step-up
+await db.table.update({
+  where: { id: tableId },
+  data: { stepUp: { DELETE: { type: 'mfa', min_age: '24 hours' } } },
+}).execute();
+
+// Remove all guards
+await db.table.update({
+  where: { id: tableId },
+  data: { stepUp: null },
+}).execute();
+```
+
+**Value shapes** (validated at write time — invalid shapes are rejected):
+
+| Value | Meaning |
+|-------|---------|
+| `true` | Default `password_or_mfa` step-up |
+| `'password'` \| `'mfa'` \| `'password_or_mfa'` | Specific verification type |
+| `{ type?, min_age? }` | Object form — `type` defaults to `password_or_mfa`; `min_age` is an interval string (e.g. `'6 hours'`) gating the guard to rows older than that age |
+
+**`min_age` rules:** `UPDATE`/`DELETE` only (new rows have no age); requires the table to have a `created_at` column (e.g. via `DataTimestamps`); cannot be combined with `watch_fields`. Use it to keep fresh scratch rows friction-free while protecting anything long-lived (the platform itself uses 6 hours for namespaces and 24 hours for database/table deletion).
+
+**Ordering-safe:** if the auth module isn't provisioned yet, the intent stays pending in the field and is applied automatically when auth installs — modules provisioned before auth can still declare guards.
+
+**Policy:** the field is sugar over the same GuardStepUp engine (one-way, no sync). Use the field unless you need `conditions`/`watch_fields` — then use the `GuardStepUp` blueprint node.
+
 ## Storage Policies
 
 Configurable per-bucket RLS via `storage_config.policies[]` on entity_type_provision:

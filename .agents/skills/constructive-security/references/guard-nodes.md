@@ -93,6 +93,33 @@ Fires only when BOTH `NEW.role = 'admin'` AND `NEW.status = 'active'`.
 
 Fires when `NEW.role` is anything OTHER than `'viewer'`.
 
+#### min_age — only guard rows older than an interval
+
+```jsonc
+{ "$type": "GuardStepUp", "data": {
+    "events": ["DELETE"],
+    "step_up_type": "mfa",
+    "min_age": "24 hours"
+}}
+```
+
+Generates `WHEN (OLD.created_at < now() - interval '24 hours')` — freshly created rows can be mutated without step-up; anything older requires it. Rules:
+
+- `UPDATE`/`DELETE` events only (new rows have no age)
+- Requires a `created_at` column on the table (e.g. via `DataTimestamps`)
+- Cannot be combined with `watch_fields`
+
+### Declarative `step_up` field
+
+For guards without conditions/watch_fields, prefer the `stepUp` field on the table row (see the `Declarative step_up field` section in SKILL.md). It accepts a verb → spec map where each spec is `true`, a type string, or `{ type?, min_age? }`, and the platform reconciles it into guard triggers automatically — including removing them when the field is cleared:
+
+```typescript
+await db.table.update({
+  where: { id: tableId },
+  data: { stepUp: { DELETE: { min_age: '6 hours' } } },
+}).execute();
+```
+
 ### Condition System
 
 The conditions use the same compound condition system as `JobTrigger` and `EventTracker`:
