@@ -264,6 +264,8 @@ All 28 node types from the `node_type_registry`:
 | `DataTags` | `text[]` tags field + GIN index | `field_name` (default `'tags'`) |
 | `DataJsonb` | `jsonb` field with default `'{}'` | `field_name` (default `'data'`) |
 | `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger | `field_name` (default `'embedding_text'`), `source_fields` (required, array of `{"field": "name", "weight": "A"\|"B"\|"C"\|"D"}`), `separator` (default `' '`) |
+| `DataGenerated` | Native PostgreSQL `GENERATED ALWAYS AS (expr) STORED` column computed from source fields | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
+
 
 #### Behavior Triggers (trigger-only — attach to existing fields)
 
