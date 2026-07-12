@@ -1,8 +1,8 @@
 # Safegres Authz* Policy Types — Detailed Reference
 
-Complete documentation for all 19 leaf policy node types and the `AuthzComposite` meta-node.
+Complete documentation for all 22 leaf policy node types and the `AuthzComposite` meta-node.
 
-> **Registry note:** 18 of these (including `AuthzSystemOnly`) are blueprint-selectable RLS nodes in the `node_type_registry`. `AuthzHumanOnly` is the exception — it is a platform-applied guard on credential/principal mutations rather than a user-selectable node, documented here for completeness.
+> **Registry note:** 21 of these (including `AuthzSystemOnly` and the three `AuthzValue*` nodes) are blueprint-selectable RLS nodes in the `node_type_registry`. `AuthzHumanOnly` is the exception — it is a platform-applied guard on credential/principal mutations rather than a user-selectable node, documented here for completeness.
 
 Each policy is described as:
 - **Intent**: what it's for
@@ -505,6 +505,126 @@ Effective: org members can read; only system sessions (triggers/jobs) can write
 - Regular data access — SPRT-based policies already resolve `current_principal_id()` correctly, so principals get exactly their subset of permissions without an extra guard.
 
 **Tags:** `authz`, `principal`, `human-only`
+
+---
+
+## 20) `AuthzValueAllowed`
+
+**Intent:** Check a local column against a set of allowed values.
+
+**Config:**
+```json
+{
+  "column": "status",
+  "allowed": ["pending", "ready"],
+  "operator": "in"
+}
+```
+
+Required keys:
+- `column` — column name on the protected row
+- `allowed` — a string column reference, or an array of literal string/number/boolean values
+- `operator` — one of `in`, `any`, `overlap`, `contains`, `contained`
+
+**Semantics:** Authorize when the protected row's `column` satisfies the configured operator against `allowed`.
+
+| `column` type | `operator` | Meaning |
+|---------------|------------|---------|
+| scalar | `in` | `column = value` or `column IN (value1, value2, ...)` |
+| scalar | `any` | `column = ANY(allowed)` |
+| array | `overlap` | `column && allowed` (array overlap) |
+| array | `contains` | `column @> allowed` |
+| array | `contained` | `column <@ allowed` |
+
+**Use when:**
+- You need a simple data-driven check (e.g. `status IN ('pending','ready')`, `role = 'admin'`, `tags && ARRAY['public']`).
+
+**Avoid when:**
+- The check needs to look up another table. Use `AuthzValueExists` or `AuthzValueMatch` instead.
+
+---
+
+## 21) `AuthzValueExists`
+
+**Intent:** `EXISTS` in a referenced table, joined to the protected row.
+
+**Config:**
+```json
+{
+  "ref_schema": "compute_public",
+  "ref_table": "function_definitions",
+  "join": [
+    { "local_column": "task_identifier", "ref_column": "task_identifier", "operator": "=" }
+  ],
+  "conditions": [
+    { "field": "is_published", "op": "=", "value": true, "row": "d" },
+    { "field": "published_at", "op": "IS NULL", "row": "d" }
+  ]
+}
+```
+
+Required keys:
+- `ref_schema` / `ref_table` — target table to check
+- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the ref table
+
+Optional keys:
+- `conditions` — array of `build_condition_expr` conditions evaluated against the ref table (alias `d` by default)
+
+**Semantics:** `EXISTS (SELECT 1 FROM ref_schema.ref_table d WHERE d.ref_column = protected.local_column ... AND conditions)`.
+
+**Use when:**
+- You need to assert that a related row exists with specific properties before allowing the operation.
+
+**Avoid when:**
+- The ref table check should also require a value match on the ref row. Use `AuthzValueMatch` instead.
+
+> **Warning: `join` is currently intended for `INSERT` (`WITH CHECK`) policies only.**
+> The `join` references the protected row with the protected table name. This is well-defined for `INSERT`, where the row being checked is the new row. For `UPDATE`/`DELETE`/`SELECT` policies the row alias semantics differ (`OLD` vs `NEW`) and the `join` may not reference the intended row. Use `AuthzValueExists`/`AuthzValueMatch` with `join` only on `INSERT` until the generator supports explicit row aliases.
+
+---
+
+## 22) `AuthzValueMatch`
+
+**Intent:** `EXISTS` in a referenced table where a ref column matches an allowed set.
+
+**Config:**
+```json
+{
+  "ref_schema": "compute_public",
+  "ref_table": "function_definitions",
+  "join": [
+    { "local_column": "task_identifier", "ref_column": "task_identifier", "operator": "=" }
+  ],
+  "match": {
+    "ref_column": "access_channels",
+    "allowed": ["job", "public_catalog"],
+    "operator": "overlap"
+  },
+  "conditions": [
+    { "field": "is_published", "op": "=", "value": true, "row": "d" },
+    { "field": "published_at", "op": "<=", "value": { "function": "now" }, "row": "d" }
+  ]
+}
+```
+
+Required keys:
+- `ref_schema` / `ref_table` — target table
+- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the ref table
+- `match` — `{ ref_column, allowed, operator }` (same operator set as `AuthzValueAllowed`)
+
+Optional keys:
+- `conditions` — array of `build_condition_expr` conditions evaluated against the ref table (alias `d` by default)
+
+**Semantics:** `EXISTS (SELECT 1 FROM ref_schema.ref_table d WHERE d.ref_column = protected.local_column ... AND d.match_column <operator> allowed AND conditions)`.
+
+**Use when:**
+- You need to check that a related row exists and one of its columns matches an allowed value set, e.g. `function_definitions.access_channels` overlaps `['job', 'public_catalog']`.
+
+**Avoid when:**
+- The allowed set should come from a column on the protected row and a single equality is enough. `AuthzValueAllowed` may be simpler.
+
+> **Warning: `join` is currently intended for `INSERT` (`WITH CHECK`) policies only.**
+> Same caveat as `AuthzValueExists`: the `join` references the protected row by the protected table name and is designed for `INSERT` (`WITH CHECK`). Using it for `UPDATE`/`DELETE`/`SELECT` can reference the wrong row alias.
 
 ---
 

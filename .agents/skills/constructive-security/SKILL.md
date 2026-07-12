@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 20 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'AuthzSystemOnly', 'AuthzHumanOnly', 'system-only policy', 'system-only writes', 'human-only mutation', 'block agents from writing', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
+description: "Authorization — Safegres protocol, 23 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'AuthzSystemOnly', 'AuthzHumanOnly', 'AuthzValueAllowed', 'AuthzValueExists', 'AuthzValueMatch', 'system-only policy', 'system-only writes', 'human-only mutation', 'block agents from writing', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -34,7 +34,7 @@ Use this skill when:
 
 Every user has an "org identity" — a personal org with org-level membership. This unifies "user owns it personally" and "org owns it and user is a member" under a single `AuthzEntityMembership` policy.
 
-## The 20 Authz* Policy Types
+## The 23 Authz* Policy Types
 
 | # | Type | Intent | Key Config |
 |---|------|--------|------------|
@@ -58,6 +58,9 @@ Every user has an "org identity" — a personal org with org-level membership. T
 | 18 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | nested AST |
 | 19 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
 | 20 | `AuthzHumanOnly` | Block principals (agents/API keys) from a mutation — human sessions only (guard, not a registry node) | `{}` |
+| 21 | `AuthzValueAllowed` | Check local column against allowed values | `column`, `allowed`, `operator` |
+| 22 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row | `ref_schema`/`ref_table`, `join`, `conditions` |
+| 23 | `AuthzValueMatch` | `EXISTS` in a related table with a value match on the ref row | `ref_schema`/`ref_table`, `join`, `match`, `conditions` |
 
 See [authz-types.md](./references/authz-types.md) for full config shapes, semantics, and examples.
 
