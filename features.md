@@ -59,7 +59,7 @@ Three independent toggles that compose freely:
 
 Row-level security on every table, powered by the Safegres authorization protocol. Security policies are expressed as composable Authz* nodes — no hand-written SQL policies required.
 
-### 19 Policy Types
+### 23 Policy Types
 
 | Policy | Purpose |
 |--------|---------|
@@ -82,6 +82,10 @@ Row-level security on every table, powered by the Safegres authorization protoco
 | `AuthzAllowAll` | Unconditional allow |
 | `AuthzDenyAll` | Unconditional deny |
 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type = 'system'` |
+| `AuthzValueAllowed` | Check local column against an allowed set of values |
+| `AuthzValueExists` | `EXISTS` in a related table joined to the protected row |
+| `AuthzValueMatch` | `EXISTS` in a related table with a value match on the reference row |
+| `AuthzHumanOnly` | Block principals (agents/API keys) from a mutation — human sessions only (platform-applied guard) |
 
 ### Policy Composition
 
@@ -229,13 +233,13 @@ B-tree, GIN, GiST, BRIN, and hash access methods. Partial indexes, unique indexe
 
 ### Behavior Triggers (Node Types)
 
-79 declarative node types across 12 categories — add behavior to any table without writing SQL:
+84 declarative node types across 12 categories — add behavior to any table without writing SQL:
 
 | Category | Nodes | Examples |
 |----------|-------|---------|
-| **Data** (23) | Field generators and triggers | Auto-timestamps, people-stamps, slugs, tags, soft delete, archivable, status fields, JSONB columns, composite fields, publish state, i18n translations, bulk mutations, field protection, value inheritance, entity ownership |
+| **Data** (24) | Field generators and triggers | Auto-timestamps, people-stamps, slugs, tags, soft delete, archivable, status fields, JSONB columns, composite fields, generated columns, publish state, i18n translations, bulk mutations, field protection, value inheritance, entity ownership |
 | **Search** (7) | Search indexes | Full-text (tsvector + GIN), BM25 ranking, trigram fuzzy match, vector embeddings (HNSW/IVFFlat), PostGIS spatial, spatial aggregates, unified multi-algorithm |
-| **Security** (19) | RLS policy types | All 19 Authz* types listed above |
+| **Security** (22) | RLS policy types | All 22 selectable Authz* types listed above (plus the `AuthzHumanOnly` guard documented in `constructive-security`) |
 | **Relation** (5) | Relation types | BelongsTo, HasMany, HasOne, ManyToMany, Spatial |
 | **View** (5) | Materialized views | Table projections, joined tables, aggregated views, filtered views, composite CTEs |
 | **Process** (5) | File/media processing | File embedding, image embedding, image versions, text chunking, structured extraction |
