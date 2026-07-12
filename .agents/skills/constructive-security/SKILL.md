@@ -55,7 +55,7 @@ Every user has an "org identity" — a personal org with org-level membership. T
 | 15 | `AuthzDenyAll` | Unconditional deny | `{}` |
 | 16 | `AuthzFilePath` | Path-scoped file sharing (ltree) | `shares_schema`, `shares_table`, `files_table` |
 | 17 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
-| 18 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | nested AST |
+| 18 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or legacy `BoolExpr` AST) |
 | 19 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
 | 20 | `AuthzHumanOnly` | Block principals (agents/API keys) from a mutation — human sessions only (guard, not a registry node) | `{}` |
 | 21 | `AuthzValueAllowed` | Check local column against allowed values | `column`, `allowed`, `operator` |

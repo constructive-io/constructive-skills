@@ -256,7 +256,7 @@ Optional keys:
 - Expiring invites.
 - Open-ended "accessible after publish date" (use `valid_from_field` only).
 
-> **Combination guidance:** `AuthzTemporal` answers *when* access is valid, not *who* has access. On its own it means "anyone can access within the time window." In practice, always combine it with an identity-based policy — either as a **restrictive** top-level policy (ANDed with a permissive identity policy) or inside an `AuthzComposite` `BoolExpr`.
+> **Combination guidance:** `AuthzTemporal` answers *when* access is valid, not *who* has access. On its own it means "anyone can access within the time window." In practice, always combine it with an identity-based policy — either as a **restrictive** top-level policy (ANDed with a permissive identity policy) or inside an `AuthzComposite` boolean tree (`AND`/`OR`/`NOT`).
 
 > **Overlap with `AuthzPublishable`:** You could approximate published-content gating with `AuthzTemporal` (e.g. `valid_from_field: "published_at"` with no `valid_until_field`). However, `AuthzPublishable` additionally provides the `is_published` boolean toggle, which lets authors unpublish content independently of time. Use `AuthzPublishable` when you need an explicit on/off switch; use `AuthzTemporal` when access is purely time-driven.
 
@@ -284,7 +284,7 @@ Optional keys:
 - Public content that is only visible after publishing.
 - **Only for `select`** — never for `insert`, `update`, or `delete`.
 
-> **Combination guidance:** `AuthzPublishable` answers *whether content is published*, not *who* can see it. On its own it means "anyone can see published content." In practice, always combine it with an identity-based policy — either as a **restrictive** top-level policy (ANDed with a permissive identity policy like `AuthzEntityMembership`) or inside an `AuthzComposite` `BoolExpr`. See the "Permissive vs Restrictive policies in RLS" section for examples.
+> **Combination guidance:** `AuthzPublishable` answers *whether content is published*, not *who* can see it. On its own it means "anyone can see published content." In practice, always combine it with an identity-based policy — either as a **restrictive** top-level policy (ANDed with a permissive identity policy like `AuthzEntityMembership`) or inside an `AuthzComposite` boolean tree (`AND`/`OR`/`NOT`). See the "Permissive vs Restrictive policies in RLS" section for examples.
 
 > **Typical pattern (e.g., blog posts):**
 > 1. `AuthzEntityMembership` (permissive) for `select`, `insert`, `update`, `delete` — locks down all CRUD to org/entity members (authors).
@@ -632,7 +632,7 @@ Optional keys:
 
 `AuthzComposite` lets you build a boolean expression tree (AND/OR/NOT) over Safegres nodes.
 
-The `data` for an `AuthzComposite` is itself an AST node that the system recursively evaluates. It can be either a single Authz* leaf node or a `BoolExpr` combining multiple nodes.
+The `data` for an `AuthzComposite` is a boolean expression tree the system recursively evaluates. You can write it with user-friendly `AND`, `OR`, and `NOT` keywords, or with a raw `BoolExpr` AST node for legacy/power-user cases.
 
 **Single leaf node wrap** — delegates to one Authz* node:
 ```json
@@ -644,7 +644,45 @@ The `data` for an `AuthzComposite` is itself an AST node that the system recursi
 }
 ```
 
-**`BoolExpr` AND** — all conditions must pass:
+**`AND` — all conditions must pass:**
+```json
+{
+  "AND": [
+    { "AuthzTemporal": { "valid_from_field": "publish_at" } },
+    { "AuthzDirectOwner": { "entity_field": "owner_id" } }
+  ]
+}
+```
+
+**`OR` — any condition grants access:**
+```json
+{
+  "OR": [
+    {
+      "AuthzEntityMembership": {
+        "entity_field": "owner_id",
+        "membership_type": "Organization Member"
+      }
+    },
+    {
+      "AuthzAppMembership": {
+        "permission": "create_invites"
+      }
+    }
+  ]
+}
+```
+
+**`NOT` — negate a single node:**
+```json
+{
+  "NOT": {
+    "AuthzSystemOnly": {}
+  }
+}
+```
+
+**Legacy `BoolExpr` AST** (still supported):
 ```json
 {
   "BoolExpr": {
@@ -652,28 +690,6 @@ The `data` for an `AuthzComposite` is itself an AST node that the system recursi
     "args": [
       { "AuthzTemporal": { "valid_from_field": "publish_at" } },
       { "AuthzDirectOwner": { "entity_field": "owner_id" } }
-    ]
-  }
-}
-```
-
-**`BoolExpr` OR** — any condition grants access:
-```json
-{
-  "BoolExpr": {
-    "boolop": "OR_EXPR",
-    "args": [
-      {
-        "AuthzEntityMembership": {
-          "entity_field": "owner_id",
-          "membership_type": "Organization Member"
-        }
-      },
-      {
-        "AuthzAppMembership": {
-          "permission": "create_invites"
-        }
-      }
     ]
   }
 }
@@ -754,29 +770,20 @@ This requires OR-ing two AND-groups — impossible with flat permissive/restrict
 
 ```json
 {
-  "BoolExpr": {
-    "boolop": "OR_EXPR",
-    "args": [
-      {
-        "BoolExpr": {
-          "boolop": "AND_EXPR",
-          "args": [
-            { "AuthzEntityMembership": { "entity_field": "organization_id", "membership_type": 2 } },
-            { "AuthzPublishable": {} }
-          ]
-        }
-      },
-      {
-        "BoolExpr": {
-          "boolop": "AND_EXPR",
-          "args": [
-            { "AuthzDirectOwner": { "entity_field": "owner_id" } },
-            { "AuthzTemporal": { "valid_from_field": "starts_at", "valid_until_field": "ends_at" } }
-          ]
-        }
-      }
-    ]
-  }
+  "OR": [
+    {
+      "AND": [
+        { "AuthzEntityMembership": { "entity_field": "organization_id", "membership_type": 2 } },
+        { "AuthzPublishable": {} }
+      ]
+    },
+    {
+      "AND": [
+        { "AuthzDirectOwner": { "entity_field": "owner_id" } },
+        { "AuthzTemporal": { "valid_from_field": "starts_at", "valid_until_field": "ends_at" } }
+      ]
+    }
+  ]
 }
 ```
 
