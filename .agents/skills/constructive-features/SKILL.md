@@ -57,7 +57,7 @@ Want to assemble these features into a working app rather than look one up? Use 
 | Feature | Gate | In preset | Skill |
 |---|---|---|---|
 | Row-level security on every table | `rls_module` + `secure_table_provision` | all | [`constructive-security`](../constructive-security/SKILL.md) |
-| 18 `Authz*` policy node types | Node Type Registry | — | [`constructive-security`](../constructive-security/SKILL.md) |
+| 23 `Authz*` policy types | Node Type Registry | — | [`constructive-security`](../constructive-security/SKILL.md) |
 | Read-only API (API-level) | `api.read_only = true` | — (runtime toggle) | [`constructive-platform`](../constructive-platform/references/services-schemas.md) |
 | Read-only members | `AuthzNotReadOnly` + membership field | — (policy-level) | [`constructive-security`](../constructive-security/SKILL.md) |
 | Granular permissions | `permissions_module` | `b2b`, `full` | [`constructive-access-control`](../constructive-access-control/SKILL.md) |

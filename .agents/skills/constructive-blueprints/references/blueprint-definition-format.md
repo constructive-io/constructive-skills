@@ -264,7 +264,7 @@ All 28 node types from the `node_type_registry`:
 | `DataTags` | `text[]` tags field + GIN index | `field_name` (default `'tags'`) |
 | `DataJsonb` | `jsonb` field with default `'{}'` | `field_name` (default `'data'`) |
 | `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger | `field_name` (default `'embedding_text'`), `source_fields` (required, array of `{"field": "name", "weight": "A"\|"B"\|"C"\|"D"}`), `separator` (default `' '`) |
-| `DataGenerated` | Native PostgreSQL `GENERATED ALWAYS AS (expr) STORED` column computed from source fields | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
+| `DataGenerated` | Native PostgreSQL `GENERATED ALWAYS AS (expr) STORED` column computed from source fields. `data` also supports `type` (`FieldType`, default `{ name: 'text' }`), `format` (`'labeled'|'plain'`, for `concat`), and `is_required` (default `false`) | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
 
 
 #### Behavior Triggers (trigger-only — attach to existing fields)
@@ -537,7 +537,7 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 | `policy_name` | string | No | Custom policy name |
 | `policy_role` | string | No | Role the policy applies to |
 
-See the [constructive-security](../../constructive-security/SKILL.md) skill for all 14 Authz* policy types and their config shapes.
+See the [constructive-security](../../constructive-security/SKILL.md) skill for all 23 Authz* policy types and their config shapes.
 
 **`entity_type` resolution:** For membership-based policies (`AuthzMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
 
