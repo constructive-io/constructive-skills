@@ -51,15 +51,16 @@ Skills in this repository are API documentation for app builders. All examples M
     SKILL.md              # Required: skill definition
     scripts/              # Required: executable scripts
       {script-name}.sh    # Bash scripts (preferred)
-  {skill-name}.zip        # Required: packaged for distribution
 ```
+
+> `.zip` packages are **not** committed to this repo (they caused constant merge
+> conflicts). `*.zip` is gitignored; distribution packaging happens out-of-band.
 
 ### Naming Conventions
 
 - **Skill directory**: `kebab-case` (e.g., `constructive-codegen`, `log-monitor`)
 - **SKILL.md**: Always uppercase, always this exact filename
 - **Scripts**: `kebab-case.sh` (e.g., `deploy.sh`, `fetch-logs.sh`)
-- **Zip file**: Must match directory name exactly: `{skill-name}.zip`
 
 ### SKILL.md Format
 
@@ -152,11 +153,7 @@ This allows agents helping with ORM queries to read only `orm-patterns.md` inste
 - Include a cleanup trap for temp files
 - Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.sh`
 
-### Creating the Zip Package
+### Packaging
 
-After creating or updating a skill:
-
-```bash
-cd .agents/skills
-zip -r {skill-name}.zip {skill-name}/
-```
+Skill `.zip` archives are not tracked in this repo — `*.zip` is gitignored. Do not
+commit them; if a distributable package is needed it is produced out-of-band.
