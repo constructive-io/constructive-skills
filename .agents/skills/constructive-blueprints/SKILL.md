@@ -81,7 +81,7 @@ See [module-presets.md](./references/module-presets.md) for the full preset cata
 
 The node type registry defines all node types available in blueprint definitions:
 
-- **Data nodes** — field generators: `DataId`, `DataTimestamps`, `DataDirectOwner`, `DataEntityMembership`, `DataOwnershipInEntity`, `DataMemberOwner`, `DataI18n`, `DataPublishable`, `DataGenerated`
+- **Data nodes** — field generators: `DataId`, `DataTimestamps`, `DataDirectOwner`, `DataEntityMembership`, `DataOwnershipInEntity`, `DataMemberOwner`, `DataI18n`, `DataPublishable`, `DataGenerated` (stored or PG18 virtual generated columns via `generation_type`)
 - **Search nodes** — `SearchUnified`, `SearchVector`, `SearchFullText`
 - **Process nodes** — `ProcessFileEmbedding`, `ProcessImageEmbedding`, `ProcessChunks`
 - **Job nodes** — `JobTrigger`
