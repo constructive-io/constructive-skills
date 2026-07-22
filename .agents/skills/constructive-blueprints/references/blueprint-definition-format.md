@@ -264,7 +264,42 @@ All 28 node types from the `node_type_registry`:
 | `DataTags` | `text[]` tags field + GIN index | `field_name` (default `'tags'`) |
 | `DataJsonb` | `jsonb` field with default `'{}'` | `field_name` (default `'data'`) |
 | `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger | `field_name` (default `'embedding_text'`), `source_fields` (required, array of `{"field": "name", "weight": "A"\|"B"\|"C"\|"D"}`), `separator` (default `' '`) |
-| `DataGenerated` | Native PostgreSQL `GENERATED ALWAYS AS (expr) STORED` column computed from source fields. `data` also supports `type` (`FieldType`, default `{ name: 'text' }`), `format` (`'labeled'|'plain'`, for `concat`), and `is_required` (default `false`) | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
+| `DataGenerated` | Native PostgreSQL generated column computed from source fields. Emits `GENERATED ALWAYS AS (expr) STORED` (persisted) or, on PostgreSQL 18+, `GENERATED ALWAYS AS (expr) VIRTUAL` (computed on read) depending on `generation_type`. `data` also supports `type` (`FieldType`, default `{ name: 'text' }`), `format` (`'labeled'|'plain'`, for `concat`), and `is_required` (default `false`) | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `generation_type` (`'stored'` \| `'virtual'`, default `'stored'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
+
+**`generation_type` — stored vs. virtual generated columns**
+
+`DataGenerated` chooses how the computed value is materialized:
+
+- **`'stored'` (default)** — `GENERATED ALWAYS AS (expr) STORED`. The value is computed on write and persisted on disk. Stored columns can be indexed, used as a primary key, and are included in logical replication. This is the right choice for `slug`, `hash`, and `object_name` columns that back unique indexes or lookups.
+- **`'virtual'`** — `GENERATED ALWAYS AS (expr) VIRTUAL` (PostgreSQL 18+). The value is computed on read and never persisted, so it costs no storage and always reflects the current source fields. Virtual columns carry PostgreSQL restrictions: they **cannot be indexed, cannot be a primary key, and are not included in logical replication**. Prefer virtual for lightweight display-only derivations (e.g. a concatenated label) that you never filter, join, or index on.
+
+**Example — stored slug (default), backs a unique index:**
+```json
+{
+  "$type": "DataGenerated",
+  "data": {
+    "target": "slug",
+    "kind": "slug",
+    "source_field": "title"
+  }
+}
+```
+
+**Example — virtual display label (PostgreSQL 18+), never indexed:**
+```json
+{
+  "$type": "DataGenerated",
+  "data": {
+    "target": "full_name",
+    "kind": "concat",
+    "source_fields": ["first_name", "last_name"],
+    "separator": " ",
+    "generation_type": "virtual"
+  }
+}
+```
+
+> **PG18 note:** `generation_type: 'virtual'` requires PostgreSQL 18. If a virtual column needs to be indexed, used as a primary key, or replicated, switch it back to `'stored'`.
 
 
 #### Behavior Triggers (trigger-only — attach to existing fields)

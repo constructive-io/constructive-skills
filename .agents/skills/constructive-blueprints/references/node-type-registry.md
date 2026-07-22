@@ -23,7 +23,7 @@ Source: `constructive-db/packages/node-type-registry/src/`
 | `DataStatusField` | Status column with B-tree index, optional CHECK constraint for allowed values |
 | `DataJsonb` | JSONB column with optional GIN index for containment queries |
 | `DataCompositeField` | Derived text field concatenating multiple source fields via trigger (e.g. `embedding_text`) |
-| `DataGenerated` | Native PostgreSQL `GENERATED ALWAYS AS (expr) STORED` column computed from a source expression |
+| `DataGenerated` | Native PostgreSQL generated column computed from a source expression — `GENERATED ALWAYS AS (expr) STORED` (default) or `... VIRTUAL` (PG18+) via `generation_type` |
 | `DataI18n` | Creates `{table}_translations` table for multilingual content |
 | `DataRealtime` | Per-table subscriber tables + statement-level triggers for realtime subscriptions |
 | `DataBulk` | Enables bulk mutation smart tags (`+bulkInsert`, `+bulkUpsert`, `+bulkUpdate`, `+bulkDelete`) |
