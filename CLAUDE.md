@@ -35,14 +35,6 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-hooks** | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |
 | **constructive-platform** | Server config, services, domains, deployment, env, cloud functions, cnc CLI |
 
-## Commands
-
-### Package a skill for distribution
-```bash
-cd .agents/skills
-zip -r {skill-name}.zip {skill-name}/
-```
-
 ## Skill Structure
 
 ```
@@ -51,8 +43,10 @@ zip -r {skill-name}.zip {skill-name}/
     SKILL.md              # Required: skill definition (keep under 500 lines)
     references/           # Optional: detailed documentation
       {topic}.md
-  {skill-name}.zip        # Required: packaged for distribution
 ```
+
+> `.zip` packages are **not** committed to this repo (they caused constant merge
+> conflicts). `*.zip` is gitignored; do not commit skill archives.
 
 ### SKILL.md Format
 
@@ -81,7 +75,6 @@ Optional frontmatter fields:
 
 - Skill directory: `kebab-case`
 - SKILL.md: Always uppercase, exact filename
-- Zip file: Must match directory name: `{skill-name}.zip`
 
 ## Key Design Principles
 
