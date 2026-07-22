@@ -109,6 +109,7 @@ Want to assemble these features into a working app rather than look one up? Use 
 | Field protection (DataOwnedFields, DataImmutableFields) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataInheritFromParent (copy values from FK parent) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataI18n (translation tables + multilingual search) | `DataI18n` node + `i18n_module` | — | [`constructive-i18n`](../constructive-i18n/SKILL.md) |
+| Custom triggers (transition tables, statement-level, `WHEN`) | `db.trigger.create` + `db.triggerFunction.create` | — | [`constructive-data-modeling`](../constructive-data-modeling/references/triggers.md) |
 | Smart tags (GraphQL schema hints) | field-level | — | [`constructive-codegen`](../constructive-codegen/SKILL.md) |
 
 ## 5. Events & Achievements

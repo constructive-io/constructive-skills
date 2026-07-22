@@ -1,6 +1,6 @@
 ---
 name: constructive-data-modeling
-description: "Tables, fields, relations, constraints, indexes, enums, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'add a primary key', 'add a unique constraint', 'define field types', 'provision a database', 'create an enum', 'api_required', 'temporal table', 'application-time temporal', 'WITHOUT OVERLAPS', 'temporal foreign key', 'WITH PERIOD', 'period column', or when working with metaschema_public operations."
+description: "Tables, fields, relations, constraints, indexes, enums, triggers, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'add a primary key', 'add a unique constraint', 'define field types', 'provision a database', 'create an enum', 'api_required', 'temporal table', 'application-time temporal', 'WITHOUT OVERLAPS', 'temporal foreign key', 'WITH PERIOD', 'period column', 'create a trigger', 'add a trigger', 'trigger function', 'transition tables', 'REFERENCING OLD/NEW TABLE', 'statement-level trigger', 'FOR EACH STATEMENT', 'trigger WHEN clause', or when working with metaschema_public operations."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,6 +19,7 @@ Use this skill when:
 - Configuring field validation (regexp, min, max)
 - Setting `api_required` on nullable FK columns
 - Adding primary key / unique / foreign key constraints
+- Creating custom triggers + trigger functions, including transition tables (`REFERENCING OLD/NEW TABLE AS`), statement-level triggers, and conditional `WHEN` clauses
 - Declaring application-time temporal constraints (PG18): `WITHOUT OVERLAPS` keys and temporal (`WITH PERIOD`) foreign keys
 - Understanding the composition: table → fields → constraints → indexes → relations → security
 
@@ -204,6 +205,44 @@ await db.index.create({
 }).execute();
 ```
 
+## Triggers
+
+Custom triggers are declared via `db.trigger.create`, referencing a trigger
+function created with `db.triggerFunction.create`. Create the function first,
+then the trigger (a trigger row without a `functionName` is registration-only and
+is not provisioned into a physical trigger):
+
+```typescript
+await db.triggerFunction.create({
+  data: { databaseId, name: 'audit_fn', code: 'BEGIN RETURN NULL; END' },
+  select: { id: true },
+}).execute();
+
+await db.trigger.create({
+  data: {
+    databaseId,
+    tableId,
+    name: 'audit',
+    functionName: 'audit_fn',
+    timing: 'after',              // before | after | instead_of
+    events: ['update'],           // insert | update | delete | truncate
+    forEach: 'statement',         // row | statement
+    transitionOldName: 'o',       // REFERENCING OLD TABLE AS o
+    transitionNewName: 'n',       // REFERENCING NEW TABLE AS n
+    whenClause: { field: 'status', op: 'IS DISTINCT FROM', row: 'OLD' },
+  },
+  select: { id: true },
+}).execute();
+// → CREATE TRIGGER audit AFTER UPDATE ON t
+//     REFERENCING OLD TABLE AS o NEW TABLE AS n
+//     FOR EACH STATEMENT EXECUTE FUNCTION audit_fn();
+```
+
+`whenClause` uses the same condition DSL as `JobTrigger`/`EventTracker`. For the
+common declarative behaviors, prefer the Node Type generators (`JobTrigger`,
+`EventTracker`, `DataSlug`, etc.) over hand-authored triggers. See
+[triggers.md](./references/triggers.md) for the full reference.
+
 ## `api_required` (Required API Fields)
 
 For nullable FK columns that should be required at the GraphQL API level:
@@ -223,6 +262,7 @@ await db.field.update({
 | [constraints.md](./references/constraints.md) | Primary key, unique, foreign key, check + application-time temporal (`WITHOUT OVERLAPS` / `WITH PERIOD`) constraints |
 | [field-types.md](./references/field-types.md) | Complete field type reference |
 | [provisioning.md](./references/provisioning.md) | Full database provisioning flow |
+| [triggers.md](./references/triggers.md) | Custom triggers + trigger functions: timing, events, `forEach`, transition tables, `whenClause` DSL |
 
 ## Cross-References
 

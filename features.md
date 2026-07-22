@@ -231,6 +231,10 @@ Declarative schema-as-code via blueprints. Define your entire data model — tab
 
 B-tree, GIN, GiST, BRIN, and hash access methods. Partial indexes, unique indexes, and expression indexes supported.
 
+### Custom Triggers
+
+For logic beyond the built-in node types, custom triggers are authorable directly through the SDK ORM (`db.triggerFunction.create` + `db.trigger.create`) — no raw SQL. Supports `before` / `after` / `instead_of` timing, any combination of `insert` / `update` / `delete` / `truncate` events, row- vs statement-level firing (`FOR EACH ROW` / `FOR EACH STATEMENT`), transition tables (`REFERENCING OLD/NEW TABLE AS`), and conditional `WHEN` clauses via the shared condition DSL.
+
 ### Behavior Triggers (Node Types)
 
 84 declarative node types across 12 categories — add behavior to any table without writing SQL:
