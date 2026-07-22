@@ -103,6 +103,7 @@ Want to assemble these features into a working app rather than look one up? Use 
 | DataPublishable (is_published + published_at) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataCompositeField (derived text concatenation) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | DataGenerated (native PostgreSQL GENERATED ALWAYS AS ... STORED / VIRTUAL columns via `generation_type`) | `DataGenerated` node | — | [`constructive-blueprints`](../constructive-blueprints/SKILL.md) |
+| Identity columns (GENERATED ALWAYS / BY DEFAULT AS IDENTITY + sequence options) | `identityGeneration` field / `DataIdentity` node | — | [`constructive-data-modeling`](../constructive-data-modeling/references/identity-columns.md) |
 | Behavior triggers (DataSlug, DataInflection, DataForceCurrentUser) | Node Type Registry | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | LimitCounter (metered usage tracking) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
 | LimitFeatureFlag (cap-based feature gating) | Node Type Registry + `limits_module` | — | [`constructive-platform`](../constructive-blueprints/references/blueprint-definition-format.md) |
