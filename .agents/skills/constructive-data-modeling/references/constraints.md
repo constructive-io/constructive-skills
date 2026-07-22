@@ -184,7 +184,7 @@ compiles to `ALTER TABLE ... ADD CONSTRAINT ... EXCLUDE USING ...`.
 | `operators` | `string[]` | Per-column operator, positionally aligned with `fieldIds` (`=`, `&&`, ...) |
 | `accessMethod` | `string` | `USING <method>` — defaults to `gist` |
 | `whereClause` | `json` | `WHERE <predicate>` — **partial** exclusion (triggerCondition DSL) |
-| `elementExpr` | `json` | Expression elements — raw-AST escape hatch (array of `{ expr, operator }`) |
+| `elementExpr` | `json` | Expression elements — array of `{ expr, operator }` (`expr` = FieldGeneration DSL or raw AST) |
 | `name` | `string` | Constraint name (auto-generated when omitted) |
 
 `fieldIds` and `operators` must have equal length — entry *i* becomes
@@ -245,12 +245,15 @@ references), the same path used by partial indexes and check-constraint expressi
 
 To exclude on a computed expression such as `lower(label) WITH =` rather than a bare
 column, supply `elementExpr` as an array of `{ expr, operator }` entries. Each `expr`
-is a sanitized expression AST validated server-side (`'column'` level — enforcing the
+accepts the same **FieldGeneration DSL** as `field.generationExpression` and
+`field.defaultValue` (`{ function, args }`, `{ column }`, `{ operator, left, right }`,
+`{ cast }`, ... — see [field-types.md](./field-types.md)), so no hand-shaped AST is
+needed. The expression is validated server-side (`'column'` level — enforcing the
 database's own allowed schemas and forbidden functions/tables) before the constraint
 is built; expression elements are appended after the `fieldIds` column elements.
 
 ```typescript
-// EXCLUDE USING gist (room_id WITH =, (lower(label)) WITH =)
+// EXCLUDE USING gist (room_id WITH =, lower(label) WITH =)
 await db.exclusionConstraint.create({
   data: {
     databaseId,
@@ -258,25 +261,17 @@ await db.exclusionConstraint.create({
     fieldIds: [roomIdField.id],
     operators: ['='],
     elementExpr: [
-      {
-        expr: {
-          FuncCall: {
-            funcname: [{ String: { sval: 'lower' } }],
-            args: [{ ColumnRef: { fields: [{ String: { sval: 'label' } }] } }],
-          },
-        },
-        operator: '=',
-      },
+      { expr: { function: 'lower', args: [{ column: 'label' }] }, operator: '=' },
     ],
   },
   select: { id: true },
 }).execute();
 ```
 
-> **Escape hatch, not the happy path.** As with expression indexes, the condition DSL
-> can't represent arbitrary element expressions, so `elementExpr` takes a raw (but
-> server-sanitized) AST node. There is no plain-string / DSL convenience for it yet —
-> flag the missing ergonomic builder as an SDK gap rather than dropping to raw SQL.
+> **Raw-AST fallback.** For an expression the DSL can't represent, `expr` also accepts
+> a raw (server-sanitized) pgsql-parser AST object — an object with no DSL keys passes
+> through unchanged. Prefer the DSL; reach for raw AST only when necessary rather than
+> dropping to raw SQL.
 
 **Rules**
 - The target column types and operators must be supported by the access method. `gist`
