@@ -54,6 +54,36 @@ await db.foreignKeyConstraint.create({
 }).execute();
 ```
 
+## FK column-list referential actions (PostgreSQL 18)
+
+PostgreSQL 18 lets `ON DELETE SET NULL` / `ON DELETE SET DEFAULT` name a **subset** of the FK columns to null-out / reset, instead of the whole column list. The SDK exposes this via the optional `deleteSetFieldIds` array on `db.foreignKeyConstraint.create`:
+
+```typescript
+// FOREIGN KEY (a, b) REFERENCES u (x, y) ON DELETE SET NULL (b)
+await db.foreignKeyConstraint.create({
+  data: {
+    databaseId,
+    tableId,                              // referencing (child) table
+    fieldIds: [aFieldId, bFieldId],       // local columns
+    refTableId: uTableId,                 // referenced (parent) table
+    refFieldIds: [xFieldId, yFieldId],    // referenced columns
+    deleteAction: 'n',                    // n=SET NULL (or d=SET DEFAULT)
+    deleteSetFieldIds: [bFieldId],        // subset of fieldIds to null/reset
+  },
+  select: { id: true },
+}).execute();
+// → FOREIGN KEY (a, b) REFERENCES u (x, y) ON DELETE SET NULL (b)
+```
+
+For `SET DEFAULT`, use `deleteAction: 'd'` (renders `ON DELETE SET DEFAULT (b)`).
+
+**Rules**
+- `deleteSetFieldIds` defaults to `null`, which means the whole FK column list (plain `ON DELETE SET NULL` / `SET DEFAULT`, no column list) — existing constraints are unchanged.
+- It is only valid when `deleteAction` is `'n'` (SET NULL) or `'d'` (SET DEFAULT); combining it with any other delete action is rejected.
+- Every id must be a member of `fieldIds` (a subset); it does not need to preserve `fieldIds` order.
+- Columns listed in `deleteSetFieldIds` must be nullable for `SET NULL`, and should have a column default for `SET DEFAULT`.
+- This applies to `ON DELETE` only — PostgreSQL does not permit a column list on `ON UPDATE` referential actions, so there is no update-side equivalent.
+
 ## Application-time temporal constraints (PostgreSQL 18)
 
 PostgreSQL 18 adds application-time temporal tables. A temporal key pairs an ordinary scalar key with a **period column** (a range type such as `tstzrange`) so that the scalar part must be unique *only for non-overlapping periods*. Three optional flags expose this through the SDK:
@@ -134,4 +164,4 @@ await db.foreignKeyConstraint.create({
 
 `withPeriod` marks the trailing local and referenced columns as `PERIOD` on both sides of the FK.
 
-> Not yet exposed: `EXCLUDE (... WITH ...)` constraints and `FOR PORTION OF` temporal UPDATE/DELETE have no SDK surface. Treat these as SDK gaps rather than dropping to raw SQL.
+> Not yet exposed: `EXCLUDE (... WITH ...)` constraints and `FOR PORTION OF` temporal UPDATE/DELETE have no SDK surface. Treat these as SDK gaps rather than dropping to raw SQL. (FK column-list referential actions are `ON DELETE`-only, matching PostgreSQL; there is intentionally no update-side variant.)
