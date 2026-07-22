@@ -281,6 +281,34 @@ await db.index.create({
 }).execute();
 ```
 
+The same `db.index.create` row also carries `includeFieldIds` (INCLUDE columns),
+`opClasses`, and `options` (WITH-storage params). Two more optional fields build
+richer indexes without leaving the declarative row:
+
+- **Partial index** — `whereClause` takes a triggerCondition (`{ field, op, value }`
+  leaf or `{ AND | OR | NOT }` combinator, the same DSL as JobTrigger/AuthzComposite)
+  and generates a `WHERE` predicate.
+- **Expression index** — `indexParams` takes an array of expression elements
+  `[{ expr: <sanitized AST> }]`, so an index can cover `lower(email)` rather than a
+  bare column.
+
+```typescript
+// CREATE INDEX ON events (created_at) WHERE (active = true)
+await db.index.create({
+  data: {
+    databaseId,
+    tableId,
+    fieldIds: [createdAtFieldId],
+    whereClause: { field: 'active', op: '=', value: true },
+  },
+  select: { id: true },
+}).execute();
+```
+
+Both default to `null`, so existing simple/advanced indexes are unchanged. See
+[indexes.md](./references/indexes.md) for the full matrix, the expression-AST
+escape hatch, and combining predicates with expressions.
+
 ## `api_required` (Required API Fields)
 
 For nullable FK columns that should be required at the GraphQL API level:
@@ -298,6 +326,7 @@ await db.field.update({
 | File | Content |
 |------|---------|
 | [constraints.md](./references/constraints.md) | Primary key, unique, foreign key, check + application-time temporal (`WITHOUT OVERLAPS` / `WITH PERIOD`) constraints |
+| [indexes.md](./references/indexes.md) | Simple, unique, INCLUDE, opclass, access method, WITH-options + partial (`whereClause`) and expression (`indexParams`) indexes |
 | [field-types.md](./references/field-types.md) | Complete field type reference |
 | [identity-columns.md](./references/identity-columns.md) | Identity columns — `GENERATED ALWAYS / BY DEFAULT AS IDENTITY` + sequence options (`identityGeneration` / `identityOptions`) |
 | [provisioning.md](./references/provisioning.md) | Full database provisioning flow |
