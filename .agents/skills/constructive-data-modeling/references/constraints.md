@@ -164,4 +164,62 @@ await db.foreignKeyConstraint.create({
 
 `withPeriod` marks the trailing local and referenced columns as `PERIOD` on both sides of the FK.
 
+## Deferrable constraints (`DEFERRABLE` / `INITIALLY DEFERRED`)
+
+A deferrable constraint can have its check postponed until the end of the transaction (`COMMIT`) instead of being enforced immediately after each statement — useful for cyclic foreign keys, swapping unique values, or bulk loads where intermediate states temporarily violate the constraint. Two optional flags expose this through the SDK:
+
+| Flag | ORM entity | Generates |
+|------|-----------|-----------|
+| `isDeferrable: true` | `db.primaryKeyConstraint.create` | `PRIMARY KEY (...) DEFERRABLE` |
+| `isDeferrable: true` | `db.uniqueConstraint.create` | `UNIQUE (...) DEFERRABLE` |
+| `isDeferrable: true` | `db.foreignKeyConstraint.create` | `FOREIGN KEY (...) REFERENCES ... DEFERRABLE` |
+| `initiallyDeferred: true` | (same three entities) | adds `INITIALLY DEFERRED` |
+
+Both default to `false`, so existing constraints are unchanged (`NOT DEFERRABLE INITIALLY IMMEDIATE`, the PostgreSQL default).
+
+**Rules**
+- `isDeferrable: true` marks the constraint deferrable but still checked at the end of each statement by default (`INITIALLY IMMEDIATE`). It can be deferred at runtime with `SET CONSTRAINTS ... DEFERRED`.
+- `initiallyDeferred: true` additionally defers the check to transaction commit by default. `INITIALLY DEFERRED` implies `DEFERRABLE`, so set `isDeferrable: true` alongside it to keep the intent explicit.
+- These flags apply to **primary key, unique, and foreign key** constraints. PostgreSQL does **not** allow `CHECK` constraints to be deferrable — passing `isDeferrable` / `initiallyDeferred` to `db.checkConstraint.create` is not supported and PostgreSQL rejects it (`CHECK constraints cannot be marked DEFERRABLE`).
+
+### Deferrable foreign key
+
+```typescript
+// FOREIGN KEY (author_id) REFERENCES users (id) DEFERRABLE INITIALLY DEFERRED
+await db.foreignKeyConstraint.create({
+  data: {
+    databaseId,
+    tableId,                        // referencing (child) table
+    fieldIds: [authorIdFieldId],    // local columns
+    refTableId: usersTableId,       // referenced (parent) table
+    refFieldIds: [userIdFieldId],   // referenced columns
+    isDeferrable: true,
+    initiallyDeferred: true,
+  },
+  select: { id: true },
+}).execute();
+// → FOREIGN KEY (author_id) REFERENCES users (id) DEFERRABLE INITIALLY DEFERRED
+```
+
+### Deferrable primary key / unique constraint
+
+```typescript
+// PRIMARY KEY (id) DEFERRABLE INITIALLY DEFERRED
+await db.primaryKeyConstraint.create({
+  data: { databaseId, tableId, fieldIds: [idFieldId], isDeferrable: true, initiallyDeferred: true },
+  select: { id: true },
+}).execute();
+
+// UNIQUE (email) DEFERRABLE  (deferrable but checked per-statement unless SET CONSTRAINTS ... DEFERRED)
+await db.uniqueConstraint.create({
+  data: { databaseId, tableId, fieldIds: [emailFieldId], isDeferrable: true },
+  select: { id: true },
+}).execute();
+// → UNIQUE (email) DEFERRABLE
+```
+
+### Deferring at runtime
+
+`isDeferrable` / `initiallyDeferred` are schema-authoring flags — they only decide *whether* and *how* a constraint may be deferred. Choosing to defer a merely-`DEFERRABLE` constraint inside a specific transaction is done with the standard `SET CONSTRAINTS ... DEFERRED` transaction command, which belongs to your app's query/transaction layer, not the schema-authoring SDK documented here. A constraint created with `initiallyDeferred: true` is deferred by default and needs no such command.
+
 > Not yet exposed: `EXCLUDE (... WITH ...)` constraints and `FOR PORTION OF` temporal UPDATE/DELETE have no SDK surface. Treat these as SDK gaps rather than dropping to raw SQL. (FK column-list referential actions are `ON DELETE`-only, matching PostgreSQL; there is intentionally no update-side variant.)
