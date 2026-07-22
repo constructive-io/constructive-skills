@@ -340,9 +340,12 @@ escape hatch, and combining predicates with expressions.
 ## Views
 
 Create views via `db.view.create`; `viewType` selects the view body (`View*` node
-type). Three optional options control PostgreSQL storage attributes and update
-semantics: `securityInvoker` (default `true`), `securityBarrier` (default
-`false`), and `checkOption` (`null | 'local' | 'cascaded'`).
+type). The body in `data` references its source by **catalog ID**
+(`source_table_id` / `field_ids`, etc.), never a raw schema/table name — the server
+resolves names and enforces same-database ownership + AST validation. Three optional
+options control PostgreSQL storage attributes and update semantics: `securityInvoker`
+(default `true`), `securityBarrier` (default `false`), and `checkOption`
+(`null | 'local' | 'cascaded'`).
 
 ```typescript
 await db.view.create({
@@ -352,7 +355,7 @@ await db.view.create({
     name: 'owners_view',
     viewType: 'ViewTableProjection',
     tableId: ownersTableId,
-    data: { source_schema: 'app_public', source_table: 'owners' },
+    data: { source_table_id: ownersTableId },
     securityBarrier: true,
     checkOption: 'cascaded',
     isReadOnly: false,
@@ -364,7 +367,8 @@ await db.view.create({
 //     SELECT ... WITH CASCADED CHECK OPTION
 ```
 
-See [views.md](./references/views.md) for all view options and generated SQL.
+See [views.md](./references/views.md) for all view options, the ID-based body, and
+ownership/validation guarantees.
 
 ## `api_required` (Required API Fields)
 
