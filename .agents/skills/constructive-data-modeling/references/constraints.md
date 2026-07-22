@@ -38,6 +38,34 @@ await db.uniqueConstraint.create({
 }).execute();
 ```
 
+## Check
+
+`db.checkConstraint.create` takes `expr` as the same **triggerCondition DSL** used by
+partial-index/exclusion `whereClause` (leaf `{ field, op, value }`, field-to-field
+`{ field, op, ref }`, or an `{ AND | OR | NOT }` combinator — see
+[indexes.md](./indexes.md)). The predicate compiles to a validated AST server-side
+with bare column references — no SQL text is written:
+
+```typescript
+// CHECK (reputation >= 0)
+await db.checkConstraint.create({
+  data: {
+    databaseId,
+    tableId,
+    fieldIds: [reputationFieldId],
+    expr: { field: 'reputation', op: '>=', value: 0 },
+  },
+  select: { id: true },
+}).execute();
+```
+
+> **Explicit raw-AST escape.** For a predicate the condition DSL can't represent,
+> wrap a raw (server-sanitized) pgsql-parser AST node as
+> `expr: { expression: <ast> }`. A bare AST object is **rejected** — the
+> `expression` key is the only raw-AST entry point. Either form is validated
+> against the database's allowed schemas and forbidden functions/tables before
+> the constraint is built.
+
 ## Foreign key
 
 ```typescript
@@ -184,7 +212,7 @@ compiles to `ALTER TABLE ... ADD CONSTRAINT ... EXCLUDE USING ...`.
 | `operators` | `string[]` | Per-column operator, positionally aligned with `fieldIds` (`=`, `&&`, ...) |
 | `accessMethod` | `string` | `USING <method>` — defaults to `gist` |
 | `whereClause` | `json` | `WHERE <predicate>` — **partial** exclusion (triggerCondition DSL) |
-| `elementExpr` | `json` | Expression elements — array of `{ expr, operator }` (`expr` = FieldGeneration DSL or raw AST) |
+| `elementExpr` | `json` | Expression elements — array of `{ expr, operator }` (`expr` = FieldGeneration DSL; raw AST only via `{ expression: <ast> }`) |
 | `name` | `string` | Constraint name (auto-generated when omitted) |
 
 `fieldIds` and `operators` must have equal length — entry *i* becomes
@@ -268,10 +296,11 @@ await db.exclusionConstraint.create({
 }).execute();
 ```
 
-> **Raw-AST fallback.** For an expression the DSL can't represent, `expr` also accepts
-> a raw (server-sanitized) pgsql-parser AST object — an object with no DSL keys passes
-> through unchanged. Prefer the DSL; reach for raw AST only when necessary rather than
-> dropping to raw SQL.
+> **Explicit raw-AST escape.** For an expression the DSL can't represent, wrap a raw
+> (server-sanitized) pgsql-parser AST node as `{ expr: { expression: <ast> }, operator }`.
+> A bare AST object with no DSL keys is **rejected** — the `expression` key is the only
+> raw-AST entry point. Prefer the DSL; reach for the escape only when necessary rather
+> than dropping to raw SQL.
 
 **Rules**
 - The target column types and operators must be supported by the access method. `gist`

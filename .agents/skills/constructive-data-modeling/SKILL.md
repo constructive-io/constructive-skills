@@ -167,7 +167,9 @@ await db.relationProvision.create({
 Primary keys, unique constraints, foreign keys, and check constraints via
 `db.primaryKeyConstraint.create`, `db.uniqueConstraint.create`,
 `db.foreignKeyConstraint.create`, and `db.checkConstraint.create`. `fieldIds` is
-an ordered array; composite keys follow the array order.
+an ordered array; composite keys follow the array order. Check `expr` takes the
+triggerCondition DSL (`{ field, op, value }` leaf or `{ AND | OR | NOT }`
+combinator); raw AST only via the explicit `expr: { expression: <ast> }` escape.
 
 ```typescript
 await db.foreignKeyConstraint.create({
@@ -262,8 +264,8 @@ await db.exclusionConstraint.create({
 
 `accessMethod` defaults to `gist`; a scalar `=` part needs the `btree_gist`
 extension. Exclusion constraints are create-or-delete (no in-place update). See
-[constraints.md](./references/constraints.md) for the `elementExpr` expression
-escape hatch and full rules.
+[constraints.md](./references/constraints.md) for `elementExpr` expression
+elements (FieldGeneration DSL) and full rules.
 
 ### Deferrable constraints (`DEFERRABLE` / `INITIALLY DEFERRED`)
 
@@ -317,8 +319,10 @@ richer indexes without leaving the declarative row:
   leaf or `{ AND | OR | NOT }` combinator, the same DSL as JobTrigger/AuthzComposite)
   and generates a `WHERE` predicate.
 - **Expression index** — `indexParams` takes an array of expression elements
-  `[{ expr: <sanitized AST> }]`, so an index can cover `lower(email)` rather than a
-  bare column.
+  `[{ expr: <FieldGeneration DSL> }]` (e.g.
+  `{ expr: { function: 'lower', args: [{ column: 'email' }] } }`), so an index can
+  cover `lower(email)` rather than a bare column; raw AST only via the explicit
+  `{ expr: { expression: <ast> } }` escape.
 
 ```typescript
 // CREATE INDEX ON events (created_at) WHERE (active = true)
@@ -334,8 +338,8 @@ await db.index.create({
 ```
 
 Both default to `null`, so existing simple/advanced indexes are unchanged. See
-[indexes.md](./references/indexes.md) for the full matrix, the expression-AST
-escape hatch, and combining predicates with expressions.
+[indexes.md](./references/indexes.md) for the full matrix, the explicit raw-AST
+escape, and combining predicates with expressions.
 
 ## Views
 

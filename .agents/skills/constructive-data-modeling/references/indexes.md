@@ -131,10 +131,13 @@ index's dependencies automatically.
 
 To index a computed expression such as `lower(email)` rather than a bare column,
 supply `indexParams` as an array of expression elements. Each element is
-`{ expr: <sanitized expression AST> }`. The array-of-`{ expr }` nodes are validated
-server-side via the platform's index AST validation (`'index'` level) before the
-index is built, and referenced columns are folded into the index name and
-dependencies.
+`{ expr: <FieldGeneration DSL> }` — the same expression DSL used by
+`field.generationExpression`, `field.defaultValue`, and exclusion `elementExpr`
+(`{ function, args }`, `{ column }`, `{ operator, left, right }`, `{ cast }`, ... —
+see [field-types.md](./field-types.md)), so no hand-shaped AST is needed. The
+normalized elements are validated server-side via the platform's index AST
+validation (`'index'` level) before the index is built, and referenced columns are
+folded into the index name and dependencies.
 
 ```typescript
 // CREATE INDEX ON t ((lower(email)))
@@ -143,14 +146,7 @@ await db.index.create({
     databaseId,
     tableId,
     indexParams: [
-      {
-        expr: {
-          FuncCall: {
-            funcname: [{ String: { sval: 'lower' } }],
-            args: [{ ColumnRef: { fields: [{ String: { sval: 'email' } }] } }],
-          },
-        },
-      },
+      { expr: { function: 'lower', args: [{ column: 'email' }] } },
     ],
   },
   select: { id: true },
@@ -168,22 +164,18 @@ await db.index.create({
     tableId,
     fieldIds: [tenantIdFieldId],
     indexParams: [
-      { expr: { FuncCall: {
-          funcname: [{ String: { sval: 'lower' } }],
-          args: [{ ColumnRef: { fields: [{ String: { sval: 'email' } }] } }],
-      } } },
+      { expr: { function: 'lower', args: [{ column: 'email' }] } },
     ],
   },
   select: { id: true },
 }).execute();
 ```
 
-> **Escape hatch, not the happy path.** The condition DSL cannot represent
-> arbitrary expressions, so `indexParams` takes a raw (but server-sanitized) AST
-> node. There is currently no plain-string or DSL convenience for building an
-> arbitrary expression index through the SDK — hand-shaping the AST is the only
-> surface. Treat the ergonomic builder as an SDK gap to flag rather than a reason
-> to drop to raw SQL / `psql`.
+> **Explicit raw-AST escape.** For an expression the FieldGeneration DSL can't
+> represent, wrap a raw (server-sanitized) pgsql-parser AST node as
+> `{ expr: { expression: <ast> } }`. A bare AST object with no DSL keys is
+> **rejected** — the `expression` key is the only raw-AST entry point. Prefer the
+> DSL; reach for the escape only when necessary rather than dropping to raw SQL.
 
 ## Combining a predicate with an expression
 
@@ -196,10 +188,7 @@ await db.index.create({
     databaseId,
     tableId,
     indexParams: [
-      { expr: { FuncCall: {
-          funcname: [{ String: { sval: 'lower' } }],
-          args: [{ ColumnRef: { fields: [{ String: { sval: 'email' } }] } }],
-      } } },
+      { expr: { function: 'lower', args: [{ column: 'email' }] } },
     ],
     whereClause: { field: 'active', op: '=', value: true },
   },
