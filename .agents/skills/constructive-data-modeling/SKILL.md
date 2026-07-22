@@ -1,6 +1,6 @@
 ---
 name: constructive-data-modeling
-description: "Tables, fields, relations, constraints, indexes, enums, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'define field types', 'provision a database', 'create an enum', 'api_required', or when working with metaschema_public operations."
+description: "Tables, fields, relations, constraints, indexes, enums, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'add a primary key', 'add a unique constraint', 'define field types', 'provision a database', 'create an enum', 'api_required', 'temporal table', 'application-time temporal', 'WITHOUT OVERLAPS', 'temporal foreign key', 'WITH PERIOD', 'period column', or when working with metaschema_public operations."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -18,6 +18,8 @@ Use this skill when:
 - Defining enum types
 - Configuring field validation (regexp, min, max)
 - Setting `api_required` on nullable FK columns
+- Adding primary key / unique / foreign key constraints
+- Declaring application-time temporal constraints (PG18): `WITHOUT OVERLAPS` keys and temporal (`WITH PERIOD`) foreign keys
 - Understanding the composition: table → fields → constraints → indexes → relations → security
 
 ## The Composition Flow
@@ -134,7 +136,58 @@ await db.relationProvision.create({
 
 ## Constraints
 
-Check constraints and foreign keys via `db.checkConstraint.create` and `db.foreignKeyConstraint.create`.
+Primary keys, unique constraints, foreign keys, and check constraints via
+`db.primaryKeyConstraint.create`, `db.uniqueConstraint.create`,
+`db.foreignKeyConstraint.create`, and `db.checkConstraint.create`. `fieldIds` is
+an ordered array; composite keys follow the array order.
+
+```typescript
+await db.foreignKeyConstraint.create({
+  data: {
+    databaseId,
+    tableId,                       // referencing (child) table
+    fieldIds: [authorIdFieldId],   // local columns
+    refTableId: usersTableId,      // referenced (parent) table
+    refFieldIds: [userIdFieldId],  // referenced columns
+    deleteAction: 'a',             // a=NO ACTION, r=RESTRICT, c=CASCADE, n=SET NULL, d=SET DEFAULT
+    updateAction: 'a',
+  },
+  select: { id: true },
+}).execute();
+```
+
+### Application-time temporal constraints (PostgreSQL 18)
+
+Pair an ordinary scalar key with a **period column** (a range type such as
+`tstzrange`, added as a normal field) to get temporal keys. Three optional flags
+expose this — all default to `false`, so existing constraints are unchanged. The
+period column must be the **last** entry in `fieldIds` (and `refFieldIds`).
+
+```typescript
+// PRIMARY KEY (room_id, valid_period WITHOUT OVERLAPS)
+await db.primaryKeyConstraint.create({
+  data: { databaseId, tableId, fieldIds: [roomIdFieldId, periodFieldId], withoutOverlaps: true },
+  select: { id: true },
+}).execute();
+
+// UNIQUE (room_id, valid_period WITHOUT OVERLAPS)  → db.uniqueConstraint.create + withoutOverlaps: true
+
+// FOREIGN KEY (room_id, PERIOD valid_period) REFERENCES room (id, PERIOD valid_period)
+await db.foreignKeyConstraint.create({
+  data: {
+    databaseId, tableId: bookingTableId,
+    fieldIds: [bookingRoomIdFieldId, bookingPeriodFieldId],
+    refTableId: roomTableId, refFieldIds: [roomIdFieldId, roomPeriodFieldId],
+    withPeriod: true,
+  },
+  select: { id: true },
+}).execute();
+```
+
+Temporal PK/UNIQUE build a GiST-backed exclusion index and require the
+`btree_gist` extension. A temporal FK must reference a temporal key on the
+parent. See [constraints.md](./references/constraints.md) for full examples and
+rules.
 
 ## Indexes
 
@@ -167,6 +220,7 @@ await db.field.update({
 
 | File | Content |
 |------|---------|
+| [constraints.md](./references/constraints.md) | Primary key, unique, foreign key, check + application-time temporal (`WITHOUT OVERLAPS` / `WITH PERIOD`) constraints |
 | [field-types.md](./references/field-types.md) | Complete field type reference |
 | [provisioning.md](./references/provisioning.md) | Full database provisioning flow |
 
