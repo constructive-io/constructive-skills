@@ -8,6 +8,7 @@ Constraints are declared through the SDK ORM against the metaschema; each `creat
 | Unique | `db.uniqueConstraint.create` |
 | Foreign key | `db.foreignKeyConstraint.create` |
 | Check | `db.checkConstraint.create` |
+| Exclusion | `db.exclusionConstraint.create` |
 
 For composite keys, `fieldIds` is an ordered array — the column order in the generated constraint matches the array order.
 
@@ -164,6 +165,132 @@ await db.foreignKeyConstraint.create({
 
 `withPeriod` marks the trailing local and referenced columns as `PERIOD` on both sides of the FK.
 
+> A temporal `WITHOUT OVERLAPS` key is really a specialized exclusion constraint the
+> platform builds for you. For the general form — arbitrary columns compared with
+> arbitrary operators — use `db.exclusionConstraint.create` (below).
+
+## Exclusion constraints (`EXCLUDE USING ...`)
+
+An exclusion constraint guarantees that for any two rows, the listed operators do
+**not** all evaluate true simultaneously — the generalization of `UNIQUE` to
+non-equality operators. The classic use is "no two bookings for the same room
+overlap in time": `room_id` compared with `=` and a `tstzrange` period compared with
+`&&` (overlaps). It is declared through `db.exclusionConstraint.create`; each `create`
+compiles to `ALTER TABLE ... ADD CONSTRAINT ... EXCLUDE USING ...`.
+
+| Field | Type | Generates |
+|-------|------|-----------|
+| `fieldIds` | `uuid[]` | Constrained columns, in array order |
+| `operators` | `string[]` | Per-column operator, positionally aligned with `fieldIds` (`=`, `&&`, ...) |
+| `accessMethod` | `string` | `USING <method>` — defaults to `gist` |
+| `whereClause` | `json` | `WHERE <predicate>` — **partial** exclusion (triggerCondition DSL) |
+| `elementExpr` | `json` | Expression elements — raw-AST escape hatch (array of `{ expr, operator }`) |
+| `name` | `string` | Constraint name (auto-generated when omitted) |
+
+`fieldIds` and `operators` must have equal length — entry *i* becomes
+`field_i WITH operator_i`, in array order.
+
+### No-overlap exclusion
+
+```typescript
+// room_id + a tstzrange period; a room can't be double-booked for overlapping periods.
+const roomIdField = await db.field.create({
+  data: { databaseId, tableId, name: 'room_id', type: { name: 'uuid' }, isRequired: true },
+  select: { id: true },
+}).execute();
+
+const duringField = await db.field.create({
+  data: { databaseId, tableId, name: 'during', type: { name: 'tstzrange' }, isRequired: true },
+  select: { id: true },
+}).execute();
+
+await db.exclusionConstraint.create({
+  data: {
+    databaseId,
+    tableId,
+    fieldIds: [roomIdField.id, duringField.id],
+    operators: ['=', '&&'],       // room_id WITH =, during WITH &&
+    accessMethod: 'gist',
+  },
+  select: { id: true },
+}).execute();
+// → EXCLUDE USING gist (room_id WITH =, during WITH &&)
+```
+
+### Partial exclusion (`whereClause`)
+
+`whereClause` accepts the same **triggerCondition DSL** as partial indexes and check
+predicates (leaf `{ field, op, value }`, field-to-field `{ field, op, ref }`, or an
+`{ AND | OR | NOT }` combinator — see [indexes.md](./indexes.md)), so the exclusion
+applies only to matching rows and no SQL text is written:
+
+```typescript
+// EXCLUDE USING gist (room_id WITH =, during WITH &&) WHERE (status = 'active')
+await db.exclusionConstraint.create({
+  data: {
+    databaseId,
+    tableId,
+    fieldIds: [roomIdField.id, duringField.id],
+    operators: ['=', '&&'],
+    whereClause: { field: 'status', op: '=', value: 'active' },
+  },
+  select: { id: true },
+}).execute();
+```
+
+The predicate compiles to a validated AST server-side (bare, unqualified column
+references), the same path used by partial indexes and check-constraint expressions.
+
+### Expression elements (`elementExpr`)
+
+To exclude on a computed expression such as `lower(label) WITH =` rather than a bare
+column, supply `elementExpr` as an array of `{ expr, operator }` entries. Each `expr`
+is a sanitized expression AST validated server-side (`'column'` level — enforcing the
+database's own allowed schemas and forbidden functions/tables) before the constraint
+is built; expression elements are appended after the `fieldIds` column elements.
+
+```typescript
+// EXCLUDE USING gist (room_id WITH =, (lower(label)) WITH =)
+await db.exclusionConstraint.create({
+  data: {
+    databaseId,
+    tableId,
+    fieldIds: [roomIdField.id],
+    operators: ['='],
+    elementExpr: [
+      {
+        expr: {
+          FuncCall: {
+            funcname: [{ String: { sval: 'lower' } }],
+            args: [{ ColumnRef: { fields: [{ String: { sval: 'label' } }] } }],
+          },
+        },
+        operator: '=',
+      },
+    ],
+  },
+  select: { id: true },
+}).execute();
+```
+
+> **Escape hatch, not the happy path.** As with expression indexes, the condition DSL
+> can't represent arbitrary element expressions, so `elementExpr` takes a raw (but
+> server-sanitized) AST node. There is no plain-string / DSL convenience for it yet —
+> flag the missing ergonomic builder as an SDK gap rather than dropping to raw SQL.
+
+**Rules**
+- The target column types and operators must be supported by the access method. `gist`
+  with a scalar equality part (`room_id WITH =`) needs the `btree_gist` extension; the
+  range `&&` part is served by the built-in GiST range operator class.
+- `fieldIds` / `operators` cardinality must match; each `elementExpr` entry requires
+  both `expr` and `operator`.
+- `accessMethod` defaults to `gist` — the method that supports non-equality exclusion
+  operators such as `&&`.
+- Exclusion constraints are **create-or-delete**: there is no in-place update (the SDK
+  rejects an update with `DELETE_FIRST`). To change one, delete the row with
+  `db.exclusionConstraint.delete(...)` (which drops the physical constraint) and
+  create a new one.
+
 ## Deferrable constraints (`DEFERRABLE` / `INITIALLY DEFERRED`)
 
 A deferrable constraint can have its check postponed until the end of the transaction (`COMMIT`) instead of being enforced immediately after each statement — useful for cyclic foreign keys, swapping unique values, or bulk loads where intermediate states temporarily violate the constraint. Two optional flags expose this through the SDK:
@@ -222,4 +349,4 @@ await db.uniqueConstraint.create({
 
 `isDeferrable` / `initiallyDeferred` are schema-authoring flags — they only decide *whether* and *how* a constraint may be deferred. Choosing to defer a merely-`DEFERRABLE` constraint inside a specific transaction is done with the standard `SET CONSTRAINTS ... DEFERRED` transaction command, which belongs to your app's query/transaction layer, not the schema-authoring SDK documented here. A constraint created with `initiallyDeferred: true` is deferred by default and needs no such command.
 
-> Not yet exposed: `EXCLUDE (... WITH ...)` constraints and `FOR PORTION OF` temporal UPDATE/DELETE have no SDK surface. Treat these as SDK gaps rather than dropping to raw SQL. (FK column-list referential actions are `ON DELETE`-only, matching PostgreSQL; there is intentionally no update-side variant.)
+> Not yet exposed: `FOR PORTION OF` temporal UPDATE/DELETE has no SDK surface. Treat it as an SDK gap rather than dropping to raw SQL. (FK column-list referential actions are `ON DELETE`-only, matching PostgreSQL; there is intentionally no update-side variant.)
