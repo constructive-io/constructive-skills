@@ -1,6 +1,6 @@
 ---
 name: constructive-data-modeling
-description: "Tables, fields, relations, constraints, indexes, enums, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'add a primary key', 'add a unique constraint', 'define field types', 'provision a database', 'create an enum', 'api_required', 'temporal table', 'application-time temporal', 'WITHOUT OVERLAPS', 'temporal foreign key', 'WITH PERIOD', 'period column', or when working with metaschema_public operations."
+description: "Tables, fields, relations, constraints, indexes, enums, views, and database provisioning via the type-safe SDK. Use when asked to 'create a table', 'add a field', 'add a column', 'create a relation', 'add a constraint', 'add an index', 'create a foreign key', 'add a primary key', 'add a unique constraint', 'define field types', 'provision a database', 'create an enum', 'create a view', 'security_invoker', 'security_barrier', 'WITH CHECK OPTION', 'check_option', 'api_required', 'temporal table', 'application-time temporal', 'WITHOUT OVERLAPS', 'temporal foreign key', 'WITH PERIOD', 'period column', or when working with metaschema_public operations."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -16,6 +16,7 @@ Use this skill when:
 - Creating tables, fields, relations, constraints, or indexes via the SDK
 - Provisioning databases with module selection
 - Defining enum types
+- Creating views and setting view options (`security_invoker`, `security_barrier`, `WITH [LOCAL|CASCADED] CHECK OPTION`)
 - Configuring field validation (regexp, min, max)
 - Setting `api_required` on nullable FK columns
 - Adding primary key / unique / foreign key constraints
@@ -204,6 +205,35 @@ await db.index.create({
 }).execute();
 ```
 
+## Views
+
+Create views via `db.view.create`; `viewType` selects the view body (`View*` node
+type). Three optional options control PostgreSQL storage attributes and update
+semantics: `securityInvoker` (default `true`), `securityBarrier` (default
+`false`), and `checkOption` (`null | 'local' | 'cascaded'`).
+
+```typescript
+await db.view.create({
+  data: {
+    databaseId,
+    schemaId,
+    name: 'owners_view',
+    viewType: 'ViewTableProjection',
+    tableId: ownersTableId,
+    data: { source_schema: 'app_public', source_table: 'owners' },
+    securityBarrier: true,
+    checkOption: 'cascaded',
+    isReadOnly: false,
+  },
+  select: { id: true },
+}).execute();
+// → CREATE VIEW app_public.owners_view
+//     WITH (security_invoker = true, security_barrier = true) AS
+//     SELECT ... WITH CASCADED CHECK OPTION
+```
+
+See [views.md](./references/views.md) for all view options and generated SQL.
+
 ## `api_required` (Required API Fields)
 
 For nullable FK columns that should be required at the GraphQL API level:
@@ -223,6 +253,7 @@ await db.field.update({
 | [constraints.md](./references/constraints.md) | Primary key, unique, foreign key, check + application-time temporal (`WITHOUT OVERLAPS` / `WITH PERIOD`) constraints |
 | [field-types.md](./references/field-types.md) | Complete field type reference |
 | [provisioning.md](./references/provisioning.md) | Full database provisioning flow |
+| [views.md](./references/views.md) | View creation + options (`securityInvoker`, `securityBarrier`, `WITH [LOCAL\|CASCADED] CHECK OPTION`) |
 
 ## Cross-References
 
