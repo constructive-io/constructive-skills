@@ -85,33 +85,45 @@ Use `AuthzComposite` only when flat composition is insufficient (e.g., `(A AND B
 
 ## SDK: `secureTableProvision` (Recommended)
 
-One call to create fields, grants, policies, and enable RLS:
+One call to create fields, grants, policies, and enable RLS. The input is the **Blueprint shape**: four independent, optional arrays —
+- `nodes[]` — Data* field modules, each `{ $type: 'Data…' }` (optional `data`)
+- `fields[]` — explicit columns (`{ name, type, is_required }`, **snake_case**; `type` accepts a `FieldType` object or a legacy bare string)
+- `grants[]` — per-role privilege targeting (`{ roles, privileges }`, privileges are `[privilege, columns]` tuples)
+- `policies[]` — Authz* RLS policies (`{ $type, permissive, privileges, data }`)
+- `useRls: true` — enable RLS
+
+> **The flat `nodeType` / `grantRoles` / `grantPrivileges` / `policyType` / `policyData` / `policyPermissive` shape is stale** and no longer matches the live platform. The generated `CreateSecureTableProvisionInput` exposes only `nodes` / `fields` / `grants` / `policies` / `useRls`. Use the arrays below.
 
 ```typescript
-const grant_privileges = [
-  ['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*'],
-] as unknown as Record<string, unknown>;
-
-const policy_data: Record<string, unknown> = {
-  entity_field: 'entity_id',
-  membership_type: 2,
-};
-
 await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
     tableName: 'projects',
-    nodeType: 'DataEntityMembership',
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: grant_privileges,
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: policy_data,
+    // nodes[]: one entry per Data* field module (compose several in one call)
+    nodes: [
+      { $type: 'DataEntityMembership' },
+    ] as unknown as Record<string, unknown>,
+    // grants[]: each entry = roles + a privilege list of [privilege, columns] tuples.
+    // '*' = all columns; an array restricts the columns that privilege applies to.
+    grants: [
+      { roles: ['authenticated'], privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']] },
+    ] as unknown as Record<string, unknown>,
+    // policies[]: one entry per Authz* policy, discriminated by $type
+    policies: [
+      {
+        $type: 'AuthzEntityMembership',
+        permissive: true,
+        privileges: ['select', 'insert', 'update', 'delete'],
+        data: { entity_field: 'entity_id', membership_type: 2 },
+      },
+    ] as unknown as Record<string, unknown>,
   },
   select: { id: true, tableId: true, outFields: true },
 }).execute();
 ```
+
+> **Casting note:** `fields[]` is typed `Record<string, unknown>[]` (an array), so a field literal assigns directly with no cast. `nodes` / `grants` / `policies` are typed as a single `Record<string, unknown>`, so each array literal needs `as unknown as Record<string, unknown>` (as shown).
 
 ### Paired Data Nodes
 
