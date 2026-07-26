@@ -1,0 +1,836 @@
+{
+  "schemaVersion": 1,
+  "kind": "constructive.blocks-registry-content",
+  "sourceCommit": "4f2a789fde9a90c0c6ed5977896493bb4818fa77",
+  "recordCount": 138,
+  "records": [
+    {
+      "registryItem": "alert-dialog",
+      "path": "registry/constructive/ui/alert-dialog.tsx",
+      "type": "registry:ui",
+      "contentSha256": "8c07f29878eae7b71bc07d030c72b2bb4625ef7d090de80ac89280a4d97797a2"
+    },
+    {
+      "registryItem": "alert",
+      "path": "registry/constructive/ui/alert.tsx",
+      "type": "registry:ui",
+      "contentSha256": "d4541642e4dcaa19aac98aec686c24d6d9c3d5a097e8c76cbccaf2b86a12be97"
+    },
+    {
+      "registryItem": "app-bar",
+      "path": "registry/constructive/blocks/app-bar.tsx",
+      "type": "registry:component",
+      "contentSha256": "240c7dea1ada3acbf0be77e30abbbce247a2a274645db9aab34b980a66f3a26a"
+    },
+    {
+      "registryItem": "app-shell",
+      "path": "registry/constructive/blocks/app-shell.tsx",
+      "type": "registry:component",
+      "contentSha256": "2f28507ff72549107232587e47e9f067fd430a3aaa845f402fdaf52d24e320f8"
+    },
+    {
+      "registryItem": "avatar",
+      "path": "registry/constructive/ui/avatar.tsx",
+      "type": "registry:ui",
+      "contentSha256": "276746965ae5b51f06804da00eed824d27a474ca3f194a1473c742a1f1f513f9"
+    },
+    {
+      "registryItem": "badge",
+      "path": "registry/constructive/ui/badge.tsx",
+      "type": "registry:ui",
+      "contentSha256": "f17c71f2aff690706adfc83752d02357dac77c2e1e33cc00400087ab9f25e3bc"
+    },
+    {
+      "registryItem": "billing-activity-table",
+      "path": "registry/constructive/blocks/billing/billing-activity-table/billing-activity-table.tsx",
+      "type": "registry:component",
+      "contentSha256": "d0d2453e349d06e3825be1b05d8122e93dd3b05149ae99ab008bc00da2dfcef5"
+    },
+    {
+      "registryItem": "billing-activity-table",
+      "path": "registry/constructive/blocks/billing/billing-activity-table/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "4472c564ca8be38c52154ffd42d56bedbdb010a4a01dede0a4d2aa5be5afad0a"
+    },
+    {
+      "registryItem": "billing-contracts",
+      "path": "registry/constructive/blocks/billing/billing-contracts/billing-contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "d30273d5038cf3c5deb53aad33e6d6ee42b368ccb4b5fda73fa0d512ad8e9187"
+    },
+    {
+      "registryItem": "billing-credits-card",
+      "path": "registry/constructive/blocks/billing/billing-credits-card/billing-credits-card.tsx",
+      "type": "registry:component",
+      "contentSha256": "2ea9ce9629347e53d524e2ec3c20654d614b2af290e3ce588cbd9323a33c2ce4"
+    },
+    {
+      "registryItem": "billing-credits-card",
+      "path": "registry/constructive/blocks/billing/billing-credits-card/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "01707ee17097fa95d5beb3441afa8197a33fe7dd458c5771d83d508b0552c9b8"
+    },
+    {
+      "registryItem": "billing-entitlements-list",
+      "path": "registry/constructive/blocks/billing/billing-entitlements-list/billing-entitlements-list.tsx",
+      "type": "registry:component",
+      "contentSha256": "c16ca7f5351478e7cc790c13c9f2e1fe26815ef53ed9497d08a7385e3b9190e4"
+    },
+    {
+      "registryItem": "billing-entitlements-list",
+      "path": "registry/constructive/blocks/billing/billing-entitlements-list/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "7445119bb08d4956a179e0fbec73aef5d47947a44842f2a4db9ed47246ae4a5a"
+    },
+    {
+      "registryItem": "billing-pricing-table",
+      "path": "registry/constructive/blocks/billing/billing-pricing-table/billing-pricing-table.tsx",
+      "type": "registry:component",
+      "contentSha256": "8e273eb3f3202f69af8fb89855f808f5a6237e6a09e3d6f438a5eebad2dc131a"
+    },
+    {
+      "registryItem": "billing-pricing-table",
+      "path": "registry/constructive/blocks/billing/billing-pricing-table/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "1933e56cdd3b4810526741cea489cff525461ec74f50190447ace6230281da58"
+    },
+    {
+      "registryItem": "billing-settings-page",
+      "path": "registry/constructive/blocks/billing/billing-settings-page/billing-settings-page.tsx",
+      "type": "registry:component",
+      "contentSha256": "2c8020f9c687aa8a198e7d38fe65682cad6bd816a13dd923a54ad28cb43fc8e0"
+    },
+    {
+      "registryItem": "billing-settings-page",
+      "path": "registry/constructive/blocks/billing/billing-settings-page/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "db93fe94d42478839f1c287290a9e3248b5715edfc4974512693213a7bb8aca7"
+    },
+    {
+      "registryItem": "billing-subscription-card",
+      "path": "registry/constructive/blocks/billing/billing-subscription-card/billing-subscription-card.tsx",
+      "type": "registry:component",
+      "contentSha256": "0abe76f874a2eaaa63e9bb5c8c71ba4d7814293697eafd84325ae91a2911bcd3"
+    },
+    {
+      "registryItem": "billing-subscription-card",
+      "path": "registry/constructive/blocks/billing/billing-subscription-card/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "efd2cbd94ea42a252d67820277bcc33fd0da2af0d840053c3a8d8e8286e870bf"
+    },
+    {
+      "registryItem": "billing-ui",
+      "path": "registry/constructive/blocks/billing/billing-ui/billing-ui.tsx",
+      "type": "registry:lib",
+      "contentSha256": "d3b6239b7a92a9f87be46f38f0b303dbb6950ee79ca905487affb0a128d3e712"
+    },
+    {
+      "registryItem": "billing-usage-history",
+      "path": "registry/constructive/blocks/billing/billing-usage-history/billing-usage-history.tsx",
+      "type": "registry:component",
+      "contentSha256": "7e31cf966f883fe97237507761541288d5b79c711f2aa1938f68a2e08874dddf"
+    },
+    {
+      "registryItem": "billing-usage-history",
+      "path": "registry/constructive/blocks/billing/billing-usage-history/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "483452a4d6b81f033d761ed1f9448680794ffebf9f4fbd33ee55ff30a7a62f8a"
+    },
+    {
+      "registryItem": "billing-usage-overview",
+      "path": "registry/constructive/blocks/billing/billing-usage-overview/billing-usage-overview.tsx",
+      "type": "registry:component",
+      "contentSha256": "fcaf959d985c63a393006a230727966d11d4bfeb16a3fb9a6d2fb023f2556ea1"
+    },
+    {
+      "registryItem": "billing-usage-overview",
+      "path": "registry/constructive/blocks/billing/billing-usage-overview/messages.ts",
+      "type": "registry:component",
+      "contentSha256": "f4bf5c61411503ce0ef219b670faa65d943a5c0eda57fc75c327cde949262ae2"
+    },
+    {
+      "registryItem": "breadcrumb",
+      "path": "registry/constructive/ui/breadcrumb.tsx",
+      "type": "registry:ui",
+      "contentSha256": "db1b209fa94d3cc8ba4d8dea61d10ffa9579549766b152853f128fbbcc56da46"
+    },
+    {
+      "registryItem": "button",
+      "path": "registry/constructive/ui/button.tsx",
+      "type": "registry:ui",
+      "contentSha256": "241e125f39431085a6002b2302a191aeee6916c137f01b063b2f9c5af33c1b32"
+    },
+    {
+      "registryItem": "card",
+      "path": "registry/constructive/ui/card.tsx",
+      "type": "registry:ui",
+      "contentSha256": "2b199060e9791fe6cf506d06ed7d539a1ea57148e14761e21a09df1351ae4434"
+    },
+    {
+      "registryItem": "checkbox",
+      "path": "registry/constructive/ui/checkbox.tsx",
+      "type": "registry:ui",
+      "contentSha256": "16c74729a0392055ed6218d3e219b0c36f0cf9c0b1163a3d2759770a31d3b87a"
+    },
+    {
+      "registryItem": "cn",
+      "path": "registry/constructive/lib/utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "9304a861c8673bee09e0f12de31773abbde503b02e59dfd74763ddec2e37cf05"
+    },
+    {
+      "registryItem": "collapsible",
+      "path": "registry/constructive/ui/collapsible.tsx",
+      "type": "registry:ui",
+      "contentSha256": "9082d74ff03a219502b39cada2e1bdc1af0ec34187fe94d638f2d0e16afdef89"
+    },
+    {
+      "registryItem": "console-feature-catalog",
+      "path": "registry/constructive/feature-packs/capabilities.ts",
+      "type": "registry:lib",
+      "contentSha256": "65220e521e0adb3eb982b36ebac572b4a32d252c481bc29f8279c323a31f853d"
+    },
+    {
+      "registryItem": "console-feature-catalog",
+      "path": "registry/constructive/feature-packs/catalog-validation.ts",
+      "type": "registry:lib",
+      "contentSha256": "cb098da4e8b1e83330ef7186847364ddb3dd15dff1fdf7f94f98444189a24d8f"
+    },
+    {
+      "registryItem": "console-feature-catalog",
+      "path": "registry/constructive/feature-packs/catalog.ts",
+      "type": "registry:lib",
+      "contentSha256": "093a093acc9fdf302b05c31e4246818301d1e69c82c0673aee85ffd26c8f0b7d"
+    },
+    {
+      "registryItem": "console-feature-catalog",
+      "path": "registry/constructive/feature-packs/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "b8dab1ff08444b51ffcd25c2fa937928c6d72db5c1081cd3c49adf64dd4f6f30"
+    },
+    {
+      "registryItem": "console-feature-catalog",
+      "path": "registry/constructive/feature-packs/manifest.ts",
+      "type": "registry:lib",
+      "contentSha256": "bd844192ca2f8e7a4f732bd30df5e019c99a871fb4f3310224a97cc39d747b3e"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-connection-menu.tsx",
+      "type": "registry:component",
+      "contentSha256": "d37282067a0d3f336bafc9dc735f04d9de4efbc9038e954ab61ecacb81f1cb93"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-kit-contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "a88f875d1f2843e26d5835ed4ebff93f2cae9e599a39b327d26993b0709d7bdb"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-kit-core.tsx",
+      "type": "registry:component",
+      "contentSha256": "f3ecd819c94e1e5ed58d3c1214613bd091266a7d7999939231ed6f77f6f71c48"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-kit-routes.ts",
+      "type": "registry:lib",
+      "contentSha256": "b42d5b12e5ea81cb5d09d3e5e5f2dbed3f962e9be2bca1bb2934c17b428f3939"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-kit-runtime.tsx",
+      "type": "registry:component",
+      "contentSha256": "b5ab5f2f96153ffc1cb7bbf0ae277640d76e990d55a98f47a86432ce3a7497a0"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/console-kit.tsx",
+      "type": "registry:component",
+      "contentSha256": "4ea16c4db4ca707b9fbe8cdea3926f7be7e5ed2fb5d5515cef7d39d84ebb1870"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-adapter-utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "aaacd0eeee050d446f143f76943f2fe12b30ac93440e0405a871064f4b479075"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-callback.ts",
+      "type": "registry:lib",
+      "contentSha256": "2de6de653ec5883c922b4510dbd0aa085f1d2d473f1158b66537d53276ee6d25"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-capabilities.ts",
+      "type": "registry:lib",
+      "contentSha256": "c99fbb3cb9d21dfdeff0098bfe3faeaf94dbeaacd465ed1ab5aababc9e36bad1"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-console-kit.tsx",
+      "type": "registry:component",
+      "contentSha256": "80e52797d5a1c28372a8bdd35a5b5290b4882c4e3223d6f8cbe7929c307b215e"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-graphql.ts",
+      "type": "registry:lib",
+      "contentSha256": "4beae59678b57e32decbbe8e823e434d06e94102be13634fd5557cd6d4a73552"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/constructive/constructive-meta-utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "f013d1d3374c9542d94c120299509d2a8ffa4ed6f2d9b3f4b367044f1fd0faad"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/feature-module.ts",
+      "type": "registry:lib",
+      "contentSha256": "f2524093568bb955ba6b7eb3900e97aa1ae6c945da8d6f9543edc8b293fc1134"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/adapter-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "11d6a217487b395d886e763c9776e4bf0310eb153d0bb216ba3f026c649f6992"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/console-kit-store.tsx",
+      "type": "registry:component",
+      "contentSha256": "b2381ac6bf3f0602ca07cdde8cc7ea1037b9598d528d2fc6bceb0fea506017cf"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/context-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "be3871d122df4c1bc1c008265f6fcb0e7183f51bbea442e6f1bc7c24dc81d258"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/endpoint-capability-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "49eb0730f976e91f68a7838c9ffe5170a3fb7d98b4b9546044ab87ad0beef3c1"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "e81d965b52645c344fceef4d11184a883b5efda235bb9080f1313788e9bc255e"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/navigation-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "a11f25fa4702813009213b577476f7ac75689ed6a90724e6d5a7ccccb9efcf9e"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/runtime-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "dfb0ad4697516b328cf57150ce0d14f2534a6bf1014f934f294d6d261db1d79d"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/store/session-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "4c3611bee50aa3fd45009a0d026bcc8dc20e09b90d493839322e528a28e9bb15"
+    },
+    {
+      "registryItem": "console-kit-core",
+      "path": "registry/constructive/blocks/console-kit/use-latest-callback.ts",
+      "type": "registry:lib",
+      "contentSha256": "324e162bf8a7a63ea64d59a44a22979b83806c53c5e492e603b2460e8df39ae2"
+    },
+    {
+      "registryItem": "console-kit-nextjs",
+      "path": "registry/constructive/blocks/console-kit/constructive/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "a8998bfce250dcf66caa61283349f0e59c39831196d6b77ec0c3ff3beae317b0"
+    },
+    {
+      "registryItem": "console-module-auth",
+      "path": "registry/constructive/blocks/console-kit/constructive/auth-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "cf2165d253e7119166db684070c72ef00dcad52ba7f2003b2b9139a1d718b96f"
+    },
+    {
+      "registryItem": "console-module-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
+    },
+    {
+      "registryItem": "console-module-billing",
+      "path": "registry/constructive/blocks/console-kit/constructive/billing-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "57e7a090408443b3e5fb21dfce72105e16750fd03c28b21b563ccc5d1d566b1c"
+    },
+    {
+      "registryItem": "console-module-billing",
+      "path": "registry/constructive/blocks/feature-packs/billing/billing-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
+    },
+    {
+      "registryItem": "console-module-data",
+      "path": "registry/constructive/blocks/feature-packs/data/data-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+    },
+    {
+      "registryItem": "console-module-notifications",
+      "path": "registry/constructive/blocks/console-kit/constructive/notifications-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
+    },
+    {
+      "registryItem": "console-module-notifications",
+      "path": "registry/constructive/blocks/feature-packs/notifications/notifications-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+    },
+    {
+      "registryItem": "console-module-organizations",
+      "path": "registry/constructive/blocks/console-kit/constructive/organizations-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+    },
+    {
+      "registryItem": "console-module-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
+    },
+    {
+      "registryItem": "console-module-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-meta-contract.ts",
+      "type": "registry:lib",
+      "contentSha256": "3b12684a654b76623fd203b736411eb069036eba202196c3f7a575879b911d27"
+    },
+    {
+      "registryItem": "console-module-storage",
+      "path": "registry/constructive/blocks/console-kit/constructive/storage-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
+    },
+    {
+      "registryItem": "console-module-storage",
+      "path": "registry/constructive/blocks/feature-packs/storage/storage-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
+    },
+    {
+      "registryItem": "console-module-storage",
+      "path": "registry/constructive/blocks/feature-packs/storage/storage-console-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "548bd288484c43e5e4546a7dc7470dc2e04f005d5561ebd9994cc25cb8c0348f"
+    },
+    {
+      "registryItem": "console-module-storage",
+      "path": "registry/constructive/blocks/feature-packs/storage/storage-meta-contract.ts",
+      "type": "registry:lib",
+      "contentSha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
+    },
+    {
+      "registryItem": "console-module-users",
+      "path": "registry/constructive/blocks/console-kit/constructive/users-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
+    },
+    {
+      "registryItem": "console-module-users",
+      "path": "registry/constructive/blocks/feature-packs/users/users-console-module.tsx",
+      "type": "registry:component",
+      "contentSha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/capabilities.ts",
+      "type": "registry:lib",
+      "contentSha256": "dba580a8b927cd29d9750aaec2018e3641b12878af5e58cd733ba3ce9f914297"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/endpoints.ts",
+      "type": "registry:lib",
+      "contentSha256": "7b092ecb015eedad25e659fcd564939f11bf1ef59d9275f9ce61f33bc2681f78"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/feature-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "76c955374565370a06294bd257106343483ea8568949076fe14ad5ed988c3302"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "9ef4368471fd410ae2ba9818689652f65aa3ca51e645812017197b1e051cd108"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/session.ts",
+      "type": "registry:lib",
+      "contentSha256": "88313ca7b5ee7037d08ba444bdb2b7bb2a4f06a516f82f32a43fc12898fb7c63"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/standalone-session.ts",
+      "type": "registry:lib",
+      "contentSha256": "9f36e69d3bbcd27adebbb000acfb5212e8897bf67c8aeba650af37bdfec0bc8a"
+    },
+    {
+      "registryItem": "console-runtime",
+      "path": "registry/constructive/blocks/console-runtime/transport.ts",
+      "type": "registry:lib",
+      "contentSha256": "f878de9e4ffda0620f8e6f9a69da81fcc94a5941ad0254aa5c2b013057d3ed27"
+    },
+    {
+      "registryItem": "dialog",
+      "path": "registry/constructive/ui/dialog.tsx",
+      "type": "registry:ui",
+      "contentSha256": "96289beb14152b229d89daa657ccaaed6c74a41f5e24f95a89c6de30fb434d80"
+    },
+    {
+      "registryItem": "dropdown-menu",
+      "path": "registry/constructive/ui/dropdown-menu.tsx",
+      "type": "registry:ui",
+      "contentSha256": "d14228965a84398c030ceda3dbd696cfe61f824f060dc4fe1085ef172df3a80a"
+    },
+    {
+      "registryItem": "empty",
+      "path": "registry/constructive/ui/empty.tsx",
+      "type": "registry:ui",
+      "contentSha256": "3780915a91cc1f51c89bd9a35812facd03bb9eea65091db6508fb0cbb0b11ed3"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-account-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "3b6d47e704aab162ec515810869c2c083f0d5263e07c581ed3ec346483e47378"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-challenge-panel.tsx",
+      "type": "registry:component",
+      "contentSha256": "b71fb074e21da75f5505e63fb546631e1f9047c442bd757eeab6b9c90d9e15e6"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-entry-panel.tsx",
+      "type": "registry:component",
+      "contentSha256": "ece13b372ae2da4b1869f22d1418f948b45bc4b67eec543466bd67752cca63bb"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "0d5498ee937a72bad80488f162c4eb991bf15de4e1a6ac2842bdd5901941b4d2"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/auth-password-policy.ts",
+      "type": "registry:lib",
+      "contentSha256": "a7c9aa3a8f1e14a55db3471681dba523f9dfddc93b49c3186d7e5ca948768292"
+    },
+    {
+      "registryItem": "feature-pack-auth",
+      "path": "registry/constructive/blocks/feature-packs/auth/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "8dd63421fa017224fc27b939e4ebdf2168f93249aac9e97132d0ad6ae17b1b7f"
+    },
+    {
+      "registryItem": "feature-pack-billing",
+      "path": "registry/constructive/blocks/feature-packs/billing/billing-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "d9a68dedca37a2e3f04fbb57020bfd8379ea7c4ffde601cb503853ba6b8f5ccf"
+    },
+    {
+      "registryItem": "feature-pack-billing",
+      "path": "registry/constructive/blocks/feature-packs/billing/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "ed85a5fba8a167f34d0dfb32924c7102fbc0c7f767d974c9c2befce75c51001c"
+    },
+    {
+      "registryItem": "feature-pack-data",
+      "path": "registry/constructive/blocks/feature-packs/data/data-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "2cb30b47d4bef39370fd7745a785dd1b2145c0bfd2bd019fd6bbdfe075074cba"
+    },
+    {
+      "registryItem": "feature-pack-data",
+      "path": "registry/constructive/blocks/feature-packs/data/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "04804c6d6d5c348e3804d688a147b69d2fb70e15ef4c19e0d0f93e4d8019c68a"
+    },
+    {
+      "registryItem": "feature-pack-notifications",
+      "path": "registry/constructive/blocks/feature-packs/notifications/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "e85d51cb3e2d8eb68e4141a63f6e4248236ce0712d7931cc2688316e0acf90bc"
+    },
+    {
+      "registryItem": "feature-pack-notifications",
+      "path": "registry/constructive/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "fae5c8e38a97ec51f0bcec5215eae3236a790e0309f66c8909225fe7b041dfe8"
+    },
+    {
+      "registryItem": "feature-pack-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "522df8f7d7bee77674079f0ab6d588fba36e412acb9d78d3192f4cf86aa92791"
+    },
+    {
+      "registryItem": "feature-pack-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-access-panels.tsx",
+      "type": "registry:component",
+      "contentSha256": "bed9902629a4da415a0ac08322d011f470e42583c79a359a6afa1fea55da522c"
+    },
+    {
+      "registryItem": "feature-pack-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39"
+    },
+    {
+      "registryItem": "feature-pack-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "c7d7313df84115a11ec48ce9acd35a7860d7bcb9813a06d772e8592b589507b9"
+    },
+    {
+      "registryItem": "feature-pack-organizations",
+      "path": "registry/constructive/blocks/feature-packs/organizations/organizations-operation-panels.tsx",
+      "type": "registry:component",
+      "contentSha256": "1519d3e79ca601a5d30626c09c8345766c4df784f41120128d464ca81843d06e"
+    },
+    {
+      "registryItem": "feature-pack-storage",
+      "path": "registry/constructive/blocks/feature-packs/storage/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "41c4c80506f4e770153350624d455e835f1ac5d204e336096d1a7e82030bf115"
+    },
+    {
+      "registryItem": "feature-pack-storage",
+      "path": "registry/constructive/blocks/feature-packs/storage/storage-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "cd7b045d7c8e101b9006183c70209b9d642f95635ea448f5b159c0d391492761"
+    },
+    {
+      "registryItem": "feature-pack-users",
+      "path": "registry/constructive/blocks/feature-packs/users/feature-pack.json",
+      "type": "registry:file",
+      "contentSha256": "b7801e6fffe156850674246c45ee6a0eca882d5a1214c39220c47188165d7390"
+    },
+    {
+      "registryItem": "feature-pack-users",
+      "path": "registry/constructive/blocks/feature-packs/users/users-feature-pack.tsx",
+      "type": "registry:component",
+      "contentSha256": "98013f9192ea5d846b6283da6b3245fd5748812a86549cd11560391807ecf691"
+    },
+    {
+      "registryItem": "field",
+      "path": "registry/constructive/ui/field.tsx",
+      "type": "registry:ui",
+      "contentSha256": "de6f605a8964d71e1c9027a46aa71f9a5359e23522408d669740331f235bde68"
+    },
+    {
+      "registryItem": "input-group",
+      "path": "registry/constructive/ui/input-group.tsx",
+      "type": "registry:ui",
+      "contentSha256": "a3bc3f452d81b70f2e19e05dc76e941f704f513bbe9c2b57c1b6670eb2d4e2a7"
+    },
+    {
+      "registryItem": "input",
+      "path": "registry/constructive/ui/input.tsx",
+      "type": "registry:ui",
+      "contentSha256": "fb906c1c05d992479088f71000b479dcb8e05bb4df6a17e0ca190b66ffc172dc"
+    },
+    {
+      "registryItem": "label",
+      "path": "registry/constructive/ui/label.tsx",
+      "type": "registry:ui",
+      "contentSha256": "4836eafa749ed3f61911842f900d45eed5b596e04c0504ed7bc421623b4e164a"
+    },
+    {
+      "registryItem": "motion-config",
+      "path": "registry/constructive/lib/motion/motion-config.ts",
+      "type": "registry:lib",
+      "contentSha256": "aafbcbf0c2bdc3fbda0a6abf9c03c742abba7745072fe536203d20e2e8d52ef1"
+    },
+    {
+      "registryItem": "pack-foundation",
+      "path": "registry/constructive/blocks/feature-packs/shared/feature-pack-contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "981cd5893edcc5261ebede98b67d2840c11f7f1402204c916ec6e1191506f2f7"
+    },
+    {
+      "registryItem": "pack-foundation",
+      "path": "registry/constructive/blocks/feature-packs/shared/feature-pack-ui.tsx",
+      "type": "registry:component",
+      "contentSha256": "a76b0185007da3cf8d6e14e20c4faff6807d7bde196f499c1cf02112d70892fa"
+    },
+    {
+      "registryItem": "pagination",
+      "path": "registry/constructive/ui/pagination.tsx",
+      "type": "registry:ui",
+      "contentSha256": "b4c2bbafe738daa7617af564bf08b06058913898c58710396aa80005222b8759"
+    },
+    {
+      "registryItem": "popover",
+      "path": "registry/constructive/ui/popover.tsx",
+      "type": "registry:ui",
+      "contentSha256": "e5ba53fa3dc6979e9cfd0a12490af261d5b2cac61a4ddff97d17ccbd11090d5e"
+    },
+    {
+      "registryItem": "portal",
+      "path": "registry/constructive/ui/portal.tsx",
+      "type": "registry:ui",
+      "contentSha256": "de7f80e04e56a8b869287eb6a698f180e0ea7979b3c9540524d0535b594768b9"
+    },
+    {
+      "registryItem": "preset-auth-hardened",
+      "path": "registry/constructive/blocks/presets/auth-hardened-console-kit.tsx",
+      "type": "registry:component",
+      "contentSha256": "c3b42667ace5fda0d503fdb8bf40e6a7c9f2994c1bd7e7f58dc57f4c5d68cc33"
+    },
+    {
+      "registryItem": "preset-auth-hardened",
+      "path": "registry/constructive/blocks/presets/auth-hardened.json",
+      "type": "registry:file",
+      "contentSha256": "77c3d6f6465b7b39869dcee6015d0ab3c6f3942ad555ec866f2f2f117420a3a2"
+    },
+    {
+      "registryItem": "preset-b2b-storage",
+      "path": "registry/constructive/blocks/presets/b2b-storage-console-kit.tsx",
+      "type": "registry:component",
+      "contentSha256": "8577b63bc9fe4e18d16deae49b301914ce8086077f075223b76b91fa46e4e8b0"
+    },
+    {
+      "registryItem": "preset-b2b-storage",
+      "path": "registry/constructive/blocks/presets/b2b-storage.json",
+      "type": "registry:file",
+      "contentSha256": "bce42e5e131507922e201be744de0ee151a9adc6358fe6f445450fc4a544473e"
+    },
+    {
+      "registryItem": "preset-full",
+      "path": "registry/constructive/blocks/presets/full-console-kit.tsx",
+      "type": "registry:component",
+      "contentSha256": "457e6240de50ed7641d8616efc0a19a26f86ac97494690fe12b334f78c99f573"
+    },
+    {
+      "registryItem": "preset-full",
+      "path": "registry/constructive/blocks/presets/full.json",
+      "type": "registry:file",
+      "contentSha256": "6312bf64ebf310573a6e67b93d4e2111bca6051fcabbca7f8711d3a0972a58d3"
+    },
+    {
+      "registryItem": "progress",
+      "path": "registry/constructive/ui/progress.tsx",
+      "type": "registry:ui",
+      "contentSha256": "88d757e3364ba88a4753d82a9466d2aee4d72aa411879a6a6bc99b45ca91732b"
+    },
+    {
+      "registryItem": "radio-group",
+      "path": "registry/constructive/ui/radio-group.tsx",
+      "type": "registry:ui",
+      "contentSha256": "7b16527fada2100a4a24f3d262e92c7c2f2350a3652cb0f97f19e49691772939"
+    },
+    {
+      "registryItem": "scroll-area",
+      "path": "registry/constructive/ui/scroll-area.tsx",
+      "type": "registry:ui",
+      "contentSha256": "cbb7c5b84a0b24c025ec8f285fb31d5260d9d8719efe9b719e37429a845c698d"
+    },
+    {
+      "registryItem": "select",
+      "path": "registry/constructive/ui/select.tsx",
+      "type": "registry:ui",
+      "contentSha256": "a4b080a79b2df2326cce22ffdbcfe977848027d8ca383b138994153906045431"
+    },
+    {
+      "registryItem": "separator",
+      "path": "registry/constructive/ui/separator.tsx",
+      "type": "registry:ui",
+      "contentSha256": "e4cd76ce7124f8d07e2603da51c72dd4715bc8241272000718fe9f47ac296ef6"
+    },
+    {
+      "registryItem": "sheet",
+      "path": "registry/constructive/ui/sheet.tsx",
+      "type": "registry:ui",
+      "contentSha256": "8ebfe3498b4351c899dfb4a2b0551e9243e95946fb0e1fa8202e2c5f621cb415"
+    },
+    {
+      "registryItem": "sidebar",
+      "path": "registry/constructive/ui/sidebar.tsx",
+      "type": "registry:ui",
+      "contentSha256": "f1bef65f21c07ee0cd44d5bb12cd333cc62db4eccc3792244df594f45e1ad5c4"
+    },
+    {
+      "registryItem": "skeleton",
+      "path": "registry/constructive/ui/skeleton.tsx",
+      "type": "registry:ui",
+      "contentSha256": "ac8c4f31303c317eb876880e631b1184aab15fa1b1c1f4ee4ea49ca8e9663afd"
+    },
+    {
+      "registryItem": "slot",
+      "path": "registry/constructive/lib/slot.tsx",
+      "type": "registry:lib",
+      "contentSha256": "2f546ed1e9aeba31d1b584ff5d6f9f60745a5fb15af098076505c86026ff4b67"
+    },
+    {
+      "registryItem": "switch",
+      "path": "registry/constructive/ui/switch.tsx",
+      "type": "registry:ui",
+      "contentSha256": "32cab805768c742c7bea2482c27737d955afc184a7e3f93090c5faefc9e4e15a"
+    },
+    {
+      "registryItem": "table",
+      "path": "registry/constructive/ui/table.tsx",
+      "type": "registry:ui",
+      "contentSha256": "ab830e32d3e10f8ac3e12c6daad57f4686398fdc4a6dbfe1c67ef98bb46ad188"
+    },
+    {
+      "registryItem": "tabs",
+      "path": "registry/constructive/ui/tabs.tsx",
+      "type": "registry:ui",
+      "contentSha256": "7c068c966d4b5de075fa8c4fb8ba493593b7e9381fc13ad5468107dcdc6fc549"
+    },
+    {
+      "registryItem": "textarea",
+      "path": "registry/constructive/ui/textarea.tsx",
+      "type": "registry:ui",
+      "contentSha256": "815b0e5c75769a9dc35767200ba3fd4edc5e262267650878f2a229ce2ced91aa"
+    },
+    {
+      "registryItem": "tooltip",
+      "path": "registry/constructive/ui/tooltip.tsx",
+      "type": "registry:ui",
+      "contentSha256": "38de29a5786a217f4a6b1b62754f2eeaf7e5916f72f109a8159e8b25c6dbbbaa"
+    },
+    {
+      "registryItem": "use-controllable-state",
+      "path": "registry/constructive/hooks/use-controllable-state.ts",
+      "type": "registry:hook",
+      "contentSha256": "fdfe16fed50222012e327812996e143f8e570cd7dccb09055f9298abda34fe37"
+    },
+    {
+      "registryItem": "use-mobile",
+      "path": "registry/constructive/hooks/use-mobile.ts",
+      "type": "registry:hook",
+      "contentSha256": "3469afadf0d9f2e5de6faf482312151d1abaccb511929b6962b890295a1ba061"
+    }
+  ]
+}

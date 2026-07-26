@@ -1991,6 +1991,13 @@ function assertSha256(value, label) {
   );
 }
 
+function assertSha512Integrity(value, label) {
+  assert(
+    typeof value === 'string' && /^sha512-[A-Za-z0-9+/]+={0,2}$/.test(value),
+    `${label} must be a SHA-512 Subresource Integrity value.`
+  );
+}
+
 function sha256(buffer) {
   return createHash('sha256').update(buffer).digest('hex');
 }
@@ -2053,6 +2060,10 @@ function byName(entries, label) {
     result.set(entry.name, entry);
   }
   return result;
+}
+
+function registryContentKey(registryItem, sourcePath) {
+  return registryItem + '\0' + sourcePath;
 }
 
 function sourceMap(snapshot) {
@@ -3008,6 +3019,16 @@ export function assertSnapshot(snapshot) {
     attestations.registryCatalog.path === 'references/registry-catalog.v1.json',
     'Registry catalog path drifted.'
   );
+  assertAttestation(attestations.registryContent, 'registryContent attestation');
+  assert(
+    attestations.registryContent.path === 'references/registry-content.v1.json',
+    'Registry content path drifted.'
+  );
+  assertAttestation(attestations.packageResolutions, 'packageResolutions attestation');
+  assert(
+    attestations.packageResolutions.path === 'references/package-resolutions.v1.json',
+    'Package resolutions path drifted.'
+  );
   assert(Array.isArray(attestations.canonicalFiles), 'canonicalFiles must be an array.');
   const sources = sourceMap(snapshot);
   assert(
@@ -3452,9 +3473,138 @@ export function validateSkillArtifacts(snapshot, root = skillDirectory) {
     assertPlan(plan, item, snapshot);
     planByItem.set(record.item, plan);
   }
+  const registryContentPath = assertAttestedFile(
+    root,
+    snapshot.source.attestations.registryContent,
+    'Pinned registry content'
+  );
+  const registryContent = readJson(registryContentPath, 'pinned registry content');
+  assertObject(registryContent, 'Registry content');
+  assert(registryContent.schemaVersion === 1, 'Registry content schemaVersion must be 1.');
+  assert(
+    registryContent.kind === 'constructive.blocks-registry-content',
+    'Registry content kind drifted.'
+  );
+  assert(registryContent.sourceCommit === PINNED.commit, 'Registry content sourceCommit drifted.');
+  assert(Array.isArray(registryContent.records), 'Registry content records must be an array.');
+  assert(
+    registryContent.recordCount === registryContent.records.length,
+    'Registry content recordCount is inconsistent.'
+  );
+  const expectedSources = new Map();
+  for (const plan of planByItem.values()) {
+    for (const file of plan.composition.files) {
+      for (const source of file.sources) {
+        const key = registryContentKey(source.registryItem, source.path);
+        const expected = expectedSources.get(key);
+        if (expected) {
+          assert(expected.type === file.type, 'Registry content source type conflicts across install plans.');
+        } else {
+          expectedSources.set(key, {
+            registryItem: source.registryItem,
+            path: source.path,
+            type: file.type
+          });
+        }
+      }
+    }
+  }
+  const contentBySource = new Map();
+  for (const record of registryContent.records) {
+    assertObject(record, 'Registry content record');
+    assertString(record.registryItem, 'Registry content registryItem');
+    assertString(record.path, 'Registry content path');
+    assertString(record.type, 'Registry content type');
+    assertSha256(record.contentSha256, 'Registry content contentSha256');
+    const key = registryContentKey(record.registryItem, record.path);
+    assert(!contentBySource.has(key), 'Registry content contains duplicate source ' + key + '.');
+    const expected = expectedSources.get(key);
+    assert(expected, 'Registry content contains an unplanned source ' + key + '.');
+    assert(expected.type === record.type, 'Registry content type drifted for ' + key + '.');
+    contentBySource.set(key, record);
+  }
+  assert(
+    contentBySource.size === expectedSources.size,
+    'Registry content must exactly cover every install-plan source.'
+  );
+  const packageResolutionsPath = assertAttestedFile(
+    root,
+    snapshot.source.attestations.packageResolutions,
+    'Pinned package resolutions'
+  );
+  const packageResolutions = readJson(
+    packageResolutionsPath,
+    'pinned package resolutions'
+  );
+  assertObject(packageResolutions, 'Package resolutions');
+  assert(packageResolutions.schemaVersion === 1, 'Package resolutions schemaVersion must be 1.');
+  assert(
+    packageResolutions.kind === 'constructive.blocks-package-resolutions',
+    'Package resolutions kind drifted.'
+  );
+  assert(
+    packageResolutions.sourceCommit === PINNED.commit,
+    'Package resolutions sourceCommit drifted.'
+  );
+  assert(
+    packageResolutions.registry === 'https://registry.npmjs.org',
+    'Package resolutions registry drifted.'
+  );
+  assert(Array.isArray(packageResolutions.records), 'Package resolution records must be an array.');
+  assert(
+    packageResolutions.recordCount === packageResolutions.records.length,
+    'Package resolutions recordCount is inconsistent.'
+  );
+  const firstPartyPackages = new Set(snapshot.release.packages.map((entry) => entry.name));
+  const expectedExternalPackages = new Set();
+  for (const plan of planByItem.values()) {
+    for (const dependency of plan.composition.npmDependencies) {
+      if (!firstPartyPackages.has(dependency.name)) {
+        expectedExternalPackages.add(dependency.name);
+      }
+    }
+  }
+  const packageByName = new Map();
+  for (const record of packageResolutions.records) {
+    assertObject(record, 'Package resolution record');
+    assertString(record.name, 'Package resolution name');
+    assertString(record.version, 'Package resolution version');
+    assertSha512Integrity(record.integrity, 'Package resolution integrity');
+    assertString(record.resolved, 'Package resolution URL');
+    assert(
+      expectedExternalPackages.has(record.name),
+      'Package resolutions contain unexpected package ' + record.name + '.'
+    );
+    assert(!packageByName.has(record.name), 'Duplicate package resolution ' + record.name + '.');
+    let resolvedUrl;
+    try {
+      resolvedUrl = new URL(record.resolved);
+    } catch {
+      fail('Package resolution URL is invalid for ' + record.name + '.');
+    }
+    assert(
+      resolvedUrl.protocol === 'https:' && resolvedUrl.hostname === 'registry.npmjs.org',
+      'Package resolution must use the canonical npm registry for ' + record.name + '.'
+    );
+    const unscopedName = record.name.slice(record.name.lastIndexOf('/') + 1);
+    const expectedPath = '/' + record.name + '/-/' + unscopedName + '-' + record.version + '.tgz';
+    assert(
+      decodeURIComponent(resolvedUrl.pathname) === expectedPath,
+      'Package resolution tarball path drifted for ' + record.name + '.'
+    );
+    packageByName.set(record.name, record);
+  }
+  assert(
+    packageByName.size === expectedExternalPackages.size,
+    'Package resolutions must exactly cover every external install-plan dependency.'
+  );
   return {
     catalog,
-    planByItem
+    planByItem,
+    registryContent,
+    contentBySource,
+    packageResolutions,
+    packageByName
   };
 }
 
@@ -4530,6 +4680,40 @@ export function assertBlocksSource(snapshot, artifacts, blocksRepo) {
       livePlan,
       artifacts.planByItem.get(item.name),
       `Live complete plan ${item.name}`
+    );
+  }
+
+  const publicItemCache = new Map();
+  for (const record of artifacts.registryContent.records) {
+    let publicItem = publicItemCache.get(record.registryItem);
+    if (!publicItem) {
+      const publicItemPath = resolveInside(
+        blocksRepo,
+        path.posix.join(
+          'apps',
+          'registry',
+          'public',
+          'r',
+          record.registryItem + '.json'
+        ),
+        'built registry item path'
+      );
+      assert(existsSync(publicItemPath), 'Built registry item does not exist: ' + publicItemPath);
+      publicItem = readJson(publicItemPath, 'built registry item ' + record.registryItem);
+      assert(publicItem.name === record.registryItem, 'Built registry item name drifted.');
+      assert(Array.isArray(publicItem.files), 'Built registry item files must be an array.');
+      publicItemCache.set(record.registryItem, publicItem);
+    }
+    const matches = publicItem.files.filter((file) => file.path === record.path);
+    assert(
+      matches.length === 1 &&
+        matches[0].type === record.type &&
+        typeof matches[0].content === 'string',
+      'Built registry item is missing exact source ' + record.registryItem + '/' + record.path + '.'
+    );
+    assert(
+      sha256(Buffer.from(matches[0].content, 'utf8')) === record.contentSha256,
+      'Built registry content drifted for ' + record.registryItem + '/' + record.path + '.'
     );
   }
 }

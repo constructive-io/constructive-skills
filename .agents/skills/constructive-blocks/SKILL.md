@@ -14,9 +14,9 @@ PostgreSQL/RLS authority. Keep those as separate facts.
 
 [`references/install-roots.v1.json`](references/install-roots.v1.json) is the
 portable authority for the exact Blocks branch and commit, release state,
-`_meta` contract, endpoint bindings, package versions, source hashes, 19
-complete inspector plans, Console runtime invariants, and structurally scoped
-source limitations. Use the validated
+`_meta` contract, endpoint bindings, package versions, source and built-content
+hashes, 19 complete inspector plans, Console runtime invariants, and
+structurally scoped source limitations. Use the validated
 queries below for ordinary selection; load the full snapshot only when
 auditing or updating the contract.
 
@@ -84,9 +84,16 @@ Standalone Data therefore keeps secure `embedded` eligible while its
 standalone-auth modes are blocked, whereas Console roots containing Data remain
 blocked by the nested-store limitation.
 
-[`references/registry-catalog.v1.json`](references/registry-catalog.v1.json)
+[`references/registry-catalog.v1.json`](references/registry-catalog.v1.json),
+[`references/registry-content.v1.json`](references/registry-content.v1.json),
+[`references/package-resolutions.v1.json`](references/package-resolutions.v1.json),
 and [`references/install-plans.v1/`](references/install-plans.v1/) remain the
-portable source artifacts behind these deterministic validated queries.
+portable source artifacts behind these deterministic validated queries. The
+content snapshot pins every file body reachable from the 19 install plans, so
+installed-source evidence cannot be satisfied by a fabricated generated item.
+The package snapshot pins the exact npm version, SRI, and canonical tarball URL
+for all ten external dependencies; first-party package bytes remain pinned to
+the local Blocks artifacts.
 
 Read
 [`references/runtime-contract.md`](references/runtime-contract.md) when wiring
@@ -110,7 +117,7 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 ```
 
 After the local workflow builds registry and package artifacts, verify every
-source hash and all 19 prebuilt plans:
+source hash, every planned built-file content hash, and all 19 prebuilt plans:
 
 ```bash
 node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs \
@@ -120,6 +127,22 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 The live check deliberately uses the inspector's `--no-build` mode only after
 the aggregate registry, canonical inputs, catalog, and plan bytes match their
 SHA-256 attestations. It never rebuilds or edits Blocks.
+
+When advancing the pinned Blocks commit, regenerate the planned content
+snapshot from a clean worktree, update its attestation in
+`install-roots.v1.json`, then run the full checker. The generator runs the
+pinned `build:registry` command before hashing any file bodies:
+
+```bash
+node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/sync-registry-content.mjs \
+  --blocks-repo /absolute/path/to/blocks
+node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/sync-package-resolutions.mjs
+```
+
+The package sync resolves npm's current `latest` releases. Review every
+version/SRI/URL diff, rerun the install and typecheck matrix, then update the
+snapshot hash in `install-roots.v1.json`; never refresh it as an unreviewed
+formatting step.
 
 ## Choose the smallest owning block
 

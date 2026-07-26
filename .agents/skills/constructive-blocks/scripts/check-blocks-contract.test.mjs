@@ -33,6 +33,10 @@ test('portable artifacts validate as one complete contract', () => {
   assert.equal(loaded.snapshot.items.length, 19);
   assert.equal(loaded.artifacts.planByItem.size, 19);
   assert.equal(loaded.artifacts.catalog.items.length, 102);
+  assert.equal(loaded.artifacts.registryContent.records.length, 138);
+  assert.equal(loaded.artifacts.contentBySource.size, 138);
+  assert.equal(loaded.artifacts.packageResolutions.records.length, 10);
+  assert.equal(loaded.artifacts.packageByName.size, 10);
   assert.equal(loaded.snapshot.sourceLimitations.length, 15);
 });
 

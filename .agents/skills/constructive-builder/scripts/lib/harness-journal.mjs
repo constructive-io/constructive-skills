@@ -16,7 +16,7 @@ import {
   writeJsonAtomic
 } from './brief-contract.mjs';
 
-export const JOURNAL_SCHEMA_VERSION = 2;
+export const JOURNAL_SCHEMA_VERSION = 3;
 export const JOURNAL_KIND = 'constructive.builder-run';
 export const STAGES = [
   'brief',
@@ -307,9 +307,9 @@ function verifyBlocksSource(blocksSource) {
   if (head !== blocksSource.headCommit) {
     throw new Error('The pinned Blocks source moved after validation; validate again and initialize a new journal.');
   }
-  const trackedStatus = runGit(sourcePath, ['status', '--porcelain=v1', '--untracked-files=no']);
+  const trackedStatus = runGit(sourcePath, ['status', '--porcelain=v1', '--untracked-files=all']);
   if (trackedStatus) {
-    throw new Error('The pinned Blocks source has tracked worktree changes; restore the validated clean commit.');
+    throw new Error('The pinned Blocks source has tracked or untracked-unignored changes; restore the validated clean commit.');
   }
   const checkerPath = path.resolve(blocksSource.checkerPath);
   if (!fs.existsSync(checkerPath)) {
@@ -373,6 +373,118 @@ function initialStage() {
   };
 }
 
+function verifyGlobalTransitionHistory(state) {
+  const records = [];
+  for (const stageName of STAGES) {
+    for (const attempt of state.stages[stageName].attempts) {
+      for (const event of attempt.events) {
+        records.push({
+          sequence: event.sequence,
+          type: 'stage-event',
+          stageName,
+          attemptNumber: attempt.number,
+          event
+        });
+      }
+    }
+  }
+  for (const invalidation of state.invalidations) {
+    records.push({
+      sequence: invalidation.sequence,
+      type: 'invalidation',
+      invalidation
+    });
+  }
+  records.sort((left, right) => left.sequence - right.sequence);
+  if (records.length !== state.revision) {
+    throw new Error('Run state revision must equal the complete global transition count.');
+  }
+  for (let index = 0; index < records.length; index += 1) {
+    if (records[index].sequence !== index + 1) {
+      throw new Error('Run state transition sequences must be unique and contiguous from 1.');
+    }
+  }
+
+  const statuses = new Map(STAGES.map((stageName) => [stageName, 'pending']));
+  const attemptCounts = new Map(STAGES.map((stageName) => [stageName, 0]));
+  const activeAttempts = new Map(STAGES.map((stageName) => [stageName, null]));
+  let workspaceBaselineSha256 = state.inputs.workspace.sha256;
+  for (const record of records) {
+    if (record.type === 'stage-event') {
+      const stageIndex = STAGES.indexOf(record.stageName);
+      if (record.event.kind === 'started') {
+        const expectedAttempt = attemptCounts.get(record.stageName) + 1;
+        if (record.attemptNumber !== expectedAttempt) {
+          throw new Error('Run state global history has a non-contiguous ' + record.stageName + ' attempt.');
+        }
+        const currentStatus = statuses.get(record.stageName);
+        if (currentStatus === 'passed' || currentStatus === 'running') {
+          throw new Error('Run state global history starts ' + record.stageName + ' from status ' + currentStatus + '.');
+        }
+        for (let priorIndex = 0; priorIndex < stageIndex; priorIndex += 1) {
+          const priorStage = STAGES[priorIndex];
+          if (statuses.get(priorStage) !== 'passed') {
+            throw new Error('Run state global history starts ' + record.stageName + ' before ' + priorStage + ' passes.');
+          }
+        }
+        if (record.event.workspaceBeforeSha256 !== workspaceBaselineSha256) {
+          throw new Error('Run state started event does not match the replayed workspace baseline.');
+        }
+        attemptCounts.set(record.stageName, expectedAttempt);
+        activeAttempts.set(record.stageName, record.attemptNumber);
+        statuses.set(record.stageName, 'running');
+        continue;
+      }
+      if (
+        statuses.get(record.stageName) !== 'running' ||
+        activeAttempts.get(record.stageName) !== record.attemptNumber
+      ) {
+        throw new Error('Run state global history terminates a non-running ' + record.stageName + ' attempt.');
+      }
+      activeAttempts.set(record.stageName, null);
+      statuses.set(record.stageName, record.event.kind);
+      workspaceBaselineSha256 = record.event.workspace.sha256;
+      continue;
+    }
+
+    const invalidation = record.invalidation;
+    const firstIndex = STAGES.indexOf(invalidation.fromStage);
+    if (Array.from(statuses.values()).includes('running')) {
+      throw new Error('Run state global history invalidates while a stage is running.');
+    }
+    if (invalidation.fromStage === 'brief' || statuses.get(invalidation.fromStage) === 'pending') {
+      throw new Error('Run state global history contains an invalid invalidation origin.');
+    }
+    const expectedAffected = [];
+    for (let index = firstIndex; index < STAGES.length; index += 1) {
+      const stageName = STAGES[index];
+      const priorStatus = statuses.get(stageName);
+      if (priorStatus === 'pending') {
+        continue;
+      }
+      expectedAffected.push({
+        stage: stageName,
+        priorStatus,
+        attemptCount: attemptCounts.get(stageName)
+      });
+    }
+    if (!isDeepStrictEqual(invalidation.affected, expectedAffected)) {
+      throw new Error('Run state invalidation affected set does not match global history.');
+    }
+    for (const affected of expectedAffected) {
+      statuses.set(affected.stage, 'pending');
+      activeAttempts.set(affected.stage, null);
+    }
+    workspaceBaselineSha256 = invalidation.workspace.sha256;
+  }
+
+  for (const stageName of STAGES) {
+    if (deriveStage(state, stageName).status !== statuses.get(stageName)) {
+      throw new Error('Run state derived status disagrees with global transition history for ' + stageName + '.');
+    }
+  }
+}
+
 function validateStateShape(state) {
   if (!state || state.schemaVersion !== JOURNAL_SCHEMA_VERSION || state.kind !== JOURNAL_KIND) {
     throw new Error('Run state has an unsupported schema or kind.');
@@ -421,9 +533,12 @@ function validateStateShape(state) {
       }
       exactKeys(
         attempt.events[0],
-        ['kind', 'at', 'workspaceBeforeSha256', 'previousHash', 'eventHash'],
+        ['kind', 'sequence', 'at', 'workspaceBeforeSha256', 'previousHash', 'eventHash'],
         'Run state started event'
       );
+      if (!Number.isInteger(attempt.events[0].sequence) || attempt.events[0].sequence < 1) {
+        throw new Error('Run state started event sequence must be a positive integer.');
+      }
       assertSha256(attempt.events[0].previousHash, 'Run state started event previousHash');
       assertSha256(attempt.events[0].eventHash, 'Run state started event eventHash');
       assertTimestamp(attempt.events[0].at, 'Run state started event at');
@@ -431,9 +546,12 @@ function validateStateShape(state) {
       if (attempt.events.length === 2) {
         const terminal = attempt.events[1];
         const terminalKeys = terminal.kind === 'passed'
-          ? ['kind', 'at', 'evidence', 'workspace', 'previousHash', 'eventHash']
-          : ['kind', 'at', 'evidence', 'reason', 'workspace', 'previousHash', 'eventHash'];
+          ? ['kind', 'sequence', 'at', 'evidence', 'workspace', 'previousHash', 'eventHash']
+          : ['kind', 'sequence', 'at', 'evidence', 'reason', 'workspace', 'previousHash', 'eventHash'];
         exactKeys(terminal, terminalKeys, 'Run state terminal event');
+        if (!Number.isInteger(terminal.sequence) || terminal.sequence < 1) {
+          throw new Error('Run state terminal event sequence must be a positive integer.');
+        }
         assertSha256(terminal.previousHash, 'Run state terminal event previousHash');
         assertSha256(terminal.eventHash, 'Run state terminal event eventHash');
         assertTimestamp(terminal.at, 'Run state terminal event at');
@@ -457,9 +575,12 @@ function validateStateShape(state) {
   for (const invalidation of state.invalidations) {
     exactKeys(
       invalidation,
-      ['at', 'fromStage', 'reason', 'affected', 'workspace', 'previousHash', 'eventHash'],
+      ['sequence', 'at', 'fromStage', 'reason', 'affected', 'workspace', 'previousHash', 'eventHash'],
       'Run state invalidation'
     );
+    if (!Number.isInteger(invalidation.sequence) || invalidation.sequence < 1) {
+      throw new Error('Run state invalidation sequence must be a positive integer.');
+    }
     assertSha256(invalidation.previousHash, 'Run state invalidation previousHash');
     assertSha256(invalidation.eventHash, 'Run state invalidation eventHash');
     assertTimestamp(invalidation.at, 'Run state invalidation at');
@@ -477,6 +598,7 @@ function validateStateShape(state) {
     exactKeys(invalidation.workspace, ['sha256', 'fileCount', 'gitHead'], 'Run state invalidation workspace');
     assertSha256(invalidation.workspace.sha256, 'Run state invalidation workspace.sha256');
   }
+  verifyGlobalTransitionHistory(state);
 }
 
 function verifyStateInputs(state) {
@@ -539,6 +661,8 @@ function verifyRetainedEvidence(state) {
         if (event.kind !== 'passed' && event.kind !== 'failed') {
           continue;
         }
+        const retainedTypes = new Set();
+        const replayPairs = [];
         for (const evidence of event.evidence) {
           verifyArtifactRecord(
             evidence,
@@ -549,6 +673,10 @@ function verifyRetainedEvidence(state) {
           if (!allowedTypes.has(evidence.type)) {
             throw new Error('Retained evidence type ' + evidence.type + ' is invalid for stage ' + stageName + '.');
           }
+          if (retainedTypes.has(evidence.type)) {
+            throw new Error('Retained ' + stageName + ' evidence contains duplicate type ' + evidence.type + '.');
+          }
+          retainedTypes.add(evidence.type);
           if (!Array.isArray(evidence.references)) {
             throw new Error('Retained evidence references must be an array.');
           }
@@ -566,7 +694,11 @@ function verifyRetainedEvidence(state) {
               'interaction',
               'manifest',
               'package',
+              'package-artifact',
+              'package-lock',
               'source',
+              'installed-file',
+              'install-config',
               'install-output',
               'command-output'
             ].includes(reference.kind)) {
@@ -582,10 +714,30 @@ function verifyRetainedEvidence(state) {
             size: evidence.size,
             references: []
           };
-          validateMachineEvidence(replayEvidence, stageName, state, event.kind === 'passed');
-          if (!isDeepStrictEqual(replayEvidence.references, evidence.references)) {
+          replayPairs.push({ retained: evidence, replay: replayEvidence });
+        }
+        validateMachineEvidenceSet(
+          replayPairs.map((pair) => pair.replay),
+          stageName,
+          state,
+          event.kind === 'passed'
+        );
+        for (const pair of replayPairs) {
+          if (!isDeepStrictEqual(pair.replay.references, pair.retained.references)) {
             throw new Error('Retained ' + stageName + ' evidence references do not match semantic replay.');
           }
+        }
+        if (event.kind === 'passed') {
+          if (retainedTypes.size !== allowedTypes.size) {
+            throw new Error('Retained passing ' + stageName + ' evidence does not contain every required type.');
+          }
+          for (const requiredType of allowedTypes) {
+            if (!retainedTypes.has(requiredType)) {
+              throw new Error('Retained passing ' + stageName + ' evidence is missing required type ' + requiredType + '.');
+            }
+          }
+        } else if (retainedTypes.size === 0) {
+          throw new Error('Retained failed ' + stageName + ' evidence must contain at least one typed artifact.');
         }
       }
     }
@@ -593,14 +745,14 @@ function verifyRetainedEvidence(state) {
 }
 
 function latestTerminalWorkspace(state) {
-  let latestAt = null;
+  let latestSequence = 0;
   let latestWorkspace = state.inputs.workspace;
   for (const stageName of STAGES) {
     for (const attempt of state.stages[stageName].attempts) {
       for (const event of attempt.events) {
         if ((event.kind === 'passed' || event.kind === 'failed') && event.workspace) {
-          if (latestAt === null || Date.parse(event.at) >= Date.parse(latestAt)) {
-            latestAt = event.at;
+          if (event.sequence > latestSequence) {
+            latestSequence = event.sequence;
             latestWorkspace = event.workspace;
           }
         }
@@ -608,8 +760,8 @@ function latestTerminalWorkspace(state) {
     }
   }
   for (const invalidation of state.invalidations) {
-    if (invalidation.workspace && (latestAt === null || Date.parse(invalidation.at) >= Date.parse(latestAt))) {
-      latestAt = invalidation.at;
+    if (invalidation.workspace && invalidation.sequence > latestSequence) {
+      latestSequence = invalidation.sequence;
       latestWorkspace = invalidation.workspace;
     }
   }
@@ -685,7 +837,8 @@ function deriveAttempt(attempt) {
     durationMs: event.kind === 'started' ? null : duration(started.at, event.at),
     evidence: Array.isArray(event.evidence) ? event.evidence : [],
     failureReason: event.kind === 'failed' ? event.reason : null,
-    latestEventAt: event.at
+    latestEventAt: event.at,
+    latestSequence: event.sequence
   };
 }
 
@@ -701,7 +854,7 @@ function deriveStage(state, stageName) {
   }
   const derivedAttempt = deriveAttempt(attempt);
   const invalidation = latestInvalidation(state, stageName);
-  if (invalidation && Date.parse(invalidation.at) >= Date.parse(derivedAttempt.latestEventAt)) {
+  if (invalidation && invalidation.sequence > derivedAttempt.latestSequence) {
     return {
       status: 'pending',
       attempt: derivedAttempt,
@@ -731,6 +884,10 @@ function deriveRunStatus(state) {
 
 function incrementRevision(state) {
   state.revision += 1;
+}
+
+function nextTransitionSequence(state) {
+  return state.revision + 1;
 }
 
 export function summarizeJournal(state) {
@@ -855,7 +1012,7 @@ function assertMachineHeader(document, evidenceType, label) {
   }
 }
 
-function validateCheckResults(checks, label) {
+function validateCheckResults(checks, label, expectedCheckId = null) {
   if (!Array.isArray(checks) || checks.length === 0) {
     throw new Error(label + ' checks must be a non-empty array.');
   }
@@ -875,18 +1032,34 @@ function validateCheckResults(checks, label) {
       allPassed = false;
     }
   }
+  if (
+    expectedCheckId !== null &&
+    (checks.length !== 1 || checks[0].id !== expectedCheckId)
+  ) {
+    throw new Error(label + ' checks must contain the exact contextual check ' + expectedCheckId + '.');
+  }
   return allPassed;
 }
 
 function validateRequestOutcome(document, context) {
   exactKeys(
     document,
-    ['schemaVersion', 'kind', 'endpointKind', 'operation', 'statusCode', 'checks', 'passed'],
+    [
+      'schemaVersion',
+      'kind',
+      'contextKey',
+      'endpointKind',
+      'operation',
+      'statusCode',
+      'checks',
+      'passed'
+    ],
     'Request outcome artifact'
   );
   if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-request-outcome') {
     throw new Error('Request outcome artifact has the wrong schemaVersion or kind.');
   }
+  requireValue(document.contextKey, 'Request outcome contextKey');
   requireValue(document.endpointKind, 'Request outcome endpointKind');
   requireValue(document.operation, 'Request outcome operation');
   if (
@@ -895,7 +1068,11 @@ function validateRequestOutcome(document, context) {
   ) {
     throw new Error('Request outcome statusCode must be 0 or a valid HTTP status code.');
   }
-  const allPassed = validateCheckResults(document.checks, 'Request outcome');
+  const allPassed = validateCheckResults(
+    document.checks,
+    'Request outcome',
+    context?.checkId || null
+  );
   if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
     throw new Error('Request outcome passed must equal all request checks.');
   }
@@ -905,6 +1082,12 @@ function validateRequestOutcome(document, context) {
   if (context?.endpointKind && document.endpointKind !== context.endpointKind) {
     throw new Error('Request outcome endpointKind does not match the evidence result.');
   }
+  if (context?.contextKey && document.contextKey !== context.contextKey) {
+    throw new Error('Request outcome contextKey does not match the evidence result.');
+  }
+  if (context?.operation && document.operation !== context.operation) {
+    throw new Error('Request outcome operation does not match the evidence result.');
+  }
   if (typeof context?.passed === 'boolean' && document.passed !== context.passed) {
     throw new Error('Request outcome passed does not match the evidence result.');
   }
@@ -913,32 +1096,83 @@ function validateRequestOutcome(document, context) {
 function validateUiOutcome(document, context) {
   exactKeys(
     document,
-    ['schemaVersion', 'kind', 'state', 'visible', 'interactive', 'checks', 'passed'],
+    [
+      'schemaVersion',
+      'kind',
+      'contextKey',
+      'state',
+      'visible',
+      'interactive',
+      'checks',
+      'passed'
+    ],
     'UI outcome artifact'
   );
   if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-ui-outcome') {
     throw new Error('UI outcome artifact has the wrong schemaVersion or kind.');
   }
+  requireValue(document.contextKey, 'UI outcome contextKey');
   requireValue(document.state, 'UI outcome state');
   if (typeof document.visible !== 'boolean' || typeof document.interactive !== 'boolean') {
     throw new Error('UI outcome visible and interactive must be boolean.');
   }
-  const allPassed = validateCheckResults(document.checks, 'UI outcome');
+  const allPassed = validateCheckResults(
+    document.checks,
+    'UI outcome',
+    context?.checkId || null
+  );
   if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
     throw new Error('UI outcome passed must equal all UI checks.');
   }
   if (document.passed && !document.visible) {
     throw new Error('A passing UI outcome must be visible.');
   }
+  if (context?.contextKey && document.contextKey !== context.contextKey) {
+    throw new Error('UI outcome contextKey does not match the evidence result.');
+  }
+  if (context?.state && document.state !== context.state) {
+    throw new Error('UI outcome state does not match the evidence result.');
+  }
   if (typeof context?.passed === 'boolean' && document.passed !== context.passed) {
     throw new Error('UI outcome passed does not match the evidence result.');
   }
 }
 
+function expectedInteractionCheckIds(context) {
+  if (!context?.viewport) {
+    throw new Error('Interaction outcome validation requires the resolved viewport.');
+  }
+  const ids = [
+    'keyboard-traversal',
+    'focus-visibility',
+    'overflow-containment',
+    'diagnostics-containment'
+  ];
+  if (context.viewport.width <= 767) {
+    ids.push('responsive-navigation', 'touch-targets');
+  }
+  if (context.state === 'error') {
+    ids.push('retry-recovery');
+  }
+  if (context.state === 'ready' || context.state === 'populated') {
+    ids.push('action-feedback');
+  }
+  return ids;
+}
+
 function validateInteractionOutcome(document, context) {
   exactKeys(
     document,
-    ['schemaVersion', 'kind', 'targetKey', 'viewportId', 'state', 'checks', 'passed'],
+    [
+      'schemaVersion',
+      'kind',
+      'targetKey',
+      'viewportId',
+      'state',
+      'contextCheck',
+      'checks',
+      'passed'
+    ],
     'Interaction outcome artifact'
   );
   if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-interaction-outcome') {
@@ -947,9 +1181,36 @@ function validateInteractionOutcome(document, context) {
   requireValue(document.targetKey, 'Interaction outcome targetKey');
   requireValue(document.viewportId, 'Interaction outcome viewportId');
   requireValue(document.state, 'Interaction outcome state');
-  const allPassed = validateCheckResults(document.checks, 'Interaction outcome');
+  exactKeys(document.contextCheck, ['id', 'passed'], 'Interaction outcome context check');
+  if (
+    document.contextCheck.id !== context?.checkId ||
+    document.contextCheck.passed !== true
+  ) {
+    throw new Error('Interaction outcome must contain its passing exact contextual check.');
+  }
+  const expectedCheckIds = expectedInteractionCheckIds(context);
+  if (!Array.isArray(document.checks) || document.checks.length !== expectedCheckIds.length) {
+    throw new Error('Interaction outcome must contain every required behavior check exactly once.');
+  }
+  let allPassed = true;
+  for (let index = 0; index < expectedCheckIds.length; index += 1) {
+    const check = document.checks[index];
+    exactKeys(check, ['id', 'passed'], 'Interaction outcome behavior check');
+    if (check.id !== expectedCheckIds[index]) {
+      throw new Error(
+        'Interaction outcome behavior checks must exactly equal: ' +
+        expectedCheckIds.join(', ') + '.'
+      );
+    }
+    if (typeof check.passed !== 'boolean') {
+      throw new Error('Interaction outcome behavior check passed must be boolean.');
+    }
+    if (!check.passed) {
+      allPassed = false;
+    }
+  }
   if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
-    throw new Error('Interaction outcome passed must equal all interaction checks.');
+    throw new Error('Interaction outcome passed must equal all behavior checks.');
   }
   if (context) {
     if (
@@ -977,7 +1238,7 @@ function crc32(bytes) {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function parseCompletePng(bytes) {
+function parseCompletePng(bytes, expectedWidth, expectedHeight) {
   const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   if (bytes.length < 57 || !bytes.subarray(0, 8).equals(signature)) {
     throw new Error('Screenshot must be a complete PNG image.');
@@ -985,6 +1246,8 @@ function parseCompletePng(bytes) {
   let offset = 8;
   let ihdr = null;
   const idatChunks = [];
+  let palette = null;
+  let idatEnded = false;
   let ended = false;
   let chunkIndex = 0;
   while (offset < bytes.length) {
@@ -998,6 +1261,9 @@ function parseCompletePng(bytes) {
     }
     const typeBytes = bytes.subarray(offset + 4, offset + 8);
     const type = typeBytes.toString('ascii');
+    if (!/^[A-Za-z]{2}[A-Z][A-Za-z]$/.test(type)) {
+      throw new Error('Screenshot PNG contains an invalid chunk type.');
+    }
     const data = bytes.subarray(offset + 8, offset + 8 + length);
     const expectedCrc = bytes.readUInt32BE(offset + 8 + length);
     const crcInput = Buffer.concat([typeBytes, data]);
@@ -1012,8 +1278,20 @@ function parseCompletePng(bytes) {
         throw new Error('Screenshot PNG must contain one 13-byte leading IHDR chunk.');
       }
       ihdr = Buffer.from(data);
+    } else if (type === 'PLTE') {
+      if (
+        !ihdr ||
+        palette ||
+        idatChunks.length > 0 ||
+        length < 3 ||
+        length > 768 ||
+        length % 3 !== 0
+      ) {
+        throw new Error('Screenshot PNG contains an invalid PLTE chunk.');
+      }
+      palette = Buffer.from(data);
     } else if (type === 'IDAT') {
-      if (!ihdr || ended || length === 0) {
+      if (!ihdr || ended || idatEnded || length === 0) {
         throw new Error('Screenshot PNG must contain non-empty IDAT data after IHDR.');
       }
       idatChunks.push(Buffer.from(data));
@@ -1022,8 +1300,16 @@ function parseCompletePng(bytes) {
         throw new Error('Screenshot PNG must end with one terminal IEND after image data.');
       }
       ended = true;
-    } else if (ended) {
-      throw new Error('Screenshot PNG contains data after IEND.');
+    } else {
+      if (ended) {
+        throw new Error('Screenshot PNG contains data after IEND.');
+      }
+      if (type[0] === type[0].toUpperCase()) {
+        throw new Error('Screenshot PNG contains an unsupported critical chunk ' + type + '.');
+      }
+    }
+    if (idatChunks.length > 0 && type !== 'IDAT') {
+      idatEnded = true;
     }
     offset = chunkEnd;
     chunkIndex += 1;
@@ -1038,11 +1324,23 @@ function parseCompletePng(bytes) {
   if (width < 1 || height < 1 || ihdr[10] !== 0 || ihdr[11] !== 0 || ihdr[12] !== 0) {
     throw new Error('Screenshot PNG must use valid dimensions and non-interlaced standard compression and filtering.');
   }
+  if (width !== expectedWidth || height !== expectedHeight) {
+    throw new Error(
+      'Screenshot dimensions ' + width + 'x' + height +
+      ' do not match viewport pixels ' + expectedWidth + 'x' + expectedHeight + '.'
+    );
+  }
   const channelCounts = new Map([[0, 1], [2, 3], [3, 1], [4, 2], [6, 4]]);
   const allowedBitDepths = new Map([[0, [1, 2, 4, 8, 16]], [2, [8, 16]], [3, [1, 2, 4, 8]], [4, [8, 16]], [6, [8, 16]]]);
   const channels = channelCounts.get(colorType);
   if (!channels || !allowedBitDepths.get(colorType).includes(bitDepth)) {
     throw new Error('Screenshot PNG uses an unsupported color type or bit depth.');
+  }
+  if (colorType === 3 && !palette) {
+    throw new Error('Indexed-color screenshot PNG requires a PLTE chunk.');
+  }
+  if ((colorType === 0 || colorType === 4) && palette) {
+    throw new Error('Grayscale screenshot PNG cannot contain a PLTE chunk.');
   }
   const rowBytes = Math.ceil(width * channels * bitDepth / 8);
   const expectedInflatedSize = (rowBytes + 1) * height;
@@ -1064,19 +1362,13 @@ function parseCompletePng(bytes) {
 }
 
 function validateScreenshotArtifact(artifactPath, context) {
-  const bytes = fs.readFileSync(artifactPath);
-  const dimensions = parseCompletePng(bytes);
   if (!context?.viewport) {
     throw new Error('Screenshot validation requires a resolved viewport.');
   }
   const expectedWidth = Math.round(context.viewport.width * context.viewport.deviceScaleFactor);
   const expectedHeight = Math.round(context.viewport.height * context.viewport.deviceScaleFactor);
-  if (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight) {
-    throw new Error(
-      'Screenshot dimensions ' + dimensions.width + 'x' + dimensions.height +
-      ' do not match viewport pixels ' + expectedWidth + 'x' + expectedHeight + '.'
-    );
-  }
+  const bytes = fs.readFileSync(artifactPath);
+  parseCompletePng(bytes, expectedWidth, expectedHeight);
 }
 
 function attestOutcomeReference(relativePath, kind, workspacePath, context = null) {
@@ -1143,19 +1435,75 @@ function expectedScenarios(state, evidenceType) {
   return scenarios.slice();
 }
 
-function addOutcomeReferences(assertion, evidence, workspacePath, seenReferences) {
+function uniqueValues(values) {
+  const seen = new Set();
+  const result = [];
+  for (const value of values) {
+    if (!seen.has(value)) {
+      seen.add(value);
+      result.push(value);
+    }
+  }
+  return result;
+}
+
+function scenarioOutcomeContext(scenario, assertion, state) {
+  const actorIds = scenario.actorIds.slice();
+  const actorById = new Map(
+    state.resolved.acceptance.actors.map((actor) => [actor.id, actor])
+  );
+  const tenantIds = uniqueValues(actorIds.map((actorId) => {
+    return actorById.get(actorId)?.tenantScope?.databaseId || state.resolved.tenantId;
+  }));
+  let endpointKind = assertion.contract?.endpointKind || null;
+  if (!endpointKind && (scenario.kind === 'crud' || scenario.kind === 'rls')) {
+    endpointKind = 'data';
+  }
+  if (!endpointKind && scenario.kind === 'auth') {
+    endpointKind = 'auth';
+  }
+  if (!endpointKind && Array.isArray(scenario.assertionContracts)) {
+    const routed = scenario.assertionContracts.find((entry) => {
+      return typeof entry?.contract?.endpointKind === 'string';
+    });
+    endpointKind = routed?.contract?.endpointKind || null;
+  }
+  if (!endpointKind) {
+    endpointKind = 'host';
+  }
+  let uiState = 'ready';
+  if (assertion.id.includes(':unavailable')) {
+    uiState = 'unavailable';
+  } else if (assertion.id.includes(':deny') || assertion.id.includes('revoked')) {
+    uiState = 'unauthorized';
+  }
+  return {
+    contextKey: [
+      'scenario',
+      scenario.id,
+      assertion.id,
+      actorIds.join(','),
+      tenantIds.join(',')
+    ].join('|'),
+    endpointKind,
+    operation: assertion.id,
+    state: uiState,
+    checkId: assertion.id,
+    passed: assertion.passed
+  };
+}
+
+function addOutcomeReferences(assertion, evidence, workspacePath, seenReferences, context) {
   for (const pair of [
     ['request', assertion.requestRef],
     ['ui', assertion.uiRef]
   ]) {
     const key = pair[0] + ':' + pair[1];
-    if (seenReferences.has(key)) {
-      continue;
+    const reference = attestOutcomeReference(pair[1], pair[0], workspacePath, context);
+    if (!seenReferences.has(key)) {
+      seenReferences.add(key);
+      evidence.references.push(reference);
     }
-    seenReferences.add(key);
-    evidence.references.push(
-      attestOutcomeReference(pair[1], pair[0], workspacePath, { passed: assertion.passed })
-    );
   }
 }
 
@@ -1218,7 +1566,13 @@ function validateScenarioResults(results, expected, evidence, state, requirePass
         observedFailure = true;
       }
       assertionIds.push(assertion.id);
-      addOutcomeReferences(assertion, evidence, state.inputs.workspace.path, seenReferences);
+      addOutcomeReferences(
+        assertion,
+        evidence,
+        state.inputs.workspace.path,
+        seenReferences,
+        scenarioOutcomeContext(scenario, assertion, state)
+      );
     }
     if (requirePass && !setEquals(assertionIds, scenario.assertionIds)) {
       throw new Error('Machine evidence does not cover every assertion for scenario ' + result.scenarioId + '.');
@@ -1300,7 +1654,31 @@ function validateAcceptanceEvidence(document, evidence, state, requirePass) {
     if (!capability.passed) {
       observedFailure = true;
     }
-    addOutcomeReferences(capability, evidence, state.inputs.workspace.path, seenReferences);
+    const capabilityEndpointKinds = Array.isArray(expected.binding?.routes)
+      ? uniqueValues(expected.binding.routes.map((route) => route.endpointKind))
+      : [];
+    addOutcomeReferences(
+      capability,
+      evidence,
+      state.inputs.workspace.path,
+      seenReferences,
+      {
+        contextKey: [
+          'capability',
+          capability.surfaceId,
+          capability.featurePack,
+          capability.expected,
+          capability.actual
+        ].join('|'),
+        endpointKind: capabilityEndpointKinds.length === 1
+          ? capabilityEndpointKinds[0]
+          : 'host',
+        operation: 'capability-state',
+        state: capability.actual,
+        checkId: 'capability:' + capability.surfaceId + ':' + capability.featurePack,
+        passed: capability.passed
+      }
+    );
   }
   if (requirePass && !setEquals(Array.from(seen), Array.from(expectedByKey.keys()))) {
     throw new Error('Acceptance machine evidence does not cover every capability expectation.');
@@ -1370,7 +1748,20 @@ function validateAcceptanceEvidence(document, evidence, state, requirePass) {
       if (!requirement.passed) {
         allRequirementsPassed = false;
       }
-      addOutcomeReferences(requirement, evidence, state.inputs.workspace.path, seenReferences);
+      addOutcomeReferences(
+        requirement,
+        evidence,
+        state.inputs.workspace.path,
+        seenReferences,
+        {
+          contextKey: ['limitation', limitation.id, requirement.id].join('|'),
+          endpointKind: 'host',
+          operation: 'mitigation',
+          state: requirement.passed ? 'ready' : 'error',
+          checkId: 'limitation:' + limitation.id + ':' + requirement.id,
+          passed: requirement.passed
+        }
+      );
     }
     if (!setEquals(Array.from(seenRequirements), Array.from(expectedRequirementById.keys()))) {
       throw new Error(
@@ -1461,7 +1852,8 @@ function validateVisualEvidence(document, evidence, state, requirePass) {
   }
   const expected = expectedVisualCombinations(state);
   const seen = new Set();
-  const seenReferences = new Set();
+  const screenshotPaths = new Set();
+  const interactionPaths = new Set();
   let observedFailure = false;
   for (const result of document.results) {
     exactKeys(
@@ -1488,25 +1880,31 @@ function validateVisualEvidence(document, evidence, state, requirePass) {
     if (!result.passed) {
       observedFailure = true;
     }
+    if (screenshotPaths.has(result.screenshotRef)) {
+      throw new Error('Visual machine evidence reuses a screenshot across contextual results.');
+    }
+    if (interactionPaths.has(result.interactionRef)) {
+      throw new Error('Visual machine evidence reuses an interaction outcome across contextual results.');
+    }
+    screenshotPaths.add(result.screenshotRef);
+    interactionPaths.add(result.interactionRef);
     for (const pair of [
       ['screenshot', result.screenshotRef],
       ['interaction', result.interactionRef]
     ]) {
-      const referenceKey = pair[0] + ':' + pair[1];
-      if (!seenReferences.has(referenceKey)) {
-        seenReferences.add(referenceKey);
-        const referenceContext = pair[0] === 'screenshot'
-          ? { viewport: expectedResult.viewport }
-          : {
-            targetKey: visualCombinationKey(result.target, result.viewport, result.state),
-            viewportId: result.viewport.id,
-            state: result.state,
-            passed: result.passed
-          };
-        evidence.references.push(
-          attestOutcomeReference(pair[1], pair[0], state.inputs.workspace.path, referenceContext)
-        );
-      }
+      const referenceContext = pair[0] === 'screenshot'
+        ? { viewport: expectedResult.viewport }
+        : {
+          targetKey: visualCombinationKey(result.target, result.viewport, result.state),
+          viewportId: result.viewport.id,
+          viewport: expectedResult.viewport,
+          state: result.state,
+          passed: result.passed,
+          checkId: 'interaction:' + key
+        };
+      evidence.references.push(
+        attestOutcomeReference(pair[1], pair[0], state.inputs.workspace.path, referenceContext)
+      );
     }
   }
   if (requirePass && !setEquals(Array.from(seen), Array.from(expected.keys()))) {
@@ -1616,6 +2014,46 @@ function expectedEndpointChecks(state) {
   return expected;
 }
 
+function catalogContract(state) {
+  return readJson(state.inputs.catalog, 'Pinned Blocks catalog');
+}
+
+function renderContractCommand(template, replacements) {
+  let command = template;
+  for (const replacement of replacements) {
+    command = command.split(replacement.token).join(replacement.value);
+  }
+  return command;
+}
+
+function localConsumptionContract(state) {
+  if (!state.inputs.blocksSource) {
+    return null;
+  }
+  const catalog = catalogContract(state);
+  const local = catalog.release?.localConsumption;
+  if (
+    !local ||
+    !Array.isArray(local.prepareCommands) ||
+    typeof local.localInstallCommandTemplate !== 'string'
+  ) {
+    throw new Error('The pinned Blocks catalog has no executable local-consumption contract.');
+  }
+  const replacements = [
+    { token: '<blocks-repo>', value: state.inputs.blocksSource.path },
+    { token: '<consumer-repo>', value: state.inputs.workspace.path }
+  ];
+  return {
+    prepareCommands: local.prepareCommands.map((command) => {
+      return renderContractCommand(command, replacements);
+    }),
+    installCommandTemplate: renderContractCommand(
+      local.localInstallCommandTemplate,
+      replacements
+    )
+  };
+}
+
 function validateEndpointCheckEvidence(document, evidence, state, requirePass) {
   exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Endpoint check evidence');
   assertMachineHeader(document, 'endpoint-check', 'Endpoint check evidence');
@@ -1650,7 +2088,13 @@ function validateEndpointCheckEvidence(document, evidence, state, requirePass) {
       result.requestRef,
       'request',
       state.inputs.workspace.path,
-      { endpointKind: result.endpointKind, passed: result.passed }
+      {
+        contextKey: ['endpoint', result.tenantId, result.endpointKind].join('|'),
+        endpointKind: result.endpointKind,
+        operation: 'endpoint-check',
+        checkId: 'endpoint:' + result.tenantId + ':' + result.endpointKind,
+        passed: result.passed
+      }
     );
     const requestDocument = readJson(reference.path, 'Endpoint request outcome');
     if (requestDocument.statusCode !== result.statusCode) {
@@ -1685,7 +2129,12 @@ function installPlanContracts(state) {
       typeof plan.install.command !== 'string' ||
       plan.install.command.trim().length === 0 ||
       !plan.composition ||
-      !Array.isArray(plan.composition.npmDependencies)
+      !Array.isArray(plan.composition.npmDependencies) ||
+      !Array.isArray(plan.composition.files) ||
+      !Array.isArray(plan.featurePacks) ||
+      !plan.verify ||
+      !Array.isArray(plan.verify.commands) ||
+      plan.verify.commands.length !== 2
     ) {
       throw new Error('Attested compact install plan has an invalid executable contract for ' + attestation.root + '.');
     }
@@ -1696,14 +2145,608 @@ function installPlanContracts(state) {
       }
       packageNames.push(dependency.name);
     }
+    const files = [];
+    for (const file of plan.composition.files) {
+      if (
+        !file ||
+        typeof file.target !== 'string' ||
+        file.target.trim().length === 0 ||
+        !['literal', 'project-root', 'shadcn-alias'].includes(file.targetKind) ||
+        typeof file.type !== 'string' ||
+        file.type.trim().length === 0 ||
+        !Array.isArray(file.sources) ||
+        file.sources.length !== 1
+      ) {
+        throw new Error('Attested compact install plan has an invalid file target for ' + attestation.root + '.');
+      }
+      const source = file.sources[0];
+      if (
+        !source ||
+        typeof source.registryItem !== 'string' ||
+        !/^[a-z0-9][a-z0-9-]*$/.test(source.registryItem) ||
+        typeof source.path !== 'string' ||
+        !isSafeRelativePath(source.path) ||
+        source.path === '.'
+      ) {
+        throw new Error(
+          'Attested compact install plan has invalid registry source provenance for ' +
+          attestation.root + '/' + file.target + '.'
+        );
+      }
+      files.push({
+        target: file.target,
+        targetKind: file.targetKind,
+        type: file.type,
+        sources: [{ registryItem: source.registryItem, path: source.path }]
+      });
+    }
     contracts.push({
       root: attestation.root,
       sha256: attestation.sha256,
       command: plan.install.command,
-      packageNames
+      packageNames,
+      files,
+      featurePacks: structuredClone(plan.featurePacks),
+      verifyCommands: plan.verify.commands.slice()
     });
   }
+  const local = localConsumptionContract(state);
+  for (const contract of contracts) {
+    if (local) {
+      contract.command = local.installCommandTemplate.split('{name}').join(contract.root);
+    }
+  }
   return contracts;
+}
+
+function stripJsonComments(source) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    const next = source[index + 1];
+    if (inString) {
+      result += character;
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      result += character;
+      continue;
+    }
+    if (character === '/' && next === '/') {
+      while (index < source.length && source[index] !== '\n') {
+        index += 1;
+      }
+      result += '\n';
+      continue;
+    }
+    if (character === '/' && next === '*') {
+      index += 2;
+      while (
+        index < source.length &&
+        !(source[index] === '*' && source[index + 1] === '/')
+      ) {
+        if (source[index] === '\n') {
+          result += '\n';
+        }
+        index += 1;
+      }
+      index += 1;
+      continue;
+    }
+    result += character;
+  }
+  return result;
+}
+
+function stripJsonTrailingCommas(source) {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (inString) {
+      result += character;
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (character === '"') {
+      inString = true;
+      result += character;
+      continue;
+    }
+    if (character === ',') {
+      let lookahead = index + 1;
+      while (/\s/.test(source[lookahead] || '')) {
+        lookahead += 1;
+      }
+      if (source[lookahead] === '}' || source[lookahead] === ']') {
+        continue;
+      }
+    }
+    result += character;
+  }
+  return result;
+}
+
+function readJsonc(filePath, label) {
+  assertRegularContainedFile(filePath, '', label);
+  try {
+    return JSON.parse(stripJsonTrailingCommas(stripJsonComments(fs.readFileSync(filePath, 'utf8'))));
+  } catch (error) {
+    throw new Error(label + ' is not valid JSONC: ' + error.message);
+  }
+}
+
+function safeNormalizedRelativePath(value, label) {
+  if (!isSafeRelativePath(value) || value === '.') {
+    throw new Error(label + ' must be a safe workspace-relative file.');
+  }
+  const normalized = path.posix.normalize(value).replace(/^\.\//, '');
+  if (!isSafeRelativePath(normalized) || normalized === '.') {
+    throw new Error(label + ' must resolve to a safe workspace-relative file.');
+  }
+  return normalized;
+}
+
+function assertNoSymlinkPath(workspacePath, relativePath, label) {
+  let current = workspacePath;
+  for (const segment of relativePath.split('/')) {
+    current = path.join(current, segment);
+    if (fs.existsSync(current) && fs.lstatSync(current).isSymbolicLink()) {
+      throw new Error(label + ' must not use a symlinked path component.');
+    }
+  }
+}
+
+function resolveTypeScriptAlias(importTarget, workspacePath, referencePaths, evidence) {
+  const configNames = ['tsconfig.json', 'jsconfig.json'];
+  let configRef = null;
+  for (const candidate of configNames) {
+    if (fs.existsSync(path.join(workspacePath, candidate))) {
+      configRef = candidate;
+      break;
+    }
+  }
+  if (!configRef) {
+    throw new Error('A shadcn alias target requires tsconfig.json or jsconfig.json.');
+  }
+  const configPath = path.join(workspacePath, configRef);
+  const config = readJsonc(configPath, 'Consumer TypeScript path config');
+  const paths = config?.compilerOptions?.paths;
+  if (!paths || typeof paths !== 'object' || Array.isArray(paths)) {
+    throw new Error('Consumer TypeScript path config must declare compilerOptions.paths.');
+  }
+  const matches = [];
+  for (const pattern of Object.keys(paths)) {
+    const starIndex = pattern.indexOf('*');
+    const prefix = starIndex === -1 ? pattern : pattern.slice(0, starIndex);
+    const suffix = starIndex === -1 ? '' : pattern.slice(starIndex + 1);
+    if (
+      !importTarget.startsWith(prefix) ||
+      !importTarget.endsWith(suffix) ||
+      (starIndex === -1 && importTarget !== pattern)
+    ) {
+      continue;
+    }
+    const capture = starIndex === -1
+      ? ''
+      : importTarget.slice(prefix.length, importTarget.length - suffix.length);
+    matches.push({ pattern, capture, specificity: prefix.length + suffix.length });
+  }
+  matches.sort((left, right) => right.specificity - left.specificity);
+  const match = matches[0];
+  const targets = match ? paths[match.pattern] : null;
+  if (!match || !Array.isArray(targets) || targets.length === 0) {
+    throw new Error('No TypeScript path mapping resolves shadcn alias target ' + importTarget + '.');
+  }
+  const targetPattern = targets[0];
+  if (typeof targetPattern !== 'string' || targetPattern.trim().length === 0) {
+    throw new Error('TypeScript path mapping for ' + match.pattern + ' has no usable target.');
+  }
+  const mappedTarget = targetPattern.includes('*')
+    ? targetPattern.split('*').join(match.capture)
+    : targetPattern;
+  const baseUrl = config.compilerOptions.baseUrl || '.';
+  const resolved = safeNormalizedRelativePath(
+    path.posix.join(baseUrl, mappedTarget),
+    'TypeScript path mapping'
+  );
+  if (!referencePaths.has(configRef)) {
+    referencePaths.add(configRef);
+    evidence.references.push(
+      attestDeclaredWorkspaceFile(
+        configRef,
+        sha256File(configPath),
+        workspacePath,
+        'install-config',
+        'Consumer TypeScript path config'
+      )
+    );
+  }
+  return resolved;
+}
+
+function resolvePlannedConsumerTarget(file, state, referencePaths, evidence) {
+  if (file.targetKind === 'literal') {
+    return safeNormalizedRelativePath(file.target, 'Literal install target');
+  }
+  if (file.targetKind === 'project-root') {
+    if (!file.target.startsWith('~/')) {
+      throw new Error('Project-root install target must start with ~/.');
+    }
+    return safeNormalizedRelativePath(file.target.slice(2), 'Project-root install target');
+  }
+  const match = /^@([^/]+)\/(.+)$/.exec(file.target);
+  if (!match) {
+    throw new Error('Shadcn alias install target must use @alias/path syntax.');
+  }
+  const componentsRef = 'components.json';
+  const componentsPath = path.join(state.inputs.workspace.path, componentsRef);
+  const components = readJson(componentsPath, 'Consumer components.json');
+  if (
+    components?.style !== 'base-nova' ||
+    (components?.iconLibrary !== undefined && components.iconLibrary !== 'lucide') ||
+    components?.tsx !== true
+  ) {
+    throw new Error(
+      'Consumer components.json must use style base-nova, Lucide semantics, and tsx true.'
+    );
+  }
+  const aliasValue = components?.aliases?.[match[1]];
+  if (typeof aliasValue !== 'string' || aliasValue.trim().length === 0) {
+    throw new Error('Consumer components.json has no alias for @' + match[1] + '.');
+  }
+  if (!referencePaths.has(componentsRef)) {
+    referencePaths.add(componentsRef);
+    evidence.references.push(
+      attestDeclaredWorkspaceFile(
+        componentsRef,
+        sha256File(componentsPath),
+        state.inputs.workspace.path,
+        'install-config',
+        'Consumer components.json'
+      )
+    );
+  }
+  const importTarget = path.posix.join(aliasValue, match[2]);
+  if (!aliasValue.startsWith('@') && !path.posix.isAbsolute(aliasValue)) {
+    return safeNormalizedRelativePath(importTarget, 'Shadcn alias install target');
+  }
+  return resolveTypeScriptAlias(
+    importTarget,
+    state.inputs.workspace.path,
+    referencePaths,
+    evidence
+  );
+}
+
+const CANONICAL_SHADCN_ALIASES = {
+  components: '@/components',
+  utils: '@/lib/utils',
+  ui: '@/components/ui',
+  lib: '@/lib',
+  hooks: '@/hooks'
+};
+
+function aliasEntries(aliases, label) {
+  if (!aliases || typeof aliases !== 'object' || Array.isArray(aliases)) {
+    throw new Error(label + ' must define the complete shadcn aliases object.');
+  }
+  const entries = [];
+  const values = new Set();
+  for (const key of Object.keys(CANONICAL_SHADCN_ALIASES)) {
+    const value = aliases[key];
+    if (typeof value !== 'string' || value.trim().length === 0) {
+      throw new Error(label + ' must define alias ' + key + '.');
+    }
+    if (values.has(value)) {
+      throw new Error(label + ' must not map different aliases to the same path.');
+    }
+    values.add(value);
+    entries.push({ key, value });
+  }
+  entries.sort((left, right) => right.value.length - left.value.length);
+  return entries;
+}
+
+function normalizeAliasLiteral(value, entries) {
+  for (const entry of entries) {
+    if (value === entry.value || value.startsWith(entry.value + '/')) {
+      return '<constructive-shadcn-alias:' + entry.key + '>' + value.slice(entry.value.length);
+    }
+  }
+  return value;
+}
+
+function normalizeCodeAliases(source, aliases, label) {
+  const entries = aliasEntries(aliases, label);
+  let normalized = '';
+  let index = 0;
+  while (index < source.length) {
+    const quote = source[index];
+    if (quote !== "'" && quote !== '"') {
+      normalized += quote;
+      index += 1;
+      continue;
+    }
+    let cursor = index + 1;
+    let escaped = false;
+    while (cursor < source.length) {
+      const character = source[cursor];
+      if (escaped) {
+        escaped = false;
+      } else if (character === '\\') {
+        escaped = true;
+      } else if (character === quote) {
+        break;
+      }
+      cursor += 1;
+    }
+    if (cursor >= source.length) {
+      normalized += source.slice(index);
+      break;
+    }
+    const value = source.slice(index + 1, cursor);
+    normalized += quote + normalizeAliasLiteral(value, entries) + quote;
+    index = cursor + 1;
+  }
+  return normalized;
+}
+
+export function assertInstalledRegistryContent(
+  installedPath,
+  sourceContent,
+  sourcePath,
+  consumerComponents
+) {
+  if (typeof sourceContent !== 'string') {
+    throw new Error('Generated registry source content must be a string.');
+  }
+  const extension = path.posix.extname(sourcePath);
+  const codeExtensions = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
+  const installedContent = fs.readFileSync(installedPath, 'utf8');
+  let expected = sourceContent;
+  let actual = installedContent;
+  if (codeExtensions.has(extension)) {
+    expected = normalizeCodeAliases(
+      sourceContent,
+      CANONICAL_SHADCN_ALIASES,
+      'Canonical Blocks shadcn aliases'
+    );
+    actual = normalizeCodeAliases(
+      installedContent,
+      consumerComponents?.aliases,
+      'Consumer components.json aliases'
+    );
+  }
+  if (actual !== expected) {
+    throw new Error(
+      'Installed consumer file does not match its generated registry source after deterministic alias rewriting: ' +
+      sourcePath + '.'
+    );
+  }
+}
+
+function registrySourceContract(state) {
+  if (!state.inputs.blocksSource) {
+    return null;
+  }
+  const registryPath = path.join(
+    state.inputs.blocksSource.path,
+    'apps',
+    'registry',
+    'registry.json'
+  );
+  assertRegularContainedFile(
+    registryPath,
+    state.inputs.blocksSource.path,
+    'Pinned aggregate registry'
+  );
+  const registry = readJson(registryPath, 'Pinned aggregate registry');
+  if (!Array.isArray(registry?.items)) {
+    throw new Error('Pinned aggregate registry has no item collection.');
+  }
+  const catalog = catalogContract(state);
+  const contentAttestation = catalog.source?.attestations?.registryContent;
+  if (
+    !contentAttestation ||
+    contentAttestation.path !== 'references/registry-content.v1.json' ||
+    typeof contentAttestation.sha256 !== 'string'
+  ) {
+    throw new Error('Pinned Blocks catalog has no exact registry content attestation.');
+  }
+  const skillRoot = path.dirname(path.dirname(path.resolve(state.inputs.catalog)));
+  const contentSnapshotPath = path.resolve(skillRoot, contentAttestation.path);
+  if (!isWithin(skillRoot, contentSnapshotPath)) {
+    throw new Error('Pinned registry content attestation escapes the Blocks skill.');
+  }
+  assertRegularContainedFile(
+    contentSnapshotPath,
+    skillRoot,
+    'Pinned registry content attestation'
+  );
+  if (sha256File(contentSnapshotPath) !== contentAttestation.sha256) {
+    throw new Error('Pinned registry content attestation hash drifted.');
+  }
+  const contentSnapshot = readJson(
+    contentSnapshotPath,
+    'Pinned registry content attestation'
+  );
+  if (
+    contentSnapshot?.schemaVersion !== 1 ||
+    contentSnapshot?.kind !== 'constructive.blocks-registry-content' ||
+    contentSnapshot.sourceCommit !== state.inputs.blocksSource.headCommit ||
+    !Array.isArray(contentSnapshot.records) ||
+    contentSnapshot.recordCount !== contentSnapshot.records.length
+  ) {
+    throw new Error('Pinned registry content attestation has an invalid source contract.');
+  }
+  const contentBySource = new Map();
+  for (const record of contentSnapshot.records) {
+    if (
+      !record ||
+      typeof record.registryItem !== 'string' ||
+      typeof record.path !== 'string' ||
+      typeof record.type !== 'string' ||
+      typeof record.contentSha256 !== 'string' ||
+      !/^[0-9a-f]{64}$/.test(record.contentSha256)
+    ) {
+      throw new Error('Pinned registry content attestation contains an invalid record.');
+    }
+    const key = record.registryItem + '\0' + record.path;
+    if (contentBySource.has(key)) {
+      throw new Error('Pinned registry content attestation contains a duplicate source.');
+    }
+    contentBySource.set(key, record);
+  }
+  return {
+    registry,
+    contentBySource,
+    publicItems: new Map()
+  };
+}
+
+function generatedRegistrySource(file, state, contract) {
+  if (!contract) {
+    return null;
+  }
+  const source = file.sources[0];
+  const item = contract.registry.items.find((candidate) => candidate?.name === source.registryItem);
+  const aggregateMatches = Array.isArray(item?.files)
+    ? item.files.filter((candidate) => candidate?.path === source.path)
+    : [];
+  if (aggregateMatches.length !== 1 || aggregateMatches[0].type !== file.type) {
+    throw new Error(
+      'Pinned aggregate registry does not contain the exact planned source ' +
+      source.registryItem + '/' + source.path + '.'
+    );
+  }
+  const contentRecord = contract.contentBySource.get(source.registryItem + '\0' + source.path);
+  if (!contentRecord || contentRecord.type !== file.type) {
+    throw new Error(
+      'Pinned registry content attestation does not cover ' +
+      source.registryItem + '/' + source.path + '.'
+    );
+  }
+  let publicItem = contract.publicItems.get(source.registryItem);
+  if (!publicItem) {
+    const publicItemPath = path.join(
+      state.inputs.blocksSource.path,
+      'apps',
+      'registry',
+      'public',
+      'r',
+      source.registryItem + '.json'
+    );
+    assertRegularContainedFile(
+      publicItemPath,
+      state.inputs.blocksSource.path,
+      'Built registry item ' + source.registryItem
+    );
+    publicItem = readJson(publicItemPath, 'Built registry item ' + source.registryItem);
+    contract.publicItems.set(source.registryItem, publicItem);
+  }
+  const publicMatches = Array.isArray(publicItem?.files)
+    ? publicItem.files.filter((candidate) => candidate?.path === source.path)
+    : [];
+  if (
+    publicItem?.name !== source.registryItem ||
+    publicMatches.length !== 1 ||
+    publicMatches[0].type !== file.type ||
+    typeof publicMatches[0].content !== 'string' ||
+    sha256Text(publicMatches[0].content) !== contentRecord.contentSha256
+  ) {
+    throw new Error(
+      'Built registry content does not match its pinned attestation for ' +
+      source.registryItem + '/' + source.path + '.'
+    );
+  }
+  return { content: publicMatches[0].content, path: source.path };
+}
+
+function attestPlannedConsumerFiles(planContracts, evidence, state) {
+  const plannedTargets = new Map();
+  for (const plan of planContracts) {
+    for (const file of plan.files) {
+      const existing = plannedTargets.get(file.target);
+      if (
+        existing &&
+        (
+          existing.targetKind !== file.targetKind ||
+          existing.type !== file.type ||
+          !isDeepStrictEqual(existing.sources, file.sources)
+        )
+      ) {
+        throw new Error('Attested install plans disagree on source provenance for ' + file.target + '.');
+      }
+      if (!existing) {
+        plannedTargets.set(file.target, file);
+      }
+    }
+  }
+  const referencePaths = new Set();
+  const resolvedTargets = new Map();
+  const sourceContract = registrySourceContract(state);
+  const consumerComponentsPath = path.join(state.inputs.workspace.path, 'components.json');
+  const consumerComponents = fs.existsSync(consumerComponentsPath)
+    ? readJson(consumerComponentsPath, 'Consumer components.json')
+    : null;
+  for (const file of plannedTargets.values()) {
+    const resolvedRef = resolvePlannedConsumerTarget(file, state, referencePaths, evidence);
+    const existingTarget = resolvedTargets.get(resolvedRef);
+    if (existingTarget && existingTarget !== file.target) {
+      throw new Error(
+        'Planned install targets ' + existingTarget + ' and ' + file.target +
+        ' resolve to the same consumer file ' + resolvedRef + '.'
+      );
+    }
+    resolvedTargets.set(resolvedRef, file.target);
+    const resolvedPath = path.join(state.inputs.workspace.path, resolvedRef);
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error('Planned consumer file ' + file.target + ' is missing after installation.');
+    }
+    assertNoSymlinkPath(
+      state.inputs.workspace.path,
+      resolvedRef,
+      'Planned consumer file ' + file.target
+    );
+    const reference = attestDeclaredWorkspaceFile(
+      resolvedRef,
+      sha256File(resolvedPath),
+      state.inputs.workspace.path,
+      'installed-file',
+      'Planned consumer file ' + file.target
+    );
+    const source = generatedRegistrySource(file, state, sourceContract);
+    if (source) {
+      assertInstalledRegistryContent(
+        resolvedPath,
+        source.content,
+        source.path,
+        consumerComponents
+      );
+    }
+    if (!referencePaths.has(resolvedRef)) {
+      referencePaths.add(resolvedRef);
+      evidence.references.push(reference);
+    }
+  }
 }
 
 function validateInstallPlanEvidence(document, state, requirePass) {
@@ -1732,15 +2775,53 @@ function validateInstallPlanEvidence(document, state, requirePass) {
 }
 
 function validateInstallLogEvidence(document, evidence, state, requirePass) {
-  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Install log evidence');
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'preparation', 'results'],
+    'Install log evidence'
+  );
   assertMachineHeader(document, 'install-log', 'Install log evidence');
   const planContracts = installPlanContracts(state);
+  const local = localConsumptionContract(state);
+  const expectedPreparation = local ? local.prepareCommands : [];
+  if (
+    !Array.isArray(document.preparation) ||
+    document.preparation.length !== expectedPreparation.length
+  ) {
+    throw new Error('Install log preparation must exactly cover the local Blocks prepare commands.');
+  }
+  let observedFailure = false;
+  for (let index = 0; index < expectedPreparation.length; index += 1) {
+    const result = document.preparation[index];
+    exactKeys(
+      result,
+      ['command', 'exitCode', 'outputRef', 'outputSha256', 'passed'],
+      'Install preparation result'
+    );
+    if (result.command !== expectedPreparation[index]) {
+      throw new Error('Install preparation command does not match the pinned local-consumption contract.');
+    }
+    if (!Number.isInteger(result.exitCode) || result.passed !== (result.exitCode === 0)) {
+      throw new Error('Install preparation passed must equal its integer exitCode === 0.');
+    }
+    evidence.references.push(
+      attestDeclaredWorkspaceFile(
+        result.outputRef,
+        result.outputSha256,
+        state.inputs.workspace.path,
+        'install-output',
+        'Install preparation output'
+      )
+    );
+    if (validateResultPassState(result.passed, requirePass, 'Install preparation result')) {
+      observedFailure = true;
+    }
+  }
   if (!Array.isArray(document.results) || document.results.length !== planContracts.length) {
     throw new Error('Install log evidence must cover every selected root.');
   }
   const expectedByRoot = new Map(planContracts.map((contract) => [contract.root, contract]));
   const seen = new Set();
-  let observedFailure = false;
   for (const result of document.results) {
     exactKeys(
       result,
@@ -1773,6 +2854,9 @@ function validateInstallLogEvidence(document, evidence, state, requirePass) {
         'Install command output'
       )
     );
+  }
+  if (requirePass) {
+    attestPlannedConsumerFiles(planContracts, evidence, state);
   }
   requireObservedFailure(observedFailure, requirePass, 'install-log');
 }
@@ -1810,12 +2894,28 @@ function expectedSurfacePacks(state) {
   return expected;
 }
 
-function validateInstalledManifest(document, featurePack, label) {
-  if (!document || document.schemaVersion !== 1 || document.id !== featurePack) {
-    throw new Error(label + ' must be a schemaVersion 1 manifest for ' + featurePack + '.');
+function expectedFeaturePackManifest(state, featurePack) {
+  let expected = null;
+  for (const plan of installPlanContracts(state)) {
+    for (const manifest of plan.featurePacks) {
+      if (manifest?.id !== featurePack) {
+        continue;
+      }
+      if (expected && !isDeepStrictEqual(expected, manifest)) {
+        throw new Error('Attested install plans disagree on the ' + featurePack + ' manifest.');
+      }
+      expected = manifest;
+    }
   }
-  if (!document.capabilities || !Array.isArray(document.capabilities.required)) {
-    throw new Error(label + ' has no required capability list.');
+  if (!expected) {
+    throw new Error('No attested install plan contains the ' + featurePack + ' manifest.');
+  }
+  return expected;
+}
+
+function validateInstalledManifest(document, expected, label) {
+  if (!isDeepStrictEqual(document, expected)) {
+    throw new Error(label + ' does not exactly match the source-attested feature-pack manifest.');
   }
 }
 
@@ -1843,6 +2943,17 @@ function validateManifestEvidence(document, evidence, state, requirePass) {
       throw new Error('Manifest evidence has an unexpected or duplicate surface feature pack ' + key + '.');
     }
     seen.add(key);
+    const expectedManifestRef = path.posix.join(
+      '.constructive',
+      'feature-packs',
+      result.featurePack + '.json'
+    );
+    if (result.manifestRef !== expectedManifestRef) {
+      throw new Error(
+        'Installed feature-pack manifest must use the exact project sidecar path ' +
+        expectedManifestRef + '.'
+      );
+    }
     const reference = attestDeclaredWorkspaceFile(
       result.manifestRef,
       result.sha256,
@@ -1850,13 +2961,532 @@ function validateManifestEvidence(document, evidence, state, requirePass) {
       'manifest',
       'Installed feature-pack manifest'
     );
-    validateInstalledManifest(readJson(reference.path, 'Installed feature-pack manifest'), result.featurePack, 'Installed feature-pack manifest');
+    validateInstalledManifest(
+      readJson(reference.path, 'Installed feature-pack manifest'),
+      expectedFeaturePackManifest(state, result.featurePack),
+      'Installed feature-pack manifest'
+    );
     evidence.references.push(reference);
     if (validateResultPassState(result.passed, requirePass, 'Manifest result')) {
       observedFailure = true;
     }
   }
   requireObservedFailure(observedFailure, requirePass, 'manifest');
+}
+
+function tarHeaderString(header, offset, length) {
+  const value = header.subarray(offset, offset + length);
+  const end = value.indexOf(0);
+  return value.subarray(0, end === -1 ? value.length : end).toString('utf8').trim();
+}
+
+function tarHeaderNumber(header, offset, length, label) {
+  const value = tarHeaderString(header, offset, length).replace(/\0/g, '').trim();
+  if (!/^[0-7]+$/.test(value)) {
+    throw new Error('Package tarball has an invalid ' + label + ' field.');
+  }
+  return Number.parseInt(value, 8);
+}
+
+function validateTarHeaderChecksum(header) {
+  const expected = tarHeaderNumber(header, 148, 8, 'checksum');
+  let actual = 0;
+  for (let index = 0; index < header.length; index += 1) {
+    actual += index >= 148 && index < 156 ? 32 : header[index];
+  }
+  if (actual !== expected) {
+    throw new Error('Package tarball contains an invalid header checksum.');
+  }
+}
+
+function safeTarPackagePath(value, label) {
+  const withoutDot = value.startsWith('./') ? value.slice(2) : value;
+  if (
+    !withoutDot ||
+    withoutDot.includes('\\') ||
+    path.posix.isAbsolute(withoutDot) ||
+    path.posix.normalize(withoutDot) !== withoutDot ||
+    (withoutDot !== 'package' && !withoutDot.startsWith('package/'))
+  ) {
+    throw new Error('Package tarball ' + label + ' must stay inside package/.');
+  }
+  return withoutDot;
+}
+
+function parsePaxAttributes(bytes) {
+  const attributes = {};
+  let offset = 0;
+  while (offset < bytes.length) {
+    const space = bytes.indexOf(32, offset);
+    if (space === -1) {
+      throw new Error('Package tarball contains a malformed PAX record.');
+    }
+    const lengthText = bytes.subarray(offset, space).toString('ascii');
+    if (!/^[1-9][0-9]*$/.test(lengthText)) {
+      throw new Error('Package tarball contains a malformed PAX record length.');
+    }
+    const length = Number.parseInt(lengthText, 10);
+    const end = offset + length;
+    if (end > bytes.length || bytes[end - 1] !== 10) {
+      throw new Error('Package tarball contains a truncated PAX record.');
+    }
+    const record = bytes.subarray(space + 1, end - 1).toString('utf8');
+    const equals = record.indexOf('=');
+    if (equals < 1) {
+      throw new Error('Package tarball contains a malformed PAX attribute.');
+    }
+    attributes[record.slice(0, equals)] = record.slice(equals + 1);
+    offset = end;
+  }
+  return attributes;
+}
+
+function packageFilesFromTarball(tarballPath) {
+  const compressed = fs.readFileSync(tarballPath);
+  let archive;
+  try {
+    archive = zlib.gunzipSync(compressed, { maxOutputLength: 256 * 1024 * 1024 });
+  } catch (error) {
+    throw new Error('Package tarball cannot be safely decompressed: ' + error.message);
+  }
+  const files = new Map();
+  let offset = 0;
+  let pendingPax = null;
+  let pendingLongPath = null;
+  let ended = false;
+  while (offset + 512 <= archive.length) {
+    const header = archive.subarray(offset, offset + 512);
+    if (header.every((byte) => byte === 0)) {
+      const secondTerminator = archive.subarray(offset + 512, offset + 1024);
+      if (
+        secondTerminator.length !== 512 ||
+        !secondTerminator.every((byte) => byte === 0) ||
+        archive.length % 512 !== 0 ||
+        !archive.subarray(offset + 1024).every((byte) => byte === 0)
+      ) {
+        throw new Error(
+          'Package tarball must end with two zero records and only zero block padding.'
+        );
+      }
+      ended = true;
+      break;
+    }
+    validateTarHeaderChecksum(header);
+    const name = tarHeaderString(header, 0, 100);
+    const prefix = tarHeaderString(header, 345, 155);
+    const headerPath = prefix ? prefix + '/' + name : name;
+    const size = tarHeaderNumber(header, 124, 12, 'size');
+    if (!Number.isSafeInteger(size) || size < 0) {
+      throw new Error('Package tarball contains an unsafe entry size.');
+    }
+    const dataStart = offset + 512;
+    const dataEnd = dataStart + size;
+    if (dataEnd > archive.length) {
+      throw new Error('Package tarball contains a truncated entry.');
+    }
+    const data = archive.subarray(dataStart, dataEnd);
+    const type = String.fromCharCode(header[156] || 48);
+    if (type === 'x') {
+      pendingPax = parsePaxAttributes(data);
+    } else if (type === 'L') {
+      pendingLongPath = data.subarray(0, data.indexOf(0) === -1 ? data.length : data.indexOf(0)).toString('utf8');
+    } else if (type === '0' || type === '5') {
+      const entryPath = safeTarPackagePath(
+        pendingPax?.path || pendingLongPath || headerPath,
+        type === '5' ? 'directory' : 'file'
+      );
+      if (type === '0') {
+        if (entryPath === 'package' || files.has(entryPath)) {
+          throw new Error('Package tarball contains a duplicate or unnamed package file.');
+        }
+        files.set(entryPath.slice('package/'.length), Buffer.from(data));
+      }
+      pendingPax = null;
+      pendingLongPath = null;
+    } else {
+      throw new Error('Package tarball contains unsupported entry type ' + type + '.');
+    }
+    offset = dataStart + Math.ceil(size / 512) * 512;
+  }
+  if (!ended || pendingPax || pendingLongPath || files.size === 0) {
+    throw new Error('Package tarball does not contain one complete package/ file tree.');
+  }
+  return files;
+}
+
+export function assertPackageTarballComplete(tarballPath) {
+  packageFilesFromTarball(tarballPath);
+}
+
+function installedPackageFiles(packageRoot, workspacePath) {
+  const realWorkspace = fs.realpathSync(workspacePath);
+  const realRoot = fs.realpathSync(packageRoot);
+  if (!isWithin(realWorkspace, realRoot)) {
+    throw new Error('Installed package root escapes the validated workspace.');
+  }
+  const files = new Map();
+  function visit(directory, relativeDirectory) {
+    const entries = fs.readdirSync(directory, { withFileTypes: true });
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      const absolutePath = path.join(directory, entry.name);
+      const relativePath = relativeDirectory
+        ? path.posix.join(relativeDirectory, entry.name)
+        : entry.name;
+      const stats = fs.lstatSync(absolutePath);
+      if (stats.isSymbolicLink()) {
+        throw new Error('Installed package tree contains a symlink: ' + relativePath + '.');
+      }
+      if (stats.isDirectory()) {
+        visit(absolutePath, relativePath);
+      } else if (stats.isFile()) {
+        files.set(relativePath, fs.readFileSync(absolutePath));
+      } else {
+        throw new Error('Installed package tree contains a special file: ' + relativePath + '.');
+      }
+    }
+  }
+  visit(realRoot, '');
+  return files;
+}
+
+function assertPackageTreeMatchesTarball(packageRoot, tarballFiles, workspacePath) {
+  const installedFiles = installedPackageFiles(packageRoot, workspacePath);
+  if (installedFiles.size !== tarballFiles.size) {
+    throw new Error('Installed package tree does not exactly match its retained tarball.');
+  }
+  for (const [relativePath, expectedBytes] of tarballFiles) {
+    const actualBytes = installedFiles.get(relativePath);
+    if (!actualBytes || !actualBytes.equals(expectedBytes)) {
+      throw new Error(
+        'Installed package file does not match its retained tarball: ' + relativePath + '.'
+      );
+    }
+  }
+}
+
+function yamlEntryKey(value) {
+  const trimmed = value.trim();
+  if (
+    (trimmed.startsWith("'") && trimmed.endsWith("'")) ||
+    (trimmed.startsWith('"') && trimmed.endsWith('"'))
+  ) {
+    return trimmed.slice(1, -1);
+  }
+  return trimmed;
+}
+
+function pnpmPackageEntry(lockfileText, packageName, version) {
+  const lines = lockfileText.split(/\r?\n/);
+  const packagesIndex = lines.findIndex((line) => line === 'packages:');
+  if (packagesIndex === -1) {
+    throw new Error('pnpm-lock.yaml has no packages section.');
+  }
+  const exactKey = packageName + '@' + version;
+  for (let index = packagesIndex + 1; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (line && !line.startsWith(' ')) {
+      break;
+    }
+    const match = /^  (.+):\s*$/.exec(line);
+    if (!match) {
+      continue;
+    }
+    const key = yamlEntryKey(match[1]).replace(/^\//, '');
+    if (key !== exactKey && !key.startsWith(exactKey + '(')) {
+      continue;
+    }
+    let end = index + 1;
+    while (end < lines.length && (lines[end].startsWith('    ') || lines[end] === '')) {
+      end += 1;
+    }
+    return lines.slice(index, end).join('\n');
+  }
+  throw new Error('pnpm-lock.yaml does not resolve ' + exactKey + '.');
+}
+
+function pnpmResolutionIntegrity(lockfileEntry) {
+  const values = [];
+  const lines = lockfileEntry.split(/\r?\n/);
+  let inResolution = false;
+  let resolutionDeclarations = 0;
+  for (const line of lines) {
+    const declaration = /^    resolution:(.*)$/.exec(line);
+    if (declaration) {
+      resolutionDeclarations += 1;
+      inResolution = false;
+      const value = declaration[1].trim();
+      if (!value) {
+        inResolution = true;
+        continue;
+      }
+      const inline = /^\{([^{}]*)\}$/.exec(value);
+      if (!inline) {
+        throw new Error('pnpm-lock.yaml package resolution must be a mapping.');
+      }
+      for (const field of inline[1].split(',')) {
+        const match = /^\s*integrity:\s*(\S+)\s*$/.exec(field);
+        if (match) {
+          values.push(match[1]);
+        }
+      }
+      continue;
+    }
+    if (inResolution) {
+      const match = /^      integrity:\s*(\S+)\s*$/.exec(line);
+      if (match) {
+        values.push(match[1]);
+        continue;
+      }
+      if (line && !line.startsWith('      ')) {
+        inResolution = false;
+      }
+    }
+  }
+  if (resolutionDeclarations !== 1) {
+    throw new Error('pnpm-lock.yaml package entry must contain one exact resolution declaration.');
+  }
+  if (values.length !== 1) {
+    throw new Error('pnpm-lock.yaml package entry must contain one exact resolution integrity field.');
+  }
+  return values[0];
+}
+
+export function assertPnpmLockResolution(
+  lockfileText,
+  packageName,
+  version,
+  integrity
+) {
+  const lockfileEntry = pnpmPackageEntry(lockfileText, packageName, version);
+  if (pnpmResolutionIntegrity(lockfileEntry) !== integrity) {
+    throw new Error('pnpm-lock.yaml package resolution does not match the retained tarball integrity.');
+  }
+}
+
+function pinnedPackageResolutions(state) {
+  const catalog = catalogContract(state);
+  const attestation = catalog.source?.attestations?.packageResolutions;
+  if (!attestation) {
+    if (state.inputs.blocksSource) {
+      throw new Error('Pinned Blocks catalog has no external package resolution attestation.');
+    }
+    return null;
+  }
+  if (
+    attestation.path !== 'references/package-resolutions.v1.json' ||
+    typeof attestation.sha256 !== 'string'
+  ) {
+    throw new Error('Pinned Blocks catalog has an invalid package resolution attestation.');
+  }
+  const skillRoot = path.dirname(path.dirname(path.resolve(state.inputs.catalog)));
+  const snapshotPath = path.resolve(skillRoot, attestation.path);
+  if (!isWithin(skillRoot, snapshotPath)) {
+    throw new Error('Pinned package resolution attestation escapes the Blocks skill.');
+  }
+  assertRegularContainedFile(snapshotPath, skillRoot, 'Pinned package resolution attestation');
+  if (sha256File(snapshotPath) !== attestation.sha256) {
+    throw new Error('Pinned package resolution attestation hash drifted.');
+  }
+  const snapshot = readJson(snapshotPath, 'Pinned package resolution attestation');
+  const expectedCommit = state.inputs.blocksSource?.headCommit || catalog.source?.commit;
+  if (
+    snapshot?.schemaVersion !== 1 ||
+    snapshot?.kind !== 'constructive.blocks-package-resolutions' ||
+    snapshot.sourceCommit !== expectedCommit ||
+    snapshot.registry !== 'https://registry.npmjs.org' ||
+    !Array.isArray(snapshot.records) ||
+    snapshot.recordCount !== snapshot.records.length
+  ) {
+    throw new Error('Pinned package resolution attestation has an invalid source contract.');
+  }
+  const byName = new Map();
+  for (const record of snapshot.records) {
+    if (
+      !record ||
+      typeof record.name !== 'string' ||
+      typeof record.version !== 'string' ||
+      typeof record.resolved !== 'string' ||
+      typeof record.integrity !== 'string' ||
+      !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(record.integrity) ||
+      byName.has(record.name)
+    ) {
+      throw new Error('Pinned package resolution attestation contains an invalid record.');
+    }
+    byName.set(record.name, record);
+  }
+  return byName;
+}
+
+export function assertPinnedExternalPackageResolution(document, pinnedResolution) {
+  if (
+    !pinnedResolution ||
+    pinnedResolution.name !== document.name ||
+    pinnedResolution.version !== document.version ||
+    pinnedResolution.resolved !== document.resolved ||
+    pinnedResolution.integrity !== document.integrity
+  ) {
+    throw new Error(
+      'External package resolution does not match the immutable npm registry attestation.'
+    );
+  }
+}
+
+function validatePackageResolution(document, result, evidence, state, packageResolutions) {
+  exactKeys(
+    document,
+    [
+      'schemaVersion',
+      'kind',
+      'name',
+      'version',
+      'resolved',
+      'integrity',
+      'lockfileRef',
+      'lockfileSha256',
+      'tarballRef',
+      'tarballSha256',
+      'packageJsonRef',
+      'packageJsonSha256'
+    ],
+    'Package resolution receipt'
+  );
+  if (
+    document.schemaVersion !== 1 ||
+    document.kind !== 'constructive.builder-package-resolution' ||
+    document.name !== result.name
+  ) {
+    throw new Error('Package resolution receipt has the wrong schema, kind, or package name.');
+  }
+  requireValue(document.version, 'Package resolution version');
+  requireValue(document.resolved, 'Package resolution URL');
+  if (
+    typeof document.integrity !== 'string' ||
+    !/^sha512-[A-Za-z0-9+/]+={0,2}$/.test(document.integrity)
+  ) {
+    throw new Error('Package resolution integrity must be a sha512 Subresource Integrity value.');
+  }
+  let resolutionUrl;
+  try {
+    resolutionUrl = new URL(document.resolved);
+  } catch {
+    throw new Error('Package resolution resolved must be an absolute URL.');
+  }
+  if (!['http:', 'https:'].includes(resolutionUrl.protocol)) {
+    throw new Error('Package resolution URL must use HTTP or HTTPS.');
+  }
+  const expectedPackageJsonRef = path.posix.join(
+    'node_modules',
+    document.name,
+    'package.json'
+  );
+  if (document.packageJsonRef !== expectedPackageJsonRef) {
+    throw new Error(
+      'Package resolution packageJsonRef must be the exact installed path ' +
+      expectedPackageJsonRef + '.'
+    );
+  }
+  if (document.lockfileRef !== 'pnpm-lock.yaml') {
+    throw new Error('Package resolution lockfileRef must be the exact pnpm-lock.yaml path.');
+  }
+  const lockfileReference = attestDeclaredWorkspaceFile(
+    document.lockfileRef,
+    document.lockfileSha256,
+    state.inputs.workspace.path,
+    'package-lock',
+    'Consumer pnpm lockfile'
+  );
+  assertPnpmLockResolution(
+    fs.readFileSync(lockfileReference.path, 'utf8'),
+    result.name,
+    document.version,
+    document.integrity
+  );
+  const tarballReference = attestDeclaredWorkspaceFile(
+    document.tarballRef,
+    document.tarballSha256,
+    state.inputs.workspace.path,
+    'package-artifact',
+    'Retained package tarball'
+  );
+  const tarballBytes = fs.readFileSync(tarballReference.path);
+  const tarballIntegrity = 'sha512-' + crypto.createHash('sha512').update(tarballBytes).digest('base64');
+  if (tarballIntegrity !== document.integrity) {
+    throw new Error('Retained package tarball does not match its declared integrity.');
+  }
+  const tarballFiles = packageFilesFromTarball(tarballReference.path);
+  const packedManifestBytes = tarballFiles.get('package.json');
+  let packedManifest;
+  try {
+    packedManifest = JSON.parse(packedManifestBytes?.toString('utf8') || '');
+  } catch (error) {
+    throw new Error('Retained package tarball has an invalid package.json: ' + error.message);
+  }
+  if (packedManifest?.name !== result.name || packedManifest?.version !== document.version) {
+    throw new Error('Retained package tarball manifest does not match the resolution receipt.');
+  }
+  const releasePackage = Array.isArray(catalogContract(state).release?.packages)
+    ? catalogContract(state).release.packages.find((candidate) => candidate?.name === result.name)
+    : null;
+  if (!releasePackage && packageResolutions) {
+    const pinnedResolution = packageResolutions.get(result.name);
+    assertPinnedExternalPackageResolution(document, pinnedResolution);
+  }
+  if (releasePackage && state.inputs.blocksSource) {
+    if (document.version !== releasePackage.version) {
+      throw new Error('Pinned local package version does not match the Blocks release contract.');
+    }
+    if (!['127.0.0.1', 'localhost'].includes(resolutionUrl.hostname)) {
+      throw new Error('Pinned local Constructive packages must resolve from the local package registry.');
+    }
+    const unscopedName = document.name.slice(document.name.lastIndexOf('/') + 1);
+    const expectedRegistryPath = '/' + document.name + '/-/' + unscopedName + '-' + document.version + '.tgz';
+    let decodedRegistryPath;
+    try {
+      decodedRegistryPath = decodeURIComponent(resolutionUrl.pathname);
+    } catch {
+      throw new Error('Pinned local package URL contains invalid path encoding.');
+    }
+    if (decodedRegistryPath !== expectedRegistryPath) {
+      throw new Error('Pinned local package URL does not match the Blocks local registry contract.');
+    }
+    const artifactName = document.name.slice(1).split('/').join('-') + '-' + document.version + '.tgz';
+    const sourceArtifactPath = path.join(
+      state.inputs.blocksSource.path,
+      '.artifacts',
+      'npm',
+      artifactName
+    );
+    assertRegularContainedFile(
+      sourceArtifactPath,
+      state.inputs.blocksSource.path,
+      'Pinned Blocks package artifact'
+    );
+    if (sha256File(sourceArtifactPath) !== document.tarballSha256) {
+      throw new Error('Retained local package tarball does not match the pinned Blocks artifact.');
+    }
+  }
+  const packageJsonReference = attestDeclaredWorkspaceFile(
+    document.packageJsonRef,
+    document.packageJsonSha256,
+    state.inputs.workspace.path,
+    'package',
+    'Installed package.json'
+  );
+  const packageJson = readJson(packageJsonReference.path, 'Installed package.json');
+  if (packageJson?.name !== result.name || packageJson?.version !== document.version) {
+    throw new Error('Installed package.json does not match the package resolution receipt.');
+  }
+  assertPackageTreeMatchesTarball(
+    path.dirname(packageJsonReference.path),
+    tarballFiles,
+    state.inputs.workspace.path
+  );
+  if (!evidence.references.some((reference) => reference.path === lockfileReference.path)) {
+    evidence.references.push(lockfileReference);
+  }
+  evidence.references.push(tarballReference);
+  evidence.references.push(packageJsonReference);
 }
 
 function validatePackageProvenanceEvidence(document, evidence, state, requirePass) {
@@ -1872,6 +3502,7 @@ function validatePackageProvenanceEvidence(document, evidence, state, requirePas
     throw new Error('Package provenance evidence must exactly cover every attested npm dependency.');
   }
   const names = new Set();
+  const packageResolutions = pinnedPackageResolutions(state);
   let observedFailure = false;
   for (const result of document.packages) {
     exactKeys(
@@ -1896,6 +3527,13 @@ function validatePackageProvenanceEvidence(document, evidence, state, requirePas
       'Resolved package provenance file'
     );
     evidence.references.push(reference);
+    validatePackageResolution(
+      readJson(reference.path, 'Package resolution receipt'),
+      result,
+      evidence,
+      state,
+      packageResolutions
+    );
     if (validateResultPassState(result.passed, requirePass, 'Package provenance result')) {
       observedFailure = true;
     }
@@ -1914,15 +3552,28 @@ function runFullBlocksCheck(blocksSource) {
   ).trim();
 }
 
-function validateBlocksCheckEvidence(document, state, requirePass) {
+function validateBlocksCheckEvidence(document, evidence, state, requirePass) {
   exactKeys(
     document,
-    ['schemaVersion', 'kind', 'headCommit', 'checkerSha256', 'outputSha256', 'passed'],
+    [
+      'schemaVersion',
+      'kind',
+      'headCommit',
+      'checkerSha256',
+      'outputRef',
+      'outputSha256',
+      'passed'
+    ],
     'Blocks check evidence'
   );
   assertMachineHeader(document, 'blocks-check', 'Blocks check evidence');
   if (!state.inputs.blocksSource) {
-    if (document.headCommit !== null || document.checkerSha256 !== null || document.outputSha256 !== null) {
+    if (
+      document.headCommit !== null ||
+      document.checkerSha256 !== null ||
+      document.outputRef !== null ||
+      document.outputSha256 !== null
+    ) {
       throw new Error('Blocks check evidence must use null source fields when no branch-only source is resolved.');
     }
   } else {
@@ -1936,6 +3587,24 @@ function validateBlocksCheckEvidence(document, state, requirePass) {
     if (document.outputSha256 !== sha256Text(output)) {
       throw new Error('Blocks check evidence does not match a full checker run without --source-preflight.');
     }
+    if (!isSafeRelativePath(document.outputRef) || document.outputRef === '.') {
+      throw new Error('Blocks check outputRef must be a safe workspace-relative file.');
+    }
+    const outputPath = path.join(state.inputs.workspace.path, document.outputRef);
+    if (!fs.existsSync(outputPath)) {
+      throw new Error('Blocks check outputRef does not exist.');
+    }
+    const outputReference = attestDeclaredWorkspaceFile(
+      document.outputRef,
+      sha256File(outputPath),
+      state.inputs.workspace.path,
+      'command-output',
+      'Blocks checker output'
+    );
+    if (fs.readFileSync(outputReference.path, 'utf8').trim() !== output) {
+      throw new Error('Retained Blocks checker output does not equal the canonical full checker stdout.');
+    }
+    evidence.references.push(outputReference);
   }
   if (document.passed !== true) {
     throw new Error('Blocks check passed must be true because the canonical full checker completed successfully.');
@@ -1944,21 +3613,35 @@ function validateBlocksCheckEvidence(document, state, requirePass) {
   requireObservedFailure(observedFailure, requirePass, 'blocks-check');
 }
 
+function expectedDomainSourceRef(route) {
+  const relativeRoute = route.path === '/' ? '' : route.path.replace(/^\/+|\/+$/g, '');
+  return relativeRoute
+    ? path.posix.join('src', 'app', relativeRoute, 'page.tsx')
+    : path.posix.join('src', 'app', 'page.tsx');
+}
+
 function validateSourceCheckEvidence(document, evidence, state, requirePass) {
   exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Source check evidence');
   assertMachineHeader(document, 'source-check', 'Source check evidence');
   if (!Array.isArray(document.results) || document.results.length !== state.resolved.domainRoutes.length) {
     throw new Error('Source check evidence must cover every application-owned domain route.');
   }
-  const expectedRoutes = new Set(state.resolved.domainRoutes.map((route) => route.id));
+  const expectedRoutes = new Map(state.resolved.domainRoutes.map((route) => [route.id, route]));
   const seen = new Set();
   let observedFailure = false;
   for (const result of document.results) {
     exactKeys(result, ['routeId', 'sourceRef', 'sha256', 'passed'], 'Source check result');
-    if (!expectedRoutes.has(result.routeId) || seen.has(result.routeId)) {
+    const expectedRoute = expectedRoutes.get(result.routeId);
+    if (!expectedRoute || seen.has(result.routeId)) {
       throw new Error('Source check evidence has an unexpected or duplicate route ' + String(result.routeId) + '.');
     }
     seen.add(result.routeId);
+    const expectedSourceRef = expectedDomainSourceRef(expectedRoute);
+    if (result.sourceRef !== expectedSourceRef) {
+      throw new Error(
+        'Domain route source must use the exact Next.js App Router path ' + expectedSourceRef + '.'
+      );
+    }
     const reference = attestDeclaredWorkspaceFile(
       result.sourceRef,
       result.sha256,
@@ -2023,11 +3706,41 @@ function validateMetaContractEvidence(document, evidence, state, requirePass) {
         result.requestRef,
         'request',
         state.inputs.workspace.path,
-        { endpointKind: 'data', passed: result.passed }
+        {
+          contextKey: [
+            'meta',
+            result.routeId,
+            result.resource,
+            result.contractVersion
+          ].join('|'),
+          endpointKind: 'data',
+          operation: 'meta-contract',
+          checkId: 'meta-contract:' + result.routeId,
+          passed: result.passed
+        }
       )
     );
   }
   requireObservedFailure(observedFailure, requirePass, 'meta-contract');
+}
+
+function expectedVerifyCommand(state, evidenceType) {
+  const commandIndex = evidenceType === 'typecheck' ? 0 : 1;
+  let expected = null;
+  for (const plan of installPlanContracts(state)) {
+    const command = plan.verifyCommands[commandIndex];
+    if (typeof command !== 'string' || command.trim().length === 0) {
+      throw new Error('Attested install plan has no ' + evidenceType + ' verification command.');
+    }
+    if (expected !== null && expected !== command) {
+      throw new Error('Attested install plans disagree on the ' + evidenceType + ' command.');
+    }
+    expected = command;
+  }
+  if (expected === null) {
+    throw new Error('No attested install plan provides a ' + evidenceType + ' command.');
+  }
+  return expected;
 }
 
 function validateCommandEvidence(document, evidence, state, evidenceType, requirePass) {
@@ -2038,7 +3751,9 @@ function validateCommandEvidence(document, evidence, state, evidenceType, requir
     label
   );
   assertMachineHeader(document, evidenceType, label);
-  requireValue(document.command, label + ' command');
+  if (document.command !== expectedVerifyCommand(state, evidenceType)) {
+    throw new Error(label + ' command does not match the attested Blocks verification command.');
+  }
   if (!Number.isInteger(document.exitCode)) {
     throw new Error(label + ' exitCode must be an integer.');
   }
@@ -2070,6 +3785,7 @@ function validateInteractionEvidence(document, evidence, state, requirePass) {
     throw new Error('Interaction evidence must cover every visual target, viewport, and state.');
   }
   const seen = new Set();
+  const artifactPaths = new Set();
   let observedFailure = false;
   for (const result of document.results) {
     exactKeys(
@@ -2088,6 +3804,10 @@ function validateInteractionEvidence(document, evidence, state, requirePass) {
       throw new Error('Interaction evidence has an unexpected or duplicate visual result.');
     }
     seen.add(key);
+    if (artifactPaths.has(result.artifactRef)) {
+      throw new Error('Interaction evidence reuses an outcome across contextual results.');
+    }
+    artifactPaths.add(result.artifactRef);
     if (validateResultPassState(result.passed, requirePass, 'Interaction evidence result')) {
       observedFailure = true;
     }
@@ -2099,8 +3819,10 @@ function validateInteractionEvidence(document, evidence, state, requirePass) {
         {
           targetKey: key,
           viewportId: result.viewport.id,
+          viewport: expectedResult.viewport,
           state: result.state,
-          passed: result.passed
+          passed: result.passed,
+          checkId: 'interaction:' + key
         }
       )
     );
@@ -2128,7 +3850,7 @@ function validateMachineEvidence(evidence, stageName, state, requirePass) {
   } else if (evidence.type === 'package-provenance') {
     validatePackageProvenanceEvidence(document, evidence, state, requirePass);
   } else if (evidence.type === 'blocks-check') {
-    validateBlocksCheckEvidence(document, state, requirePass);
+    validateBlocksCheckEvidence(document, evidence, state, requirePass);
   } else if (evidence.type === 'source-check') {
     validateSourceCheckEvidence(document, evidence, state, requirePass);
   } else if (evidence.type === 'meta-contract') {
@@ -2149,6 +3871,30 @@ function validateMachineEvidence(evidence, stageName, state, requirePass) {
 function validateMachineEvidenceSet(evidenceEntries, stageName, state, requirePass) {
   for (const evidence of evidenceEntries) {
     validateMachineEvidence(evidence, stageName, state, requirePass);
+  }
+  if (stageName === 'visual') {
+    const screenshotEvidence = evidenceEntries.find((entry) => entry.type === 'screenshot');
+    const interactionEvidence = evidenceEntries.find((entry) => entry.type === 'interaction');
+    if (screenshotEvidence && interactionEvidence) {
+      const screenshotDocument = readJson(screenshotEvidence.path, 'Visual evidence');
+      const interactionDocument = readJson(interactionEvidence.path, 'Interaction evidence');
+      const interactionByKey = new Map();
+      for (const result of interactionDocument.results) {
+        interactionByKey.set(
+          visualCombinationKey(result.target, result.viewport, result.state),
+          result.artifactRef
+        );
+      }
+      if (screenshotDocument.results.length !== interactionDocument.results.length) {
+        throw new Error('Screenshot and interaction evidence must cover the same contextual results.');
+      }
+      for (const result of screenshotDocument.results) {
+        const key = visualCombinationKey(result.target, result.viewport, result.state);
+        if (interactionByKey.get(key) !== result.interactionRef) {
+          throw new Error('Screenshot and interaction evidence must reference the same exact outcome.');
+        }
+      }
+    }
   }
 }
 
@@ -2219,6 +3965,7 @@ export function startJournalStage(state, stageName) {
   };
   const event = {
     kind: 'started',
+    sequence: nextTransitionSequence(state),
     at: timestamp,
     workspaceBeforeSha256: computeWorkspaceAttestation(state.inputs.workspace.path).sha256
   };
@@ -2243,6 +3990,7 @@ export function passJournalStage(state, stageName, evidenceReferences) {
   const timestamp = now();
   const event = {
     kind: 'passed',
+    sequence: nextTransitionSequence(state),
     at: timestamp,
     evidence,
     workspace: {
@@ -2272,6 +4020,7 @@ export function failJournalStage(state, stageName, reason, evidenceReferences) {
   const timestamp = now();
   const event = {
     kind: 'failed',
+    sequence: nextTransitionSequence(state),
     at: timestamp,
     evidence,
     reason,
@@ -2292,6 +4041,9 @@ export function invalidateJournalStages(state, stageName, reason) {
   requireValue(reason, '--reason');
   if (stageName === 'brief') {
     throw new Error('A changed brief or validation report requires a new journal.');
+  }
+  if (STAGES.some((currentName) => deriveStage(state, currentName).status === 'running')) {
+    throw new Error('Finish the running stage before invalidating journal history.');
   }
   const firstIndex = STAGES.indexOf(stageName);
   if (deriveStage(state, stageName).status === 'pending') {
@@ -2314,6 +4066,7 @@ export function invalidateJournalStages(state, stageName, reason) {
     });
   }
   const invalidation = {
+    sequence: nextTransitionSequence(state),
     at: timestamp,
     fromStage: stageName,
     reason,

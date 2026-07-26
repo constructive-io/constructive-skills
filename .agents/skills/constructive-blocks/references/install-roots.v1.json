@@ -28,6 +28,14 @@
         "path": "references/registry-catalog.v1.json",
         "sha256": "84ce9d2b9728b3d62cb6b9e48ec2cd12153ea657490c419e68f849f672be3d1f"
       },
+      "registryContent": {
+        "path": "references/registry-content.v1.json",
+        "sha256": "df0376b1eeeca8d271a91c962b829365e989df35750058b348c4bd779e5e3517"
+      },
+      "packageResolutions": {
+        "path": "references/package-resolutions.v1.json",
+        "sha256": "4cccce553d5c9dec6f11ca0b2b1ec7ea987e2f7308d46bd0e804f8a725147044"
+      },
       "canonicalFiles": [
         {
           "path": "package.json",

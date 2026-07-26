@@ -2300,6 +2300,9 @@ function consoleBindingUsesMetaDiscovery(capability, catalog) {
 
 function runtimeModesForSurface(surface, composition, acceptance, tenantResult, items, catalog) {
   const modes = new Set();
+  if (surface.featurePacks.includes('data')) {
+    modes.add('data-provider');
+  }
   const surfaceTypes = surface.roots
     .map((root) => items.get(root)?.surface)
     .filter((surfaceType) => isNonEmptyString(surfaceType));
@@ -2735,9 +2738,9 @@ function validateBlocksSource(catalog, catalogPath, blocksSourceInput, errors, i
   try {
     headCommit = runGit(blocksSource, ['rev-parse', 'HEAD']);
     branch = runGit(blocksSource, ['branch', '--show-current']);
-    const trackedStatus = runGit(blocksSource, ['status', '--porcelain=v1', '--untracked-files=no']);
+    const trackedStatus = runGit(blocksSource, ['status', '--porcelain=v1', '--untracked-files=all']);
     if (trackedStatus) {
-      addError(errors, '--blocks-source must have no tracked worktree changes.');
+      addError(errors, '--blocks-source must have no tracked or untracked-unignored worktree changes.');
     }
   } catch (error) {
     addError(errors, '--blocks-source must be a Git worktree: ' + error.message);

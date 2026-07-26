@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,6 +16,10 @@ import {
   writeJsonAtomic
 } from './lib/brief-contract.mjs';
 import {
+  assertInstalledRegistryContent,
+  assertPackageTarballComplete,
+  assertPinnedExternalPackageResolution,
+  assertPnpmLockResolution,
   failJournalStage,
   initializeJournal,
   invalidateJournalStages,
@@ -39,6 +44,15 @@ const FEATURE_CONTRACT = {
     type: 'graphql-operations',
     operation: 'mutation',
     coordinates: ['Mutation.signIn', 'Mutation.signUp']
+  }
+};
+const AUTH_FEATURE_PACK_MANIFEST = {
+  schemaVersion: 1,
+  id: 'auth',
+  label: 'Authentication',
+  capabilities: {
+    required: ['auth.credentials'],
+    optional: []
   }
 };
 const VIEWPORT_DEFINITIONS = {
@@ -68,6 +82,28 @@ function writeBytes(filePath, bytes) {
   fs.writeFileSync(filePath, bytes);
 }
 
+function createPackageTarball(harness, name, version, fileName) {
+  const staging = fs.mkdtempSync(path.join(harness.temporaryRoot, 'package-stage-'));
+  const packageDirectory = path.join(staging, 'package');
+  fs.mkdirSync(packageDirectory, { recursive: true });
+  writeJsonAtomic(path.join(packageDirectory, 'package.json'), { name, version });
+  const tarballRef = '.constructive/harness/evidence/' + fileName;
+  const tarballPath = path.join(harness.workspace, tarballRef);
+  fs.mkdirSync(path.dirname(tarballPath), { recursive: true });
+  const archived = spawnSync('tar', ['-czf', tarballPath, '-C', staging, 'package'], {
+    encoding: 'utf8',
+    env: Object.assign({}, process.env, { COPYFILE_DISABLE: '1' })
+  });
+  assert.equal(archived.status, 0, archived.stderr);
+  fs.rmSync(staging, { recursive: true, force: true });
+  const bytes = fs.readFileSync(tarballPath);
+  return {
+    tarballRef,
+    tarballSha256: sha256File(tarballPath),
+    integrity: 'sha512-' + crypto.createHash('sha512').update(bytes).digest('base64')
+  };
+}
+
 function createHarness(runtimeLimitations = []) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'constructive-builder-journal-'));
   const workspace = path.join(temporaryRoot, 'workspace');
@@ -80,6 +116,26 @@ function createHarness(runtimeLimitations = []) {
   writeText(briefPath, '{"brief":true}\n');
   writeText(tenantPath, '{"tenant":true}\n');
   writeText(catalogPath, '{"catalog":true}\n');
+  writeJsonAtomic(path.join(workspace, 'components.json'), {
+    style: 'base-nova',
+    iconLibrary: 'lucide',
+    tsx: true,
+    aliases: {
+      components: '@/components',
+      utils: '@/lib/utils',
+      ui: '@/components/ui',
+      lib: '@/lib',
+      hooks: '@/hooks'
+    }
+  });
+  writeJsonAtomic(path.join(workspace, 'tsconfig.json'), {
+    compilerOptions: {
+      baseUrl: '.',
+      paths: {
+        '@/*': ['./src/*']
+      }
+    }
+  });
   writeJsonAtomic(planPath, {
     schemaVersion: 1,
     kind: 'constructive.console-kit-install-plan',
@@ -91,7 +147,31 @@ function createHarness(runtimeLimitations = []) {
       npmDependencies: [
         { name: '@constructive-io/data' },
         { name: 'zustand' }
+      ],
+      files: [
+        {
+          target: 'src/installed/auth.ts',
+          targetKind: 'literal',
+          type: 'registry:lib',
+          sources: [{ registryItem: 'auth-runtime', path: 'registry/constructive/lib/auth.ts' }]
+        },
+        {
+          target: '@ui/auth-panel.tsx',
+          targetKind: 'shadcn-alias',
+          type: 'registry:ui',
+          sources: [{ registryItem: 'auth-panel', path: 'registry/constructive/ui/auth-panel.tsx' }]
+        },
+        {
+          target: '~/.constructive/feature-packs/auth.json',
+          targetKind: 'project-root',
+          type: 'registry:file',
+          sources: [{ registryItem: 'feature-pack-auth', path: 'registry/constructive/feature-packs/auth.json' }]
+        }
       ]
+    },
+    featurePacks: [AUTH_FEATURE_PACK_MANIFEST],
+    verify: {
+      commands: ['pnpm exec tsc --noEmit', 'pnpm build']
     }
   });
   const immutableFiles = [
@@ -272,6 +352,139 @@ test('harness-state CLI rejects duplicate and command-irrelevant scalar flags', 
   assert.match(passReason.stderr, /--reason is not valid for the pass command/);
 });
 
+test('installed registry content permits only deterministic consumer alias rewriting', () => {
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'constructive-registry-content-'));
+  const installedPath = path.join(temporaryRoot, 'consumer.ts');
+  const sourceContent = "import { cn } from '@/lib/utils';\nexport const value = cn('ready');\n";
+  const components = {
+    aliases: {
+      components: '#/components',
+      utils: '#/shared/utils',
+      ui: '#/components/ui',
+      lib: '#/shared',
+      hooks: '#/hooks'
+    }
+  };
+  writeText(
+    installedPath,
+    "import { cn } from '#/shared/utils';\nexport const value = cn('ready');\n"
+  );
+  assert.doesNotThrow(() => {
+    assertInstalledRegistryContent(
+      installedPath,
+      sourceContent,
+      'registry/constructive/lib/consumer.ts',
+      components
+    );
+  });
+  writeText(installedPath, "export const value = 'fabricated';\n");
+  assert.throws(
+    () => assertInstalledRegistryContent(
+      installedPath,
+      sourceContent,
+      'registry/constructive/lib/consumer.ts',
+      components
+    ),
+    /does not match its generated registry source/
+  );
+  fs.rmSync(temporaryRoot, { recursive: true, force: true });
+});
+
+test('package provenance parsers reject YAML injection and noncanonical tar termination', () => {
+  const integrity = 'sha512-dGVzdA==';
+  const validLockfile = [
+    "lockfileVersion: '9.0'",
+    '',
+    'packages:',
+    "  'zustand@5.0.14':",
+    '    resolution: {integrity: ' + integrity + '}',
+    ''
+  ].join('\n');
+  assert.doesNotThrow(() => {
+    assertPnpmLockResolution(validLockfile, 'zustand', '5.0.14', integrity);
+  });
+  const injectedLockfile = [
+    "lockfileVersion: '9.0'",
+    '',
+    'packages:',
+    "  'zustand@5.0.14':",
+    '    note: "integrity: ' + integrity + '"',
+    ''
+  ].join('\n');
+  assert.throws(
+    () => assertPnpmLockResolution(injectedLockfile, 'zustand', '5.0.14', integrity),
+    /one exact resolution declaration/
+  );
+  const duplicateResolutionLockfile = [
+    "lockfileVersion: '9.0'",
+    '',
+    'packages:',
+    "  'zustand@5.0.14':",
+    '    resolution: {integrity: ' + integrity + '}',
+    '    resolution: {}',
+    ''
+  ].join('\n');
+  assert.throws(
+    () => assertPnpmLockResolution(duplicateResolutionLockfile, 'zustand', '5.0.14', integrity),
+    /one exact resolution declaration/
+  );
+  const aliasedResolutionLockfile = [
+    "lockfileVersion: '9.0'",
+    '',
+    'packages:',
+    "  'zustand@5.0.14':",
+    '    resolution: *other',
+    ''
+  ].join('\n');
+  assert.throws(
+    () => assertPnpmLockResolution(aliasedResolutionLockfile, 'zustand', '5.0.14', integrity),
+    /resolution must be a mapping/
+  );
+  const pinnedResolution = {
+    name: 'zustand',
+    version: '5.0.14',
+    resolved: 'https://registry.npmjs.org/zustand/-/zustand-5.0.14.tgz',
+    integrity
+  };
+  assert.doesNotThrow(() => {
+    assertPinnedExternalPackageResolution(pinnedResolution, pinnedResolution);
+  });
+  const fabricatedResolution = structuredClone(pinnedResolution);
+  fabricatedResolution.resolved = 'https://registry.example.test/zustand/fabricated.tgz';
+  assert.throws(
+    () => assertPinnedExternalPackageResolution(fabricatedResolution, pinnedResolution),
+    /immutable npm registry attestation/
+  );
+
+  const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'constructive-package-parser-'));
+  const harness = { temporaryRoot, workspace: temporaryRoot };
+  const tarball = createPackageTarball(
+    harness,
+    'fixture-package',
+    '1.0.0',
+    'fixture-package.tgz'
+  );
+  const tarballPath = path.join(temporaryRoot, tarball.tarballRef);
+  assert.doesNotThrow(() => assertPackageTarballComplete(tarballPath));
+  const archive = zlib.gunzipSync(fs.readFileSync(tarballPath));
+  let terminator = -1;
+  for (let offset = 0; offset + 512 <= archive.length; offset += 512) {
+    if (archive.subarray(offset, offset + 512).every((byte) => byte === 0)) {
+      terminator = offset;
+      break;
+    }
+  }
+  assert.notEqual(terminator, -1);
+  archive[terminator + 512] = 1;
+  const invalidTarballPath = path.join(temporaryRoot, 'invalid-termination.tgz');
+  writeBytes(invalidTarballPath, zlib.gzipSync(archive));
+  assert.throws(
+    () => assertPackageTarballComplete(invalidTarballPath),
+    /two zero records and only zero block padding/
+  );
+  fs.rmSync(temporaryRoot, { recursive: true, force: true });
+});
+
 function writeEvidence(harness, name, contents = 'evidence\n') {
   const relativePath = '.constructive/harness/evidence/' + name;
   writeText(path.join(harness.workspace, relativePath), contents);
@@ -282,37 +495,136 @@ function writeJsonEvidence(harness, name, document) {
   return writeEvidence(harness, name, JSON.stringify(document) + '\n');
 }
 
-function requestOutcome(endpointKind, passed = true, statusCode = 200) {
+function requestOutcome(context, statusCode = 200) {
   return {
     schemaVersion: 1,
     kind: 'constructive.builder-request-outcome',
-    endpointKind,
-    operation: 'contract-check',
+    contextKey: context.contextKey,
+    endpointKind: context.endpointKind,
+    operation: context.operation,
     statusCode,
-    checks: [{ id: 'response-contract', passed }],
-    passed
+    checks: [{ id: context.checkId, passed: context.passed }],
+    passed: context.passed
   };
 }
 
-function uiOutcome(passed = true) {
+function uiOutcome(context) {
   return {
     schemaVersion: 1,
     kind: 'constructive.builder-ui-outcome',
-    state: passed ? 'ready' : 'error',
+    contextKey: context.contextKey,
+    state: context.state,
     visible: true,
-    interactive: passed,
-    checks: [{ id: 'render-state', passed }],
+    interactive: context.passed,
+    checks: [{ id: context.checkId, passed: context.passed }],
+    passed: context.passed
+  };
+}
+
+function writeRequestEvidence(harness, name, context, statusCode = null) {
+  const resolvedStatus = statusCode === null ? (context.passed ? 200 : 503) : statusCode;
+  return writeJsonEvidence(harness, name, requestOutcome(context, resolvedStatus));
+}
+
+function writeUiEvidence(harness, name, context) {
+  return writeJsonEvidence(harness, name, uiOutcome(context));
+}
+
+function endpointOutcomeContext(tenantId, endpointKind, passed = true) {
+  return {
+    contextKey: ['endpoint', tenantId, endpointKind].join('|'),
+    endpointKind,
+    operation: 'endpoint-check',
+    state: passed ? 'ready' : 'error',
+    checkId: 'endpoint:' + tenantId + ':' + endpointKind,
     passed
   };
 }
 
-function writeRequestEvidence(harness, name, endpointKind = 'auth', passed = true, statusCode = null) {
-  const resolvedStatus = statusCode === null ? (passed ? 200 : 503) : statusCode;
-  return writeJsonEvidence(harness, name, requestOutcome(endpointKind, passed, resolvedStatus));
+function metaOutcomeContext(route, contractVersion, passed = true) {
+  return {
+    contextKey: ['meta', route.id, route.resource, contractVersion].join('|'),
+    endpointKind: 'data',
+    operation: 'meta-contract',
+    state: passed ? 'ready' : 'error',
+    checkId: 'meta-contract:' + route.id,
+    passed
+  };
 }
 
-function writeUiEvidence(harness, name, passed = true) {
-  return writeJsonEvidence(harness, name, uiOutcome(passed));
+function scenarioOutcomeContextForTest(state, scenarioId, assertionId, passed = true) {
+  const scenario = state.resolved.acceptance.scenarios.find((candidate) => candidate.id === scenarioId);
+  assert.ok(scenario, 'Expected scenario fixture ' + scenarioId + '.');
+  const tenantIds = [];
+  for (const actorId of scenario.actorIds) {
+    const actor = state.resolved.acceptance.actors.find((candidate) => candidate.id === actorId);
+    const tenantId = actor?.tenantScope?.databaseId || state.resolved.tenantId;
+    if (!tenantIds.includes(tenantId)) {
+      tenantIds.push(tenantId);
+    }
+  }
+  const assertionContract = Array.isArray(scenario.assertionContracts)
+    ? scenario.assertionContracts.find((entry) => entry.id === assertionId)?.contract
+    : null;
+  let endpointKind = assertionContract?.endpointKind || null;
+  if (!endpointKind && (scenario.kind === 'crud' || scenario.kind === 'rls')) {
+    endpointKind = 'data';
+  }
+  if (!endpointKind && scenario.kind === 'auth') {
+    endpointKind = 'auth';
+  }
+  if (!endpointKind) {
+    endpointKind = 'host';
+  }
+  let stateName = 'ready';
+  if (assertionId.includes(':unavailable')) {
+    stateName = 'unavailable';
+  } else if (assertionId.includes(':deny') || assertionId.includes('revoked')) {
+    stateName = 'unauthorized';
+  }
+  return {
+    contextKey: [
+      'scenario',
+      scenario.id,
+      assertionId,
+      scenario.actorIds.join(','),
+      tenantIds.join(',')
+    ].join('|'),
+    endpointKind,
+    operation: assertionId,
+    state: stateName,
+    checkId: assertionId,
+    passed
+  };
+}
+
+function capabilityOutcomeContext(surfaceId, featurePack, expected, actual, passed = true) {
+  return {
+    contextKey: ['capability', surfaceId, featurePack, expected, actual].join('|'),
+    endpointKind: 'host',
+    operation: 'capability-state',
+    state: actual,
+    checkId: 'capability:' + surfaceId + ':' + featurePack,
+    passed
+  };
+}
+
+function limitationOutcomeContext(limitationId, requirementId, passed = true) {
+  return {
+    contextKey: ['limitation', limitationId, requirementId].join('|'),
+    endpointKind: 'host',
+    operation: 'mitigation',
+    state: passed ? 'ready' : 'error',
+    checkId: 'limitation:' + limitationId + ':' + requirementId,
+    passed
+  };
+}
+
+function writeOutcomePair(harness, name, context) {
+  return {
+    requestRef: writeRequestEvidence(harness, name + '-request.json', context),
+    uiRef: writeUiEvidence(harness, name + '-ui.json', context)
+  };
 }
 
 function pngCrc32(bytes) {
@@ -374,14 +686,38 @@ function visualTargetKey(target, viewport, stateName = 'ready') {
   return 'shell|' + target.surfaceId + '|' + viewport.id + '|' + stateName;
 }
 
+function interactionCheckIds(viewport, stateName) {
+  const ids = [
+    'keyboard-traversal',
+    'focus-visibility',
+    'overflow-containment',
+    'diagnostics-containment'
+  ];
+  if (viewport.width <= 767) {
+    ids.push('responsive-navigation', 'touch-targets');
+  }
+  if (stateName === 'error') {
+    ids.push('retry-recovery');
+  }
+  if (stateName === 'ready' || stateName === 'populated') {
+    ids.push('action-feedback');
+  }
+  return ids;
+}
+
 function writeInteractionOutcome(harness, name, target, viewport, passed = true, stateName = 'ready') {
+  const targetKey = visualTargetKey(target, viewport, stateName);
+  const checkIds = interactionCheckIds(viewport, stateName);
   return writeJsonEvidence(harness, name, {
     schemaVersion: 1,
     kind: 'constructive.builder-interaction-outcome',
-    targetKey: visualTargetKey(target, viewport, stateName),
+    targetKey,
     viewportId: viewport.id,
     state: stateName,
-    checks: [{ id: 'primary-interaction', passed }],
+    contextCheck: { id: 'interaction:' + targetKey, passed: true },
+    checks: checkIds.map((id) => {
+      return { id, passed };
+    }),
     passed
   });
 }
@@ -419,6 +755,43 @@ function machineKind(type) {
   return kinds.get(type);
 }
 
+function plannedTargetForTest(harness, file) {
+  if (file.targetKind === 'literal') {
+    return file.target;
+  }
+  if (file.targetKind === 'project-root') {
+    return file.target.slice(2);
+  }
+  const match = /^@([^/]+)\/(.+)$/.exec(file.target);
+  assert.ok(match, 'Expected a valid shadcn alias target fixture.');
+  const components = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, 'components.json'), 'utf8')
+  );
+  const alias = components.aliases[match[1]];
+  assert.equal(typeof alias, 'string');
+  if (alias.startsWith('@/')) {
+    return path.posix.join('src', alias.slice(2), match[2]);
+  }
+  return path.posix.join(alias, match[2]);
+}
+
+function writePlannedConsumerFiles(harness, state) {
+  for (const plan of state.inputs.installPlans) {
+    const document = JSON.parse(fs.readFileSync(plan.path, 'utf8'));
+    for (const file of document.composition.files) {
+      const target = plannedTargetForTest(harness, file);
+      const manifest = document.featurePacks.find((candidate) => {
+        return target === '.constructive/feature-packs/' + candidate.id + '.json';
+      });
+      if (manifest) {
+        writeJsonAtomic(path.join(harness.workspace, target), manifest);
+      } else {
+        writeText(path.join(harness.workspace, target), 'installed ' + file.target + '\n');
+      }
+    }
+  }
+}
+
 function staticMachineEvidence(harness, state, stage, type, passed = true) {
   if (type === 'validation') {
     return path.relative(harness.workspace, harness.validationPath);
@@ -454,11 +827,11 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
       for (const endpointKind of tenant.endpointKinds) {
         const resultPassed = passed || results.length > 0;
         const statusCode = resultPassed ? 200 : 503;
+        const context = endpointOutcomeContext(tenant.id, endpointKind, resultPassed);
         const requestRef = writeRequestEvidence(
           harness,
           stage + '-' + tenant.id + '-' + endpointKind + '-request.json',
-          endpointKind,
-          resultPassed,
+          context,
           statusCode
         );
         results.push({ tenantId: tenant.id, endpointKind, statusCode, passed: resultPassed, requestRef });
@@ -474,6 +847,7 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
       })
     };
   } else if (type === 'install-log') {
+    writePlannedConsumerFiles(harness, state);
     const planByRoot = new Map();
     for (const plan of state.inputs.installPlans) {
       planByRoot.set(plan.root, JSON.parse(fs.readFileSync(plan.path, 'utf8')));
@@ -481,6 +855,7 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
     document = {
       schemaVersion: 1,
       kind: machineKind(type),
+      preparation: [],
       results: state.resolved.installRoots.map((root, index) => {
         const resultPassed = passed || index > 0;
         const outputRef = '.constructive/harness/evidence/' + stage + '-' + root + '-install-output.txt';
@@ -497,14 +872,20 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
     };
   } else if (type === 'manifest') {
     const results = [];
+    const manifestsById = new Map();
+    for (const plan of state.inputs.installPlans) {
+      const planDocument = JSON.parse(fs.readFileSync(plan.path, 'utf8'));
+      for (const manifest of planDocument.featurePacks) {
+        manifestsById.set(manifest.id, manifest);
+      }
+    }
     for (const surface of state.resolved.surfaces) {
       for (const featurePack of surface.featurePacks) {
-        const manifestRef = '.constructive/harness/evidence/' + stage + '-' + surface.id + '-' + featurePack + '-manifest.json';
-        writeJsonEvidence(harness, path.basename(manifestRef), {
-          schemaVersion: 1,
-          id: featurePack,
-          capabilities: { required: [] }
-        });
+        const manifestRef = '.constructive/feature-packs/' + featurePack + '.json';
+        writeJsonAtomic(
+          path.join(harness.workspace, manifestRef),
+          manifestsById.get(featurePack)
+        );
         results.push({
           surfaceId: surface.id,
           featurePack,
@@ -524,10 +905,55 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
       }
     }
     const packages = [];
+    const packageFixtures = [];
     let packageIndex = 0;
     for (const name of names) {
+      const packageJsonRef = path.posix.join('node_modules', name, 'package.json');
+      const packageVersion = '0.0.0-test';
+      const resolved = 'https://registry.example.test/' + encodeURIComponent(name) + '/-/' + packageIndex + '.tgz';
+      writeJsonAtomic(path.join(harness.workspace, packageJsonRef), {
+        name,
+        version: packageVersion
+      });
+      const tarball = createPackageTarball(
+        harness,
+        name,
+        packageVersion,
+        stage + '-package-' + packageIndex + '.tgz'
+      );
+      packageFixtures.push({ name, version: packageVersion, resolved, tarball });
+      packageIndex += 1;
+    }
+    const lockfileRef = 'pnpm-lock.yaml';
+    const lockfileLines = ["lockfileVersion: '9.0'", '', 'packages:'];
+    for (const fixture of packageFixtures) {
+      lockfileLines.push(
+        "  '" + fixture.name + '@' + fixture.version + "':",
+        '    resolution: {integrity: ' + fixture.tarball.integrity + ', tarball: ' + fixture.resolved + '}',
+        ''
+      );
+    }
+    writeText(path.join(harness.workspace, lockfileRef), lockfileLines.join('\n'));
+    const lockfileSha256 = sha256File(path.join(harness.workspace, lockfileRef));
+    packageIndex = 0;
+    for (const fixture of packageFixtures) {
+      const name = fixture.name;
       const resolvedRef = '.constructive/harness/evidence/' + stage + '-package-' + packageIndex + '.json';
-      writeJsonEvidence(harness, path.basename(resolvedRef), { name, version: '0.0.0-test' });
+      const packageJsonRef = path.posix.join('node_modules', name, 'package.json');
+      writeJsonEvidence(harness, path.basename(resolvedRef), {
+        schemaVersion: 1,
+        kind: 'constructive.builder-package-resolution',
+        name,
+        version: fixture.version,
+        resolved: fixture.resolved,
+        integrity: fixture.tarball.integrity,
+        lockfileRef,
+        lockfileSha256,
+        tarballRef: fixture.tarball.tarballRef,
+        tarballSha256: fixture.tarball.tarballSha256,
+        packageJsonRef,
+        packageJsonSha256: sha256File(path.join(harness.workspace, packageJsonRef))
+      });
       packages.push({
         name,
         resolvedRef,
@@ -548,14 +974,21 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
       kind: machineKind(type),
       headCommit: state.inputs.blocksSource ? state.inputs.blocksSource.headCommit : null,
       checkerSha256: state.inputs.blocksSource ? state.inputs.blocksSource.checkerSha256 : null,
+      outputRef: null,
       outputSha256: null,
       passed
     };
   } else if (type === 'source-check') {
     const results = [];
     for (const route of state.resolved.domainRoutes) {
-      const sourceRef = '.constructive/harness/evidence/' + stage + '-' + route.id + '.tsx';
-      writeEvidence(harness, path.basename(sourceRef), 'export default function Route() { return null; }\n');
+      const routePath = route.path === '/' ? '' : route.path.replace(/^\/+|\/+$/g, '');
+      const sourceRef = routePath
+        ? path.posix.join('src', 'app', routePath, 'page.tsx')
+        : path.posix.join('src', 'app', 'page.tsx');
+      writeText(
+        path.join(harness.workspace, sourceRef),
+        'export default function Route() { return null; }\n'
+      );
       results.push({
         routeId: route.id,
         sourceRef,
@@ -567,7 +1000,12 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
   } else if (type === 'meta-contract') {
     const results = [];
     for (const route of state.resolved.domainRoutes) {
-      const requestRef = writeRequestEvidence(harness, stage + '-' + route.id + '-meta.json', 'data', passed);
+      const context = metaOutcomeContext(route, state.resolved.metaContractVersion, passed);
+      const requestRef = writeRequestEvidence(
+        harness,
+        stage + '-' + route.id + '-meta.json',
+        context
+      );
       results.push({
         routeId: route.id,
         resource: route.resource,
@@ -587,7 +1025,7 @@ function staticMachineEvidence(harness, state, stage, type, passed = true) {
     document = {
       schemaVersion: 1,
       kind: machineKind(type),
-      command: type === 'typecheck' ? 'pnpm typecheck' : 'pnpm build',
+      command: type === 'typecheck' ? 'pnpm exec tsc --noEmit' : 'pnpm build',
       exitCode: passed ? 0 : 1,
       outputRef,
       outputSha256: sha256File(path.join(harness.workspace, outputRef)),
@@ -784,6 +1222,7 @@ test('semantic replay rejects a fabricated terminal event with recomputed event 
     events: [
       {
         kind: 'started',
+        sequence: state.revision + 1,
         at: timestamp,
         workspaceBeforeSha256: workspace.sha256,
         previousHash: sha256Text('placeholder'),
@@ -791,6 +1230,7 @@ test('semantic replay rejects a fabricated terminal event with recomputed event 
       },
       {
         kind: 'passed',
+        sequence: state.revision + 2,
         at: timestamp,
         evidence: [
           {
@@ -818,6 +1258,264 @@ test('semantic replay rejects a fabricated terminal event with recomputed event 
     () => loadJournal(harness.statePath),
     /Tenant contract evidence must contain exactly/
   );
+});
+
+test('semantic replay rejects a passing event that omits a required evidence type', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  const state = JSON.parse(fs.readFileSync(harness.statePath, 'utf8'));
+  const tenantContractRelative = staticMachineEvidence(
+    harness,
+    state,
+    'fabricated-tenant-incomplete',
+    'tenant-contract'
+  );
+  const tenantContractPath = path.join(harness.workspace, tenantContractRelative);
+  const workspace = computeWorkspaceAttestation(harness.workspace);
+  const timestamp = new Date().toISOString();
+  state.stages.tenant.attempts.push({
+    number: 1,
+    events: [
+      {
+        kind: 'started',
+        sequence: state.revision + 1,
+        at: timestamp,
+        workspaceBeforeSha256: workspace.sha256,
+        previousHash: sha256Text('placeholder'),
+        eventHash: sha256Text('placeholder')
+      },
+      {
+        kind: 'passed',
+        sequence: state.revision + 2,
+        at: timestamp,
+        evidence: [
+          {
+            type: 'tenant-contract',
+            path: tenantContractPath,
+            sha256: sha256File(tenantContractPath),
+            size: fs.statSync(tenantContractPath).size,
+            references: []
+          }
+        ],
+        workspace: {
+          sha256: workspace.sha256,
+          fileCount: workspace.fileCount,
+          gitHead: workspace.gitHead
+        },
+        previousHash: sha256Text('placeholder'),
+        eventHash: sha256Text('placeholder')
+      }
+    ]
+  });
+  state.revision += 2;
+  recomputeJournalSealsForTest(state);
+  writeJsonAtomic(harness.statePath, state);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /does not contain every required type/
+  );
+});
+
+test('global replay rejects a resealed invalidation that omits a downstream passed stage', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  passTextStage(harness, 'tenant', ['tenant-contract', 'endpoint-check']);
+  passTextStage(
+    harness,
+    'install',
+    ['install-plan', 'install-log', 'manifest', 'package-provenance', 'blocks-check']
+  );
+  writeText(path.join(harness.workspace, 'src', 'drift.ts'), 'export const drift = true;\n');
+  mutateJournal(
+    harness.statePath,
+    (state) => {
+      invalidateJournalStages(state, 'tenant', 'Invalidate tenant and every completed downstream stage.');
+    },
+    { allowWorkspaceDrift: true }
+  );
+  const state = JSON.parse(fs.readFileSync(harness.statePath, 'utf8'));
+  assert.equal(state.invalidations[0].affected.at(-1).stage, 'install');
+  state.invalidations[0].affected.pop();
+  recomputeJournalSealsForTest(state);
+  writeJsonAtomic(harness.statePath, state);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /invalidation affected set does not match global history/
+  );
+});
+
+test('global replay rejects resealed stage events reordered ahead of prerequisites', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  passTextStage(harness, 'tenant', ['tenant-contract', 'endpoint-check']);
+  const state = JSON.parse(fs.readFileSync(harness.statePath, 'utf8'));
+  const briefTerminal = state.stages.brief.attempts[0].events[1];
+  const tenantStart = state.stages.tenant.attempts[0].events[0];
+  const briefSequence = briefTerminal.sequence;
+  briefTerminal.sequence = tenantStart.sequence;
+  tenantStart.sequence = briefSequence;
+  recomputeJournalSealsForTest(state);
+  writeJsonAtomic(harness.statePath, state);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /starts tenant before brief passes/
+  );
+});
+
+test('install replay binds planned files, exact manifests, installed packages, and verification commands', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  passTextStage(harness, 'tenant', ['tenant-contract', 'endpoint-check']);
+
+  start(harness.statePath, 'install');
+  const installState = loadJournal(harness.statePath);
+  const installTypes = [
+    'install-plan',
+    'install-log',
+    'manifest',
+    'package-provenance',
+    'blocks-check'
+  ];
+  const installReferences = [];
+  const installRefByType = new Map();
+  for (const type of installTypes) {
+    const reference = staticMachineEvidence(harness, installState, 'strict-install', type);
+    installReferences.push(type + '=' + reference);
+    installRefByType.set(type, reference);
+  }
+
+  const wrongManifestRef = writeJsonEvidence(
+    harness,
+    'wrong-location-auth-manifest.json',
+    AUTH_FEATURE_PACK_MANIFEST
+  );
+  const manifestDocument = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, installRefByType.get('manifest')), 'utf8')
+  );
+  manifestDocument.results[0].manifestRef = wrongManifestRef;
+  manifestDocument.results[0].sha256 = sha256File(path.join(harness.workspace, wrongManifestRef));
+  const wrongManifestEvidenceRef = writeJsonEvidence(
+    harness,
+    'wrong-location-manifest-evidence.json',
+    manifestDocument
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'install', installReferences.map((reference) => {
+      return reference.startsWith('manifest=')
+        ? 'manifest=' + wrongManifestEvidenceRef
+        : reference;
+    })),
+    /exact project sidecar path/
+  );
+
+  const provenanceDocument = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, installRefByType.get('package-provenance')), 'utf8')
+  );
+  const originalPackageResult = provenanceDocument.packages[0];
+  const originalReceipt = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, originalPackageResult.resolvedRef), 'utf8')
+  );
+  const tamperedTarballRef = '.constructive/harness/evidence/tampered-package.tgz';
+  const originalTarball = fs.readFileSync(
+    path.join(harness.workspace, originalReceipt.tarballRef)
+  );
+  writeBytes(
+    path.join(harness.workspace, tamperedTarballRef),
+    Buffer.concat([originalTarball, Buffer.from('fabricated')])
+  );
+  const tamperedReceipt = structuredClone(originalReceipt);
+  tamperedReceipt.tarballRef = tamperedTarballRef;
+  tamperedReceipt.tarballSha256 = sha256File(
+    path.join(harness.workspace, tamperedTarballRef)
+  );
+  const tamperedReceiptRef = writeJsonEvidence(
+    harness,
+    'tampered-package-resolution.json',
+    tamperedReceipt
+  );
+  const tamperedProvenance = structuredClone(provenanceDocument);
+  tamperedProvenance.packages[0].resolvedRef = tamperedReceiptRef;
+  tamperedProvenance.packages[0].sha256 = sha256File(
+    path.join(harness.workspace, tamperedReceiptRef)
+  );
+  const tamperedProvenanceRef = writeJsonEvidence(
+    harness,
+    'tampered-package-provenance.json',
+    tamperedProvenance
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'install', installReferences.map((reference) => {
+      return reference.startsWith('package-provenance=')
+        ? 'package-provenance=' + tamperedProvenanceRef
+        : reference;
+    })),
+    /does not match its declared integrity/
+  );
+  const fakePackageJsonRef = '.constructive/harness/fake-package/package.json';
+  writeJsonAtomic(path.join(harness.workspace, fakePackageJsonRef), {
+    name: originalReceipt.name,
+    version: originalReceipt.version
+  });
+  originalReceipt.packageJsonRef = fakePackageJsonRef;
+  originalReceipt.packageJsonSha256 = sha256File(path.join(harness.workspace, fakePackageJsonRef));
+  const fakeReceiptRef = writeJsonEvidence(
+    harness,
+    'fake-package-resolution.json',
+    originalReceipt
+  );
+  originalPackageResult.resolvedRef = fakeReceiptRef;
+  originalPackageResult.sha256 = sha256File(path.join(harness.workspace, fakeReceiptRef));
+  const fakeProvenanceRef = writeJsonEvidence(
+    harness,
+    'fake-package-provenance.json',
+    provenanceDocument
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'install', installReferences.map((reference) => {
+      return reference.startsWith('package-provenance=')
+        ? 'package-provenance=' + fakeProvenanceRef
+        : reference;
+    })),
+    /exact installed path node_modules\//
+  );
+
+  fs.unlinkSync(path.join(harness.workspace, 'src', 'installed', 'auth.ts'));
+  assert.throws(
+    () => pass(harness.statePath, 'install', installReferences),
+    /Planned consumer file src\/installed\/auth\.ts is missing/
+  );
+  writePlannedConsumerFiles(harness, installState);
+  pass(harness.statePath, 'install', installReferences);
+
+  passTextStage(harness, 'domain', ['source-check', 'meta-contract']);
+  start(harness.statePath, 'static');
+  const staticState = loadJournal(harness.statePath);
+  const typecheckRef = staticMachineEvidence(harness, staticState, 'strict-static', 'typecheck');
+  const buildRef = staticMachineEvidence(harness, staticState, 'strict-static', 'build');
+  const typecheckDocument = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, typecheckRef), 'utf8')
+  );
+  typecheckDocument.command = 'true';
+  const fakeTypecheckRef = writeJsonEvidence(
+    harness,
+    'fake-typecheck.json',
+    typecheckDocument
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'static', [
+      'typecheck=' + fakeTypecheckRef,
+      'build=' + buildRef
+    ]),
+    /does not match the attested Blocks verification command/
+  );
+  pass(harness.statePath, 'static', [
+    'typecheck=' + typecheckRef,
+    'build=' + buildRef
+  ]);
 });
 
 function assertion(id, passed, requestRef, uiRef, contract = null) {
@@ -861,8 +1559,28 @@ test('live and acceptance passes require complete machine evidence and concrete 
   passTextStage(harness, 'static', ['typecheck', 'build']);
 
   start(harness.statePath, 'live');
-  const requestRef = writeRequestEvidence(harness, 'request.json');
-  const uiRef = writeUiEvidence(harness, 'ui.json');
+  const liveState = loadJournal(harness.statePath);
+  const sessionContext = scenarioOutcomeContextForTest(
+    liveState,
+    'auth-lifecycle',
+    'sign-in'
+  );
+  const graphqlContext = scenarioOutcomeContextForTest(
+    liveState,
+    'auth-feature',
+    'check:1'
+  );
+  const rlsContext = scenarioOutcomeContextForTest(
+    liveState,
+    'cross-policy',
+    'operation:read:deny'
+  );
+  const sessionRequestRef = writeRequestEvidence(harness, 'session-request.json', sessionContext);
+  const sessionUiRef = writeUiEvidence(harness, 'session-ui.json', sessionContext);
+  const graphqlRequestRef = writeRequestEvidence(harness, 'graphql-request.json', graphqlContext);
+  const graphqlUiRef = writeUiEvidence(harness, 'graphql-ui.json', graphqlContext);
+  const rlsRequestRef = writeRequestEvidence(harness, 'rls-request.json', rlsContext);
+  const rlsUiRef = writeUiEvidence(harness, 'rls-ui.json', rlsContext);
   const outside = path.join(harness.temporaryRoot, 'outside');
   fs.mkdirSync(outside);
   writeText(path.join(outside, 'escaped.json'), '{"escaped":true}\n');
@@ -873,7 +1591,7 @@ test('live and acceptance passes require complete machine evidence and concrete 
       scenarioResult(
         'auth-lifecycle',
         ['owner', 'revoked'],
-        [assertion('sign-in', true, 'linked-outside/escaped.json', uiRef)]
+        [assertion('sign-in', true, 'linked-outside/escaped.json', sessionUiRef)]
       )
     ]
   );
@@ -894,7 +1612,7 @@ test('live and acceptance passes require complete machine evidence and concrete 
       scenarioResult(
         'auth-lifecycle',
         ['owner', 'revoked'],
-        [assertion('sign-in', true, requestRef, uiRef)]
+        [assertion('sign-in', true, sessionRequestRef, sessionUiRef)]
       )
     ]
   );
@@ -904,7 +1622,7 @@ test('live and acceptance passes require complete machine evidence and concrete 
       scenarioResult(
         'auth-feature',
         ['owner'],
-        [assertion('check:1', true, requestRef, uiRef, FEATURE_CONTRACT)]
+        [assertion('check:1', true, graphqlRequestRef, graphqlUiRef, FEATURE_CONTRACT)]
       )
     ]
   );
@@ -914,7 +1632,7 @@ test('live and acceptance passes require complete machine evidence and concrete 
       scenarioResult(
         'cross-policy',
         ['owner', 'cross'],
-        [assertion('operation:read:deny', true, requestRef, uiRef)]
+        [assertion('operation:read:deny', true, rlsRequestRef, rlsUiRef)]
       )
     ]
   );
@@ -935,6 +1653,22 @@ test('live and acceptance passes require complete machine evidence and concrete 
       'rls=' + rlsRef
     ]),
     /assertion contract does not match the source-attested route/
+  );
+  const reusedContextDocument = structuredClone(graphqlDocument);
+  reusedContextDocument.results[0].assertions[0].requestRef = sessionRequestRef;
+  reusedContextDocument.results[0].assertions[0].uiRef = sessionUiRef;
+  const reusedContextRef = writeEvidence(
+    harness,
+    'graphql-reused-context.json',
+    JSON.stringify(reusedContextDocument) + '\n'
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'live', [
+      'live-session=' + sessionRef,
+      'graphql=' + reusedContextRef,
+      'rls=' + rlsRef
+    ]),
+    /exact contextual check|contextKey does not match the evidence result/
   );
   pass(harness.statePath, 'live', [
     'live-session=' + sessionRef,
@@ -1055,6 +1789,68 @@ test('live and acceptance passes require complete machine evidence and concrete 
     'visual-interaction-summary.json',
     interactionEvidenceFromVisualResults(completeManifest.results)
   );
+  const opaqueInteractionDocument = JSON.parse(
+    fs.readFileSync(path.join(harness.workspace, desktopInteraction), 'utf8')
+  );
+  opaqueInteractionDocument.checks = [{ id: 'interaction-worked', passed: true }];
+  const opaqueInteractionRef = writeJsonEvidence(
+    harness,
+    'visual-opaque-interaction.json',
+    opaqueInteractionDocument
+  );
+  const opaqueInteractionManifest = structuredClone(completeManifest);
+  opaqueInteractionManifest.results[0].interactionRef = opaqueInteractionRef;
+  const opaqueInteractionManifestRef = writeJsonEvidence(
+    harness,
+    'visual-opaque-interaction-manifest.json',
+    opaqueInteractionManifest
+  );
+  const opaqueInteractionSummaryRef = writeJsonEvidence(
+    harness,
+    'visual-opaque-interaction-summary.json',
+    interactionEvidenceFromVisualResults(opaqueInteractionManifest.results)
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'visual', [
+      'screenshot=' + opaqueInteractionManifestRef,
+      'interaction=' + opaqueInteractionSummaryRef
+    ]),
+    /every required behavior check|behavior checks must exactly equal/
+  );
+  const reusedScreenshotManifest = structuredClone(completeManifest);
+  reusedScreenshotManifest.results[1].screenshotRef = desktopScreenshot;
+  const reusedScreenshotManifestRef = writeJsonEvidence(
+    harness,
+    'visual-reused-screenshot.json',
+    reusedScreenshotManifest
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'visual', [
+      'screenshot=' + reusedScreenshotManifestRef,
+      'interaction=' + completeInteractionRef
+    ]),
+    /reuses a screenshot across contextual results/
+  );
+  const duplicateDesktopInteraction = writeInteractionOutcome(
+    harness,
+    'visual-desktop-interaction-duplicate.json',
+    authTarget,
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const crossBoundInteractions = interactionEvidenceFromVisualResults(completeManifest.results);
+  crossBoundInteractions.results[0].artifactRef = duplicateDesktopInteraction;
+  const crossBoundInteractionRef = writeJsonEvidence(
+    harness,
+    'visual-cross-bound-interactions.json',
+    crossBoundInteractions
+  );
+  assert.throws(
+    () => pass(harness.statePath, 'visual', [
+      'screenshot=' + completeManifestRef,
+      'interaction=' + crossBoundInteractionRef
+    ]),
+    /must reference the same exact outcome/
+  );
   const pngHeaderStub = Buffer.alloc(24);
   Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(pngHeaderStub);
   pngHeaderStub.writeUInt32BE(13, 8);
@@ -1078,9 +1874,80 @@ test('live and acceptance passes require complete machine evidence and concrete 
     'interaction=' + completeInteractionRef
   ]);
 
+  const validVisualStateText = fs.readFileSync(harness.statePath, 'utf8');
+  const validInteractionSummaryText = fs.readFileSync(
+    path.join(harness.workspace, completeInteractionRef),
+    'utf8'
+  );
+  writeJsonAtomic(
+    path.join(harness.workspace, completeInteractionRef),
+    crossBoundInteractions
+  );
+  const crossBoundReplayState = JSON.parse(validVisualStateText);
+  const visualEvent = crossBoundReplayState.stages.visual.attempts[0].events[1];
+  const retainedInteraction = visualEvent.evidence.find(
+    (entry) => entry.type === 'interaction'
+  );
+  retainedInteraction.sha256 = sha256File(retainedInteraction.path);
+  retainedInteraction.size = fs.statSync(retainedInteraction.path).size;
+  retainedInteraction.references[0] = {
+    kind: 'interaction',
+    path: path.join(harness.workspace, duplicateDesktopInteraction),
+    sha256: sha256File(path.join(harness.workspace, duplicateDesktopInteraction)),
+    size: fs.statSync(path.join(harness.workspace, duplicateDesktopInteraction)).size
+  };
+  const crossBoundWorkspace = computeWorkspaceAttestation(harness.workspace);
+  visualEvent.workspace = {
+    sha256: crossBoundWorkspace.sha256,
+    fileCount: crossBoundWorkspace.fileCount,
+    gitHead: crossBoundWorkspace.gitHead
+  };
+  recomputeJournalSealsForTest(crossBoundReplayState);
+  writeJsonAtomic(harness.statePath, crossBoundReplayState);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /must reference the same exact outcome/
+  );
+  writeText(
+    path.join(harness.workspace, completeInteractionRef),
+    validInteractionSummaryText
+  );
+  writeText(harness.statePath, validVisualStateText);
+
   start(harness.statePath, 'acceptance');
-  const failedRequestRef = writeRequestEvidence(harness, 'acceptance-failed-request.json', 'auth', false);
-  const failedUiRef = writeUiEvidence(harness, 'acceptance-failed-ui.json', false);
+  const failedCapabilityContext = capabilityOutcomeContext(
+    'console',
+    'auth',
+    'ready',
+    'partial',
+    false
+  );
+  const failedScenarioContext = scenarioOutcomeContextForTest(
+    liveState,
+    'auth-lifecycle',
+    'sign-in',
+    false
+  );
+  const failedCapabilityRequestRef = writeRequestEvidence(
+    harness,
+    'acceptance-failed-capability-request.json',
+    failedCapabilityContext
+  );
+  const failedCapabilityUiRef = writeUiEvidence(
+    harness,
+    'acceptance-failed-capability-ui.json',
+    failedCapabilityContext
+  );
+  const failedScenarioRequestRef = writeRequestEvidence(
+    harness,
+    'acceptance-failed-scenario-request.json',
+    failedScenarioContext
+  );
+  const failedScenarioUiRef = writeUiEvidence(
+    harness,
+    'acceptance-failed-scenario-ui.json',
+    failedScenarioContext
+  );
   const failedAcceptance = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -1092,15 +1959,15 @@ test('live and acceptance passes require complete machine evidence and concrete 
         expected: 'ready',
         actual: 'partial',
         passed: false,
-        requestRef: failedRequestRef,
-        uiRef: failedUiRef
+        requestRef: failedCapabilityRequestRef,
+        uiRef: failedCapabilityUiRef
       }
     ],
     scenarios: [
       scenarioResult(
         'auth-lifecycle',
         ['owner', 'revoked'],
-        [assertion('sign-in', false, failedRequestRef, failedUiRef)]
+        [assertion('sign-in', false, failedScenarioRequestRef, failedScenarioUiRef)]
       )
     ],
     limitations: [],
@@ -1121,6 +1988,17 @@ test('live and acceptance passes require complete machine evidence and concrete 
   });
 
   start(harness.statePath, 'acceptance');
+  const capabilityContext = capabilityOutcomeContext('console', 'auth', 'ready', 'ready');
+  const capabilityRequestRef = writeRequestEvidence(
+    harness,
+    'acceptance-capability-request.json',
+    capabilityContext
+  );
+  const capabilityUiRef = writeUiEvidence(
+    harness,
+    'acceptance-capability-ui.json',
+    capabilityContext
+  );
   const passedAcceptance = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -1132,14 +2010,26 @@ test('live and acceptance passes require complete machine evidence and concrete 
         expected: 'ready',
         actual: 'ready',
         passed: true,
-        requestRef,
-        uiRef
+        requestRef: capabilityRequestRef,
+        uiRef: capabilityUiRef
       }
     ],
     scenarios: [
-      scenarioResult('auth-lifecycle', ['owner', 'revoked'], [assertion('sign-in', true, requestRef, uiRef)]),
-      scenarioResult('auth-feature', ['owner'], [assertion('check:1', true, requestRef, uiRef, FEATURE_CONTRACT)]),
-      scenarioResult('cross-policy', ['owner', 'cross'], [assertion('operation:read:deny', true, requestRef, uiRef)])
+      scenarioResult(
+        'auth-lifecycle',
+        ['owner', 'revoked'],
+        [assertion('sign-in', true, sessionRequestRef, sessionUiRef)]
+      ),
+      scenarioResult(
+        'auth-feature',
+        ['owner'],
+        [assertion('check:1', true, graphqlRequestRef, graphqlUiRef, FEATURE_CONTRACT)]
+      ),
+      scenarioResult(
+        'cross-policy',
+        ['owner', 'cross'],
+        [assertion('operation:read:deny', true, rlsRequestRef, rlsUiRef)]
+      )
     ],
     limitations: [],
     verdict: 'pass'
@@ -1212,8 +2102,36 @@ test('standalone Data can pass live proof with exact empty Auth and RLS result s
       }
     ]
   });
-  const requestRef = writeRequestEvidence(harness, 'standalone-data-request.json', 'data');
-  const uiRef = writeUiEvidence(harness, 'standalone-data-ui.json');
+  const metaContext = scenarioOutcomeContextForTest(
+    state,
+    'standalone-data',
+    'capability:data.meta:ready'
+  );
+  const introspectionContext = scenarioOutcomeContextForTest(
+    state,
+    'standalone-data',
+    'capability:data.introspection:ready'
+  );
+  const metaRequestRef = writeRequestEvidence(
+    harness,
+    'standalone-data-meta-request.json',
+    metaContext
+  );
+  const metaUiRef = writeUiEvidence(
+    harness,
+    'standalone-data-meta-ui.json',
+    metaContext
+  );
+  const introspectionRequestRef = writeRequestEvidence(
+    harness,
+    'standalone-data-introspection-request.json',
+    introspectionContext
+  );
+  const introspectionUiRef = writeUiEvidence(
+    harness,
+    'standalone-data-introspection-ui.json',
+    introspectionContext
+  );
   const sessionRef = writeEvidence(
     harness,
     'standalone-live-session.json',
@@ -1236,8 +2154,13 @@ test('standalone Data can pass live proof with exact empty Auth and RLS result s
           'standalone-data',
           ['owner'],
           [
-            assertion('capability:data.meta:ready', true, requestRef, uiRef),
-            assertion('capability:data.introspection:ready', true, requestRef, uiRef)
+            assertion('capability:data.meta:ready', true, metaRequestRef, metaUiRef),
+            assertion(
+              'capability:data.introspection:ready',
+              true,
+              introspectionRequestRef,
+              introspectionUiRef
+            )
           ]
         )
       ]
@@ -1313,7 +2236,19 @@ test('blank Console core with no packs or domain routes journals exact empty liv
       npmDependencies: [
         { name: '@constructive-io/data' },
         { name: 'zustand' }
+      ],
+      files: [
+        {
+          target: 'src/installed/console-core.ts',
+          targetKind: 'literal',
+          type: 'registry:lib',
+          sources: [{ registryItem: 'console-core', path: 'registry/constructive/lib/console-core.ts' }]
+        }
       ]
+    },
+    featurePacks: [],
+    verify: {
+      commands: ['pnpm exec tsc --noEmit', 'pnpm build']
     }
   });
   const corePlanSha256 = sha256File(corePlanPath);
@@ -1442,8 +2377,32 @@ test('a blocking source limitation prevents a false acceptance pass', () => {
     }
   ]);
   initializeJournal(harness.validationPath, harness.statePath);
-  const requestRef = writeRequestEvidence(harness, 'limitation-request.json');
-  const uiRef = writeUiEvidence(harness, 'limitation-ui.json');
+  const state = loadJournal(harness.statePath);
+  const capabilityOutcome = writeOutcomePair(
+    harness,
+    'blocking-capability',
+    capabilityOutcomeContext('console', 'auth', 'ready', 'ready')
+  );
+  const sessionOutcome = writeOutcomePair(
+    harness,
+    'blocking-session',
+    scenarioOutcomeContextForTest(state, 'auth-lifecycle', 'sign-in')
+  );
+  const graphqlOutcome = writeOutcomePair(
+    harness,
+    'blocking-graphql',
+    scenarioOutcomeContextForTest(state, 'auth-feature', 'check:1')
+  );
+  const rlsOutcome = writeOutcomePair(
+    harness,
+    'blocking-rls',
+    scenarioOutcomeContextForTest(state, 'cross-policy', 'operation:read:deny')
+  );
+  const limitationOutcome = writeOutcomePair(
+    harness,
+    'blocking-limitation',
+    limitationOutcomeContext('data-console-nested-sheets-store', 'unify-console-store', false)
+  );
   const document = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -1455,14 +2414,26 @@ test('a blocking source limitation prevents a false acceptance pass', () => {
         expected: 'ready',
         actual: 'ready',
         passed: true,
-        requestRef,
-        uiRef
+        requestRef: capabilityOutcome.requestRef,
+        uiRef: capabilityOutcome.uiRef
       }
     ],
     scenarios: [
-      scenarioResult('auth-lifecycle', ['owner', 'revoked'], [assertion('sign-in', true, requestRef, uiRef)]),
-      scenarioResult('auth-feature', ['owner'], [assertion('check:1', true, requestRef, uiRef, FEATURE_CONTRACT)]),
-      scenarioResult('cross-policy', ['owner', 'cross'], [assertion('operation:read:deny', true, requestRef, uiRef)])
+      scenarioResult(
+        'auth-lifecycle',
+        ['owner', 'revoked'],
+        [assertion('sign-in', true, sessionOutcome.requestRef, sessionOutcome.uiRef)]
+      ),
+      scenarioResult(
+        'auth-feature',
+        ['owner'],
+        [assertion('check:1', true, graphqlOutcome.requestRef, graphqlOutcome.uiRef, FEATURE_CONTRACT)]
+      ),
+      scenarioResult(
+        'cross-policy',
+        ['owner', 'cross'],
+        [assertion('operation:read:deny', true, rlsOutcome.requestRef, rlsOutcome.uiRef)]
+      )
     ],
     limitations: [
       {
@@ -1473,8 +2444,8 @@ test('a blocking source limitation prevents a false acceptance pass', () => {
           {
             id: 'unify-console-store',
             passed: false,
-            requestRef,
-            uiRef
+            requestRef: limitationOutcome.requestRef,
+            uiRef: limitationOutcome.uiRef
           }
         ]
       }
@@ -1482,7 +2453,6 @@ test('a blocking source limitation prevents a false acceptance pass', () => {
     verdict: 'pass'
   };
   const evaluatorRef = writeEvidence(harness, 'limitation-evaluator.json', JSON.stringify(document) + '\n');
-  const state = loadJournal(harness.statePath);
   state.stages.acceptance.attempts.push({
     number: 1,
     events: [
@@ -1523,8 +2493,43 @@ test('a require-mitigation source limitation can pass only with retained passing
     }
   ]);
   initializeJournal(harness.validationPath, harness.statePath);
-  const requestRef = writeRequestEvidence(harness, 'mitigation-request.json');
-  const uiRef = writeUiEvidence(harness, 'mitigation-ui.json');
+  const state = loadJournal(harness.statePath);
+  const capabilityOutcome = writeOutcomePair(
+    harness,
+    'mitigation-capability',
+    capabilityOutcomeContext('console', 'auth', 'ready', 'ready')
+  );
+  const sessionOutcome = writeOutcomePair(
+    harness,
+    'mitigation-session',
+    scenarioOutcomeContextForTest(state, 'auth-lifecycle', 'sign-in')
+  );
+  const graphqlOutcome = writeOutcomePair(
+    harness,
+    'mitigation-graphql',
+    scenarioOutcomeContextForTest(state, 'auth-feature', 'check:1')
+  );
+  const rlsOutcome = writeOutcomePair(
+    harness,
+    'mitigation-rls',
+    scenarioOutcomeContextForTest(state, 'cross-policy', 'operation:read:deny')
+  );
+  const proveOutcome = writeOutcomePair(
+    harness,
+    'mitigation-prove',
+    limitationOutcomeContext(
+      'organizations-meta-membership-false-ready',
+      'prove-membership-root'
+    )
+  );
+  const executeOutcome = writeOutcomePair(
+    harness,
+    'mitigation-execute',
+    limitationOutcomeContext(
+      'organizations-meta-membership-false-ready',
+      'execute-membership-root'
+    )
+  );
   const document = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -1536,14 +2541,26 @@ test('a require-mitigation source limitation can pass only with retained passing
         expected: 'ready',
         actual: 'ready',
         passed: true,
-        requestRef,
-        uiRef
+        requestRef: capabilityOutcome.requestRef,
+        uiRef: capabilityOutcome.uiRef
       }
     ],
     scenarios: [
-      scenarioResult('auth-lifecycle', ['owner', 'revoked'], [assertion('sign-in', true, requestRef, uiRef)]),
-      scenarioResult('auth-feature', ['owner'], [assertion('check:1', true, requestRef, uiRef, FEATURE_CONTRACT)]),
-      scenarioResult('cross-policy', ['owner', 'cross'], [assertion('operation:read:deny', true, requestRef, uiRef)])
+      scenarioResult(
+        'auth-lifecycle',
+        ['owner', 'revoked'],
+        [assertion('sign-in', true, sessionOutcome.requestRef, sessionOutcome.uiRef)]
+      ),
+      scenarioResult(
+        'auth-feature',
+        ['owner'],
+        [assertion('check:1', true, graphqlOutcome.requestRef, graphqlOutcome.uiRef, FEATURE_CONTRACT)]
+      ),
+      scenarioResult(
+        'cross-policy',
+        ['owner', 'cross'],
+        [assertion('operation:read:deny', true, rlsOutcome.requestRef, rlsOutcome.uiRef)]
+      )
     ],
     limitations: [
       {
@@ -1554,14 +2571,14 @@ test('a require-mitigation source limitation can pass only with retained passing
           {
             id: 'prove-membership-root',
             passed: true,
-            requestRef,
-            uiRef
+            requestRef: proveOutcome.requestRef,
+            uiRef: proveOutcome.uiRef
           },
           {
             id: 'execute-membership-root',
             passed: true,
-            requestRef,
-            uiRef
+            requestRef: executeOutcome.requestRef,
+            uiRef: executeOutcome.uiRef
           }
         ]
       }
@@ -1569,7 +2586,6 @@ test('a require-mitigation source limitation can pass only with retained passing
     verdict: 'pass'
   };
   const evaluatorRef = writeEvidence(harness, 'mitigation-evaluator.json', JSON.stringify(document) + '\n');
-  const state = loadJournal(harness.statePath);
   state.stages.acceptance.attempts.push({
     number: 1,
     events: [
@@ -1594,6 +2610,17 @@ test('a require-mitigation source limitation can pass only with retained passing
 
   const failedRequirementDocument = structuredClone(document);
   failedRequirementDocument.limitations[0].requirements[1].passed = false;
+  const failedExecuteOutcome = writeOutcomePair(
+    harness,
+    'mitigation-execute-failed',
+    limitationOutcomeContext(
+      'organizations-meta-membership-false-ready',
+      'execute-membership-root',
+      false
+    )
+  );
+  failedRequirementDocument.limitations[0].requirements[1].requestRef = failedExecuteOutcome.requestRef;
+  failedRequirementDocument.limitations[0].requirements[1].uiRef = failedExecuteOutcome.uiRef;
   const failedRequirementRef = writeEvidence(
     harness,
     'mitigation-failed-requirement.json',
@@ -1608,8 +2635,8 @@ test('a require-mitigation source limitation can pass only with retained passing
   extraRequirementDocument.limitations[0].requirements.push({
     id: 'invented-requirement',
     passed: true,
-    requestRef,
-    uiRef
+    requestRef: proveOutcome.requestRef,
+    uiRef: proveOutcome.uiRef
   });
   const extraRequirementRef = writeEvidence(
     harness,

@@ -44,8 +44,19 @@ test('canonical preset brief covers every pack, actor scope, route, and RLS scop
   assert.deepEqual(result.errors, []);
   assert.equal(result.resolved.compositionKind, 'console-preset');
   assert.equal(result.resolved.acceptance.scenarios.length, 9);
-  assert.equal(result.resolved.runtimeLimitations[0].id, 'data-console-nested-sheets-store');
-  assert.equal(result.resolved.runtimeLimitations[0].acceptance, 'blocking');
+  assert.deepEqual(
+    result.resolved.runtimeLimitations.slice(0, 2).map((limitation) => {
+      return [limitation.id, limitation.acceptance, limitation.runtimeModes];
+    }),
+    [
+      ['data-console-nested-sheets-store', 'blocking', ['console']],
+      [
+        'data-provider-global-locale-logger',
+        'require-mitigation',
+        ['data-provider']
+      ]
+    ]
+  );
   assert.equal(Object.hasOwn(result.resolved, 'domainDiscovery'), false);
 });
 
@@ -199,7 +210,22 @@ test('strict composition variants accept selected Console modules, full Console,
     }
   ];
   assert.deepEqual(validate(standaloneInput).errors, []);
-  assert.deepEqual(validate(standaloneInput).resolved.runtimeLimitations, []);
+  assert.deepEqual(
+    validate(standaloneInput).resolved.runtimeLimitations.map((limitation) => {
+      return {
+        id: limitation.id,
+        acceptance: limitation.acceptance,
+        runtimeModes: limitation.runtimeModes
+      };
+    }),
+    [
+      {
+        id: 'data-provider-global-locale-logger',
+        acceptance: 'require-mitigation',
+        runtimeModes: ['data-provider']
+      }
+    ]
+  );
 
   const blankStandalone = structuredClone(standaloneInput);
   blankStandalone.isolationTenantDocuments = new Map();
