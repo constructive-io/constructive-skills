@@ -80,21 +80,29 @@ Renders check mark SVG when checked; indeterminate renders a dash mark.
 Wraps multiple Checkbox items with coordinated state.
 
 **Props:**
-- `allValues: string[]` -- all possible values in the group
 - `value?: string[]` -- controlled selected values
+- `defaultValue?: string[]` -- uncontrolled initial values
 - `onValueChange?: (value: string[]) => void` -- change handler
+- `disabled?: boolean` -- disables every Checkbox in the group
 
 ```tsx
-import { CheckboxGroup, CheckboxGroupItem } from '@constructive-io/ui/checkbox-group';
+import { Checkbox } from '@constructive-io/ui/checkbox';
+import { CheckboxGroup } from '@constructive-io/ui/checkbox-group';
+import { Label } from '@constructive-io/ui/label';
 
-<CheckboxGroup
-  allValues={['a', 'b', 'c']}
-  value={selected}
-  onValueChange={setSelected}
->
-  <CheckboxGroupItem value="a" label="Option A" />
-  <CheckboxGroupItem value="b" label="Option B" />
-  <CheckboxGroupItem value="c" label="Option C" />
+<CheckboxGroup value={selected} onValueChange={setSelected}>
+  <div className="flex items-center gap-2">
+    <Checkbox id="option-a" name="options" value="a" />
+    <Label htmlFor="option-a">Option A</Label>
+  </div>
+  <div className="flex items-center gap-2">
+    <Checkbox id="option-b" name="options" value="b" />
+    <Label htmlFor="option-b">Option B</Label>
+  </div>
+  <div className="flex items-center gap-2">
+    <Checkbox id="option-c" name="options" value="c" />
+    <Label htmlFor="option-c">Option C</Label>
+  </div>
 </CheckboxGroup>
 ```
 

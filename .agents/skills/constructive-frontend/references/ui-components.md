@@ -4,19 +4,24 @@ Constructive UI provides Base UI primitives styled with Tailwind CSS v4 and OKLC
 
 ## Consumption model
 
-Use deep package imports when consuming `@constructive-io/ui`:
+The pinned UI package and registry are branch-only. Resolve the selected item
+with `constructive-blocks` and complete its local-consumption workflow before
+using either surface.
+
+Use consumer aliases for registry-installed source:
+
+```tsx
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogPopup, DialogTrigger } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
+```
+
+When the local package registry owns the implementation, use valid package
+subpaths for components:
 
 ```tsx
 import { Button } from '@constructive-io/ui/button';
-import { Dialog, DialogPopup, DialogTrigger } from '@constructive-io/ui/dialog';
-import { cn } from '@constructive-io/ui/lib/utils';
-```
-
-Avoid the package barrel because it widens the client bundle and obscures component ownership:
-
-```tsx
-// Avoid
-import { Button, Dialog } from '@constructive-io/ui';
+import { Dialog } from '@constructive-io/ui/dialog';
 ```
 
 When the application needs editable source, install the corresponding registry item through the configured `@constructive` namespace. Do not mix npm and registry ownership for the same primitive.
@@ -38,7 +43,7 @@ Custom components that extend the system should:
 'use client';
 
 import { cva, type VariantProps } from 'class-variance-authority';
-import { cn } from '@constructive-io/ui/lib/utils';
+import { cn } from '@/lib/utils';
 
 const noticeVariants = cva('rounded-lg border px-4 py-3 text-sm', {
   variants: {
@@ -75,7 +80,9 @@ Import the package Tailwind foundation when using the npm distribution:
 
 Registry installs copy the required theme source into the consumer. In either model, use semantic tokens such as `background`, `foreground`, `card`, `muted`, `primary`, `destructive`, and the sidebar token family instead of fixed palette utilities.
 
-Overlays need a stable portal target and toast viewport at the application root. Follow the installed source's exported component names rather than copying an older provider snippet.
+Overlays need a stable portal target and toast viewport at the application
+root. Follow the installed source's exported component names and portal
+composition.
 
 ## Reference map
 
@@ -84,7 +91,7 @@ Overlays need a stable portal target and toast viewport at the application root.
 | Component foundations and polymorphic composition | [ui-foundations.md](./ui-foundations.md) |
 | Forms and form controls | [ui-forms.md](./ui-forms.md), [ui-input-components.md](./ui-input-components.md) |
 | Dialogs, sheets, popovers, tooltips, and menus | [ui-overlays.md](./ui-overlays.md), [ui-dropdown-menu-api.md](./ui-dropdown-menu-api.md) |
-| App layout, sidebar, and navigation | [ui-layout.md](./ui-layout.md), [ui-sidebar-api.md](./ui-sidebar-api.md), [ui-stack-navigation.md](./ui-stack-navigation.md) |
+| App layout, sidebar, and navigation | [ui-app-shell.md](./ui-app-shell.md), [ui-layout.md](./ui-layout.md), [ui-sidebar-api.md](./ui-sidebar-api.md), [ui-stack-navigation.md](./ui-stack-navigation.md) |
 | Tables, cards, status, and feedback | [ui-data-display.md](./ui-data-display.md), [ui-card-patterns.md](./ui-card-patterns.md) |
 | Advanced inputs | [ui-advanced-inputs.md](./ui-advanced-inputs.md), [ui-combobox-api.md](./ui-combobox-api.md) |
 | Command palette | [ui-command-palette.md](./ui-command-palette.md) |

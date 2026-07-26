@@ -51,7 +51,8 @@ Skills in this repository are API documentation for app builders. All examples M
   {skill-name}/           # kebab-case directory name
     SKILL.md              # Required: skill definition
     scripts/              # Optional: executable helpers for deterministic workflows
-      {script-name}.sh    # Bash scripts (preferred)
+      {script-name}.mjs   # Portable Node.js helper
+      {script-name}.sh    # Bash helper when shell orchestration is the clearer fit
 ```
 
 > `.zip` packages are **not** committed to this repo (they caused constant merge
@@ -61,7 +62,8 @@ Skills in this repository are API documentation for app builders. All examples M
 
 - **Skill directory**: `kebab-case` (e.g., `constructive-codegen`, `log-monitor`)
 - **SKILL.md**: Always uppercase, always this exact filename
-- **Scripts**: `kebab-case.sh` (e.g., `deploy.sh`, `fetch-logs.sh`)
+- **Scripts**: `kebab-case.mjs` or `kebab-case.sh` (for example,
+  `check-contract.mjs` or `fetch-logs.sh`)
 
 ### SKILL.md Format
 
@@ -82,7 +84,7 @@ description: {One sentence describing when to use this skill. Include trigger ph
 ## Usage
 
 ```bash
-bash /mnt/skills/user/{skill-name}/scripts/{script}.sh [args]
+node /absolute/path/to/constructive-skills/.agents/skills/{skill-name}/scripts/{script}.mjs [args]
 ```
 
 **Arguments:**
@@ -149,12 +151,18 @@ This allows agents helping with ORM queries to read only `orm-patterns.md` inste
 
 When a skill includes executable helpers:
 
-- Use `#!/bin/bash` shebang
-- Use `set -e` for fail-fast behavior
-- Write status messages to stderr: `echo "Message" >&2`
-- Write machine-readable output (JSON) to stdout
-- Include a cleanup trap for temp files
-- Reference the script path as `/mnt/skills/user/{skill-name}/scripts/{script}.sh`
+- Prefer deterministic Node.js `.mjs` helpers for portable parsing,
+  validation, hashing, and structured output. Use Bash only when the work is
+  genuinely shell orchestration.
+- Resolve sibling resources from `import.meta.url` in Node.js. Never assume a
+  current working directory or a fixed `/mnt/skills` installation path.
+- Show invocations with an explicit absolute path to the active skills
+  checkout so the same command works from any directory.
+- Write diagnostics to stderr and machine-readable output to stdout.
+- Make failures non-zero, clean temporary files, and keep helpers read-only
+  unless the skill explicitly documents an output path.
+- For Bash, use `#!/usr/bin/env bash`, `set -euo pipefail`, and a cleanup trap
+  when temporary files are involved.
 
 ### Packaging
 

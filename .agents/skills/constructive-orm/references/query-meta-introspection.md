@@ -1,12 +1,20 @@
 # Current `_meta` contract
 
-Constructive `_meta` describes database facts that standard GraphQL introspection cannot express directly: PostgreSQL scalar encodings, nullability and defaults, constraints, relations, exact Constructive inflection hints, feature smart tags, and application scope.
+Constructive `Query._meta` describes database facts that standard GraphQL
+introspection cannot express directly: PostgreSQL scalar encodings,
+nullability and defaults, constraints, relations, exact Constructive inflection
+hints, feature smart tags, and application scope.
 
 It is schema evidence, not an executable-schema or authorization grant.
 
 ## Canonical consumer
 
-Use `@constructive-io/data` rather than maintaining a local query or handwritten response types:
+The pinned data package is branch-only. Complete the `constructive-blocks`
+local package workflow before importing `@constructive-io/data`; do not replace
+it with a public version while `publicRegistryReady` is false.
+
+Use the pinned package rather than maintaining a local query or handwritten
+response types:
 
 ```ts
 import {
@@ -29,6 +37,12 @@ The current contract version is `2026-07`. The package exports the complete fiel
 4. Run standard GraphQL introspection against the same endpoint.
 5. Reconcile `_meta` hints with the public roots, arguments, input objects, enums, filters, ordering, pagination, and mutation payloads introspection actually exposes.
 6. Use authenticated reads and writes to establish the active identity's effective grants and RLS behavior.
+
+A tenant may expose metadata anonymously or require a scoped session. Use the
+host-provided transport and attach the active tenant identity when the endpoint
+requires it. Do not encode authentication as a universal property of
+`Query._meta`; runtime reads and writes still need authenticated evidence for
+the intended role.
 
 Do not execute a name from `_meta.query` until it exists on the introspected public schema. A visible mutation root likewise does not prove that the current identity may execute it.
 

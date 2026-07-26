@@ -101,17 +101,6 @@ const query = buildSelect(userTable, tables, {
 // Generated query includes $first: Int, $offset: Int variables
 ```
 
-### Legacy QueryBuilder (graphql-query)
-
-```typescript
-const result = builder
-  .query('User')
-  .getMany()
-  .select()
-  .print();
-// Pass { first: 20, offset: 40 } as variables at execution time
-```
-
 **Trade-offs:**
 - Random page access (jump to page N)
 - Performance degrades at high offsets — database must scan all skipped rows
@@ -434,5 +423,3 @@ const result = await db.user.findMany({
 | **ORM codegen** `ConnectionResult` | `codegen/templates/select-types.ts:11-22` | `{ nodes: T[], totalCount, pageInfo }` |
 | **ORM runtime** `buildFindManyDocument` | `codegen/templates/query-builder.ts:204-320` | Builds connection query with `nodes`, `totalCount`, `pageInfo` |
 | **Runtime** `buildSelect` | `query/generators/select.ts:351-526` | `nodes` always; `pageInfo` conditional on cursor args or `includePageInfo` |
-| **Legacy QueryBuilder** | `query/query-builder.ts` | Pagination via variables at execution time |
-| **Legacy AST** `getMany` | `query/ast.ts:183-302` | Builds `nodes`-based connection queries |

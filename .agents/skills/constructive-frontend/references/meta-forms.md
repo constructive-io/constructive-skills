@@ -6,7 +6,10 @@ Build a custom metadata-driven surface only when the product needs domain-specif
 
 ## Current contract
 
-`@constructive-io/data` is the canonical consumer of Constructive `_meta` contract `2026-07`. Import its documents, types, and guards instead of copying a GraphQL selection into application code:
+`@constructive-io/data` is the canonical consumer of Constructive `_meta`
+contract `2026-07`. The pinned package is branch-only, so complete the Blocks
+local package workflow before importing its documents, types, and guards.
+Do not copy a GraphQL selection into application code:
 
 ```ts
 import {
@@ -20,6 +23,11 @@ import {
 ```
 
 Run the contract introspection document first, call `assertMetaContract`, then execute `META_DOCUMENT` and call `assertMetaQuery`. This fails with a structured compatibility error when the endpoint lacks the required contract instead of continuing with partial metadata.
+
+Use the host-provided transport for both documents. A tenant can expose
+metadata anonymously or require the active tenant session; attach credentials
+when that endpoint requires them without treating authentication as an
+intrinsic property of `Query._meta`.
 
 The current table model includes schema and query names, field encodings, indexes, grouped and compatibility constraint shapes, relation families, storage/search/i18n/realtime tags, and scope metadata. Import the package types so new contract fields and compatibility behavior arrive through normal dependency updates.
 

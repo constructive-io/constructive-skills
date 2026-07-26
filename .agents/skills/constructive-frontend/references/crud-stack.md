@@ -1,10 +1,6 @@
 ---
 name: constructive-crud-stack
 description: Build custom-domain CRUD actions as Stack cards with typed card props, deferred loading, and stacked confirmation. Use the Data feature pack for generic metadata-driven CRUD.
-compatibility: Next.js 14+ (App Router), Constructive SDK, @constructive/stack, @tanstack/react-query
-metadata:
-  author: constructive-io
-  version: "2.0.0"
 ---
 
 # Constructive CRUD Stack Cards

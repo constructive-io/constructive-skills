@@ -1,48 +1,49 @@
 # Constructive registry consumption
 
-Constructive Blocks publishes the `@constructive` shadcn registry. The registry contains UI primitives, app shell and app bar blocks, billing blocks, standalone feature packs, Console Kit modules, official preset roots, and the complete Console Kit.
+Use [`constructive-blocks`](../../constructive-blocks/SKILL.md) as the
+installation authority. Its machine snapshot pins every registry item,
+dependency closure, package version, source hash, shadcn version, and release
+gate.
 
-[`constructive-blocks`](../../constructive-blocks/SKILL.md) is the authority for exact root names, dependency closure, compatibility manifests, runtime requirements, and verification. This reference only explains how a custom UI project consumes the namespace.
+## Current release gate
 
-## Configure the namespace
+The pinned Blocks snapshot is branch-only and declares
+`release.publicRegistryReady: false`. Its `@constructive` registry and the
+current `@constructive-io/ui`, `@constructive-io/data`,
+`@constructive-io/schema-builder`, and `@constructive-io/sheets` packages must
+be consumed through the pinned local workflow. A public URL or package version
+is not evidence that it contains this snapshot.
 
-Initialize shadcn when the application does not already have `components.json`:
-
-```bash
-pnpm dlx shadcn@4.13.1 init
-```
-
-Preserve the generated aliases and add the registry mapping:
-
-```json
-{
-  "registries": {
-    "@constructive": "https://constructive-io.github.io/blocks/r/{name}.json"
-  }
-}
-```
-
-Install through the namespace:
+Inspect the exact item before installing it:
 
 ```bash
-pnpm dlx shadcn@4.13.1 add @constructive/button
-pnpm dlx shadcn@4.13.1 add @constructive/app-shell
+node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs \
+  --registry-item app-shell
 ```
 
-The namespace remains required even when installing a root by direct URL because nested `@constructive/*` dependencies resolve through `components.json`. Use exactly shadcn `4.13.1`, as emitted by the Blocks install plan; do not substitute `shadcn@latest` or another version.
+Run the source preflight, local builds, package registry, block registry, and
+consumer verification exactly as documented in
+[`runtime-contract.md`](../../constructive-blocks/references/runtime-contract.md#pinned-local-consumption-before-release).
+That workflow uses shadcn `4.13.1`, preserves the consumer's aliases, and keeps
+temporary localhost package resolutions out of committed lockfiles.
 
-## Registry source or npm package
+## Source or package ownership
 
 | Need | Choose | Import style |
 |---|---|---|
-| Editable source owned by the application | Registry | Consumer alias such as `@/components/ui/button` |
-| Centralized upgrades through a lockfile | `@constructive-io/ui` | Deep package import such as `@constructive-io/ui/button` |
-| Feature pack or Console Kit | Registry | Installed block paths |
+| Editable component owned by the application | Local `@constructive` registry | The consumer alias written by shadcn, such as `@/components/ui/button` |
+| Centralized component implementation | Locally served `@constructive-io/ui` package | A valid export such as `@constructive-io/ui/button` |
+| Feature pack or Console Kit | Local `@constructive` registry | The installed block path returned by the selected install contract |
 
-Do not install the same primitive from npm and the registry in one application. Registry roots copy their required primitive source and theme, while package-backed feature packs may also add their own declared runtime packages.
+Do not mix registry and package ownership for the same primitive. Registry
+roots copy required component and theme source, while package-backed roots may
+also declare current Constructive packages.
 
-## Safe updates
+## Promotion after release
 
-Re-running `shadcn add` can overwrite locally customized registry source. Review the diff, preserve deliberate application changes, and run the verification commands emitted by the Blocks install contract.
-
-If a root is missing from the public Pages URL, treat it as unpublished. Do not fall back to the retired Dashboard registry or guess another root name.
+Public installation is allowed only when a deliberately updated Blocks
+snapshot points to a released commit, sets `publicRegistryReady: true`, and
+passes the full checker. At that point, use the exact namespace and
+`installCommand` returned by the validated catalog. Remove local registry
+settings, regenerate the lockfile from public registries, and reject every
+localhost resolution before committing.

@@ -1,10 +1,6 @@
 ---
 name: constructive-graphql-query
 description: Use @constructive-io/graphql-query to generate GraphQL queries and mutations at runtime from PostGraphile schema metadata. Covers the _meta introspection endpoint, the cleanTable() adapter, and the full generator API (buildSelect, buildFindOne, buildCount, mutations). Use when building dynamic data layers, runtime query generation, or browser-based GraphQL against a Constructive PostGraphile backend.
-compatibility: Browser + Node.js, PostGraphile v5+, graphql-query 3.3+
-metadata:
-  author: constructive-io
-  version: "1.0.0"
 ---
 
 # @constructive-io/graphql-query
@@ -17,7 +13,7 @@ Use this skill when:
 - Generating GraphQL queries/mutations dynamically at runtime (e.g., in the browser)
 - Working with PostGraphile's `_meta` introspection endpoint
 - Building a dynamic data layer where the schema is not known ahead of time
-- Using the Dashboard's spreadsheet/data features
+- Building bespoke runtime data exploration outside the Data feature pack
 - Replacing hand-written GraphQL with generated queries
 - Needing browser-safe query generation (no Node.js APIs)
 
@@ -50,26 +46,51 @@ Works with **any** GraphQL endpoint. No PostGraphile-specific features required.
 
 ### Constructive `_meta`
 
-Compatible Constructive tenant endpoints expose the current `_meta` contract. Import its typed document, compatibility probe, guards, and adapter from `@constructive-io/data`; do not copy a query from a Dashboard or derive the endpoint hostname.
+Compatible Constructive tenant endpoints expose the current `Query._meta`
+contract. The pinned `@constructive-io/data` package is branch-only, so
+complete the `constructive-blocks` local package workflow before importing its
+typed documents, guards, and adapter. Do not copy a query or derive the
+endpoint hostname.
 
 ```ts
 import {
+  META_CONTRACT_INTROSPECTION_DOCUMENT,
   META_DOCUMENT,
+  assertMetaContract,
   assertMetaQuery,
   cleanTable
 } from '@constructive-io/data';
 
-const res = await fetch(dataEndpoint, {
+const headers = new Headers({ 'Content-Type': 'application/json' });
+if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`);
+
+const contractResponse = await fetch(dataEndpoint, {
   method: 'POST',
-  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+  headers,
+  body: JSON.stringify({
+    query: META_CONTRACT_INTROSPECTION_DOCUMENT.toString()
+  })
+});
+const contractPayload = await contractResponse.json();
+assertMetaContract(contractPayload.data);
+
+const metaResponse = await fetch(dataEndpoint, {
+  method: 'POST',
+  headers,
   body: JSON.stringify({ query: META_DOCUMENT.toString() }),
 });
-const { data } = await res.json();
+const { data } = await metaResponse.json();
 assertMetaQuery(data);
 const tables = data._meta.tables.map(cleanTable);
 ```
 
-Run `META_CONTRACT_INTROSPECTION_DOCUMENT` and `assertMetaContract` before the full metadata query. See [query-meta-introspection.md](./query-meta-introspection.md) for the evidence model and current `2026-07` contract.
+The exact `2026-07` sequence is explicit endpoint resolution, contract probe,
+contract assertion, full metadata query, metadata assertion, standard GraphQL
+introspection against the same endpoint, then authenticated runtime reads and
+writes. Metadata may be anonymous or session-gated depending on the tenant;
+the host transport supplies credentials when required. See
+[query-meta-introspection.md](./query-meta-introspection.md) for the evidence
+model.
 
 ---
 
@@ -275,7 +296,7 @@ This avoids generated code depending directly on `@0no-co/graphql.web` or `@cons
 | Bundle error: `fs`, `pg`, `postgraphile` not found | Use subpath imports (see section 6) |
 | Empty `CleanTable.fields` | Check that introspection response includes field data |
 | Wrong mutation/query names | Ensure `table.query` and `table.inflection` are populated |
-| `_meta` returns empty tables | Check auth headers — `_meta` requires authentication |
+| `_meta` returns empty tables | Confirm the explicit endpoint, contract compatibility, and host transport; attach the active tenant session when that endpoint requires one |
 | `query.one` returns non-existent root field | Known issue — use `query.all` with `condition: { id: $id }` instead |
 
 ## References

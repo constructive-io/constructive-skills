@@ -18,7 +18,9 @@ pnpm add motion
 
 ## Motion Config Presets
 
-Import from `@constructive-io/ui/lib/motion/motion-config`. These are the canonical animation values — use them instead of defining inline transitions.
+After the pinned Blocks local package workflow is active, import these
+canonical animation values from the valid `@constructive-io/ui` package root.
+The internal motion file is not a package export.
 
 ### Easings
 
@@ -119,7 +121,7 @@ export const variants = {
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { variants, transitions, springs } from '@constructive-io/ui/lib/motion/motion-config';
+import { variants, transitions, springs } from '@constructive-io/ui';
 
 function FadePanel({ isOpen, children }: { isOpen: boolean; children: React.ReactNode }) {
   return (
@@ -154,7 +156,7 @@ function FadePanel({ isOpen, children }: { isOpen: boolean; children: React.Reac
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { transitions } from '@constructive-io/ui/lib/motion/motion-config';
+import { transitions } from '@constructive-io/ui';
 
 function TabContent({ activeTab, content }: { activeTab: string; content: React.ReactNode }) {
   return (
@@ -179,7 +181,7 @@ function TabContent({ activeTab, content }: { activeTab: string; content: React.
 'use client';
 
 import { motion, AnimatePresence } from 'motion/react';
-import { variants } from '@constructive-io/ui/lib/motion/motion-config';
+import { variants } from '@constructive-io/ui';
 
 function Notification({ show, message }: { show: boolean; message: string }) {
   return (
@@ -207,7 +209,7 @@ function Notification({ show, message }: { show: boolean; message: string }) {
 'use client';
 
 import { motion } from 'motion/react';
-import { variants } from '@constructive-io/ui/lib/motion/motion-config';
+import { variants } from '@constructive-io/ui';
 
 const container = {
   animate: { transition: { staggerChildren: 0.05 } },
@@ -232,7 +234,7 @@ function StaggerList({ items }: { items: string[] }) {
 'use client';
 
 import { motion } from 'motion/react';
-import { springs } from '@constructive-io/ui/lib/motion/motion-config';
+import { springs } from '@constructive-io/ui';
 
 function InteractiveCard({ children }: { children: React.ReactNode }) {
   return (
@@ -256,7 +258,7 @@ Always respect `prefers-reduced-motion`:
 'use client';
 
 import { motion, useReducedMotion } from 'motion/react';
-import { transitions } from '@constructive-io/ui/lib/motion/motion-config';
+import { transitions } from '@constructive-io/ui';
 
 function AnimatedComponent() {
   const shouldReduceMotion = useReducedMotion();

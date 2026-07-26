@@ -1,113 +1,32 @@
-# constructive-ui-layout
+# Constructive UI layout
 
-Layout and navigation components from `@constructive-io/ui` for building application shells, page structure, and navigational patterns.
+Layout and navigation components for application shells, page structure, and
+navigational patterns. Install the selected source through the pinned
+`constructive-blocks` local-consumption workflow before using the package or
+registry imports in this reference.
 
-## Sidebar
+## AppShell, AppBar, and Sidebar
 
-The most complex layout component. Full sub-component tree:
+Use [ui-app-shell.md](./ui-app-shell.md) for the source-aligned application
+frame, router adapter, account actions, breadcrumbs, bar placement, and
+server-read sidebar state. Use [ui-sidebar-api.md](./ui-sidebar-api.md) when
+composing the sidebar primitives directly.
 
 ```
-SidebarProvider
-├── Sidebar (variant: sidebar | floating | inset | icon)
-│   ├── SidebarHeader
-│   ├── SidebarContent
-│   │   ├── SidebarGroup
-│   │   │   ├── SidebarGroupLabel
-│   │   │   ├── SidebarGroupAction
-│   │   │   └── SidebarGroupContent
-│   │   │       └── SidebarMenu
-│   │   │           ├── SidebarMenuItem
-│   │   │           │   ├── SidebarMenuButton (isActive, tooltip)
-│   │   │           │   ├── SidebarMenuAction
-│   │   │           │   └── SidebarMenuBadge
-│   │   │           ├── SidebarMenuSub
-│   │   │           │   └── SidebarMenuSubItem
-│   │   │           │       └── SidebarMenuSubButton
-│   │   │           └── SidebarMenuSkeleton
-│   │   └── SidebarSeparator
-│   ├── SidebarFooter
-│   └── SidebarInput
-├── SidebarInset (main content area)
-└── SidebarTrigger (toggle button)
+AppShell
+├── AppBar
+├── SidebarProvider
+│   ├── Sidebar (variant: sidebar | floating | inset)
+│   │   └── collapsible: offcanvas | icon | none
+│   ├── SidebarInset
+│   └── SidebarTrigger
+└── page content
 ```
 
-Usage example:
-
-```tsx
-'use client';
-import {
-  SidebarProvider, Sidebar, SidebarHeader, SidebarContent,
-  SidebarGroup, SidebarGroupLabel, SidebarGroupContent,
-  SidebarMenu, SidebarMenuItem, SidebarMenuButton,
-  SidebarFooter, SidebarInset, SidebarTrigger, useSidebar,
-} from '@constructive-io/ui/sidebar';
-import { Home, Settings, Users, LogOut } from 'lucide-react';
-
-function AppLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <SidebarProvider>
-      <Sidebar>
-        <SidebarHeader>
-          <h2 className="px-4 text-lg font-semibold">My App</h2>
-        </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup>
-            <SidebarGroupLabel>Navigation</SidebarGroupLabel>
-            <SidebarGroupContent>
-              <SidebarMenu>
-                <SidebarMenuItem>
-                  <SidebarMenuButton isActive tooltip="Home">
-                    <Home className="size-4" />
-                    <span>Home</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Users">
-                    <Users className="size-4" />
-                    <span>Users</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-                <SidebarMenuItem>
-                  <SidebarMenuButton tooltip="Settings">
-                    <Settings className="size-4" />
-                    <span>Settings</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        </SidebarContent>
-        <SidebarFooter>
-          <SidebarMenuButton>
-            <LogOut className="size-4" />
-            <span>Logout</span>
-          </SidebarMenuButton>
-        </SidebarFooter>
-      </Sidebar>
-      <SidebarInset>
-        <header className="flex h-14 items-center gap-2 border-b px-4">
-          <SidebarTrigger />
-          <h1>Page Title</h1>
-        </header>
-        <main className="p-4">{children}</main>
-      </SidebarInset>
-    </SidebarProvider>
-  );
-}
-```
-
-**useSidebar hook:**
-
-```tsx
-const { state, open, setOpen, openMobile, setOpenMobile, isMobile, toggleSidebar } = useSidebar();
-// state: 'expanded' | 'collapsed'
-```
-
-Keyboard: `Cmd/Ctrl+B` toggles sidebar. State persisted to cookie `sidebar_state`.
-Mobile: Renders as a Sheet (slide-out).
-Variants: `sidebar` (default), `floating`, `inset`, `icon` (collapsed to icons only).
-
-See `references/sidebar-api.md` for full sub-component props.
+The provider writes desktop state to `sidebar_state`, but it does not read the
+cookie. The Next.js server layout supplies the initial state. Mobile uses a
+separate Sheet state for `offcanvas` and `icon`; `none` stays fixed. Icon mode
+changes width through explicit state and never expands on hover.
 
 ## Tabs
 
@@ -168,7 +87,15 @@ With ellipsis for deep paths:
 </BreadcrumbItem>
 ```
 
-`BreadcrumbLink` supports `asChild` for Next.js `Link`.
+Use Base UI's `render` prop when a breadcrumb must use Next.js navigation:
+
+```tsx
+import Link from 'next/link';
+
+<BreadcrumbLink render={<Link href="/settings" />}>
+  Settings
+</BreadcrumbLink>
+```
 
 ## Pagination
 
@@ -328,15 +255,19 @@ import { Dock, DockIcon } from '@constructive-io/ui/dock';
 
 ## Best Practices
 
-- Use `SidebarProvider` at the layout level, not per-page
+- Prefer `AppShell` for the application frame; use one `SidebarProvider` at
+  the layout level when composing primitives directly
 - Sidebar `tooltip` on `SidebarMenuButton` shows in collapsed/icon mode
-- Use `BreadcrumbLink asChild` with Next.js `Link` for client-side navigation
+- Use Base UI `render` with Next.js `Link` for client-side navigation
 - Stepper should be controlled -- manage `activeStep` in parent state
 - Set `minSize` on `ResizablePanel` to prevent panels from collapsing to zero
 - ScrollArea `scrollFade` is great for long lists inside fixed-height containers
-- Use deep imports: `@constructive-io/ui/sidebar` not `@constructive-io/ui`
+- Use source aliases or valid package subpaths such as
+  `@constructive-io/ui/sidebar`; current packages require the Blocks pinned
+  local-consumption workflow
 - All layout components with interactivity require `'use client'`
 - Tailwind v4 syntax: use `bg-black/50` not `bg-opacity-*`, `shadow-xs` not `shadow-sm` (v3)
 - Prefer `size-4` shorthand over separate `w-4 h-4` for icon sizing
-- Sidebar variants: `inset` gives the content area a card-like appearance inside the sidebar frame
+- Sidebar `inset` gives the content area a card-like appearance inside the
+  sidebar frame; `icon` is a collapse mode, not a variant
 - For vertical Stepper, each `StepperItem` content sits below its trigger before the separator

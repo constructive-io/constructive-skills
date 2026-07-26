@@ -21,6 +21,18 @@ Use this skill when:
 
 Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for Console Kit and feature-pack data. Use [`constructive-frontend`](../constructive-frontend/SKILL.md) for bespoke runtime `_meta` UI.
 
+## Blocks Package Gate
+
+The pinned Blocks snapshot is branch-only with
+`release.publicRegistryReady: false`. Before importing the current
+`@constructive-io/data` contract from an ORM workflow, run the
+`constructive-blocks` source preflight and pinned local package-consumption
+workflow. The same rule applies whenever an ORM-adjacent task reaches for the
+current `@constructive-io/ui`, `@constructive-io/schema-builder`, or
+`@constructive-io/sheets` package or an `@constructive` registry root. Public
+installation becomes valid only after an updated Blocks snapshot points to a
+released commit, sets `publicRegistryReady: true`, and passes its checker.
+
 ## Per-Scope Client
 
 Create the ORM client from an explicit endpoint for the current request or tenant. Do not export a mutable process-wide client when endpoints or identities can change.
@@ -65,7 +77,10 @@ See [pagination.md](./references/pagination.md) for generated pagination pattern
 
 ## Runtime Metadata
 
-The generated ORM is not the owner of the current `_meta` contract. Import the contract documents, types, compatibility guards, and operation-analysis helpers from `@constructive-io/data`, then reconcile `_meta` with standard introspection.
+The generated ORM is not the owner of the current `_meta` contract. After the
+pinned local package workflow is active, import the contract documents, types,
+compatibility guards, and operation-analysis helpers from
+`@constructive-io/data`, then reconcile `_meta` with standard introspection.
 
 See [query-meta-introspection.md](./references/query-meta-introspection.md) for the evidence model. Use the Data feature pack instead of rebuilding generic table CRUD.
 

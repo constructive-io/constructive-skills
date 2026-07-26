@@ -78,29 +78,49 @@ function FrameworkSelect() {
 **Multiple mode (chips):**
 
 ```tsx
-import { ComboboxChips, ComboboxChip, ComboboxChipRemove } from '@constructive-io/ui/combobox';
+import {
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxValue
+} from '@constructive-io/ui/combobox';
 
-<Combobox multiple value={selected} onValueChange={setSelected}>
-  <ComboboxTrigger>
-    <ComboboxChips>
-      {selected.map((val) => (
-        <ComboboxChip key={val} value={val}>
-          {val}
-          <ComboboxChipRemove />
-        </ComboboxChip>
-      ))}
-    </ComboboxChips>
+<Combobox
+  items={options}
+  multiple
+  value={selected}
+  onValueChange={setSelected}
+>
+  <ComboboxChips>
+    <ComboboxValue>
+      {(values: string[]) =>
+        values.map((value) => (
+          <ComboboxChip key={value}>{value}</ComboboxChip>
+        ))
+      }
+    </ComboboxValue>
     <ComboboxInput placeholder="Add tags..." />
-  </ComboboxTrigger>
-  <ComboboxContent>
+  </ComboboxChips>
+  <ComboboxPopup>
+    <ComboboxEmpty>No tags found.</ComboboxEmpty>
     <ComboboxList>
-      {options.map((opt) => (
-        <ComboboxItem key={opt} value={opt}>{opt}</ComboboxItem>
-      ))}
+      {(option: string) => (
+        <ComboboxItem key={option} value={option}>
+          {option}
+        </ComboboxItem>
+      )}
     </ComboboxList>
-  </ComboboxContent>
+  </ComboboxPopup>
 </Combobox>
 ```
+
+`ComboboxChip` renders its remove control internally; there is no separate
+public remove export.
 
 Also exports: `useComboboxFilter` hook for client-side filtering, `ComboboxSeparator`, `ComboboxValue`, `ComboboxClear`, `ComboboxStatus`, `ComboboxRow`, `ComboboxCollection`, `ComboboxPopup`.
 

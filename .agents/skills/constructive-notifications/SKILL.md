@@ -12,6 +12,13 @@ Multi-channel notification system with inbox, delivery tracking, bounce/complain
 
 Use the Notifications feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md) for the tenant inbox UI. Its standalone view renders host-supplied inbox resources and actions. Its Console module requires an explicit reachable `notifications` endpoint whose introspection exposes the required operations, so installation alone does not prove Console availability.
 
+The current Blocks view and Console adapter expose inbox resources plus
+read-state actions only. Discovery may report `notifications.settings` when
+`Query.notificationPreferences` exists, but that evidence does not create a
+rendered settings route, preferences form, or settings adapter. Build a custom
+settings surface against the domain contract when the product needs one, and
+do not present that surface as part of the installed Notifications block.
+
 ## When to Apply
 
 Use this skill when:
