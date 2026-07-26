@@ -166,8 +166,9 @@ Each record declares exact `surfaces`, `installRoots`, `featurePacks`, and
 prose or treating every limitation as global. A `blocking` record fails only
 the runtime modes named by that record. The list-root query reports each
 mode's blockers and mitigations, exposes mode-limited records under
-`conditionalBlockers`, and sets root-level `blocked` only when a blocker is
-unconditional across every supported mode. A `require-mitigation` record can
+`conditionalBlockers`, and sets `runtimeStatus.unconditionallyBlocked` only
+when a blocker is unconditional across every supported mode. There is no
+top-level `blocked` alias. A `require-mitigation` record can
 pass only when every named mitigation has evidence.
 
 ### Data limitations
@@ -214,7 +215,7 @@ rendering; those checks prevent the separate endpoint and `default` scope
 fallbacks but do not clear the blocking limitations.
 
 This makes the root `conditionally-blocked`, not unconditionally blocked:
-`embedded-auth` is eligible, `standalone-auth` is blocked by persistent token
+`embedded` is eligible, `standalone-auth` is blocked by persistent token
 storage, and `standalone-auth-csrf-required` is blocked by persistent storage
 plus the absent CSRF bootstrap. Console roots containing Data remain
 unconditionally blocked by the separate nested-store limitation.
@@ -270,6 +271,63 @@ configuration to Sheets, whose default PostGraphile adapter verifies contract
 version `2026-07`, fetches `Query._meta`, and cross-checks standard
 introspection. An injected `execute` must apply the same tenant and identity
 scope to metadata, row reads, and mutations.
+
+## Standalone prop and state contracts
+
+The validated root response is the portable source for every standalone pack.
+Its `propVocabulary` is exactly the ordered concatenation of `requiredProps`
+and `optionalProps`; `deprecatedProps`, `propConstraints`, `resourceProps`, and
+`configProps` preserve distinctions that a flat prop list loses. `viewState`
+separates callback-controlled values, defaults, host resource state, host view
+inputs, and component-local state.
+
+- **Data:** `config` is required. `activeTable`, `defaultActiveTable`,
+  `applicationScopes`, `includeTables`, `excludeTables`, `pageSize`,
+  `onActiveTableChange`, `onCreateTable`, `onEvent`, and `sheetsProps` are
+  optional. `activeTable` pairs with `onActiveTableChange`,
+  `defaultActiveTable` seeds uncontrolled selection, and `pageSize` defaults to
+  `50`. Metadata request and Sheets grid/editor state remain local.
+- **Auth:** `view` is the required `entry` or `account` discriminator; it is not
+  a resource prop. `account` is the optional resource. The remaining optional
+  props are `notice`, deprecated `verificationNotice`, `mode`,
+  `passwordPolicy`, `challengeContributions`, `policy`, `actions`,
+  `onModeChange`, `onAuthenticated`, `accountSection`,
+  `defaultAccountSection`, `onAccountSectionChange`, and `onError`. Entry mode
+  defaults to `sign-in`; account section is controlled by
+  `accountSection`/`onAccountSectionChange` or defaults to `profile` through
+  `defaultAccountSection`. Credentials, challenge input, forms, dialogs,
+  pending actions, and transient feedback remain local.
+- **Users:** `resource` is required. `policy`, `actions`, `section`,
+  `defaultSection`, `onSectionChange`, `focusedMemberId`,
+  `focusedInvitationId`, `focusedProfileId`, `title`, `description`, and
+  `onError` are optional. Section is controlled by `section`/`onSectionChange`
+  or defaults to `members`; title defaults to `App access`. Focus IDs are host
+  view inputs, while filters, dialogs, pending actions, and errors stay local.
+- **Organizations:** `resource` is required. `policy`, `actions`, `section`,
+  `defaultSection`, `onSectionChange`, `createOrganizationOpen`,
+  `onCreateOrganizationOpenChange`, `focusedMemberId`,
+  `focusedInvitationId`, `focusedProfileId`, `developerView`, and `onError` are
+  optional. Section defaults to `members`, create-dialog openness defaults to
+  false, and `developerView` defaults to `all`. The host may control section
+  and create-dialog state; focus/developer inputs stay host-owned, while forms,
+  filters, dialogs, pending actions, and errors remain local.
+- **Storage:** `resource` is required; `policy`, `actions`, and `onError` are
+  optional. There are no controlled view props. Active bucket and path are
+  host resource state changed through semantic actions. Dialog, pending, and
+  error state stays local, and new buckets default to private access.
+- **Billing:** `account`, `resources`, and `formatOptions` are required.
+  `actions`, `controls`, `onSectionChange`, `showHeader`, `messages`, `onError`,
+  `onMessage`, `className`, `section`, and `defaultSection` are optional;
+  `section` and `defaultSection` are mutually exclusive. `account` and
+  `resources` are resource inputs, while `formatOptions` and `messages` are
+  configuration. Section defaults to `overview`, `showHeader` defaults true,
+  and pricing interval uses `defaultInterval` or the first available interval
+  when uncontrolled. History and activity filters are host-controlled only;
+  pagination lives in their resource/action boundary. Pending state, errors,
+  uncontrolled section/pricing state, and selected activity detail stay local.
+- **Notifications:** `resource` is required; `policy`, `actions`, and `onError`
+  are optional. There are no controlled view props. The local filter defaults
+  to `all`; dialogs, pending actions, and transient errors also remain local.
 
 ## Session and credential boundary
 
@@ -444,13 +502,20 @@ IDs.
 ## Pinned local consumption before release
 
 This workflow is for the pinned branch-only source. It creates ignored build
-artifacts in Blocks but must leave tracked source unchanged.
+artifacts in Blocks but must leave the worktree clean apart from those ignored
+generated artifacts.
 
-Set explicit absolute paths and run the tracked-source-only preflight first.
-This mode verifies the exact commit, clean tracked worktree, canonical source
-hashes, package versions, and the source patterns behind every open limitation
-without requiring the ignored aggregate registry that a fresh checkout cannot
-contain:
+Every validated query marks `installability.publicInstall` as `blocked` and
+`future-only` in this snapshot. Item and plan query surfaces also wrap the
+canonical public command in a status-bearing `publicInstall` object; they never
+expose a bare `installCommand`. Do not execute that wrapped command until its
+status is `available`. Use only the pinned local workflow below before release.
+
+Set explicit absolute paths and run the source preflight first. This mode
+verifies the exact commit, a clean worktree apart from ignored generated
+artifacts, canonical tracked-source hashes, package versions, and the source
+patterns behind every open limitation without requiring the ignored aggregate
+registry that a fresh checkout cannot contain:
 
 ```bash
 export BLOCKS_REPO=/absolute/path/to/blocks
@@ -468,7 +533,7 @@ pnpm --dir "$BLOCKS_REPO" pack:local
 node "$SKILLS_REPO/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs" \
   --blocks-repo "$BLOCKS_REPO"
 
-git -C "$BLOCKS_REPO" status --short --untracked-files=no
+git -C "$BLOCKS_REPO" status --short --untracked-files=all
 ```
 
 The full checker now verifies the generated aggregate registry and all 19

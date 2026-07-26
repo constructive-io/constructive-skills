@@ -1335,7 +1335,7 @@ const REGISTRY_QUERY_OVERRIDE_ITEMS = [
       'adapter-driven Sheets view',
       'Query._meta',
       'authEndpoint',
-      'embedded-auth',
+      '`embedded`',
       'standalone-auth'
     ]
   },
@@ -1404,12 +1404,24 @@ const STANDALONE_DATA_VIEW_CONTRACT = {
     'includeTables', 'excludeTables', 'pageSize', 'onActiveTableChange',
     'onCreateTable', 'onEvent', 'sheetsProps'
   ],
+  requiredProps: ['config'],
+  optionalProps: [
+    'activeTable', 'defaultActiveTable', 'applicationScopes',
+    'includeTables', 'excludeTables', 'pageSize', 'onActiveTableChange',
+    'onCreateTable', 'onEvent', 'sheetsProps'
+  ],
+  deprecatedProps: [],
+  propConstraints: [],
   resourceProps: [],
   configProps: ['config'],
   viewState: {
     controlled: ['activeTable:onActiveTableChange'],
-    defaults: ['defaultActiveTable'],
+    defaults: ['activeTable:defaultActiveTable', 'pageSize=50'],
     required: ['config'],
+    hostResourceState: [],
+    hostViewInputs: [
+      'applicationScopes', 'includeTables', 'excludeTables', 'pageSize'
+    ],
     local: [
       'uncontrolled active table',
       'metadata request state',
@@ -1431,7 +1443,25 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts',
       sha256: 'f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527'
     },
-    resourceProps: ['view', 'account'],
+    propVocabulary: [
+      'view', 'account', 'notice', 'verificationNotice', 'mode',
+      'passwordPolicy', 'challengeContributions', 'policy', 'actions',
+      'onModeChange', 'onAuthenticated', 'accountSection',
+      'defaultAccountSection', 'onAccountSectionChange', 'onError'
+    ],
+    requiredProps: ['view'],
+    optionalProps: [
+      'account', 'notice', 'verificationNotice', 'mode', 'passwordPolicy',
+      'challengeContributions', 'policy', 'actions', 'onModeChange',
+      'onAuthenticated', 'accountSection', 'defaultAccountSection',
+      'onAccountSectionChange', 'onError'
+    ],
+    deprecatedProps: [
+      { name: 'verificationNotice', replacement: 'notice' }
+    ],
+    propConstraints: [],
+    resourceProps: ['account'],
+    configProps: ['passwordPolicy', 'challengeContributions'],
     policyType: 'FeatureActionPolicy<AuthFeatureAction>',
     actionsType: 'AuthFeatureActions',
     policyKeys: [
@@ -1456,9 +1486,18 @@ export const STANDALONE_PACK_SUMMARIES = {
     ],
     viewState: {
       controlled: ['mode:onModeChange', 'accountSection:onAccountSectionChange'],
-      defaults: ['defaultAccountSection'],
+      defaults: ['mode=sign-in', 'accountSection:defaultAccountSection=profile'],
       required: ['view'],
-      local: ['form values', 'pending actions', 'transient errors']
+      hostResourceState: ['account'],
+      hostViewInputs: ['view', 'notice', 'verificationNotice'],
+      local: [
+        'entry credentials and remember-me choice',
+        'password visibility',
+        'challenge code',
+        'account form and dialog state',
+        'pending actions',
+        'transient notices and errors'
+      ]
     }
   },
   users: {
@@ -1473,7 +1512,21 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx',
       sha256: '907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b'
     },
+    propVocabulary: [
+      'resource', 'policy', 'actions', 'section', 'defaultSection',
+      'onSectionChange', 'focusedMemberId', 'focusedInvitationId',
+      'focusedProfileId', 'title', 'description', 'onError'
+    ],
+    requiredProps: ['resource'],
+    optionalProps: [
+      'policy', 'actions', 'section', 'defaultSection', 'onSectionChange',
+      'focusedMemberId', 'focusedInvitationId', 'focusedProfileId',
+      'title', 'description', 'onError'
+    ],
+    deprecatedProps: [],
+    propConstraints: [],
     resourceProps: ['resource'],
+    configProps: [],
     policyType: 'FeatureActionPolicy<UsersFeatureAction>',
     actionsType: 'UsersFeatureActions',
     policyKeys: [
@@ -1504,8 +1557,13 @@ export const STANDALONE_PACK_SUMMARIES = {
     ],
     viewState: {
       controlled: ['section:onSectionChange'],
-      defaults: ['defaultSection=members'],
+      defaults: ['section:defaultSection=members', 'title=App access'],
       required: ['resource'],
+      hostResourceState: ['resource'],
+      hostViewInputs: [
+        'focusedMemberId', 'focusedInvitationId', 'focusedProfileId',
+        'title', 'description'
+      ],
       local: ['filters', 'dialogs', 'pending actions', 'transient errors']
     }
   },
@@ -1521,7 +1579,23 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts',
       sha256: 'c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39'
     },
+    propVocabulary: [
+      'resource', 'policy', 'actions', 'section', 'defaultSection',
+      'onSectionChange', 'createOrganizationOpen',
+      'onCreateOrganizationOpenChange', 'focusedMemberId',
+      'focusedInvitationId', 'focusedProfileId', 'developerView', 'onError'
+    ],
+    requiredProps: ['resource'],
+    optionalProps: [
+      'policy', 'actions', 'section', 'defaultSection', 'onSectionChange',
+      'createOrganizationOpen', 'onCreateOrganizationOpenChange',
+      'focusedMemberId', 'focusedInvitationId', 'focusedProfileId',
+      'developerView', 'onError'
+    ],
+    deprecatedProps: [],
+    propConstraints: [],
     resourceProps: ['resource'],
+    configProps: [],
     policyType: 'FeatureActionPolicy<OrganizationsFeatureAction>',
     actionsType: 'OrganizationsFeatureActions',
     policyKeys: [
@@ -1570,8 +1644,17 @@ export const STANDALONE_PACK_SUMMARIES = {
         'section:onSectionChange',
         'createOrganizationOpen:onCreateOrganizationOpenChange'
       ],
-      defaults: ['defaultSection=members'],
+      defaults: [
+        'section:defaultSection=members',
+        'createOrganizationOpen=false',
+        'developerView=all'
+      ],
       required: ['resource'],
+      hostResourceState: ['resource'],
+      hostViewInputs: [
+        'focusedMemberId', 'focusedInvitationId', 'focusedProfileId',
+        'developerView'
+      ],
       local: ['filters', 'dialogs', 'pending actions', 'transient errors']
     }
   },
@@ -1587,7 +1670,13 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx',
       sha256: 'aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11'
     },
+    propVocabulary: ['resource', 'policy', 'actions', 'onError'],
+    requiredProps: ['resource'],
+    optionalProps: ['policy', 'actions', 'onError'],
+    deprecatedProps: [],
+    propConstraints: [],
     resourceProps: ['resource'],
+    configProps: [],
     policyType: 'FeatureActionPolicy<StorageFeatureAction>',
     actionsType: 'StorageFeatureActions',
     policyKeys: ['selectBucket', 'navigate', 'createBucket', 'upload', 'download', 'deleteObject'],
@@ -1601,8 +1690,10 @@ export const STANDALONE_PACK_SUMMARIES = {
     ],
     viewState: {
       controlled: [],
-      defaults: [],
+      defaults: ['createBucket.access=private'],
       required: ['resource'],
+      hostResourceState: ['resource.activeBucketKey', 'resource.path'],
+      hostViewInputs: [],
       local: ['dialogs', 'pending actions', 'transient errors']
     }
   },
@@ -1618,7 +1709,30 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx',
       sha256: '5397c2813be9629e500e0ffc0eae75ce2f061c772476e55b6811281feb50a89b'
     },
-    resourceProps: ['account', 'resources', 'formatOptions'],
+    propVocabulary: [
+      'account', 'resources', 'formatOptions', 'actions', 'controls',
+      'onSectionChange', 'showHeader', 'messages', 'onError', 'onMessage',
+      'className', 'section', 'defaultSection'
+    ],
+    requiredProps: ['account', 'resources', 'formatOptions'],
+    optionalProps: [
+      'actions', 'controls', 'onSectionChange', 'showHeader', 'messages',
+      'onError', 'onMessage', 'className', 'section', 'defaultSection'
+    ],
+    deprecatedProps: [],
+    propConstraints: [
+      {
+        kind: 'mutually-exclusive',
+        props: ['section', 'defaultSection']
+      }
+    ],
+    resourceProps: ['account', 'resources'],
+    configProps: ['formatOptions', 'messages'],
+    controlsVocabulary: {
+      pricing: ['interval', 'defaultInterval'],
+      history: ['meterOptions', 'periodOptions', 'meterSlug', 'period'],
+      activity: ['meterOptions', 'entryTypeOptions', 'meterSlug', 'entryType']
+    },
     policyType: null,
     actionsType: 'BillingSettingsActions',
     policyKeys: [],
@@ -1639,10 +1753,36 @@ export const STANDALONE_PACK_SUMMARIES = {
       ['onActivityPageChange', "BillingActivityTableProps['onPageChange']"]
     ],
     viewState: {
-      controlled: ['section:onSectionChange', 'controls.*'],
-      defaults: ['defaultSection', 'controls.*.default*'],
+      controlled: [
+        'section:onSectionChange',
+        'controls.pricing.interval:actions.onPricingIntervalChange',
+        'controls.history.meterSlug:actions.onHistoryMeterChange',
+        'controls.history.period:actions.onHistoryPeriodChange',
+        'controls.activity.meterSlug:actions.onActivityMeterChange',
+        'controls.activity.entryType:actions.onActivityEntryTypeChange'
+      ],
+      defaults: [
+        'section:defaultSection=overview',
+        'controls.pricing.interval:controls.pricing.defaultInterval|first-available',
+        'showHeader=true'
+      ],
       required: ['account', 'resources', 'formatOptions'],
-      local: ['pending actions', 'transient messages']
+      hostResourceState: [
+        'resources.usageHistory pagination',
+        'resources.activity pagination'
+      ],
+      hostViewInputs: [
+        'controls.history.meterOptions', 'controls.history.periodOptions',
+        'controls.activity.meterOptions', 'controls.activity.entryTypeOptions',
+        'showHeader'
+      ],
+      local: [
+        'uncontrolled section',
+        'uncontrolled pricing interval',
+        'selected activity detail',
+        'pending actions',
+        'transient messages and errors'
+      ]
     }
   },
   notifications: {
@@ -1657,7 +1797,13 @@ export const STANDALONE_PACK_SUMMARIES = {
       path: 'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
       sha256: '95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800'
     },
+    propVocabulary: ['resource', 'policy', 'actions', 'onError'],
+    requiredProps: ['resource'],
+    optionalProps: ['policy', 'actions', 'onError'],
+    deprecatedProps: [],
+    propConstraints: [],
     resourceProps: ['resource'],
+    configProps: [],
     policyType: 'FeatureActionPolicy<NotificationsFeatureAction>',
     actionsType: 'NotificationsFeatureActions',
     policyKeys: ['markRead', 'markAllRead', 'deleteNotification', 'openNotification'],
@@ -1669,8 +1815,10 @@ export const STANDALONE_PACK_SUMMARIES = {
     ],
     viewState: {
       controlled: [],
-      defaults: [],
+      defaults: ['filter=all'],
       required: ['resource'],
+      hostResourceState: ['resource.notifications', 'resource.unreadCount'],
+      hostViewInputs: [],
       local: ['filter', 'dialogs', 'pending actions', 'transient errors']
     }
   }
@@ -1720,6 +1868,86 @@ function assertExact(actual, expected, label) {
     isDeepStrictEqual(actual, expected),
     `${label} drifted from the pinned Blocks contract.`
   );
+}
+
+function assertStandalonePropsContract(contract, label) {
+  assertStringArray(contract.propVocabulary, `${label}.propVocabulary`);
+  assertStringArray(contract.requiredProps, `${label}.requiredProps`);
+  assertStringArray(contract.optionalProps, `${label}.optionalProps`);
+  assertExact(
+    contract.propVocabulary,
+    contract.requiredProps.concat(contract.optionalProps),
+    `${label} required and optional prop partition`
+  );
+  assertStringArray(contract.resourceProps, `${label}.resourceProps`);
+  assertStringArray(contract.configProps, `${label}.configProps`);
+  for (const prop of contract.resourceProps.concat(contract.configProps)) {
+    assert(
+      contract.propVocabulary.includes(prop),
+      `${label} classifies unknown prop ${prop}.`
+    );
+  }
+
+  assert(Array.isArray(contract.deprecatedProps), `${label}.deprecatedProps must be an array.`);
+  const deprecatedNames = new Set();
+  for (const deprecated of contract.deprecatedProps) {
+    assertObject(deprecated, `${label} deprecated prop`);
+    assertString(deprecated.name, `${label} deprecated prop name`);
+    assertString(deprecated.replacement, `${label} deprecated prop replacement`);
+    assert(
+      contract.optionalProps.includes(deprecated.name),
+      `${label} deprecated prop ${deprecated.name} must remain optional.`
+    );
+    assert(
+      contract.propVocabulary.includes(deprecated.replacement),
+      `${label} deprecated replacement ${deprecated.replacement} is unknown.`
+    );
+    assert(
+      !deprecatedNames.has(deprecated.name),
+      `${label} repeats deprecated prop ${deprecated.name}.`
+    );
+    deprecatedNames.add(deprecated.name);
+  }
+
+  assert(Array.isArray(contract.propConstraints), `${label}.propConstraints must be an array.`);
+  for (const constraint of contract.propConstraints) {
+    assertObject(constraint, `${label} prop constraint`);
+    assert(
+      constraint.kind === 'mutually-exclusive',
+      `${label} has unknown prop constraint ${constraint.kind}.`
+    );
+    assertStringArray(constraint.props, `${label} mutually-exclusive props`);
+    assert(
+      constraint.props.length > 1 &&
+        constraint.props.every((prop) => contract.propVocabulary.includes(prop)),
+      `${label} mutually-exclusive props must name at least two known props.`
+    );
+  }
+
+  assertObject(contract.viewState, `${label}.viewState`);
+  assertStringArray(contract.viewState.controlled, `${label}.viewState.controlled`);
+  assertStringArray(contract.viewState.defaults, `${label}.viewState.defaults`);
+  assertStringArray(contract.viewState.required, `${label}.viewState.required`);
+  assertExact(
+    contract.viewState.required,
+    contract.requiredProps,
+    `${label} required view-state props`
+  );
+  assertStringArray(
+    contract.viewState.hostResourceState,
+    `${label}.viewState.hostResourceState`
+  );
+  assertStringArray(
+    contract.viewState.hostViewInputs,
+    `${label}.viewState.hostViewInputs`
+  );
+  assertStringArray(contract.viewState.local, `${label}.viewState.local`);
+  if (contract.controlsVocabulary !== undefined) {
+    assertObject(contract.controlsVocabulary, `${label}.controlsVocabulary`);
+    for (const [group, props] of Object.entries(contract.controlsVocabulary)) {
+      assertStringArray(props, `${label}.controlsVocabulary.${group}`);
+    }
+  }
 }
 
 function assertSha256(value, label) {
@@ -2179,6 +2407,7 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
   for (const [packId, summary] of Object.entries(
     snapshot.standaloneContracts.nonData.packs
   )) {
+    assertStandalonePropsContract(summary, `${packId} standalone contract`);
     assertSourceLink(
       summary.componentSource,
       summary.componentSource.path,
@@ -2210,6 +2439,10 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
       importTarget: data.importTarget,
       propsType: data.propsType,
       propVocabulary: data.propVocabulary,
+      requiredProps: data.requiredProps,
+      optionalProps: data.optionalProps,
+      deprecatedProps: data.deprecatedProps,
+      propConstraints: data.propConstraints,
       resourceProps: data.resourceProps,
       configProps: data.configProps,
       viewState: data.viewState
@@ -2217,6 +2450,7 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
     STANDALONE_DATA_VIEW_CONTRACT,
     'Standalone Data view contract'
   );
+  assertStandalonePropsContract(data, 'Standalone Data contract');
   assert(data.discovery === 'internal-data-schema', 'Standalone Data discovery drifted.');
   assertObject(data.planFieldOverride, 'Standalone Data planFieldOverride');
   assert(
@@ -3252,8 +3486,9 @@ function usage() {
     '',
     'Without --blocks-repo, validates the portable catalog, all 19 complete plans,',
     'hard-coded mappings, and their SHA-256 attestations.',
-    'With --source-preflight, requires the exact clean tracked commit and verifies',
-    'canonical tracked source without requiring ignored generated artifacts.',
+    'With --source-preflight, requires the exact clean worktree apart from ignored',
+    'generated artifacts and verifies the pinned commit and canonical tracked',
+    'source without requiring generated registry artifacts.',
     'With --blocks-repo alone, additionally verifies aggregate registry bytes and',
     'compares every prebuilt --no-build inspector plan. The checker never rebuilds',
     'or edits Blocks.'
@@ -3275,7 +3510,7 @@ function sourceLimitationsForRoot(snapshot, rootName) {
 function runtimeModeProfilesForRoot(item) {
   if (item.name === 'feature-pack-data') {
     return [
-      { id: 'embedded-auth', limitationModes: [] },
+      { id: 'embedded', limitationModes: [] },
       { id: 'standalone-auth', limitationModes: ['standalone-auth'] },
       {
         id: 'standalone-auth-csrf-required',
@@ -3355,11 +3590,23 @@ function runtimeStatusForRoot(item, snapshot) {
   }
   return {
     status,
-    blocked: unconditionalBlockerIds.length > 0,
+    unconditionallyBlocked: unconditionalBlockerIds.length > 0,
     unconditionalBlockerIds,
     conditionalBlockerIds: conditionalBlockers.map((blocker) => blocker.id),
     conditionalBlockers,
     modes
+  };
+}
+
+function publicInstallForCommand(snapshot, command) {
+  const available = snapshot.release.publicRegistryReady === true;
+  return {
+    status: available ? 'available' : 'blocked',
+    availability: available ? 'released' : 'future-only',
+    command,
+    reason: available
+      ? null
+      : 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
   };
 }
 
@@ -3368,10 +3615,10 @@ function installabilityEnvelope(snapshot) {
   return {
     releaseStatus: snapshot.release.status,
     publicRegistryReady: snapshot.release.publicRegistryReady,
-    publicInstallCommands: {
+    publicInstall: {
       status: 'blocked',
       availability: 'future-only',
-      template: local.installCommandTemplate,
+      commandTemplate: local.installCommandTemplate,
       reason: 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
     },
     pinnedLocalConsumption: {
@@ -3407,15 +3654,14 @@ function rootItemForQuery(item, snapshot) {
     description: item.description,
     featurePacks: item.featurePacks,
     presetProfiles: item.presetProfiles,
-    installCommand: item.installCommand,
+    publicInstall: publicInstallForCommand(snapshot, item.installCommand),
     sourceLimitationIds: limitations.map((limitation) => limitation.id),
     sourceLimitationAcceptances: limitations.map((limitation) => ({
       id: limitation.id,
       acceptance: limitation.acceptance,
       runtimeModes: limitation.appliesTo.runtimeModes
     })),
-    runtimeStatus,
-    blocked: runtimeStatus.blocked
+    runtimeStatus
   };
 }
 
@@ -3450,7 +3696,7 @@ function registryItemForQuery(item, snapshot) {
     devDependencies: item.devDependencies,
     registryDependencies: item.registryDependencies,
     files: item.files,
-    installCommand: item.installCommand,
+    publicInstall: publicInstallForCommand(snapshot, item.installCommand),
     portableOverrides,
     sourceLimitations: sourceLimitationsForRoot(snapshot, item.name),
     metaContract: metaContractForItem(snapshot, item.name),
@@ -3465,6 +3711,11 @@ function planForQuery(plan, snapshot) {
   const result = structuredClone(plan);
   const override = registryQueryOverride(snapshot, plan.item);
   if (override) result.registryDocumentation = override.portableValue;
+  result.install.publicInstall = publicInstallForCommand(
+    snapshot,
+    result.install.command
+  );
+  delete result.install.command;
   return result;
 }
 
@@ -3548,6 +3799,10 @@ function queryOutput(options, loaded) {
         kind: 'constructive.blocks-install-root',
         sourceCommit: PINNED.commit,
         installability: installabilityEnvelope(loaded.snapshot),
+        publicInstall: publicInstallForCommand(
+          loaded.snapshot,
+          item.installCommand
+        ),
         runtimeStatus: runtimeStatusForRoot(item, loaded.snapshot),
         backendPresetSource: loaded.snapshot.backendPresetSource,
         backendPresetRoute: loaded.snapshot.backendPresetRouting.find(
@@ -3615,7 +3870,7 @@ function queryOutput(options, loaded) {
           description: item.description,
           categories: item.categories,
           docs: item.docs,
-          installCommand: item.installCommand,
+          publicInstall: item.publicInstall,
           runtimeStatus: item.runtimeStatus,
           sourceLimitationIds: item.sourceLimitations.map(
             (limitation) => limitation.id
@@ -3867,12 +4122,12 @@ export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
   );
   const trackedStatus = runGit(
     blocksRepo,
-    ['status', '--porcelain=v1', '--untracked-files=no'],
+    ['status', '--porcelain=v1', '--untracked-files=all'],
     'Checking Blocks worktree'
   );
   assert(
     trackedStatus.length === 0,
-    `Blocks tracked worktree must be clean before attestation:\n${trackedStatus}`
+    `Blocks worktree must be clean apart from ignored generated artifacts before attestation:\n${trackedStatus}`
   );
 
   for (const record of snapshot.source.attestations.canonicalFiles) {
@@ -4222,7 +4477,7 @@ function main() {
   }
   let sourceStatus = '';
   if (options.sourcePreflight) {
-    sourceStatus = ` Pinned clean tracked source ${PINNED.commit} matches; generated artifacts were not required.`;
+    sourceStatus = ` Pinned clean worktree ${PINNED.commit} matches apart from ignored generated artifacts; generated artifacts were not required.`;
   } else if (options.blocksRepo) {
     sourceStatus = ` Pinned clean source ${PINNED.commit} matches.`;
   }

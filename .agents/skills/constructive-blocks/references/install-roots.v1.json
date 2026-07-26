@@ -461,7 +461,7 @@
         "field": "docs",
         "status": "superseded-by-portable-contract",
         "sourceValueSha256": "d72a2acee5ee58aa71cc2a413226936dbd18725d98678f371a756440b7eecbc5",
-        "portableValue": "`feature-pack-data` installs an adapter-driven Sheets view and `.constructive/feature-packs/data.json`. Import from `@/blocks/feature-packs/data/data-feature-pack`. The host supplies `SheetsConfig` with a resolved data endpoint and auth/session transport; Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and owns its table state and CRUD execution.\n\nThe validated runtime status keeps `embedded-auth` eligible, so this root is not unconditionally blocked. For `auth.mode: 'standalone'`, require an explicit non-empty `authEndpoint` and tenant-matched `databaseId`, but the pinned source still blocks `standalone-auth` because it always persists credentials. `standalone-auth-csrf-required` is also blocked because Sheets cannot bootstrap tenant CSRF. In embedded mode, the host may inject `SheetsExecuteFn` as `execute` to preserve its scoped transport boundary. Add `console-module-data` when Console Kit should resolve the semantic data endpoint and session transport.\n\nDegraded states: incompatible metadata stays explicit, missing standalone auth routing is a configuration error, and PostgreSQL privileges and RLS decide every query and mutation.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
+        "portableValue": "`feature-pack-data` installs an adapter-driven Sheets view and `.constructive/feature-packs/data.json`. Import from `@/blocks/feature-packs/data/data-feature-pack`. The host supplies `SheetsConfig` with a resolved data endpoint and auth/session transport; Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and owns its table state and CRUD execution.\n\nThe validated runtime status keeps `embedded` eligible, so this root is not unconditionally blocked. For `auth.mode: 'standalone'`, require an explicit non-empty `authEndpoint` and tenant-matched `databaseId`, but the pinned source still blocks `standalone-auth` because it always persists credentials. `standalone-auth-csrf-required` is also blocked because Sheets cannot bootstrap tenant CSRF. In embedded mode, the host may inject `SheetsExecuteFn` as `execute` to preserve its scoped transport boundary. Add `console-module-data` when Console Kit should resolve the semantic data endpoint and session transport.\n\nDegraded states: incompatible metadata stays explicit, missing standalone auth routing is a configuration error, and PostgreSQL privileges and RLS decide every query and mutation.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
         "reason": "Pinned registry documentation applies generic standalone-pack ownership prose that contradicts the attested DataFeaturePack and Sheets sources. Validated queries replace that field while retaining the raw catalog only as source evidence."
       },
       {
@@ -727,9 +727,55 @@
             "path": "apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts",
             "sha256": "f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527"
           },
-          "resourceProps": [
+          "propVocabulary": [
             "view",
+            "account",
+            "notice",
+            "verificationNotice",
+            "mode",
+            "passwordPolicy",
+            "challengeContributions",
+            "policy",
+            "actions",
+            "onModeChange",
+            "onAuthenticated",
+            "accountSection",
+            "defaultAccountSection",
+            "onAccountSectionChange",
+            "onError"
+          ],
+          "requiredProps": [
+            "view"
+          ],
+          "optionalProps": [
+            "account",
+            "notice",
+            "verificationNotice",
+            "mode",
+            "passwordPolicy",
+            "challengeContributions",
+            "policy",
+            "actions",
+            "onModeChange",
+            "onAuthenticated",
+            "accountSection",
+            "defaultAccountSection",
+            "onAccountSectionChange",
+            "onError"
+          ],
+          "deprecatedProps": [
+            {
+              "name": "verificationNotice",
+              "replacement": "notice"
+            }
+          ],
+          "propConstraints": [],
+          "resourceProps": [
             "account"
+          ],
+          "configProps": [
+            "passwordPolicy",
+            "challengeContributions"
           ],
           "policyType": "FeatureActionPolicy<AuthFeatureAction>",
           "actionsType": "AuthFeatureActions",
@@ -803,15 +849,27 @@
               "accountSection:onAccountSectionChange"
             ],
             "defaults": [
-              "defaultAccountSection"
+              "mode=sign-in",
+              "accountSection:defaultAccountSection=profile"
             ],
             "required": [
               "view"
             ],
+            "hostResourceState": [
+              "account"
+            ],
+            "hostViewInputs": [
+              "view",
+              "notice",
+              "verificationNotice"
+            ],
             "local": [
-              "form values",
+              "entry credentials and remember-me choice",
+              "password visibility",
+              "challenge code",
+              "account form and dialog state",
               "pending actions",
-              "transient errors"
+              "transient notices and errors"
             ]
           }
         },
@@ -827,9 +885,42 @@
             "path": "apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx",
             "sha256": "907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b"
           },
+          "propVocabulary": [
+            "resource",
+            "policy",
+            "actions",
+            "section",
+            "defaultSection",
+            "onSectionChange",
+            "focusedMemberId",
+            "focusedInvitationId",
+            "focusedProfileId",
+            "title",
+            "description",
+            "onError"
+          ],
+          "requiredProps": [
+            "resource"
+          ],
+          "optionalProps": [
+            "policy",
+            "actions",
+            "section",
+            "defaultSection",
+            "onSectionChange",
+            "focusedMemberId",
+            "focusedInvitationId",
+            "focusedProfileId",
+            "title",
+            "description",
+            "onError"
+          ],
+          "deprecatedProps": [],
+          "propConstraints": [],
           "resourceProps": [
             "resource"
           ],
+          "configProps": [],
           "policyType": "FeatureActionPolicy<UsersFeatureAction>",
           "actionsType": "UsersFeatureActions",
           "policyKeys": [
@@ -927,10 +1018,21 @@
               "section:onSectionChange"
             ],
             "defaults": [
-              "defaultSection=members"
+              "section:defaultSection=members",
+              "title=App access"
             ],
             "required": [
               "resource"
+            ],
+            "hostResourceState": [
+              "resource"
+            ],
+            "hostViewInputs": [
+              "focusedMemberId",
+              "focusedInvitationId",
+              "focusedProfileId",
+              "title",
+              "description"
             ],
             "local": [
               "filters",
@@ -952,9 +1054,44 @@
             "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts",
             "sha256": "c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39"
           },
+          "propVocabulary": [
+            "resource",
+            "policy",
+            "actions",
+            "section",
+            "defaultSection",
+            "onSectionChange",
+            "createOrganizationOpen",
+            "onCreateOrganizationOpenChange",
+            "focusedMemberId",
+            "focusedInvitationId",
+            "focusedProfileId",
+            "developerView",
+            "onError"
+          ],
+          "requiredProps": [
+            "resource"
+          ],
+          "optionalProps": [
+            "policy",
+            "actions",
+            "section",
+            "defaultSection",
+            "onSectionChange",
+            "createOrganizationOpen",
+            "onCreateOrganizationOpenChange",
+            "focusedMemberId",
+            "focusedInvitationId",
+            "focusedProfileId",
+            "developerView",
+            "onError"
+          ],
+          "deprecatedProps": [],
+          "propConstraints": [],
           "resourceProps": [
             "resource"
           ],
+          "configProps": [],
           "policyType": "FeatureActionPolicy<OrganizationsFeatureAction>",
           "actionsType": "OrganizationsFeatureActions",
           "policyKeys": [
@@ -1102,10 +1239,21 @@
               "createOrganizationOpen:onCreateOrganizationOpenChange"
             ],
             "defaults": [
-              "defaultSection=members"
+              "section:defaultSection=members",
+              "createOrganizationOpen=false",
+              "developerView=all"
             ],
             "required": [
               "resource"
+            ],
+            "hostResourceState": [
+              "resource"
+            ],
+            "hostViewInputs": [
+              "focusedMemberId",
+              "focusedInvitationId",
+              "focusedProfileId",
+              "developerView"
             ],
             "local": [
               "filters",
@@ -1127,9 +1275,26 @@
             "path": "apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx",
             "sha256": "aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11"
           },
+          "propVocabulary": [
+            "resource",
+            "policy",
+            "actions",
+            "onError"
+          ],
+          "requiredProps": [
+            "resource"
+          ],
+          "optionalProps": [
+            "policy",
+            "actions",
+            "onError"
+          ],
+          "deprecatedProps": [],
+          "propConstraints": [],
           "resourceProps": [
             "resource"
           ],
+          "configProps": [],
           "policyType": "FeatureActionPolicy<StorageFeatureAction>",
           "actionsType": "StorageFeatureActions",
           "policyKeys": [
@@ -1168,10 +1333,17 @@
           ],
           "viewState": {
             "controlled": [],
-            "defaults": [],
+            "defaults": [
+              "createBucket.access=private"
+            ],
             "required": [
               "resource"
             ],
+            "hostResourceState": [
+              "resource.activeBucketKey",
+              "resource.path"
+            ],
+            "hostViewInputs": [],
             "local": [
               "dialogs",
               "pending actions",
@@ -1191,11 +1363,74 @@
             "path": "apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx",
             "sha256": "5397c2813be9629e500e0ffc0eae75ce2f061c772476e55b6811281feb50a89b"
           },
-          "resourceProps": [
+          "propVocabulary": [
+            "account",
+            "resources",
+            "formatOptions",
+            "actions",
+            "controls",
+            "onSectionChange",
+            "showHeader",
+            "messages",
+            "onError",
+            "onMessage",
+            "className",
+            "section",
+            "defaultSection"
+          ],
+          "requiredProps": [
             "account",
             "resources",
             "formatOptions"
           ],
+          "optionalProps": [
+            "actions",
+            "controls",
+            "onSectionChange",
+            "showHeader",
+            "messages",
+            "onError",
+            "onMessage",
+            "className",
+            "section",
+            "defaultSection"
+          ],
+          "deprecatedProps": [],
+          "propConstraints": [
+            {
+              "kind": "mutually-exclusive",
+              "props": [
+                "section",
+                "defaultSection"
+              ]
+            }
+          ],
+          "resourceProps": [
+            "account",
+            "resources"
+          ],
+          "configProps": [
+            "formatOptions",
+            "messages"
+          ],
+          "controlsVocabulary": {
+            "pricing": [
+              "interval",
+              "defaultInterval"
+            ],
+            "history": [
+              "meterOptions",
+              "periodOptions",
+              "meterSlug",
+              "period"
+            ],
+            "activity": [
+              "meterOptions",
+              "entryTypeOptions",
+              "meterSlug",
+              "entryType"
+            ]
+          },
           "policyType": null,
           "actionsType": "BillingSettingsActions",
           "policyKeys": [],
@@ -1260,20 +1495,39 @@
           "viewState": {
             "controlled": [
               "section:onSectionChange",
-              "controls.*"
+              "controls.pricing.interval:actions.onPricingIntervalChange",
+              "controls.history.meterSlug:actions.onHistoryMeterChange",
+              "controls.history.period:actions.onHistoryPeriodChange",
+              "controls.activity.meterSlug:actions.onActivityMeterChange",
+              "controls.activity.entryType:actions.onActivityEntryTypeChange"
             ],
             "defaults": [
-              "defaultSection",
-              "controls.*.default*"
+              "section:defaultSection=overview",
+              "controls.pricing.interval:controls.pricing.defaultInterval|first-available",
+              "showHeader=true"
             ],
             "required": [
               "account",
               "resources",
               "formatOptions"
             ],
+            "hostResourceState": [
+              "resources.usageHistory pagination",
+              "resources.activity pagination"
+            ],
+            "hostViewInputs": [
+              "controls.history.meterOptions",
+              "controls.history.periodOptions",
+              "controls.activity.meterOptions",
+              "controls.activity.entryTypeOptions",
+              "showHeader"
+            ],
             "local": [
+              "uncontrolled section",
+              "uncontrolled pricing interval",
+              "selected activity detail",
               "pending actions",
-              "transient messages"
+              "transient messages and errors"
             ]
           }
         },
@@ -1289,9 +1543,26 @@
             "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
             "sha256": "95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800"
           },
+          "propVocabulary": [
+            "resource",
+            "policy",
+            "actions",
+            "onError"
+          ],
+          "requiredProps": [
+            "resource"
+          ],
+          "optionalProps": [
+            "policy",
+            "actions",
+            "onError"
+          ],
+          "deprecatedProps": [],
+          "propConstraints": [],
           "resourceProps": [
             "resource"
           ],
+          "configProps": [],
           "policyType": "FeatureActionPolicy<NotificationsFeatureAction>",
           "actionsType": "NotificationsFeatureActions",
           "policyKeys": [
@@ -1320,10 +1591,17 @@
           ],
           "viewState": {
             "controlled": [],
-            "defaults": [],
+            "defaults": [
+              "filter=all"
+            ],
             "required": [
               "resource"
             ],
+            "hostResourceState": [
+              "resource.notifications",
+              "resource.unreadCount"
+            ],
+            "hostViewInputs": [],
             "local": [
               "filter",
               "dialogs",
@@ -1352,6 +1630,23 @@
         "onEvent",
         "sheetsProps"
       ],
+      "requiredProps": [
+        "config"
+      ],
+      "optionalProps": [
+        "activeTable",
+        "defaultActiveTable",
+        "applicationScopes",
+        "includeTables",
+        "excludeTables",
+        "pageSize",
+        "onActiveTableChange",
+        "onCreateTable",
+        "onEvent",
+        "sheetsProps"
+      ],
+      "deprecatedProps": [],
+      "propConstraints": [],
       "resourceProps": [],
       "configProps": [
         "config"
@@ -1361,10 +1656,18 @@
           "activeTable:onActiveTableChange"
         ],
         "defaults": [
-          "defaultActiveTable"
+          "activeTable:defaultActiveTable",
+          "pageSize=50"
         ],
         "required": [
           "config"
+        ],
+        "hostResourceState": [],
+        "hostViewInputs": [
+          "applicationScopes",
+          "includeTables",
+          "excludeTables",
+          "pageSize"
         ],
         "local": [
           "uncontrolled active table",

@@ -210,9 +210,12 @@ test('query mode validates first and is independent of the current directory', (
   const item = runQuery(['--registry-item', 'app-shell']);
   assert.equal(item.name, 'app-shell');
   assert.equal(
-    item.installCommand,
+    item.publicInstall.command,
     'pnpm dlx shadcn@4.13.1 add @constructive/app-shell'
   );
+  assert.equal(item.publicInstall.status, 'blocked');
+  assert.equal(item.publicInstall.availability, 'future-only');
+  assert.equal(Object.hasOwn(item, 'installCommand'), false);
   assert.ok(
     item.registryDependencies.includes('@constructive/app-bar')
   );
@@ -227,7 +230,11 @@ test('query mode validates first and is independent of the current directory', (
   assert.equal(root.portableContract.consoleStore, null);
   assert.equal(root.portableContract.metaContract.coordinate, 'Query._meta');
   assert.equal(root.runtimeStatus.status, 'conditionally-blocked');
-  assert.equal(root.runtimeStatus.blocked, false);
+  assert.equal(root.runtimeStatus.unconditionallyBlocked, false);
+  assert.equal(Object.hasOwn(root.runtimeStatus, 'blocked'), false);
+  assert.equal(root.publicInstall.status, 'blocked');
+  assert.equal(root.plan.install.publicInstall.status, 'blocked');
+  assert.equal(Object.hasOwn(root.plan.install, 'command'), false);
 
   const consoleRoot = runQuery(['--root', 'console-module-data']);
   assert.equal(
@@ -242,7 +249,7 @@ test('query mode validates first and is independent of the current directory', (
   );
   assert.equal(consoleRoot.portableContract.metaContract.coordinate, 'Query._meta');
   assert.equal(consoleRoot.runtimeStatus.status, 'blocked');
-  assert.equal(consoleRoot.runtimeStatus.blocked, true);
+  assert.equal(consoleRoot.runtimeStatus.unconditionallyBlocked, true);
 
   const organizationsRoot = runQuery(['--root', 'console-module-organizations']);
   assert.deepEqual(
@@ -267,8 +274,12 @@ test('every query mode exposes the same branch-only installability gate', () => 
     const gate = output.installability;
     assert.equal(gate.releaseStatus, 'branch-only');
     assert.equal(gate.publicRegistryReady, false);
-    assert.equal(gate.publicInstallCommands.status, 'blocked');
-    assert.equal(gate.publicInstallCommands.availability, 'future-only');
+    assert.equal(gate.publicInstall.status, 'blocked');
+    assert.equal(gate.publicInstall.availability, 'future-only');
+    assert.match(
+      gate.publicInstall.commandTemplate,
+      /shadcn@4\.13\.1 add @constructive\/\{name\}/
+    );
     assert.equal(
       gate.pinnedLocalConsumption.sourceCommit,
       '4f2a789fde9a90c0c6ed5977896493bb4818fa77'
@@ -292,6 +303,32 @@ test('every query mode exposes the same branch-only installability gate', () => 
   }
 });
 
+test('query surfaces expose only status-bearing publicInstall commands', () => {
+  const rootList = runQuery(['--list-roots']);
+  const root = runQuery(['--root', 'feature-pack-auth']);
+  const registryList = runQuery(['--list-registry']);
+  const registryItem = runQuery(['--registry-item', 'app-shell']);
+  const publicInstalls = rootList.items.map((item) => item.publicInstall)
+    .concat(root.publicInstall)
+    .concat(root.plan.install.publicInstall)
+    .concat(registryList.items.map((item) => item.publicInstall))
+    .concat(registryItem.publicInstall);
+  for (const publicInstall of publicInstalls) {
+    assert.equal(publicInstall.status, 'blocked');
+    assert.equal(publicInstall.availability, 'future-only');
+    assert.match(publicInstall.command, /^pnpm dlx shadcn@4\.13\.1 add @constructive\//);
+    assert.match(publicInstall.reason, /branch-only/);
+  }
+  for (const item of rootList.items) {
+    assert.equal(Object.hasOwn(item, 'installCommand'), false);
+  }
+  for (const item of registryList.items) {
+    assert.equal(Object.hasOwn(item, 'installCommand'), false);
+  }
+  assert.equal(Object.hasOwn(root.plan.install, 'command'), false);
+  assert.equal(Object.hasOwn(registryItem, 'installCommand'), false);
+});
+
 test('list queries expose Data metadata and runtime-mode-aware blockers', () => {
   const roots = runQuery(['--list-roots']);
   const registry = runQuery(['--list-registry']);
@@ -301,8 +338,10 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
   assert.equal(registry.metaContract.coordinate, 'Query._meta');
 
   const data = roots.items.find((item) => item.name === 'feature-pack-data');
-  assert.equal(data.blocked, false);
+  assert.equal(Object.hasOwn(data, 'blocked'), false);
   assert.equal(data.runtimeStatus.status, 'conditionally-blocked');
+  assert.equal(data.runtimeStatus.unconditionallyBlocked, false);
+  assert.equal(Object.hasOwn(data.runtimeStatus, 'blocked'), false);
   assert.deepEqual(data.runtimeStatus.unconditionalBlockerIds, []);
   assert.deepEqual(data.runtimeStatus.conditionalBlockerIds, [
     'data-standalone-persistent-token-storage',
@@ -310,7 +349,7 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
   ]);
   assert.deepEqual(data.runtimeStatus.modes, [
     {
-      id: 'embedded-auth',
+      id: 'embedded',
       status: 'eligible',
       blockingLimitationIds: [],
       mitigationRequiredLimitationIds: []
@@ -346,13 +385,14 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
   const consoleData = roots.items.find(
     (item) => item.name === 'console-module-data'
   );
-  assert.equal(consoleData.blocked, true);
+  assert.equal(Object.hasOwn(consoleData, 'blocked'), false);
   assert.equal(consoleData.runtimeStatus.status, 'blocked');
+  assert.equal(consoleData.runtimeStatus.unconditionallyBlocked, true);
   assert.deepEqual(consoleData.runtimeStatus.unconditionalBlockerIds, [
     'data-console-nested-sheets-store'
   ]);
   const auth = roots.items.find((item) => item.name === 'feature-pack-auth');
-  assert.equal(auth.blocked, false);
+  assert.equal(auth.runtimeStatus.unconditionallyBlocked, false);
   assert.deepEqual(auth.sourceLimitationIds, []);
 });
 
@@ -367,6 +407,9 @@ test('root queries expose standalone pack vocabulary, adapter profiles, and back
     '{ email; password; rememberMe? }'
   ]);
   assert.ok(pack.viewState.controlled.includes('mode:onModeChange'));
+  assert.deepEqual(pack.requiredProps, ['view']);
+  assert.equal(pack.resourceProps.includes('view'), false);
+  assert.deepEqual(pack.resourceProps, ['account']);
 
   const organizations = runQuery(['--root', 'console-module-organizations']);
   const profiles = organizations.portableContract.adapterProfiles;
@@ -445,11 +488,36 @@ test('standalone Data query exposes its complete props and view-state contract',
   assert.equal(contract.propsType, 'DataFeaturePackProps');
   assert.deepEqual(contract.resourceProps, []);
   assert.deepEqual(contract.configProps, ['config']);
+  assert.deepEqual(contract.requiredProps, ['config']);
+  assert.deepEqual(contract.optionalProps, [
+    'activeTable',
+    'defaultActiveTable',
+    'applicationScopes',
+    'includeTables',
+    'excludeTables',
+    'pageSize',
+    'onActiveTableChange',
+    'onCreateTable',
+    'onEvent',
+    'sheetsProps'
+  ]);
+  assert.deepEqual(contract.deprecatedProps, []);
+  assert.deepEqual(contract.propConstraints, []);
   assert.deepEqual(contract.viewState.controlled, [
     'activeTable:onActiveTableChange'
   ]);
-  assert.deepEqual(contract.viewState.defaults, ['defaultActiveTable']);
+  assert.deepEqual(contract.viewState.defaults, [
+    'activeTable:defaultActiveTable',
+    'pageSize=50'
+  ]);
   assert.deepEqual(contract.viewState.required, ['config']);
+  assert.deepEqual(contract.viewState.hostResourceState, []);
+  assert.deepEqual(contract.viewState.hostViewInputs, [
+    'applicationScopes',
+    'includeTables',
+    'excludeTables',
+    'pageSize'
+  ]);
   assert.ok(contract.propVocabulary.includes('sheetsProps'));
 
   const mutation = structuredClone(loadPortableContract().snapshot);
@@ -458,6 +526,114 @@ test('standalone Data query exposes its complete props and view-state contract',
     () => assertSnapshot(mutation),
     /Standalone Data view contract drifted/
   );
+});
+
+test('all seven standalone roots expose exact prop partitions and state ownership', () => {
+  const expected = {
+    data: {
+      required: ['config'],
+      controlled: ['activeTable:onActiveTableChange'],
+      defaults: ['activeTable:defaultActiveTable', 'pageSize=50']
+    },
+    auth: {
+      required: ['view'],
+      controlled: ['mode:onModeChange', 'accountSection:onAccountSectionChange'],
+      defaults: ['mode=sign-in', 'accountSection:defaultAccountSection=profile']
+    },
+    users: {
+      required: ['resource'],
+      controlled: ['section:onSectionChange'],
+      defaults: ['section:defaultSection=members', 'title=App access']
+    },
+    organizations: {
+      required: ['resource'],
+      controlled: [
+        'section:onSectionChange',
+        'createOrganizationOpen:onCreateOrganizationOpenChange'
+      ],
+      defaults: [
+        'section:defaultSection=members',
+        'createOrganizationOpen=false',
+        'developerView=all'
+      ]
+    },
+    storage: {
+      required: ['resource'],
+      controlled: [],
+      defaults: ['createBucket.access=private']
+    },
+    billing: {
+      required: ['account', 'resources', 'formatOptions'],
+      controlled: [
+        'section:onSectionChange',
+        'controls.pricing.interval:actions.onPricingIntervalChange',
+        'controls.history.meterSlug:actions.onHistoryMeterChange',
+        'controls.history.period:actions.onHistoryPeriodChange',
+        'controls.activity.meterSlug:actions.onActivityMeterChange',
+        'controls.activity.entryType:actions.onActivityEntryTypeChange'
+      ],
+      defaults: [
+        'section:defaultSection=overview',
+        'controls.pricing.interval:controls.pricing.defaultInterval|first-available',
+        'showHeader=true'
+      ]
+    },
+    notifications: {
+      required: ['resource'],
+      controlled: [],
+      defaults: ['filter=all']
+    }
+  };
+  for (const [packId, state] of Object.entries(expected)) {
+    const root = runQuery(['--root', `feature-pack-${packId}`]);
+    const wrapped = root.portableContract.standalone.contract;
+    const contract = packId === 'data' ? wrapped : wrapped.pack;
+    assert.deepEqual(
+      contract.propVocabulary,
+      contract.requiredProps.concat(contract.optionalProps)
+    );
+    assert.deepEqual(contract.requiredProps, state.required);
+    assert.deepEqual(contract.viewState.required, state.required);
+    assert.deepEqual(contract.viewState.controlled, state.controlled);
+    assert.deepEqual(contract.viewState.defaults, state.defaults);
+    assert.ok(Array.isArray(contract.deprecatedProps));
+    assert.ok(Array.isArray(contract.propConstraints));
+    assert.ok(Array.isArray(contract.viewState.hostResourceState));
+    assert.ok(Array.isArray(contract.viewState.hostViewInputs));
+    assert.ok(contract.viewState.local.length > 0);
+  }
+
+  const billing = runQuery(['--root', 'feature-pack-billing'])
+    .portableContract.standalone.contract.pack;
+  assert.deepEqual(billing.resourceProps, ['account', 'resources']);
+  assert.deepEqual(billing.configProps, ['formatOptions', 'messages']);
+  assert.deepEqual(billing.propConstraints, [
+    {
+      kind: 'mutually-exclusive',
+      props: ['section', 'defaultSection']
+    }
+  ]);
+});
+
+test('standalone prop partitions and state ownership fail closed on drift', () => {
+  const loaded = loadPortableContract();
+  const mutations = [
+    (snapshot) => snapshot.standaloneContracts.data.requiredProps.pop(),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.auth.resourceProps.push('view'),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.users.optionalProps.pop(),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.organizations.viewState.defaults.pop(),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.storage.viewState.hostResourceState.pop(),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.billing.propConstraints.pop(),
+    (snapshot) => snapshot.standaloneContracts.nonData.packs.notifications.viewState.defaults.pop()
+  ];
+  for (const mutate of mutations) {
+    const mutation = structuredClone(loaded.snapshot);
+    mutate(mutation);
+    assert.throws(
+      () => assertSnapshot(mutation),
+      /(Standalone Data view contract|Non-Data standalone pack summaries) drifted/
+    );
+  }
 });
 
 test('Auth adapter readiness fails closed on every fixed operation dimension', () => {

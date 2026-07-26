@@ -60,6 +60,12 @@ returns every `sourceLimitations` record whose explicit install-root scope
 matches the selection. Do not read the inspector v1 generic Data,
 single-store, or Organizations-ready sentences in isolation.
 
+Every standalone contract partitions its complete `propVocabulary` into
+`requiredProps` and `optionalProps`, identifies deprecated and constrained
+props, classifies resource and configuration inputs, and separates controlled,
+defaulted, host-resource, host-view, and local state. Use that validated shape
+instead of guessing from a component name or a generic feature-pack sentence.
+
 The returned `metaContract` is executable evidence rather than a version
 label: it contains the exact 27-alias type/field requirements plus SHA-256 and
 byte-length attestations for `META_QUERY_SOURCE` and the generated contract
@@ -67,15 +73,16 @@ introspection query. Any alias, type, field, or document drift fails the
 checker.
 
 Every query returns an `installability` envelope. While
-`publicRegistryReady` is false, public install commands are blocked and
-future-only; use only the envelope's exact pinned local workflow and command
-template in a disposable consumer or isolated worktree with the frozen
-lockfile rule. List queries also return the current `_meta` contract and mark
-each root with a `runtimeStatus`. `blocked` means a blocker applies in every
-supported mode; `conditionalBlockers` names blockers limited to particular
-`modes`. Standalone Data therefore keeps secure `embedded-auth` eligible while
-its standalone-auth modes are blocked, whereas Console roots containing Data
-remain blocked by the nested-store limitation.
+`publicRegistryReady` is false, `installability.publicInstall` and every
+item-level `publicInstall` are `blocked` and `future-only`; use only the
+envelope's exact pinned local workflow and command template in a disposable
+consumer or isolated worktree with the frozen lockfile rule. List queries also
+return the current `_meta` contract and mark each root with a `runtimeStatus`.
+`unconditionallyBlocked` means a blocker applies in every supported mode;
+`conditionalBlockers` names blockers limited to particular `modes`.
+Standalone Data therefore keeps secure `embedded` eligible while its
+standalone-auth modes are blocked, whereas Console roots containing Data remain
+blocked by the nested-store limitation.
 
 [`references/registry-catalog.v1.json`](references/registry-catalog.v1.json)
 and [`references/install-plans.v1/`](references/install-plans.v1/) remain the
@@ -93,8 +100,8 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 ```
 
 A fresh pinned checkout does not contain the ignored aggregate registry. Verify
-its exact commit, clean tracked worktree, canonical source hashes, and release
-metadata before generating anything:
+its exact commit, clean worktree apart from ignored generated artifacts,
+canonical source hashes, and release metadata before generating anything:
 
 ```bash
 node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs \
@@ -178,9 +185,12 @@ configure the canonical namespace:
 }
 ```
 
-Use the exact `installCommand` in the catalog or selected plan. Keep shadcn at
-`4.13.1`; nested dependencies still require the `@constructive` namespace when
-the root is installed by direct URL.
+Released query surfaces expose `publicInstall` with the command beside its
+`status` and `availability`; execute it only when status is `available`.
+Branch-only responses mark it `blocked` and `future-only`, so use the
+`installability.pinnedLocalConsumption` command template instead. Keep shadcn
+at `4.13.1`; nested dependencies still require the `@constructive` namespace
+when the root is installed by direct URL.
 
 ## Integrate the installed owner
 
@@ -205,7 +215,7 @@ The pinned source otherwise falls back to the data endpoint and the shared
 in `localStorage`, ignores `rememberMe` as a persistence choice, and cannot
 bootstrap tenant CSRF. Use embedded host authentication for portable installs;
 the `feature-pack-data` root is not unconditionally blocked because
-`embedded-auth` avoids those source paths. Its `standalone-auth` mode remains
+`embedded` avoids those source paths. Its `standalone-auth` mode remains
 blocked by credential persistence, and `standalone-auth-csrf-required` is also
 blocked by the missing CSRF boundary until Blocks implements both.
 
