@@ -15,7 +15,8 @@ PostgreSQL/RLS authority. Keep those as separate facts.
 [`references/install-roots.v1.json`](references/install-roots.v1.json) is the
 portable authority for the exact Blocks branch and commit, release state,
 `_meta` contract, endpoint bindings, package versions, source hashes, 19
-complete inspector plans, and Console runtime invariants. Use the validated
+complete inspector plans, Console runtime invariants, and structurally scoped
+source limitations. Use the validated
 queries below for ordinary selection; load the full snapshot only when
 auditing or updating the contract.
 
@@ -36,6 +37,12 @@ schema discovery through Sheets. Select by `name`, `type`,
 `categories`, and `docs`; inspect one item for its `dependencies`,
 `devDependencies`, `registryDependencies`, and `files`.
 
+Always use the validated queries for Data. The byte-pinned source catalog and
+plan retain incorrect generic Data documentation as drift evidence; query
+output replaces that field through `registry.queryOverrides`. Never quote or
+implement `feature-pack-data` documentation by reading the raw catalog or plan
+file directly.
+
 Query Console roots and load only the selected complete plan:
 
 ```bash
@@ -43,12 +50,22 @@ node /absolute/path/to/check-blocks-contract.mjs --list-roots
 node /absolute/path/to/check-blocks-contract.mjs --root preset-b2b-storage
 ```
 
-The query returns the byte-pinned plan with its exact dependency closure, file
-targets, sidecars, registry documentation, runtime contract, and verification
-steps. Its `portableContract` also includes the applicable first-party module
-bindings, the authoritative standalone correction for Data, and current
-Console store conformance. Do not read the inspector v1 generic Data or
-single-store sentences in isolation.
+The query returns a validated portable view of the byte-pinned plan with its
+exact dependency closure, file targets, sidecars, corrected registry
+documentation, runtime contract, and verification steps. Its
+`portableContract` includes applicable first-party module bindings, referenced
+adapter contract and action profiles, the exact standalone pack contract,
+current Console store conformance, and `_meta` when Data is present. It also
+returns every `sourceLimitations` record whose explicit install-root scope
+matches the selection. Do not read the inspector v1 generic Data,
+single-store, or Organizations-ready sentences in isolation.
+
+Every query returns an `installability` envelope. While
+`publicRegistryReady` is false, public install commands are blocked and
+future-only; use only the envelope's exact pinned local workflow and command
+template in a disposable consumer or isolated worktree with the frozen
+lockfile rule. List queries also return the current `_meta` contract and mark
+each root `blocked` when any applicable limitation has `acceptance: blocking`.
 
 [`references/registry-catalog.v1.json`](references/registry-catalog.v1.json)
 and [`references/install-plans.v1/`](references/install-plans.v1/) remain the
@@ -112,6 +129,8 @@ Constructive discovery, routing, an adapter, and any module-owned state slice.
 
 Map official backend presets exactly:
 
+- `blank` -> no frontend preset root; start with `console-kit-core` and add
+  only explicitly selected Console modules.
 - `auth:hardened` -> `preset-auth-hardened` -> Data, Auth, Users.
 - `b2b:storage` -> `preset-b2b-storage` -> Data, Auth, Users, Organizations,
   Storage.
@@ -124,7 +143,8 @@ the necessary endpoints, roots, metadata, privileges, or RLS-visible rows.
 
 The pinned source is
 `feat/feature-packs-console-kit@4f2a789fde9a90c0c6ed5977896493bb4818fa77`.
-Its publication status is `branch-only`, and
+The checkout may be that named branch or detached at the exact commit. Its
+publication status is `branch-only`, and
 `release.publicRegistryReady` is `false`. Do not run a public install for these
 new roots, substitute an older Dashboard registry, or silently select a
 similarly named retired block.
@@ -168,6 +188,15 @@ selection, Console endpoint fallback, or a
 `standaloneContracts.data` record supersedes the inspector v1 plan's generic
 standalone discovery sentence for this one pack.
 
+When `auth.mode` is `standalone`, require a non-empty host-resolved
+`authEndpoint` and a `databaseId` equal to the active tenant before rendering.
+The pinned source otherwise falls back to the data endpoint and the shared
+`default` database scope. Standalone Sheets auth also always persists tokens
+in `localStorage`, ignores `rememberMe` as a persistence choice, and cannot
+bootstrap tenant CSRF. Use embedded host authentication for portable installs;
+standalone auth remains blocked for credential persistence and CSRF-capable
+tenants until Blocks implements those boundaries.
+
 For `console-kit-nextjs`, render `ConstructiveConsoleKit` from
 `@/blocks/console-kit/constructive`. Pass a secret-free
 `ConstructiveTenantDatabase` containing `id`, optional `name`, and explicit
@@ -189,20 +218,28 @@ Zustand.
 
 After installation:
 
-1. **Verify installed bytes.** Confirm each selected pack wrote
+1. **Select the verification profile.** Use `static-registry-install` for
+   ordinary UI and billing registry items; it verifies bytes, dependency
+   closure, typecheck, build, and relevant visual/accessibility behavior but
+   never requires a tenant. Use `tenant-runtime` for every feature pack,
+   Console module, preset, core, or full Console root.
+2. **Verify installed bytes.** Confirm each selected pack wrote
    `.constructive/feature-packs/{id}.json`, plus the preset sidecar for a preset,
    then run the plan's exact static commands from the consumer root.
-2. **Verify host configuration.** Resolve every semantic endpoint explicitly
+3. **Verify host configuration.** Resolve every semantic endpoint explicitly
    and require a host session's `databaseId` to equal the tenant descriptor.
-3. **Verify public capability evidence.** Evaluate current `_meta` contract
+4. **Verify public capability evidence.** Evaluate current `_meta` contract
    `2026-07`, standard GraphQL introspection, and the exact first-party module
    bindings in `consoleModuleBindings`. Billing uses only `billing`;
    Notifications uses only `notifications`, regardless of broader optional
-   endpoint candidates in their manifests.
-4. **Verify authenticated behavior.** Exercise Auth sign-up, sign-in,
+   endpoint candidates in their manifests. The Organizations metadata
+   alternative requires `contract.members`, its readable query root, and an
+   executable introspected operation; an organization directory alone must not
+   mark memberships ready.
+5. **Verify authenticated behavior.** Exercise Auth sign-up, sign-in,
    persisted-session restoration, failure handling, and sign-out when Auth is
    installed. Supply `csrfTokenProvider` when the tenant requires CSRF.
-5. **Verify RLS.** Exercise intended-role CRUD and denied anonymous, peer,
+6. **Verify RLS.** Exercise intended-role CRUD and denied anonymous, peer,
    revoked, and cross-tenant cases. A visible root or compatible schema does
    not prove write authority.
 
@@ -224,6 +261,11 @@ instead of fabricating an action or broader authority.
   privilege/RLS diagnosis.
 - An `objects` endpoint does not prove Storage table capability, and an
   installed notification backend module does not prove a public inbox.
+- A Data standalone config without explicit `authEndpoint` is a configuration
+  error; never allow Sheets to substitute the data endpoint for auth.
+- An Organizations metadata contract without `contract.members` is
+  unavailable for membership capability even though the pinned discovery
+  module reports it supported.
 - A host-owned store missing an installed module slice must be recreated with
   every contribution. Do not introduce another per-feature state system;
   Data's pinned nested Sheets store is a recorded source limitation.

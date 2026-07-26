@@ -3,8 +3,10 @@
 Use this reference after selecting a registry item. The machine snapshot in
 `install-roots.v1.json` remains authoritative for the pinned source, release
 state, endpoints, first-party module bindings, pack manifests, preset profiles,
-and Console runtime. The complete catalog in `registry-catalog.v1.json` is
-authoritative for all 102 registry items.
+Console runtime, and source limitations. The complete catalog in
+`registry-catalog.v1.json` pins all 102 source items, but its Data documentation
+is retained only as drift evidence; validated queries apply
+`registry.queryOverrides` before returning it.
 
 ## Surface ownership
 
@@ -20,14 +22,19 @@ authoritative for all 102 registry items.
 Auth, Users, Organizations, Storage, Billing, and Notifications standalone
 packs perform no endpoint, metadata, introspection, session, or capability
 discovery. Their hosts supply resources, states, policy, actions, errors, and
-view state.
+view state. Query `--root feature-pack-{id}` for the exact component, install
+target, props type, resource props, policy keys, action input vocabulary, and
+controlled/default/local view-state ownership for the selected pack.
 
 Standalone Data is the one exception because the view wraps Sheets. Its host
 supplies a resolved endpoint and auth/session transport in `SheetsConfig`,
 optionally through `SheetsExecuteFn`; Sheets internally loads current
 `Query._meta` and standard GraphQL introspection before it builds table CRUD.
 Data does not resolve Console semantic endpoints, own a
-`ConstructiveTenantConsoleSession`, or choose cross-endpoint fallbacks.
+`ConstructiveTenantConsoleSession`, or have authority to choose cross-endpoint
+fallbacks. The pinned standalone auth executor violates the last boundary when
+`authEndpoint` is absent, so the portable contract requires a pre-render
+configuration failure.
 
 The pinned inspector v1 emits one generic standalone discovery sentence for
 all packs. `standaloneContracts.data.planFieldOverride` explicitly supersedes
@@ -42,6 +49,10 @@ Preset installs expose these components:
 | `preset-b2b-storage` | `B2BStorageConsoleKit` from `@/blocks/presets/b2b-storage-console-kit` |
 | `preset-full` | `FullConsoleKit` from `@/blocks/presets/full-console-kit` |
 | `console-kit-nextjs` | `ConstructiveConsoleKit` from `@/blocks/console-kit/constructive` |
+
+The backend `blank` preset intentionally has no frontend preset root. Start
+from `console-kit-core` and select only the Console modules whose database
+capabilities the host explicitly chose.
 
 For a custom composition, import `ConstructiveConsoleKitCore` and the matching
 `{id}ConsoleModule` exports. The installed modules are the module catalog; do
@@ -111,10 +122,10 @@ executable operation, privilege, or RLS-visible row.
 | Data | `data.meta` and `data.introspection` use `data`; evidence is current `Query._meta` plus standard introspection |
 | Auth | Credentials, sessions, and password operations use `auth` |
 | Users | `users.directory` uses `auth`; `users.memberships` uses `admin` |
-| Organizations | Memberships use `admin`/`Query.orgMemberships`, or a compatible organization `_meta` contract found on any explicitly configured endpoint and confirmed by introspection |
+| Organizations | Memberships use `admin`/`Query.orgMemberships`, or a compatible `_meta` contract with a readable `contract.members` root found on an explicitly configured endpoint, confirmed by introspection, and proven executable |
 | Storage | Named bucket/file roots use `storage`, `admin`, or `data`; a compatible storage `_meta` contract may be found on any explicitly configured endpoint and must be confirmed by introspection |
 | Billing | Plans, subscriptions, and meters use `billing` only |
-| Notifications | Inbox and settings use `notifications` only |
+| Notifications | Inbox uses `notifications` only; settings may be discovered but are unimplemented and must stay unavailable |
 
 The machine `consoleModuleBindings` records exact required and optional
 capabilities, candidate endpoint arrays, GraphQL coordinates, discovery source
@@ -128,13 +139,70 @@ Organization and Storage metadata alternatives evaluate only endpoints that
 the host explicitly configured. This does not create an implicit fallback or
 allow the frontend to derive another host.
 
+Readiness uses the adapter contract profiles returned by `--root`. A
+`relay-forward-connection` root must accept `first: Int` or `Int!`, accept a
+nullable `after: Cursor`, expose `nodes`, and expose `pageInfo.hasNextPage` plus
+`pageInfo.endCursor`; `minimal-nodes-connection` requires `nodes` only. Every
+root must also expose the exact adapter-selected node fields. Organizations
+must satisfy one complete membership path group and one complete identity path
+group, rather than accumulating unrelated partial evidence. Users and
+Organizations actions remain disabled until the corresponding
+`users-enabled-actions` or `organizations-enabled-actions` profile validates
+the declared input type, fixed payload path, and required payload fields.
+
+## Pinned source limitations
+
+`sourceLimitations` is the machine-readable list of open Blocks source gaps.
+Each record declares exact `surfaces`, `installRoots`, `featurePacks`, and
+`runtimeModes`; filter by `appliesTo.installRoots` instead of guessing from
+prose or treating every limitation as global. A `blocking` record fails the
+`tenant-runtime` verification profile while it remains open. A
+`require-mitigation` record can pass only when every named mitigation has
+evidence; the list-root query exposes both severity and the derived `blocked`
+status.
+
+### Data limitations
+
+| ID | Acceptance | Required handling | Mitigation IDs |
+| --- | --- | --- | --- |
+| `data-console-nested-sheets-store` | `blocking` | Data contributes no `storeSlice`, while `SheetsProvider` creates a nested Zustand store. Keep Console roots containing Data blocked until Blocks unifies that state. | `unify-data-console-store`, `contribute-data-store-slice` |
+| `data-standalone-auth-endpoint-fallback` | `require-mitigation` | Require an explicit non-empty `authEndpoint` and fail before render; never allow `config.authEndpoint || config.endpoint` to route auth through Data. | `require-explicit-auth-endpoint`, `fail-closed-without-auth-endpoint` |
+| `data-standalone-database-scope-fallback` | `require-mitigation` | Require a non-empty `databaseId` equal to the active tenant; never share the source fallback scope named `default`. | `require-explicit-database-id`, `match-active-tenant-database-id` |
+| `data-standalone-persistent-token-storage` | `blocking` | The source always writes successful standalone credentials to `localStorage`, regardless of `rememberMe`. Use embedded host auth until selectable non-persistent storage exists. | `use-host-owned-embedded-auth`, `block-until-token-persistence-is-selectable` |
+| `data-standalone-csrf-auth-unavailable` | `blocking` | Sheets standalone auth has no anonymous CSRF bootstrap or header injection. Use embedded host auth when `require_csrf_for_auth` is enabled. | `use-host-auth-for-csrf-tenants`, `block-until-sheets-csrf-bootstrap-exists` |
+
+### Cross-root capability limitations
+
+| ID | Acceptance | Required handling | Mitigation IDs |
+| --- | --- | --- | --- |
+| `organizations-meta-membership-false-ready` | `require-mitigation` | An organizations-only `_meta` contract cannot prove memberships. Require `contract.members`, confirm its readable root by introspection, prove it executable, and independently prove the identity directory. | `require-meta-membership-root`, `prove-meta-membership-root-executable`, `prove-organization-identity-directory` |
+| `storage-cross-endpoint-capability-false-ready` | `require-mitigation` | Prove buckets and files together on one `storage`, `admin`, or `data` endpoint through a paired root family or one compatible `_meta` family. Mixed-endpoint evidence is unavailable. | `restrict-storage-endpoint-kind`, `prove-storage-pair-on-one-endpoint`, `fail-storage-without-paired-evidence` |
+
+### Adapter and surface limitations
+
+| ID | Acceptance | Required handling | Mitigation IDs |
+| --- | --- | --- | --- |
+| `organizations-adapter-shape-false-ready` | `require-mitigation` | Validate one complete membership path and one identity path against the Relay connection profile, exact selected node fields, and enabled-action payloads. | `validate-organizations-connection-shapes`, `validate-meta-derived-organizations-shapes`, `validate-organization-action-payloads` |
+| `storage-adapter-shape-false-ready` | `require-mitigation` | Validate both selected bucket and file roots against the Relay connection profile and their semantic fields. | `validate-storage-connection-shapes`, `fail-storage-on-adapter-shape-mismatch` |
+| `auth-adapter-shape-false-ready` | `require-mitigation` | Validate every fixed SignIn, SignUp, SignOut, password, and `currentUser` argument, input type and field, payload selection, and selected MFA field. | `validate-auth-operation-shapes`, `fail-auth-on-adapter-shape-mismatch` |
+| `users-adapter-shape-false-ready` | `require-mitigation` | Validate the users and app-membership Relay reads, exact node fields, and each enabled action's input and fixed payload object ending in `id`. | `validate-users-read-shapes`, `fail-users-on-adapter-shape-mismatch`, `validate-users-action-payloads` |
+| `billing-adapter-shape-false-ready` | `require-mitigation` | Validate the minimal `nodes` connection envelope, node types, and every selected Plan and PlanSubscription field. | `validate-billing-read-shapes`, `fail-billing-on-adapter-shape-mismatch` |
+| `notifications-adapter-shape-false-ready` | `require-mitigation` | Validate the minimal `nodes` connection envelope, Notification type, and every selected inbox field. | `validate-notifications-inbox-shape`, `fail-notifications-on-adapter-shape-mismatch` |
+| `notifications-settings-discovered-unimplemented` | `require-mitigation` | Treat settings as discovered but unavailable. The current adapter and feature pack implement only inbox and read state; settings need both a resource adapter and a UI contract. | `hide-unimplemented-notification-settings`, `require-notification-settings-resource-and-surface` |
+
 ## Standalone Data host contract
 
 `DataFeaturePack` accepts `config: SheetsConfig`. `endpoint` and `auth` are
-required. Embedded mode gets the current credential through a closure-owned
-`getToken` and should expose a stable non-secret `getIdentityKey`. Standalone
-mode needs a host-resolved `authEndpoint`. A host may inject `execute` to keep
-its own scoped transport/session boundary:
+required. Portable acceptance uses embedded mode: it gets the current
+credential through a closure-owned `getToken`, should expose a stable
+non-secret `getIdentityKey`, and may inject `execute` to keep the host's scoped
+transport/session boundary. Pinned standalone mode remains blocked because it
+always persists successful credentials in `localStorage`, does not make
+`rememberMe` select non-persistent storage, and cannot bootstrap tenant CSRF.
+If it is inspected during remediation, still require a non-empty
+host-resolved `authEndpoint` and `databaseId` equal to the active tenant before
+rendering; those checks prevent the separate endpoint and `default` scope
+fallbacks but do not clear the blocking limitations.
 
 ```tsx
 'use client';
@@ -328,6 +396,21 @@ Missing or ambiguous evidence fails closed. Keep independently proven packs
 operational, hide unsupported controls, expose the degraded reason, and retry
 after correcting the endpoint or session boundary.
 
+## Verification profiles
+
+Use `static-registry-install` for ordinary registry UI and billing items. It
+verifies installed bytes and dependency closure, consumer typecheck and build,
+plus visual/accessibility behavior when UI changed; it must not require tenant
+endpoints, `_meta`, Auth acceptance, CRUD, or RLS evidence.
+
+Use `tenant-runtime` for every standalone feature pack, Console module, preset,
+core, and full Console root. It includes static installation checks, then adds
+host endpoint/session checks, discovery evidence for surfaces that discover,
+Auth lifecycle tests when Auth is present, and allowed plus denied CRUD/RLS
+cases for data actions. Any applicable `blocking` source limitation fails this
+profile; every `require-mitigation` record needs evidence for all of its stable
+mitigation IDs.
+
 ## Pinned local consumption before release
 
 This workflow is for the pinned branch-only source. It creates ignored build
@@ -335,8 +418,9 @@ artifacts in Blocks but must leave tracked source unchanged.
 
 Set explicit absolute paths and run the tracked-source-only preflight first.
 This mode verifies the exact commit, clean tracked worktree, canonical source
-hashes, package versions, and the current Data store limitation without
-requiring the ignored aggregate registry that a fresh checkout cannot contain:
+hashes, package versions, and the source patterns behind every open limitation
+without requiring the ignored aggregate registry that a fresh checkout cannot
+contain:
 
 ```bash
 export BLOCKS_REPO=/absolute/path/to/blocks

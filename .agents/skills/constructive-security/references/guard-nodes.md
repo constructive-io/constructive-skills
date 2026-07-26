@@ -9,7 +9,7 @@ Guards are a distinct category from Authz* policies:
 | Failure mode | Silent filtering (no rows returned) | Explicit error (`STEP_UP_REQUIRED`) |
 | Composition | Multiple policies are OR'd (permissive) | Guards run sequentially, any can block |
 
-Execution order: **RLS (Authz) → Guard* → DML → LimitTrack → EventTracker → JobTrigger**
+Execution order: **RLS (Authz) → Guard* → DML → LimitTrackUsage → EventTracker → JobTrigger**
 
 ## GuardStepUp
 

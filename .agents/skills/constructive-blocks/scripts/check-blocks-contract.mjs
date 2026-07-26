@@ -66,6 +66,72 @@ const PROFILE_IDS = [
   'full'
 ];
 
+const BACKEND_PRESET_ROUTES = [
+  {
+    presetSlug: 'blank',
+    backendProvisioning: 'empty',
+    frontendPresetRoot: null,
+    featurePacks: [],
+    customComposition: {
+      coreRoot: 'console-kit-core',
+      moduleSelection: 'explicit-console-module-roots'
+    }
+  },
+  {
+    presetSlug: 'auth:hardened',
+    backendProvisioning: 'featureful',
+    frontendPresetRoot: 'preset-auth-hardened',
+    featurePacks: ['data', 'auth', 'users'],
+    customComposition: null
+  },
+  {
+    presetSlug: 'b2b:storage',
+    backendProvisioning: 'featureful',
+    frontendPresetRoot: 'preset-b2b-storage',
+    featurePacks: ['data', 'auth', 'users', 'organizations', 'storage'],
+    customComposition: null
+  },
+  {
+    presetSlug: 'full',
+    backendProvisioning: 'featureful',
+    frontendPresetRoot: 'preset-full',
+    featurePacks: PACK_IDS,
+    customComposition: null
+  }
+];
+
+const BACKEND_PRESET_SOURCE = {
+  repository: 'https://github.com/constructive-io/constructive-db',
+  commit: '0b30917f77284d61b5c997c3aa15195c6018ea87',
+  verification: 'portable-attestation-no-live-repository-required',
+  authoritativeSources: [
+    {
+      path: 'packages/node-type-registry/src/generate.ts',
+      sha256: '1f4ab27a84ac82bec2efea0fdf2b70e69a7fcc77a261c1a3128cf16c1c590837'
+    },
+    {
+      path: 'packages/node-type-registry/src/module-presets/index.ts',
+      sha256: 'b18205178f8c8ffa444ac7e7c29c95de5c4fe4b67f1c329e01947e9570fdbf5b'
+    },
+    {
+      path: 'packages/node-type-registry/src/module-presets/auth-hardened.ts',
+      sha256: '510c6338f8b1b7203cea79c66ff1d5b095bc8e6048e4411d2015ebae20351784'
+    },
+    {
+      path: 'packages/node-type-registry/src/module-presets/b2b-storage.ts',
+      sha256: 'd549a4adc358bf88c134b0d235eba6374f4cc9ba89c078d236a8a433b4df98cd'
+    },
+    {
+      path: 'packages/node-type-registry/src/module-presets/full.ts',
+      sha256: '3b7dac7542479a73e34162374bd0191c653621f2fdb67d99954c45b8ea30584c'
+    },
+    {
+      path: 'packages/metaschema-generators/deploy/schemas/metaschema_generators/procedures/db_preset_seed_data.sql',
+      sha256: 'b49f8c8cdf0c20b7b1e67ce0e70943f8ab04137e7dacfc1fcd46a3d7076013f5'
+    }
+  ]
+};
+
 const INSTALL_ROOT_NAMES = [
   'console-kit-nextjs',
   'preset-auth-hardened',
@@ -98,6 +164,7 @@ const CANONICAL_SOURCE_PATHS = [
   'apps/blocks/src/feature-packs/catalog.ts',
   'apps/blocks/src/feature-packs/capabilities.ts',
   'apps/blocks/src/blocks/console-runtime/endpoints.ts',
+  'apps/blocks/src/blocks/console-runtime/standalone-session.ts',
   'apps/blocks/src/blocks/console-kit/feature-module.ts',
   'apps/blocks/src/blocks/console-kit/store/console-kit-store.tsx',
   'apps/blocks/src/blocks/console-kit/constructive/constructive-capabilities.ts',
@@ -108,19 +175,37 @@ const CANONICAL_SOURCE_PATHS = [
   'packages/sheets/package.json',
   'packages/sheets/src/context/sheets-context.ts',
   'packages/sheets/src/context/sheets-execute.ts',
+  'packages/sheets/src/auth/auth-execute.ts',
+  'packages/sheets/src/auth/utils/token-store.ts',
+  'packages/sheets/src/auth/hooks/use-login.ts',
+  'packages/sheets/src/auth/hooks/use-register.ts',
   'packages/sheets/src/adapter/postgraphile-adapter.ts',
   'packages/ui/package.json',
+  'packages/ui/src/components/sidebar.tsx',
+  'packages/ui/src/components/app-bar.tsx',
+  'packages/ui/src/components/app-shell.tsx',
+  'packages/ui/src/index.ts',
   'packages/schema-builder/package.json',
   'apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx',
   'apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/auth/auth-feature-pack.tsx',
+  'apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts',
   'apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx',
   'apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/organizations/organizations-feature-pack.tsx',
+  'apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts',
   'apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx',
   'apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts',
   'apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx',
   'apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts',
   'apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/billing/billing-feature-pack.tsx',
+  'apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx',
   'apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx',
+  'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+  'apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts',
   'apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts',
   'apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts',
   'apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts',
@@ -236,8 +321,1188 @@ const OPTIONAL_BINDING_ENDPOINTS = {
   billing: {
     'billing.meters': [['billing']]
   },
+  notifications: {}
+};
+
+const PREREQUISITE_BINDING_ENDPOINTS = {
+  organizations: {
+    'organizations.identity-directory': [['auth'], ENDPOINT_KINDS]
+  }
+};
+
+const ALTERNATIVE_PATH_GROUPS = {
+  'organizations.identity-directory': [
+    'auth-identity-path',
+    'meta-identity-path'
+  ],
+  'organizations.memberships': [
+    'admin-membership-path',
+    'meta-membership-path'
+  ]
+};
+
+const ADAPTER_CONTRACT_PROFILES = {
+  'minimal-nodes-connection': {
+    requiredConnectionFields: ['nodes']
+  },
+  'relay-forward-connection': {
+    requiredRootArguments: [
+      {
+        name: 'first',
+        allowedTypes: ['Int', 'Int!']
+      },
+      {
+        name: 'after',
+        allowedTypes: ['Cursor'],
+        requiredNullability: 'nullable'
+      }
+    ],
+    requiredConnectionFields: ['nodes', 'pageInfo'],
+    requiredPageInfoFields: ['hasNextPage', 'endCursor']
+  }
+};
+
+const ADAPTER_REQUIREMENTS = {
+  auth: [
+    {
+      endpointKind: 'auth',
+      coordinate: 'Mutation.signIn',
+      shape: 'mutation-input-and-payload',
+      requiredArguments: ['input'],
+      inputType: 'SignInInput',
+      requiredInputFields: ['email', 'password', 'rememberMe', 'credentialKind'],
+      conditionalInputFields: ['csrfToken'],
+      requiredPayloadPath: 'result',
+      requiredPayloadFields: ['userId', 'accessToken'],
+      selectedPayloadFields: [
+        'id',
+        'userId',
+        'accessToken',
+        'accessTokenExpiresAt',
+        'mfaRequired',
+        'mfaChallengeToken'
+      ]
+    },
+    {
+      endpointKind: 'auth',
+      coordinate: 'Mutation.signUp',
+      shape: 'mutation-input-and-payload',
+      requiredArguments: ['input'],
+      inputType: 'SignUpInput',
+      requiredInputFields: ['email', 'password', 'rememberMe', 'credentialKind'],
+      conditionalInputFields: ['csrfToken'],
+      requiredPayloadPath: 'result',
+      requiredPayloadFields: ['userId', 'accessToken'],
+      selectedPayloadFields: [
+        'id',
+        'userId',
+        'accessToken',
+        'accessTokenExpiresAt'
+      ]
+    },
+    {
+      endpointKind: 'auth',
+      coordinate: 'Mutation.signOut',
+      shape: 'mutation-input-and-payload',
+      requiredArguments: ['input'],
+      inputType: 'SignOutInput',
+      requiredInputFields: [],
+      requiredPayloadPath: null,
+      requiredPayloadFields: ['clientMutationId'],
+      selectedPayloadFields: ['clientMutationId']
+    },
+    {
+      endpointKind: 'auth',
+      coordinate: 'Mutation.forgotPassword',
+      shape: 'mutation-input-and-payload',
+      requiredArguments: ['input'],
+      inputType: 'ForgotPasswordInput',
+      requiredInputFields: ['email'],
+      requiredPayloadPath: null,
+      requiredPayloadFields: ['clientMutationId'],
+      selectedPayloadFields: ['clientMutationId']
+    },
+    {
+      endpointKind: 'auth',
+      coordinate: 'Mutation.resetPassword',
+      shape: 'mutation-input-and-payload',
+      requiredArguments: ['input'],
+      inputType: 'ResetPasswordInput',
+      requiredInputFields: ['roleId', 'resetToken', 'newPassword'],
+      requiredPayloadPath: null,
+      requiredPayloadFields: ['result'],
+      selectedPayloadFields: ['result']
+    },
+    {
+      endpointKind: 'auth',
+      coordinate: 'Query.currentUser',
+      shape: 'object',
+      nodeType: 'User',
+      requiredFields: [
+        'id',
+        'displayName',
+        'username',
+        'profilePicture',
+        'createdAt'
+      ],
+      selectedFields: [
+        'id',
+        'displayName',
+        'username',
+        'profilePicture',
+        'createdAt'
+      ]
+    }
+  ],
+  users: [
+    {
+      endpointKind: 'auth',
+      coordinate: 'Query.users',
+      shape: 'connection-nodes',
+      nodeType: 'User',
+      connectionProfile: 'relay-forward-connection',
+      requiredFields: ['id'],
+      selectedFields: ['id', 'displayName', 'username', 'profilePicture']
+    },
+    {
+      endpointKind: 'admin',
+      coordinate: 'Query.appMemberships',
+      shape: 'connection-nodes',
+      nodeType: 'AppMembership',
+      connectionProfile: 'relay-forward-connection',
+      requiredFields: ['id', 'actorId'],
+      selectedFields: [
+        'id',
+        'actorId',
+        'createdAt',
+        'isOwner',
+        'isAdmin',
+        'isActive',
+        'isApproved',
+        'isVerified',
+        'isBanned',
+        'isDisabled',
+        'permissions',
+        'granted',
+        'profileId'
+      ]
+    }
+  ],
+  organizations: [
+    {
+      id: 'identity-auth-users',
+      endpointKind: 'auth',
+      coordinate: 'Query.users',
+      shape: 'connection-nodes',
+      nodeType: 'User',
+      connectionProfile: 'relay-forward-connection',
+      requiredFields: ['id', 'type'],
+      selectedFields: [
+        'id',
+        'type',
+        'displayName',
+        'username',
+        'profilePicture'
+      ]
+    },
+    {
+      id: 'memberships-admin',
+      endpointKind: 'admin',
+      coordinate: 'Query.orgMemberships',
+      shape: 'connection-nodes',
+      nodeType: 'OrgMembership',
+      connectionProfile: 'relay-forward-connection',
+      requiredFields: ['id', 'actorId', 'entityId'],
+      selectedFields: [
+        'id',
+        'actorId',
+        'entityId',
+        'createdAt',
+        'isOwner',
+        'isAdmin',
+        'isActive',
+        'isApproved',
+        'isBanned',
+        'isDisabled',
+        'isReadOnly',
+        'permissions',
+        'granted',
+        'profileId'
+      ]
+    },
+    {
+      id: 'meta-organizations',
+      endpointKind: 'meta-contract-source',
+      coordinate: 'Query.<organizations-root>',
+      shape: 'connection-nodes',
+      nodeType: 'meta-contract-organizations-table',
+      connectionProfile: 'relay-forward-connection',
+      requiredSemanticFields: ['id', 'name'],
+      selectedSemanticFields: ['id', 'name', 'slug', 'avatar']
+    },
+    {
+      id: 'memberships-meta-members',
+      endpointKind: 'meta-contract-source',
+      coordinate: 'Query.<members-root>',
+      shape: 'connection-nodes',
+      nodeType: 'meta-contract-members-table',
+      connectionProfile: 'relay-forward-connection',
+      requiredSemanticFields: ['id', 'organizationId'],
+      selectedSemanticFields: [
+        'id',
+        'organizationId',
+        'userId',
+        'role',
+        'status',
+        'joinedAt',
+        'invitedAt'
+      ]
+    }
+  ],
+  storage: [
+    {
+      endpointKind: 'storage-or-admin-or-data',
+      coordinate: 'Query.<bucket-root>',
+      shape: 'connection-nodes',
+      nodeType: 'selected-bucket-family',
+      connectionProfile: 'relay-forward-connection',
+      requiredSemanticFields: ['id', 'key'],
+      selectedSemanticFields: [
+        'id',
+        'key',
+        'description',
+        'type',
+        'isPublic'
+      ]
+    },
+    {
+      endpointKind: 'storage-or-admin-or-data',
+      coordinate: 'Query.<file-root>',
+      shape: 'connection-nodes',
+      nodeType: 'selected-file-family',
+      connectionProfile: 'relay-forward-connection',
+      optionalRootArguments: [
+        {
+          name: 'condition',
+          type: 'selected-file-family-condition-input'
+        }
+      ],
+      requiredSemanticFields: ['id', 'key', 'bucketId'],
+      selectedSemanticFields: [
+        'id',
+        'key',
+        'bucketId',
+        'filename',
+        'mimeType',
+        'size',
+        'path',
+        'status',
+        'createdAt',
+        'updatedAt'
+      ]
+    }
+  ],
+  billing: [
+    {
+      endpointKind: 'billing',
+      coordinate: 'Query.plans',
+      shape: 'connection-nodes',
+      nodeType: 'Plan',
+      connectionProfile: 'minimal-nodes-connection',
+      requiredFields: ['id', 'name'],
+      selectedFields: ['id', 'name', 'description', 'isActive']
+    },
+    {
+      endpointKind: 'billing',
+      coordinate: 'Query.planSubscriptions',
+      shape: 'connection-nodes',
+      nodeType: 'PlanSubscription',
+      connectionProfile: 'minimal-nodes-connection',
+      requiredFields: ['id', 'entityId', 'planId'],
+      selectedFields: [
+        'id',
+        'entityId',
+        'entityType',
+        'organizationId',
+        'planId',
+        'isActive',
+        'startsAt',
+        'endsAt'
+      ]
+    }
+  ],
+  notifications: [
+    {
+      endpointKind: 'notifications',
+      coordinate: 'Query.notifications',
+      shape: 'connection-nodes',
+      nodeType: 'Notification',
+      connectionProfile: 'minimal-nodes-connection',
+      requiredFields: ['id', 'title', 'createdAt'],
+      selectedFields: [
+        'id',
+        'title',
+        'body',
+        'category',
+        'kind',
+        'createdAt',
+        'actionUrl',
+        'actions'
+      ]
+    }
+  ]
+};
+
+const ADAPTER_REQUIREMENT_POLICIES = {
+  organizations: {
+    membershipPath: {
+      mode: 'one-complete-alternative',
+      alternatives: [
+        {
+          id: 'admin-membership-path',
+          requirementIds: ['memberships-admin']
+        },
+        {
+          id: 'meta-membership-path',
+          requirementIds: [
+            'meta-organizations',
+            'memberships-meta-members'
+          ]
+        }
+      ]
+    },
+    identityDirectory: {
+      mode: 'one-complete-alternative',
+      alternatives: [
+        {
+          id: 'auth-identity-path',
+          requirementIds: ['identity-auth-users']
+        },
+        {
+          id: 'meta-identity-path',
+          requirementIds: ['meta-organizations']
+        }
+      ]
+    },
+    readyWhen: 'one membership path and one identity-directory path pass'
+  }
+};
+
+const ADAPTER_ACTION_PROFILES = {
+  'users-enabled-actions': {
+    source: {
+      path: 'apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts',
+      sha256: '22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2'
+    },
+    appliesWhen: 'action-policy-would-be-enabled',
+    readinessImpact: 'action-only',
+    endpointKind: 'admin',
+    requiredArgument: 'input',
+    inputValidation: 'adapter-declared-required-fields',
+    documentTupleFields: [
+      'coordinate',
+      'inputType',
+      'payloadPath',
+      'requiredPayloadFields'
+    ],
+    documents: [
+      ['Mutation.updateAppMembership', 'UpdateAppMembershipInput', 'appMembership', ['id']],
+      ['Mutation.createAppOwnerGrant', 'CreateAppOwnerGrantInput', 'appOwnerGrant', ['id']],
+      ['Mutation.createAppAdminGrant', 'CreateAppAdminGrantInput', 'appAdminGrant', ['id']],
+      ['Mutation.createAppGrant', 'CreateAppGrantInput', 'appGrant', ['id']],
+      ['Mutation.createAppProfileGrant', 'CreateAppProfileGrantInput', 'appProfileGrant', ['id']],
+      ['Mutation.createAppProfileDefinitionGrant', 'CreateAppProfileDefinitionGrantInput', 'appProfileDefinitionGrant', ['id']],
+      ['Mutation.createAppPermissionDefaultGrant', 'CreateAppPermissionDefaultGrantInput', 'appPermissionDefaultGrant', ['id']],
+      ['Mutation.createAppProfile', 'CreateAppProfileInput', 'appProfile', ['id']],
+      ['Mutation.updateAppProfile', 'UpdateAppProfileInput', 'appProfile', ['id']],
+      ['Mutation.deleteAppProfile', 'DeleteAppProfileInput', 'appProfile', ['id']],
+      ['Mutation.createAppInvite', 'CreateAppInviteInput', 'appInvite', ['id']],
+      ['Mutation.updateAppInvite', 'UpdateAppInviteInput', 'appInvite', ['id']],
+      ['Mutation.deleteAppInvite', 'DeleteAppInviteInput', 'appInvite', ['id']]
+    ]
+  },
+  'organizations-enabled-actions': {
+    source: {
+      path: 'apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts',
+      sha256: 'b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179'
+    },
+    appliesWhen: 'action-policy-would-be-enabled',
+    readinessImpact: 'action-only',
+    endpointKind: 'admin',
+    requiredArgument: 'input',
+    inputValidation: 'adapter-declared-required-fields',
+    documentTupleFields: [
+      'coordinate',
+      'inputType',
+      'payloadPath',
+      'requiredPayloadFields'
+    ],
+    documents: [
+      ['Mutation.updateOrgMembership', 'UpdateOrgMembershipInput', 'orgMembership', ['id']],
+      ['Mutation.deleteOrgMembership', 'DeleteOrgMembershipInput', 'orgMembership', ['id']],
+      ['Mutation.createOrgAdminGrant', 'CreateOrgAdminGrantInput', 'orgAdminGrant', ['id']],
+      ['Mutation.createOrgOwnerGrant', 'CreateOrgOwnerGrantInput', 'orgOwnerGrant', ['id']],
+      ['Mutation.createOrgGrant', 'CreateOrgGrantInput', 'orgGrant', ['id']],
+      ['Mutation.createOrgProfileGrant', 'CreateOrgProfileGrantInput', 'orgProfileGrant', ['id']],
+      ['Mutation.createOrgProfileDefinitionGrant', 'CreateOrgProfileDefinitionGrantInput', 'orgProfileDefinitionGrant', ['id']],
+      ['Mutation.createOrgProfile', 'CreateOrgProfileInput', 'orgProfile', ['id']],
+      ['Mutation.updateOrgProfile', 'UpdateOrgProfileInput', 'orgProfile', ['id']],
+      ['Mutation.deleteOrgProfile', 'DeleteOrgProfileInput', 'orgProfile', ['id']],
+      ['Mutation.createOrgMemberProfile', 'CreateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
+      ['Mutation.updateOrgMemberProfile', 'UpdateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
+      ['Mutation.updateOrgMembershipSetting', 'UpdateOrgMembershipSettingInput', 'orgMembershipSetting', ['id']],
+      ['Mutation.updateOrgMembershipDefault', 'UpdateOrgMembershipDefaultInput', 'orgMembershipDefault', ['id']],
+      ['Mutation.createOrgChartEdgeGrant', 'CreateOrgChartEdgeGrantInput', 'orgChartEdgeGrant', ['id']],
+      ['Mutation.createOrgInvite', 'CreateOrgInviteInput', 'orgInvite', ['id']],
+      ['Mutation.deleteOrgInvite', 'DeleteOrgInviteInput', 'orgInvite', ['id']],
+      ['Mutation.deleteUser', 'DeleteUserInput', 'user', ['id']],
+      ['Mutation.updateUser', 'UpdateUserInput', 'user', ['id']],
+      ['Mutation.revokeOrgApiKey', 'RevokeOrgApiKeyInput', null, ['result']],
+      ['Mutation.deleteOrgPrincipal', 'DeleteOrgPrincipalInput', null, ['result']],
+      ['Mutation.createOrgPrincipal', 'CreateOrgPrincipalInput', null, ['result']],
+      ['Mutation.createUser', 'CreateUserInput', 'user', ['id', 'type', 'displayName', 'username', 'profilePicture']]
+    ]
+  }
+};
+
+const ADAPTER_ACTION_PROFILE_IDS = {
+  users: ['users-enabled-actions'],
+  organizations: ['organizations-enabled-actions']
+};
+
+const SOURCE_LIMITATION_SCOPES = {
+  'data-console-nested-sheets-store': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-data',
+      'preset-auth-hardened',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['data'],
+    runtimeModes: ['console']
+  },
+  'data-standalone-auth-endpoint-fallback': {
+    surfaces: ['standalone-feature-pack'],
+    installRoots: ['feature-pack-data'],
+    featurePacks: ['data'],
+    runtimeModes: ['standalone-auth']
+  },
+  'data-standalone-database-scope-fallback': {
+    surfaces: ['standalone-feature-pack'],
+    installRoots: ['feature-pack-data'],
+    featurePacks: ['data'],
+    runtimeModes: ['standalone-auth']
+  },
+  'data-standalone-persistent-token-storage': {
+    surfaces: ['standalone-feature-pack'],
+    installRoots: ['feature-pack-data'],
+    featurePacks: ['data'],
+    runtimeModes: ['standalone-auth']
+  },
+  'data-standalone-csrf-auth-unavailable': {
+    surfaces: ['standalone-feature-pack'],
+    installRoots: ['feature-pack-data'],
+    featurePacks: ['data'],
+    runtimeModes: ['standalone-auth-csrf-required']
+  },
+  'organizations-meta-membership-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-organizations',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['organizations'],
+    runtimeModes: ['console-meta-discovery']
+  },
+  'storage-cross-endpoint-capability-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-storage',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['storage'],
+    runtimeModes: ['console-discovery']
+  },
+  'organizations-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-organizations',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['organizations'],
+    runtimeModes: ['console-discovery']
+  },
+  'storage-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-storage',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['storage'],
+    runtimeModes: ['console-discovery']
+  },
+  'auth-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-auth',
+      'preset-auth-hardened',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['auth'],
+    runtimeModes: ['console-discovery']
+  },
+  'users-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-users',
+      'preset-auth-hardened',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['users'],
+    runtimeModes: ['console-discovery']
+  },
+  'billing-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-billing',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['billing'],
+    runtimeModes: ['console-discovery']
+  },
+  'notifications-adapter-shape-false-ready': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-notifications',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['notifications'],
+    runtimeModes: ['console-discovery']
+  },
+  'notifications-settings-discovered-unimplemented': {
+    surfaces: ['console-module', 'preset', 'full-console'],
+    installRoots: [
+      'console-module-notifications',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['notifications'],
+    runtimeModes: ['console']
+  }
+};
+
+const SOURCE_LIMITATION_PATHS = {
+  'data-console-nested-sheets-store': [
+    'apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx',
+    'apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx',
+    'packages/sheets/src/context/sheets-provider.tsx',
+    'packages/sheets/src/store/sheets-store.ts'
+  ],
+  'data-standalone-auth-endpoint-fallback': [
+    'packages/sheets/src/context/sheets-context.ts',
+    'packages/sheets/src/auth/auth-execute.ts'
+  ],
+  'data-standalone-database-scope-fallback': [
+    'packages/sheets/src/context/sheets-context.ts',
+    'packages/sheets/src/context/sheets-provider.tsx',
+    'packages/sheets/src/auth/hooks/use-login.ts',
+    'packages/sheets/src/auth/hooks/use-register.ts'
+  ],
+  'data-standalone-persistent-token-storage': [
+    'packages/sheets/src/context/sheets-provider.tsx',
+    'packages/sheets/src/auth/utils/token-store.ts',
+    'packages/sheets/src/auth/hooks/use-login.ts',
+    'packages/sheets/src/auth/hooks/use-register.ts'
+  ],
+  'data-standalone-csrf-auth-unavailable': [
+    'packages/sheets/src/context/sheets-context.ts',
+    'packages/sheets/src/auth/auth-execute.ts'
+  ],
+  'organizations-meta-membership-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts',
+    'apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts'
+  ],
+  'storage-cross-endpoint-capability-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx',
+    'apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts',
+    'apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts'
+  ],
+  'organizations-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts',
+    'apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts'
+  ],
+  'storage-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts',
+    'apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts'
+  ],
+  'auth-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts',
+    'apps/blocks/src/blocks/console-runtime/standalone-session.ts'
+  ],
+  'users-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts'
+  ],
+  'billing-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts'
+  ],
+  'notifications-adapter-shape-false-ready': [
+    'apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts'
+  ],
+  'notifications-settings-discovered-unimplemented': [
+    'apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx',
+    'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+    'apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts'
+  ]
+};
+
+const SOURCE_LIMITATION_POLICIES = {
+  'data-console-nested-sheets-store': {
+    acceptance: 'blocking',
+    mitigationRequirements: [
+      {
+        id: 'unify-data-console-store',
+        requirement: 'Unify Data state into the Console Kit modular Zustand store in Blocks source.'
+      },
+      {
+        id: 'contribute-data-store-slice',
+        requirement: 'Make dataConsoleModule contribute the resulting storeSlice and remove the nested Sheets store.'
+      }
+    ]
+  },
+  'data-standalone-auth-endpoint-fallback': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'require-explicit-auth-endpoint',
+        requirement: 'When auth.mode is standalone, resolve an explicit non-empty authEndpoint.'
+      },
+      {
+        id: 'fail-closed-without-auth-endpoint',
+        requirement: 'Fail closed before rendering DataFeaturePack when authEndpoint is absent.'
+      }
+    ]
+  },
+  'data-standalone-database-scope-fallback': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'require-explicit-database-id',
+        requirement: 'Resolve an explicit non-empty databaseId for standalone auth.'
+      },
+      {
+        id: 'match-active-tenant-database-id',
+        requirement: 'Require databaseId to equal the active tenant descriptor before rendering DataFeaturePack.'
+      }
+    ]
+  },
+  'data-standalone-persistent-token-storage': {
+    acceptance: 'blocking',
+    mitigationRequirements: [
+      {
+        id: 'use-host-owned-embedded-auth',
+        requirement: 'Use embedded auth with a host-owned session and injected transport instead of Sheets standalone auth.'
+      },
+      {
+        id: 'block-until-token-persistence-is-selectable',
+        requirement: 'Keep standalone auth blocked until Blocks honors remember-me and supports non-persistent session storage.'
+      }
+    ]
+  },
+  'data-standalone-csrf-auth-unavailable': {
+    acceptance: 'blocking',
+    mitigationRequirements: [
+      {
+        id: 'use-host-auth-for-csrf-tenants',
+        requirement: 'For a tenant requiring CSRF for auth, use embedded host auth and session transport.'
+      },
+      {
+        id: 'block-until-sheets-csrf-bootstrap-exists',
+        requirement: 'Keep Sheets standalone auth blocked until Blocks exposes anonymous CSRF bootstrap and request-header injection.'
+      }
+    ]
+  },
+  'organizations-meta-membership-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'require-meta-membership-root',
+        requirement: 'Require contract.members with a readable membership query root for the metadata membership alternative.'
+      },
+      {
+        id: 'prove-meta-membership-root-executable',
+        requirement: 'Confirm the membership root through same-endpoint introspection and prove the operation executable.'
+      },
+      {
+        id: 'prove-organization-identity-directory',
+        requirement: 'Satisfy organizations.identity-directory through auth Query.users with id and type or a readable application organization _meta root.'
+      }
+    ]
+  },
+  'storage-cross-endpoint-capability-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'restrict-storage-endpoint-kind',
+        requirement: 'Use only the storage, admin, or data endpoint kinds supported by the adapter.'
+      },
+      {
+        id: 'prove-storage-pair-on-one-endpoint',
+        requirement: 'Prove buckets and files together on the same endpoint through a paired GraphQL root variant or one compatible _meta family.'
+      },
+      {
+        id: 'fail-storage-without-paired-evidence',
+        requirement: 'Report Storage unavailable when same-endpoint paired evidence is absent.'
+      }
+    ]
+  },
+  'organizations-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-organizations-connection-shapes',
+        requirement: 'Validate pagination arguments, connection fields, pageInfo fields, and adapter-selected node fields for every required Organizations root.'
+      },
+      {
+        id: 'validate-meta-derived-organizations-shapes',
+        requirement: 'Apply the same validation to _meta-derived organization and membership roots before reporting Organizations ready.'
+      },
+      {
+        id: 'validate-organization-action-payloads',
+        requirement: 'Before enabling an Organizations action, validate its adapter-declared input plus the fixed payload path and required payload fields in organizations-enabled-actions.'
+      }
+    ]
+  },
+  'storage-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-storage-connection-shapes',
+        requirement: 'Validate pagination arguments, connection fields, pageInfo fields, and semantic node fields for the selected bucket and file roots.'
+      },
+      {
+        id: 'fail-storage-on-adapter-shape-mismatch',
+        requirement: 'Report Storage unavailable when either selected family cannot execute the adapter document shape.'
+      }
+    ]
+  },
+  'auth-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-auth-operation-shapes',
+        requirement: 'Validate every required Auth mutation input and payload field through standard introspection.'
+      },
+      {
+        id: 'fail-auth-on-adapter-shape-mismatch',
+        requirement: 'Report Auth unavailable when an operation name exists but its adapter-required shape does not.'
+      }
+    ]
+  },
+  'users-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-users-read-shapes',
+        requirement: 'Validate the users and appMemberships connection node types and required fields through standard introspection.'
+      },
+      {
+        id: 'fail-users-on-adapter-shape-mismatch',
+        requirement: 'Report Users unavailable when a query root exists but its adapter-required shape does not.'
+      },
+      {
+        id: 'validate-users-action-payloads',
+        requirement: 'Before enabling a Users action, validate its adapter-declared input plus the fixed payload path and required payload fields in users-enabled-actions.'
+      }
+    ]
+  },
+  'billing-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-billing-read-shapes',
+        requirement: 'Validate the plans and planSubscriptions connection node types and required fields through standard introspection.'
+      },
+      {
+        id: 'fail-billing-on-adapter-shape-mismatch',
+        requirement: 'Report Billing unavailable when a query root exists but its adapter-required shape does not.'
+      }
+    ]
+  },
+  'notifications-adapter-shape-false-ready': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'validate-notifications-inbox-shape',
+        requirement: 'Validate the notifications connection node type and required fields through standard introspection.'
+      },
+      {
+        id: 'fail-notifications-on-adapter-shape-mismatch',
+        requirement: 'Report Notifications unavailable when the query root exists but its adapter-required shape does not.'
+      }
+    ]
+  },
+  'notifications-settings-discovered-unimplemented': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'hide-unimplemented-notification-settings',
+        requirement: 'Treat notifications.settings as unavailable in Console Kit even when Query.notificationPreferences is discovered.'
+      },
+      {
+        id: 'require-notification-settings-resource-and-surface',
+        requirement: 'Expose settings only after the Notifications adapter and feature-pack contract implement a settings resource and surface.'
+      }
+    ]
+  }
+};
+
+const REGISTRY_QUERY_OVERRIDE_ITEMS = [
+  {
+    item: 'feature-pack-data',
+    sourceValueSha256:
+      'd72a2acee5ee58aa71cc2a413226936dbd18725d98678f371a756440b7eecbc5',
+    requiredPortableText: [
+      'adapter-driven Sheets view',
+      'Query._meta',
+      'authEndpoint',
+      'fail closed'
+    ]
+  },
+  {
+    item: 'console-module-data',
+    sourceValueSha256:
+      '1601f1a98def8390d3dd92d28f2b0b6b67f4da9b9ca40ed5f8e0b94bdbf863b8',
+    requiredPortableText: [
+      'adapter-driven Data view',
+      'Query._meta',
+      'nested Sheets Zustand store',
+      'storeSlice'
+    ]
+  }
+];
+
+const VERIFICATION_PROFILES = [
+  {
+    id: 'static-registry-install',
+    appliesTo: {
+      catalogItems: 'all-except-runtime-install-roots',
+      excludedInstallRoots: INSTALL_ROOT_NAMES
+    },
+    requirements: [
+      'Verify installed file bytes and declared registry dependency closure.',
+      'Run the consumer typecheck and production build.',
+      'Review visual and accessibility behavior when rendered UI changed.'
+    ],
+    mustNotRequire: [
+      'tenant endpoint configuration',
+      'Query._meta or GraphQL capability discovery',
+      'Auth flow acceptance',
+      'tenant CRUD or RLS acceptance'
+    ]
+  },
+  {
+    id: 'tenant-runtime',
+    appliesTo: {
+      installRoots: INSTALL_ROOT_NAMES,
+      surfaces: [
+        'standalone-feature-pack',
+        'console-module',
+        'preset',
+        'core',
+        'full-console'
+      ]
+    },
+    requirements: [
+      'Verify installed bytes, sidecars, typecheck, and production build.',
+      'Verify host endpoint and session configuration when required by the selected packs.',
+      'Verify _meta, introspection, and capability evidence when the selected surface performs discovery.',
+      'Verify Auth flows when Auth is installed and tenant CRUD plus denied RLS cases when the selected packs expose data actions.'
+    ],
+    sourceLimitationPolicy: {
+      blocking: 'fail acceptance while any applicable blocking limitation is open',
+      requireMitigation: 'pass only after every applicable mitigation requirement has evidence'
+    }
+  }
+];
+
+export const STANDALONE_PACK_SUMMARIES = {
+  auth: {
+    component: 'AuthFeaturePack',
+    importTarget: 'src/blocks/feature-packs/auth/auth-feature-pack.tsx',
+    propsType: 'AuthFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/auth/auth-feature-pack.tsx',
+      sha256: '0d5498ee937a72bad80488f162c4eb991bf15de4e1a6ac2842bdd5901941b4d2'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts',
+      sha256: 'f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527'
+    },
+    resourceProps: ['view', 'account'],
+    policyType: 'FeatureActionPolicy<AuthFeatureAction>',
+    actionsType: 'AuthFeatureActions',
+    policyKeys: [
+      'signIn', 'signUp', 'recoverPassword', 'resetPassword',
+      'sendVerificationEmail', 'signOut', 'updateProfile',
+      'changePassword', 'verifyPassword', 'requestAccountDeletion',
+      'disconnectConnectedAccount', 'revokeSession'
+    ],
+    actionInputs: [
+      ['signIn', '{ email; password; rememberMe? }'],
+      ['signUp', '{ email; password; rememberMe? }'],
+      ['recoverPassword', '{ email }'],
+      ['resetPassword', '{ password }'],
+      ['sendVerificationEmail', '{ email }'],
+      ['signOut', null],
+      ['updateProfile', '{ displayName }'],
+      ['changePassword', '{ currentPassword; newPassword }'],
+      ['verifyPassword', '{ password }'],
+      ['requestAccountDeletion', '{ password }'],
+      ['disconnectConnectedAccount', '{ accountId; password }'],
+      ['revokeSession', '{ sessionId }']
+    ],
+    viewState: {
+      controlled: ['mode:onModeChange', 'accountSection:onAccountSectionChange'],
+      defaults: ['defaultAccountSection'],
+      required: ['view'],
+      local: ['form values', 'pending actions', 'transient errors']
+    }
+  },
+  users: {
+    component: 'UsersFeaturePack',
+    importTarget: 'src/blocks/feature-packs/users/users-feature-pack.tsx',
+    propsType: 'UsersFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx',
+      sha256: '907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx',
+      sha256: '907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b'
+    },
+    resourceProps: ['resource'],
+    policyType: 'FeatureActionPolicy<UsersFeatureAction>',
+    actionsType: 'UsersFeatureActions',
+    policyKeys: [
+      'invite', 'assignInviteProfile', 'setApproved', 'setVerified',
+      'setBanned', 'setDisabled', 'setOwner', 'setAdmin', 'setProfile',
+      'setDirectPermission', 'createProfile', 'updateProfile',
+      'deleteProfile', 'setDefaultProfile', 'setProfilePermission',
+      'setDefaultPermission', 'cancelInvite', 'extendInvite'
+    ],
+    actionInputs: [
+      ['invite', '{ recipient; profileId? }'],
+      ['setApproved', '{ membershipId; approved }'],
+      ['setVerified', '{ membershipId; verified }'],
+      ['setBanned', '{ membershipId; banned }'],
+      ['setDisabled', '{ membershipId; disabled }'],
+      ['setOwner', '{ userId; owner }'],
+      ['setAdmin', '{ userId; admin }'],
+      ['setProfile', '{ membershipId; profileId? }'],
+      ['setDirectPermission', '{ userId; permissionId; granted }'],
+      ['createProfile', '{ name; slug; description? }'],
+      ['updateProfile', '{ profileId; name; slug; description? }'],
+      ['deleteProfile', '{ profileId }'],
+      ['setDefaultProfile', '{ profileId }'],
+      ['setProfilePermission', '{ profileId; permissionId; granted }'],
+      ['setDefaultPermission', '{ permissionId; granted }'],
+      ['cancelInvite', '{ inviteId }'],
+      ['extendInvite', '{ inviteId }']
+    ],
+    viewState: {
+      controlled: ['section:onSectionChange'],
+      defaults: ['defaultSection=members'],
+      required: ['resource'],
+      local: ['filters', 'dialogs', 'pending actions', 'transient errors']
+    }
+  },
+  organizations: {
+    component: 'OrganizationsFeaturePack',
+    importTarget: 'src/blocks/feature-packs/organizations/organizations-feature-pack.tsx',
+    propsType: 'OrganizationsFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/organizations/organizations-feature-pack.tsx',
+      sha256: '0eda91c1eaaf3350a7fa983c5dc9f59acdca696168e576b387e5d0f651e510d6'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts',
+      sha256: 'c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39'
+    },
+    resourceProps: ['resource'],
+    policyType: 'FeatureActionPolicy<OrganizationsFeatureAction>',
+    actionsType: 'OrganizationsFeatureActions',
+    policyKeys: [
+      'createOrganization', 'selectOrganization', 'updateOrganization',
+      'deleteOrganization', 'leaveOrganization', 'inviteMember',
+      'assignInviteProfile', 'cancelInvite', 'approveMember', 'banMember',
+      'disableMember', 'markMemberExternal', 'markMemberReadOnly',
+      'removeMember', 'grantAdmin', 'grantOwner', 'assignProfile',
+      'grantPermission', 'updateMemberProfile', 'createAccessProfile',
+      'updateAccessProfile', 'deleteAccessProfile', 'setProfilePermission',
+      'updateMembershipSettings', 'updateMembershipDefault',
+      'setHierarchyEdge', 'removeHierarchyEdge', 'createOrganizationApiKey',
+      'createOrganizationPrincipal', 'revokeOrganizationApiKey',
+      'revokeOrganizationPrincipal'
+    ],
+    actionInputs: [
+      ['createOrganization', '{ name }'],
+      ['selectOrganization', '{ organizationId }'],
+      ['updateOrganization', '{ organizationId; name; slug? }'],
+      ['deleteOrganization', '{ organizationId }'],
+      ['leaveOrganization', '{ organizationId; membershipId }'],
+      ['inviteMember', '{ organizationId; channel; recipient?; profileId?; expiresAt?; multiple?; inviteLimit?; isReadOnly? }'],
+      ['cancelInvite', '{ organizationId; inviteId }'],
+      ['updateMemberLifecycle', '{ organizationId; membershipId; patch }'],
+      ['removeMember', '{ organizationId; membershipId }'],
+      ['setMemberAdmin', '{ organizationId; actorId; isGrant }'],
+      ['setMemberOwner', '{ organizationId; actorId; isGrant }'],
+      ['setMemberProfile', '{ organizationId; membershipId; profileId; isGrant }'],
+      ['setMemberPermission', '{ organizationId; actorId; permissions; isGrant }'],
+      ['upsertMemberProfile', '{ organizationId; membershipId; profile }'],
+      ['createAccessProfile', '{ organizationId; name; description? }'],
+      ['updateAccessProfile', '{ organizationId; profileId; name; description? }'],
+      ['deleteAccessProfile', '{ organizationId; profileId }'],
+      ['setProfilePermission', '{ organizationId; profileId; permissionId; isGrant }'],
+      ['updateMembershipSettings', '{ organizationId; settingsId; patch }'],
+      ['updateMembershipDefault', '{ organizationId; defaultId; isApproved }'],
+      ['setHierarchyEdge', '{ organizationId; childId; parentId; positionTitle?; positionLevel? }'],
+      ['removeHierarchyEdge', '{ organizationId; edge }'],
+      ['createOrganizationApiKey', '{ organizationId; principalId; name; accessLevel?; mfaLevel?; expiresIn? }'],
+      ['createOrganizationPrincipal', '{ organizationId; name; useAdminOwner?; isReadOnly?; bypassStepUp? }'],
+      ['revokeOrganizationApiKey', '{ organizationId; apiKeyId }'],
+      ['revokeOrganizationPrincipal', '{ organizationId; principalId }']
+    ],
+    viewState: {
+      controlled: [
+        'section:onSectionChange',
+        'createOrganizationOpen:onCreateOrganizationOpenChange'
+      ],
+      defaults: ['defaultSection=members'],
+      required: ['resource'],
+      local: ['filters', 'dialogs', 'pending actions', 'transient errors']
+    }
+  },
+  storage: {
+    component: 'StorageFeaturePack',
+    importTarget: 'src/blocks/feature-packs/storage/storage-feature-pack.tsx',
+    propsType: 'StorageFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx',
+      sha256: 'aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx',
+      sha256: 'aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11'
+    },
+    resourceProps: ['resource'],
+    policyType: 'FeatureActionPolicy<StorageFeatureAction>',
+    actionsType: 'StorageFeatureActions',
+    policyKeys: ['selectBucket', 'navigate', 'createBucket', 'upload', 'download', 'deleteObject'],
+    actionInputs: [
+      ['selectBucket', '{ bucketKey }'],
+      ['navigate', '{ bucketKey; path }'],
+      ['createBucket', "{ name; access: 'public' | 'private' }"],
+      ['upload', '{ bucketKey; path; files }'],
+      ['download', '{ bucketKey; objectKey }'],
+      ['deleteObject', '{ bucketKey; objectKey }']
+    ],
+    viewState: {
+      controlled: [],
+      defaults: [],
+      required: ['resource'],
+      local: ['dialogs', 'pending actions', 'transient errors']
+    }
+  },
+  billing: {
+    component: 'BillingFeaturePack',
+    importTarget: 'src/blocks/feature-packs/billing/billing-feature-pack.tsx',
+    propsType: 'BillingFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/billing/billing-feature-pack.tsx',
+      sha256: 'd9a68dedca37a2e3f04fbb57020bfd8379ea7c4ffde601cb503853ba6b8f5ccf'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx',
+      sha256: '5397c2813be9629e500e0ffc0eae75ce2f061c772476e55b6811281feb50a89b'
+    },
+    resourceProps: ['account', 'resources', 'formatOptions'],
+    policyType: null,
+    actionsType: 'BillingSettingsActions',
+    policyKeys: [],
+    actionInputs: [
+      ['onPricingIntervalChange', "BillingPricingTableProps['onIntervalChange']"],
+      ['onSelectPlan', "BillingPricingTableProps['onSelectPlan']"],
+      ['onContactSales', "BillingPricingTableProps['onContactSales']"],
+      ['onManageSubscription', "BillingSubscriptionCardProps['onManageSubscription']"],
+      ['onChangePlan', "BillingSubscriptionCardProps['onChangePlan']"],
+      ['onResolvePayment', "BillingSubscriptionCardProps['onResolvePayment']"],
+      ['onViewHistory', "BillingUsageOverviewProps['onViewHistory']"],
+      ['onBuyCredits', "BillingUsageOverviewProps['onBuyCredits']"],
+      ['onHistoryMeterChange', "BillingUsageHistoryProps['onMeterChange']"],
+      ['onHistoryPeriodChange', "BillingUsageHistoryProps['onPeriodChange']"],
+      ['onHistoryPageChange', "BillingUsageHistoryProps['onPageChange']"],
+      ['onActivityMeterChange', "BillingActivityTableProps['onMeterChange']"],
+      ['onActivityEntryTypeChange', "BillingActivityTableProps['onEntryTypeChange']"],
+      ['onActivityPageChange', "BillingActivityTableProps['onPageChange']"]
+    ],
+    viewState: {
+      controlled: ['section:onSectionChange', 'controls.*'],
+      defaults: ['defaultSection', 'controls.*.default*'],
+      required: ['account', 'resources', 'formatOptions'],
+      local: ['pending actions', 'transient messages']
+    }
+  },
   notifications: {
-    'notifications.settings': [['notifications']]
+    component: 'NotificationsFeaturePack',
+    importTarget: 'src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+    propsType: 'NotificationsFeaturePackProps',
+    componentSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+      sha256: '95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800'
+    },
+    contractSource: {
+      path: 'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+      sha256: '95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800'
+    },
+    resourceProps: ['resource'],
+    policyType: 'FeatureActionPolicy<NotificationsFeatureAction>',
+    actionsType: 'NotificationsFeatureActions',
+    policyKeys: ['markRead', 'markAllRead', 'deleteNotification', 'openNotification'],
+    actionInputs: [
+      ['markRead', '{ notificationId }'],
+      ['markAllRead', null],
+      ['deleteNotification', '{ notificationId }'],
+      ['openNotification', '{ notification }']
+    ],
+    viewState: {
+      controlled: [],
+      defaults: [],
+      required: ['resource'],
+      local: ['filter', 'dialogs', 'pending actions', 'transient errors']
+    }
   }
 };
 
@@ -401,8 +1666,28 @@ function assertBindingSet(
       Array.isArray(binding.alternatives) && binding.alternatives.length > 0,
       `${label} ${binding.capability} needs evidence alternatives.`
     );
-    for (const alternative of binding.alternatives) {
+    for (
+      let alternativeIndex = 0;
+      alternativeIndex < binding.alternatives.length;
+      alternativeIndex += 1
+    ) {
+      const alternative = binding.alternatives[alternativeIndex];
       assertObject(alternative, `${binding.capability} alternative`);
+      assert(
+        alternative.id ===
+          `${binding.capability}.path-${alternativeIndex + 1}`,
+        `${binding.capability} alternative id drifted.`
+      );
+      assert(
+        alternative.verificationProfile === 'tenant-runtime',
+        `${binding.capability} alternative verification profile drifted.`
+      );
+      const expectedPathGroup =
+        ALTERNATIVE_PATH_GROUPS[binding.capability]?.[alternativeIndex] ?? null;
+      assert(
+        (alternative.adapterPathGroup ?? null) === expectedPathGroup,
+        `${binding.capability} alternative path group drifted.`
+      );
       assertStringArray(
         alternative.endpointKinds,
         `${binding.capability} endpointKinds`
@@ -449,8 +1734,21 @@ function assertConsoleModuleBindings(snapshot, manifestById, sources) {
       !bindingByPack.has(binding.featurePack),
       `Duplicate Console module binding ${binding.featurePack}.`
     );
+    let expectedReadyState = 'all-required-capabilities';
+    if (
+      binding.featurePack === 'organizations' &&
+      ADAPTER_REQUIREMENTS[binding.featurePack]
+    ) {
+      expectedReadyState =
+        'all-required-capabilities-adapter-requirements-and-prerequisites';
+    } else if (binding.featurePack === 'organizations') {
+      expectedReadyState = 'all-required-capabilities-and-prerequisites';
+    } else if (ADAPTER_REQUIREMENTS[binding.featurePack]) {
+      expectedReadyState =
+        'all-required-capabilities-and-adapter-requirements';
+    }
     assert(
-      binding.readyState === 'all-required-capabilities',
+      binding.readyState === expectedReadyState,
       `${binding.featurePack} readyState drifted.`
     );
     const sourcePath =
@@ -474,6 +1772,34 @@ function assertConsoleModuleBindings(snapshot, manifestById, sources) {
         `${binding.featurePack} adapter source ${index}`
       );
     }
+    assertExact(
+      binding.adapterRequirements ?? [],
+      ADAPTER_REQUIREMENTS[binding.featurePack] ?? [],
+      `${binding.featurePack}.adapterRequirements`
+    );
+    assertExact(
+      binding.adapterRequirementPolicy ?? null,
+      ADAPTER_REQUIREMENT_POLICIES[binding.featurePack] ?? null,
+      `${binding.featurePack}.adapterRequirementPolicy`
+    );
+    assertExact(
+      binding.adapterActionProfileIds ?? [],
+      ADAPTER_ACTION_PROFILE_IDS[binding.featurePack] ?? [],
+      `${binding.featurePack}.adapterActionProfileIds`
+    );
+    for (const profileId of binding.adapterActionProfileIds ?? []) {
+      assert(
+        snapshot.adapterActionProfiles[profileId],
+        `${binding.featurePack} references an unknown adapter action profile.`
+      );
+    }
+    for (const requirement of binding.adapterRequirements ?? []) {
+      if (!requirement.connectionProfile) continue;
+      assert(
+        snapshot.adapterContractProfiles[requirement.connectionProfile],
+        `${binding.featurePack} references an unknown adapter contract profile.`
+      );
+    }
     assertBindingSet(
       binding.required,
       REQUIRED_BINDING_ENDPOINTS[binding.featurePack],
@@ -487,6 +1813,15 @@ function assertConsoleModuleBindings(snapshot, manifestById, sources) {
       snapshot.endpointKinds,
       sources,
       `${binding.featurePack} optional bindings`
+    );
+    const expectedPrerequisites =
+      PREREQUISITE_BINDING_ENDPOINTS[binding.featurePack] ?? {};
+    assertBindingSet(
+      binding.prerequisites ?? [],
+      expectedPrerequisites,
+      snapshot.endpointKinds,
+      sources,
+      `${binding.featurePack} prerequisite bindings`
     );
     assertStringArray(
       binding.unboundOptionalCapabilities,
@@ -656,6 +1991,35 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
     snapshot.standaloneContracts.nonData.endpointResolution === 'none',
     'Non-Data standalone packs must not resolve endpoints.'
   );
+  assertExact(
+    snapshot.standaloneContracts.nonData.packs,
+    STANDALONE_PACK_SUMMARIES,
+    'Non-Data standalone pack summaries'
+  );
+  for (const [packId, summary] of Object.entries(
+    snapshot.standaloneContracts.nonData.packs
+  )) {
+    assertSourceLink(
+      summary.componentSource,
+      summary.componentSource.path,
+      sources,
+      `${packId} standalone component source`
+    );
+    assertSourceLink(
+      summary.contractSource,
+      summary.contractSource.path,
+      sources,
+      `${packId} standalone contract source`
+    );
+    assert(
+      summary.policyKeys.length > 0 || packId === 'billing',
+      `${packId} standalone policy vocabulary is missing.`
+    );
+    assert(
+      summary.actionInputs.length > 0,
+      `${packId} standalone action input vocabulary is missing.`
+    );
+  }
 
   const data = snapshot.standaloneContracts.data;
   assertObject(data, 'standaloneContracts.data');
@@ -673,6 +2037,22 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
   assert(data.configType === 'SheetsConfig', 'Standalone Data configType drifted.');
   assert(data.executeType === 'SheetsExecuteFn', 'Standalone Data executeType drifted.');
   assertExact(data.requiredConfigFields, ['endpoint', 'auth'], 'Standalone Data required config');
+  assertObject(data.authEndpointPolicy, 'Standalone Data authEndpointPolicy');
+  assert(
+    data.authEndpointPolicy.standaloneMode === 'required-explicit' &&
+      data.authEndpointPolicy.sourceType === 'optional-string' &&
+      data.authEndpointPolicy.sourceFallback ===
+        'config.authEndpoint || config.endpoint' &&
+      data.authEndpointPolicy.portableBehavior ===
+        'fail-closed-before-render',
+    'Standalone Data authEndpoint policy drifted.'
+  );
+  assertSourceLink(
+    data.authEndpointPolicy.source,
+    'packages/sheets/src/auth/auth-execute.ts',
+    sources,
+    'Standalone Data auth endpoint source'
+  );
   assertExact(
     data.internalEvidence,
     ['Query._meta', 'standard GraphQL introspection'],
@@ -794,6 +2174,301 @@ function assertHostOwnedStore(snapshot, sources) {
     sources,
     'Current Data store source'
   );
+  assertExact(
+    store.sourceLimitationIds,
+    ['data-console-nested-sheets-store'],
+    'Host store source limitation links'
+  );
+}
+
+function assertRegistryQueryOverrides(snapshot) {
+  assert(
+    Array.isArray(snapshot.registry.queryOverrides) &&
+      snapshot.registry.queryOverrides.length ===
+        REGISTRY_QUERY_OVERRIDE_ITEMS.length,
+    'registry.queryOverrides must contain every Data documentation correction.'
+  );
+  for (let index = 0; index < REGISTRY_QUERY_OVERRIDE_ITEMS.length; index += 1) {
+    const expected = REGISTRY_QUERY_OVERRIDE_ITEMS[index];
+    const override = snapshot.registry.queryOverrides[index];
+    assertObject(override, `${expected.item} registry query override`);
+    assert(
+      override.item === expected.item &&
+        override.field === 'docs' &&
+        override.status === 'superseded-by-portable-contract',
+      `${expected.item} registry query override identity drifted.`
+    );
+    assert(
+      override.sourceValueSha256 === expected.sourceValueSha256,
+      `${expected.item} source registry documentation hash drifted.`
+    );
+    assertString(
+      override.portableValue,
+      `${expected.item} portable registry documentation`
+    );
+    for (const requiredText of expected.requiredPortableText) {
+      assert(
+        override.portableValue.includes(requiredText),
+        `${expected.item} portable registry documentation is missing ${requiredText}.`
+      );
+    }
+    assert(
+      !/provider-neutral(?: data)? view/iu.test(override.portableValue) &&
+        !/host owns Sheets state/iu.test(override.portableValue),
+      `${expected.item} portable documentation retained known-wrong source prose.`
+    );
+  }
+}
+
+function assertSourceLimitations(snapshot, sources, itemByName) {
+  assert(Array.isArray(snapshot.sourceLimitations), 'sourceLimitations must be an array.');
+  const limitationById = byId(snapshot.sourceLimitations, 'Source limitation');
+  assertExact(
+    Array.from(limitationById.keys()),
+    Object.keys(SOURCE_LIMITATION_SCOPES),
+    'Source limitation order'
+  );
+  for (const [id, expectedScope] of Object.entries(SOURCE_LIMITATION_SCOPES)) {
+    const limitation = limitationById.get(id);
+    const expectedPolicy = SOURCE_LIMITATION_POLICIES[id];
+    assert(limitation, `Missing source limitation ${id}.`);
+    assert(
+      limitation.status === 'open-pinned-source-gap',
+      `${id}.status drifted.`
+    );
+    assertExact(limitation.appliesTo, expectedScope, `${id}.appliesTo`);
+    assert(
+      limitation.acceptance === expectedPolicy.acceptance,
+      `${id}.acceptance drifted.`
+    );
+    assert(
+      Array.isArray(limitation.mitigationRequirements),
+      `${id}.mitigationRequirements must be an array.`
+    );
+    const mitigationIds = new Set();
+    for (const mitigation of limitation.mitigationRequirements) {
+      assertObject(mitigation, `${id} mitigation requirement`);
+      assertString(mitigation.id, `${id} mitigation id`);
+      assertString(mitigation.requirement, `${id} mitigation requirement text`);
+      assert(
+        !mitigationIds.has(mitigation.id),
+        `${id} repeats mitigation id ${mitigation.id}.`
+      );
+      mitigationIds.add(mitigation.id);
+    }
+    assertExact(
+      limitation.mitigationRequirements,
+      expectedPolicy.mitigationRequirements,
+      `${id}.mitigationRequirements`
+    );
+    assertString(limitation.observedBehavior, `${id}.observedBehavior`);
+    assertString(limitation.portableRequirement, `${id}.portableRequirement`);
+    assertString(limitation.failureState, `${id}.failureState`);
+    assert(
+      Array.isArray(limitation.sourceEvidence),
+      `${id}.sourceEvidence must be an array.`
+    );
+    const expectedPaths = SOURCE_LIMITATION_PATHS[id];
+    assert(
+      limitation.sourceEvidence.length === expectedPaths.length,
+      `${id}.sourceEvidence count drifted.`
+    );
+    for (let index = 0; index < expectedPaths.length; index += 1) {
+      assertSourceLink(
+        limitation.sourceEvidence[index],
+        expectedPaths[index],
+        sources,
+        `${id} source ${index}`
+      );
+    }
+    for (const rootName of limitation.appliesTo.installRoots) {
+      const item = itemByName.get(rootName);
+      assert(item, `${id} references unknown install root ${rootName}.`);
+      assert(
+        limitation.appliesTo.surfaces.includes(item.surface),
+        `${id} does not include ${rootName}'s surface ${item.surface}.`
+      );
+      assert(
+        limitation.appliesTo.featurePacks.some((packId) =>
+          item.featurePacks.includes(packId)
+        ),
+        `${id} does not match ${rootName}'s feature packs.`
+      );
+    }
+  }
+  const nestedStore = limitationById.get('data-console-nested-sheets-store');
+  assert(
+    nestedStore.portableRequirement.includes('storeSlice') &&
+      nestedStore.failureState === 'known-nonconforming',
+    'Data nested-store limitation behavior drifted.'
+  );
+  const authFallback = limitationById.get(
+    'data-standalone-auth-endpoint-fallback'
+  );
+  assert(
+    authFallback.observedBehavior.includes('config.authEndpoint || config.endpoint') &&
+      authFallback.portableRequirement.includes('explicit non-empty authEndpoint') &&
+      authFallback.portableRequirement.includes('fail closed') &&
+      authFallback.failureState === 'configuration-error-before-render',
+    'Standalone Data auth-endpoint limitation behavior drifted.'
+  );
+  const databaseScope = limitationById.get(
+    'data-standalone-database-scope-fallback'
+  );
+  assert(
+    databaseScope.observedBehavior.includes("config.databaseId || 'default'") &&
+      databaseScope.portableRequirement.includes('tenant descriptor') &&
+      databaseScope.failureState === 'configuration-error-before-render',
+    'Standalone Data database-scope limitation behavior drifted.'
+  );
+  const persistentToken = limitationById.get(
+    'data-standalone-persistent-token-storage'
+  );
+  assert(
+    persistentToken.observedBehavior.includes('window.localStorage') &&
+      persistentToken.observedBehavior.includes('rememberMe') &&
+      persistentToken.portableRequirement.includes('embedded') &&
+      persistentToken.failureState === 'unsafe-persistent-credential-storage',
+    'Standalone Data persistent-token limitation behavior drifted.'
+  );
+  const csrf = limitationById.get('data-standalone-csrf-auth-unavailable');
+  assert(
+    csrf.observedBehavior.includes('csrfTokenProvider') &&
+      csrf.portableRequirement.includes('require_csrf_for_auth') &&
+      csrf.failureState === 'unsupported-security-mode',
+    'Standalone Data CSRF limitation behavior drifted.'
+  );
+  const organizations = limitationById.get(
+    'organizations-meta-membership-false-ready'
+  );
+  assert(
+    organizations.observedBehavior.includes('contract.members') &&
+      organizations.portableRequirement.includes('contract.members') &&
+      organizations.failureState === 'unavailable',
+    'Organizations false-ready limitation behavior drifted.'
+  );
+  const storage = limitationById.get(
+    'storage-cross-endpoint-capability-false-ready'
+  );
+  assert(
+    storage.observedBehavior.includes('different endpoints') &&
+      storage.portableRequirement.includes('storage, admin, or data') &&
+      storage.portableRequirement.includes('same endpoint') &&
+      storage.failureState === 'unavailable',
+    'Storage false-ready limitation behavior drifted.'
+  );
+  assertExact(
+    snapshot.standaloneContracts.data.sourceLimitationIds,
+    [
+      'data-standalone-auth-endpoint-fallback',
+      'data-standalone-database-scope-fallback',
+      'data-standalone-persistent-token-storage',
+      'data-standalone-csrf-auth-unavailable'
+    ],
+    'Standalone Data source limitation links'
+  );
+  const dataBinding = snapshot.consoleModuleBindings.find(
+    (binding) => binding.featurePack === 'data'
+  );
+  assert(dataBinding, 'Data module binding is missing.');
+  assertExact(
+    dataBinding.sourceLimitationIds,
+    ['data-console-nested-sheets-store'],
+    'Data Console source limitation links'
+  );
+  const organizationsBinding = snapshot.consoleModuleBindings.find(
+    (binding) => binding.featurePack === 'organizations'
+  );
+  assert(organizationsBinding, 'Organizations module binding is missing.');
+  assertExact(
+    organizationsBinding.sourceLimitationIds,
+    [
+      'organizations-meta-membership-false-ready',
+      'organizations-adapter-shape-false-ready'
+    ],
+    'Organizations source limitation links'
+  );
+  const organizationsPrerequisite = organizationsBinding.prerequisites[0];
+  assert(
+    organizationsPrerequisite.capability ===
+      'organizations.identity-directory',
+    'Organizations identity-directory prerequisite drifted.'
+  );
+  assertExact(
+    organizationsPrerequisite.alternatives[0].evidence,
+    {
+      type: 'graphql-operation-fields',
+      operation: 'query',
+      coordinate: 'Query.users',
+      requiredFields: ['id', 'type']
+    },
+    'Organizations auth identity prerequisite'
+  );
+  assert(
+    organizationsPrerequisite.alternatives[1].evidence.type ===
+      'compatible-meta-contract' &&
+      organizationsPrerequisite.alternatives[1].evidence.requirements.includes(
+        'readable application organization root'
+      ),
+    'Organizations application identity prerequisite drifted.'
+  );
+  const storageBinding = snapshot.consoleModuleBindings.find(
+    (binding) => binding.featurePack === 'storage'
+  );
+  assert(storageBinding, 'Storage module binding is missing.');
+  assertExact(
+    storageBinding.sourceLimitationIds,
+    [
+      'storage-cross-endpoint-capability-false-ready',
+      'storage-adapter-shape-false-ready'
+    ],
+    'Storage source limitation links'
+  );
+  const adapterLimitationIds = {
+    auth: ['auth-adapter-shape-false-ready'],
+    users: ['users-adapter-shape-false-ready'],
+    billing: ['billing-adapter-shape-false-ready'],
+    notifications: [
+      'notifications-adapter-shape-false-ready',
+      'notifications-settings-discovered-unimplemented'
+    ]
+  };
+  for (const [packId, limitationIds] of Object.entries(adapterLimitationIds)) {
+    const binding = snapshot.consoleModuleBindings.find(
+      (candidate) => candidate.featurePack === packId
+    );
+    assert(binding, `${packId} module binding is missing.`);
+    assertExact(
+      binding.sourceLimitationIds,
+      limitationIds,
+      `${packId} adapter-shape source limitation links`
+    );
+    const limitationId = limitationIds[0];
+    const limitation = limitationById.get(limitationId);
+    assert(
+      limitation.observedBehavior.includes('operation name') ||
+        limitation.observedBehavior.includes('query root'),
+      `${limitationId} observed behavior drifted.`
+    );
+    assert(
+      limitation.portableRequirement.includes('standard introspection') &&
+        limitation.failureState === 'unavailable',
+      `${limitationId} portable behavior drifted.`
+    );
+  }
+  const notificationsSettings = limitationById.get(
+    'notifications-settings-discovered-unimplemented'
+  );
+  assert(
+    notificationsSettings.observedBehavior.includes(
+      'notifications.settings'
+    ) &&
+      notificationsSettings.portableRequirement.includes(
+        'inbox and read-state only'
+      ) &&
+      notificationsSettings.failureState === 'unavailable',
+    'Notifications settings limitation behavior drifted.'
+  );
 }
 
 export function assertSnapshot(snapshot) {
@@ -808,6 +2483,14 @@ export function assertSnapshot(snapshot) {
   assert(snapshot.source.repository === PINNED.repository, 'source.repository drifted.');
   assert(snapshot.source.branch === PINNED.branch, 'source.branch drifted.');
   assert(snapshot.source.commit === PINNED.commit, 'source.commit drifted.');
+  assertExact(
+    snapshot.source.acceptedCheckoutStates,
+    [
+      'named-branch-at-pinned-commit',
+      'detached-at-pinned-commit'
+    ],
+    'Accepted Blocks checkout states'
+  );
   assert(
     snapshot.source.publicationStatus === PINNED.publicationStatus,
     'source.publicationStatus drifted.'
@@ -892,6 +2575,7 @@ export function assertSnapshot(snapshot) {
     snapshot.registry.componentsJson.registries[PINNED.registryNamespace] === PINNED.registryUrl,
     'Canonical registry namespace mapping drifted.'
   );
+  assertRegistryQueryOverrides(snapshot);
 
   assertExact(snapshot.endpointKinds, ENDPOINT_KINDS, 'Endpoint kind mapping');
   assertExact(snapshot.constructiveApiNames, CONSTRUCTIVE_API_NAMES, 'Constructive API mapping');
@@ -951,10 +2635,102 @@ export function assertSnapshot(snapshot) {
     assert(itemByName.has(`preset-${profileId}`), `Missing preset-${profileId}.`);
   }
 
+  assert(
+    Array.isArray(snapshot.backendPresetRouting),
+    'backendPresetRouting must be an array.'
+  );
+  assertExact(
+    snapshot.backendPresetSource,
+    BACKEND_PRESET_SOURCE,
+    'Backend preset source attestation'
+  );
+  assertExact(
+    snapshot.backendPresetRouting,
+    BACKEND_PRESET_ROUTES,
+    'Backend preset routing table'
+  );
+  const routedPresetSlugs = new Set();
+  for (const route of snapshot.backendPresetRouting) {
+    assert(
+      !routedPresetSlugs.has(route.presetSlug),
+      `Duplicate backend preset route ${route.presetSlug}.`
+    );
+    routedPresetSlugs.add(route.presetSlug);
+    if (route.frontendPresetRoot === null) {
+      assert(
+        route.presetSlug === 'blank' && route.featurePacks.length === 0,
+        'Only blank may be a backend-only empty preset route.'
+      );
+      assert(
+        itemByName.has(route.customComposition.coreRoot),
+        'Blank custom composition references a missing Console core root.'
+      );
+      continue;
+    }
+    const item = itemByName.get(route.frontendPresetRoot);
+    const profile = snapshot.presetProfiles.find(
+      (candidate) => candidate.presetSlug === route.presetSlug
+    );
+    assert(item, `${route.presetSlug} references a missing frontend preset root.`);
+    assert(profile, `${route.presetSlug} references a missing featureful profile.`);
+    assertExact(
+      route.featurePacks,
+      profile.featurePacks,
+      `${route.presetSlug} routed feature packs`
+    );
+    assertExact(
+      route.featurePacks,
+      item.featurePacks,
+      `${route.presetSlug} frontend-root feature packs`
+    );
+  }
+  assertExact(
+    Array.from(routedPresetSlugs),
+    ['blank', 'auth:hardened', 'b2b:storage', 'full'],
+    'Backend preset routing completeness'
+  );
+
   assertRelease(snapshot, sources);
+  assertExact(
+    snapshot.adapterContractProfiles,
+    ADAPTER_CONTRACT_PROFILES,
+    'Adapter contract profiles'
+  );
+  assertExact(
+    snapshot.adapterActionProfiles,
+    ADAPTER_ACTION_PROFILES,
+    'Adapter action profiles'
+  );
+  for (const [profileId, profile] of Object.entries(
+    snapshot.adapterActionProfiles
+  )) {
+    assertSourceLink(
+      profile.source,
+      profile.source.path,
+      sources,
+      `${profileId} action profile source`
+    );
+    assert(
+      profile.documents.length > 0,
+      `${profileId} must contain action documents.`
+    );
+    for (const document of profile.documents) {
+      assert(
+        Array.isArray(document) &&
+          document.length === profile.documentTupleFields.length,
+        `${profileId} action document tuple drifted.`
+      );
+    }
+  }
   assertMetaAndStandaloneContracts(snapshot, sources);
   assertConsoleModuleBindings(snapshot, manifestById, sources);
   assertHostOwnedStore(snapshot, sources);
+  assertSourceLimitations(snapshot, sources, itemByName);
+  assertExact(
+    snapshot.verificationProfiles,
+    VERIFICATION_PROFILES,
+    'Verification profiles'
+  );
 
   assertObject(snapshot.runtimeContract, 'runtimeContract');
   assert(snapshot.runtimeContract.appliesTo === 'console-kit', 'runtimeContract must apply to Console Kit.');
@@ -1059,6 +2835,19 @@ export function assertRegistryCatalog(catalog, snapshot) {
     'billing-settings-page'
   ].concat(INSTALL_ROOT_NAMES)) {
     assert(itemByName.has(name), `Registry catalog is missing ${name}.`);
+  }
+  for (const override of snapshot.registry.queryOverrides) {
+    const sourceItem = itemByName.get(override.item);
+    assert(sourceItem, `Registry catalog is missing ${override.item}.`);
+    assert(
+      sha256(Buffer.from(sourceItem.docs, 'utf8')) ===
+        override.sourceValueSha256,
+      `Raw ${override.item} documentation no longer matches its explicit query override.`
+    );
+    assert(
+      /provider-neutral(?: data)? view/iu.test(sourceItem.docs),
+      `${override.item} query override must be removed or updated when upstream prose is corrected.`
+    );
   }
   for (const item of snapshot.items) {
     const catalogItem = itemByName.get(item.name);
@@ -1262,6 +3051,154 @@ function usage() {
   ].join('\n');
 }
 
+function registryQueryOverride(snapshot, itemName) {
+  return snapshot.registry.queryOverrides.find(
+    (override) => override.item === itemName && override.field === 'docs'
+  ) ?? null;
+}
+
+function sourceLimitationsForRoot(snapshot, rootName) {
+  return snapshot.sourceLimitations.filter((limitation) =>
+    limitation.appliesTo.installRoots.includes(rootName)
+  );
+}
+
+function installabilityEnvelope(snapshot) {
+  const local = snapshot.release.localConsumption;
+  return {
+    releaseStatus: snapshot.release.status,
+    publicRegistryReady: snapshot.release.publicRegistryReady,
+    publicInstallCommands: {
+      status: 'blocked',
+      availability: 'future-only',
+      template: local.installCommandTemplate,
+      reason: 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
+    },
+    pinnedLocalConsumption: {
+      sourceCommit: snapshot.source.commit,
+      acceptedCheckoutStates: snapshot.source.acceptedCheckoutStates,
+      workflow: local.bootstrapSequence,
+      installCommandTemplate: local.localInstallCommandTemplate,
+      packageRegistryCommand: local.packageRegistryCommand,
+      blockRegistryCommand: local.blockRegistryCommand,
+      consumerNpmrc: local.consumerNpmrc,
+      consumerRegistryTemplate: local.consumerRegistryTemplate,
+      consumerIsolation: {
+        required: true,
+        workspace: local.consumerWorkspace
+      },
+      lockfile: {
+        frozenInstallRequired: true,
+        installCommand: local.bootstrapSequence[1],
+        localResolutionPolicy: local.localLockfilePolicy,
+        promotionRule: local.promotionRule
+      }
+    }
+  };
+}
+
+function rootItemForQuery(item, snapshot) {
+  const limitations = sourceLimitationsForRoot(snapshot, item.name);
+  const blocked = limitations.some(
+    (limitation) => limitation.acceptance === 'blocking'
+  );
+  return {
+    name: item.name,
+    surface: item.surface,
+    title: item.title,
+    description: item.description,
+    featurePacks: item.featurePacks,
+    presetProfiles: item.presetProfiles,
+    installCommand: item.installCommand,
+    sourceLimitationIds: limitations.map((limitation) => limitation.id),
+    sourceLimitationAcceptances: limitations.map((limitation) => ({
+      id: limitation.id,
+      acceptance: limitation.acceptance
+    })),
+    blocked
+  };
+}
+
+function metaContractForItem(snapshot, itemName) {
+  const installRoot = snapshot.items.find(
+    (candidate) => candidate.name === itemName
+  );
+  if (!installRoot || !installRoot.featurePacks.includes('data')) return null;
+  return snapshot.metaContract;
+}
+
+function registryItemForQuery(item, snapshot) {
+  const override = registryQueryOverride(snapshot, item.name);
+  const portableOverrides = override
+    ? [{
+        field: override.field,
+        status: override.status,
+        reason: override.reason
+      }]
+    : [];
+  return {
+    name: item.name,
+    type: item.type,
+    title: item.title,
+    description: item.description,
+    categories: item.categories,
+    docs: override ? override.portableValue : item.docs,
+    dependencies: item.dependencies,
+    devDependencies: item.devDependencies,
+    registryDependencies: item.registryDependencies,
+    files: item.files,
+    installCommand: item.installCommand,
+    portableOverrides,
+    sourceLimitations: sourceLimitationsForRoot(snapshot, item.name),
+    metaContract: metaContractForItem(snapshot, item.name),
+    installability: installabilityEnvelope(snapshot)
+  };
+}
+
+function planForQuery(plan, snapshot) {
+  const result = structuredClone(plan);
+  const override = registryQueryOverride(snapshot, plan.item);
+  if (override) result.registryDocumentation = override.portableValue;
+  return result;
+}
+
+function standaloneContractForPack(snapshot, packId) {
+  if (packId === 'data') return snapshot.standaloneContracts.data;
+  const nonData = snapshot.standaloneContracts.nonData;
+  return {
+    discovery: nonData.discovery,
+    endpointResolution: nonData.endpointResolution,
+    sessionOwnership: nonData.sessionOwnership,
+    hostProvides: nonData.hostProvides,
+    pack: nonData.packs[packId]
+  };
+}
+
+function adapterProfilesForBindings(snapshot, bindings) {
+  const contractIds = new Set();
+  const actionIds = new Set();
+  for (const binding of bindings) {
+    for (const requirement of binding.adapterRequirements ?? []) {
+      if (requirement.connectionProfile) {
+        contractIds.add(requirement.connectionProfile);
+      }
+    }
+    for (const profileId of binding.adapterActionProfileIds ?? []) {
+      actionIds.add(profileId);
+    }
+  }
+  return {
+    contracts: Array.from(contractIds).map((id) => ({
+      id,
+      contract: snapshot.adapterContractProfiles[id]
+    })),
+    actions: Array.from(actionIds).map((id) => ({
+      id,
+      contract: snapshot.adapterActionProfiles[id]
+    }))
+  };
+}
+
 function queryOutput(options, loaded) {
   if (!options.query) return null;
   switch (options.query.kind) {
@@ -1270,23 +3207,29 @@ function queryOutput(options, loaded) {
         schemaVersion: 1,
         kind: 'constructive.blocks-install-root-list',
         sourceCommit: PINNED.commit,
-        items: loaded.snapshot.items
+        installability: installabilityEnvelope(loaded.snapshot),
+        metaContract: loaded.snapshot.metaContract,
+        items: loaded.snapshot.items.map(
+          (item) => rootItemForQuery(item, loaded.snapshot)
+        )
       };
     case 'root': {
-      const plan = loaded.artifacts.planByItem.get(options.query.value);
-      assert(plan, `Unknown Console install root ${options.query.value}.`);
+      const sourcePlan = loaded.artifacts.planByItem.get(options.query.value);
+      assert(sourcePlan, `Unknown Console install root ${options.query.value}.`);
       const item = loaded.snapshot.items.find(
         (candidate) => candidate.name === options.query.value
       );
+      const plan = planForQuery(sourcePlan, loaded.snapshot);
       const standalonePackId = item.surface === 'standalone-feature-pack'
         ? item.featurePacks[0]
         : null;
       const standalone = standalonePackId
         ? {
             featurePack: standalonePackId,
-            contract: standalonePackId === 'data'
-              ? loaded.snapshot.standaloneContracts.data
-              : loaded.snapshot.standaloneContracts.nonData
+            contract: standaloneContractForPack(
+              loaded.snapshot,
+              standalonePackId
+            )
           }
         : null;
       const moduleBindings = item.surface === 'standalone-feature-pack'
@@ -1298,13 +3241,36 @@ function queryOutput(options, loaded) {
         schemaVersion: 1,
         kind: 'constructive.blocks-install-root',
         sourceCommit: PINNED.commit,
+        installability: installabilityEnvelope(loaded.snapshot),
+        backendPresetSource: loaded.snapshot.backendPresetSource,
+        backendPresetRoute: loaded.snapshot.backendPresetRouting.find(
+          (route) => route.frontendPresetRoot === item.name
+        ) ?? null,
         plan,
         portableContract: {
           standalone,
           consoleModuleBindings: moduleBindings,
+          adapterProfiles: adapterProfilesForBindings(
+            loaded.snapshot,
+            moduleBindings
+          ),
           consoleStore: item.surface === 'standalone-feature-pack'
             ? null
-            : loaded.snapshot.hostOwnedStore
+            : loaded.snapshot.hostOwnedStore,
+          metaContract: item.featurePacks.includes('data')
+            ? loaded.snapshot.metaContract
+            : null,
+          registryOverrides: loaded.snapshot.registry.queryOverrides.filter(
+            (override) => override.item === item.name
+          ).map((override) => ({
+            field: override.field,
+            status: override.status,
+            reason: override.reason
+          })),
+          sourceLimitations: sourceLimitationsForRoot(
+            loaded.snapshot,
+            item.name
+          )
         }
       };
     }
@@ -1324,11 +3290,13 @@ function queryOutput(options, loaded) {
       }
       const selected = loaded.artifacts.catalog.items.filter(
         (item) => !options.registryType || item.type === options.registryType
-      );
+      ).map((item) => registryItemForQuery(item, loaded.snapshot));
       return {
         schemaVersion: 1,
         kind: 'constructive.blocks-registry-item-list',
         sourceCommit: PINNED.commit,
+        installability: installabilityEnvelope(loaded.snapshot),
+        metaContract: loaded.snapshot.metaContract,
         filter: {
           type: options.registryType
         },
@@ -1340,7 +3308,10 @@ function queryOutput(options, loaded) {
           description: item.description,
           categories: item.categories,
           docs: item.docs,
-          installCommand: item.installCommand
+          installCommand: item.installCommand,
+          sourceLimitationIds: item.sourceLimitations.map(
+            (limitation) => limitation.id
+          )
         }))
       };
     }
@@ -1349,7 +3320,7 @@ function queryOutput(options, loaded) {
         (candidate) => candidate.name === options.query.value
       );
       assert(item, `Unknown registry item ${options.query.value}.`);
-      return item;
+      return registryItemForQuery(item, loaded.snapshot);
     }
     default:
       fail(`Unknown query mode ${options.query.kind}.`);
@@ -1463,6 +3434,222 @@ export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
   assert(
     /\bcreateSheetsStore\s*\(\s*\)/.test(dataProviderSource),
     'The pinned SheetsProvider no longer creates its nested Zustand store; update the conformance record.'
+  );
+  const authExecutePath = resolveInside(
+    blocksRepo,
+    'packages/sheets/src/auth/auth-execute.ts',
+    'Standalone Data auth execution path'
+  );
+  const authExecuteSource = readFileSync(authExecutePath, 'utf8');
+  assert(
+    /config\.authEndpoint\s*\|\|\s*config\.endpoint/.test(authExecuteSource),
+    'Standalone Data auth execution no longer falls back to the data endpoint; update the limitation.'
+  );
+  assert(
+    !authExecuteSource.includes('csrfTokenProvider'),
+    'Standalone Data auth execution now supports CSRF transport; update the limitation.'
+  );
+  const tokenStorePath = resolveInside(
+    blocksRepo,
+    'packages/sheets/src/auth/utils/token-store.ts',
+    'Standalone Data token store path'
+  );
+  const tokenStoreSource = readFileSync(tokenStorePath, 'utf8');
+  assert(
+    tokenStoreSource.includes('window.localStorage') &&
+      tokenStoreSource.includes('storage.setItem(storageKey(databaseId)'),
+    'Standalone Data no longer persists tokens in localStorage; update the limitation.'
+  );
+  for (const hookName of ['use-login.ts', 'use-register.ts']) {
+    const hookPath = resolveInside(
+      blocksRepo,
+      `packages/sheets/src/auth/hooks/${hookName}`,
+      `Standalone Data ${hookName} path`
+    );
+    const hookSource = readFileSync(hookPath, 'utf8');
+    assert(
+      hookSource.includes("config.databaseId || 'default'") &&
+        hookSource.includes('setStoredToken(') &&
+        hookSource.includes('rememberMe'),
+      `Standalone Data ${hookName} no longer exposes the database fallback and remember/persistence mismatch; update the limitations.`
+    );
+  }
+  const organizationsContractPath = resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts',
+    'Organizations metadata contract path'
+  );
+  const organizationsContractSource = readFileSync(
+    organizationsContractPath,
+    'utf8'
+  );
+  assert(
+    /\bmembers\?\s*:/.test(organizationsContractSource) &&
+      organizationsContractSource.includes(
+        'if (!memberTable) return { organizations: organization };'
+      ),
+    'Organizations metadata no longer permits an organizations-only contract; update the limitation.'
+  );
+  const organizationsModulePath = resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx',
+    'Organizations Console module path'
+  );
+  const organizationsModuleSource = readFileSync(organizationsModulePath, 'utf8');
+  assert(
+    organizationsModuleSource.includes('contract.members?.root') &&
+      organizationsModuleSource.includes(
+        "supportedCapabilities: ['organizations.memberships']"
+      ),
+    'Organizations discovery no longer reports memberships from an optional member contract; update the limitation.'
+  );
+  const organizationsAdapterSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts',
+    'Organizations adapter path'
+  ), 'utf8');
+  assert(
+    organizationsAdapterSource.includes('function connectionSelection(') &&
+      organizationsAdapterSource.includes('mutation ConsoleKitUpdateOrgMembership') &&
+      organizationsAdapterSource.includes("connectionSelection(schema, 'OrgMembership'") &&
+      organizationsAdapterSource.includes("connectionSelection(authSchema, typeName"),
+    'Organizations connection, action, or identity path shapes changed; update the limitation.'
+  );
+  const storageModulePath = resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx',
+    'Storage Console module path'
+  );
+  const storageModuleSource = readFileSync(storageModulePath, 'utf8');
+  assert(
+    storageModuleSource.includes("['storage', 'admin', 'data']") &&
+      storageModuleSource.includes(
+        'for (const [endpoint, metadata] of metadataByEndpoint)'
+      ) &&
+      storageModuleSource.includes(
+        "supportedCapabilities: ['storage.buckets', 'storage.files']"
+      ),
+    'Storage discovery no longer exposes the cross/any-endpoint mismatch; update the limitation.'
+  );
+  const storageAdapterPath = resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts',
+    'Storage adapter path'
+  );
+  const storageAdapterSource = readFileSync(storageAdapterPath, 'utf8');
+  assert(
+    storageAdapterSource.includes(
+      "const endpointPriority: readonly ConsoleEndpointKind[] = ["
+    ) &&
+      storageAdapterSource.includes("'storage',") &&
+      storageAdapterSource.includes("'admin',") &&
+      storageAdapterSource.includes("'data'") &&
+      storageAdapterSource.includes('function storageRoots('),
+    'Storage adapter endpoint or paired-root behavior changed; update the limitation.'
+  );
+
+  const authModuleSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx',
+    'Auth Console module path'
+  ), 'utf8');
+  const authAdapterSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts',
+    'Auth adapter path'
+  ), 'utf8');
+  assert(
+    authModuleSource.includes("fields: ['signIn', 'signUp']") &&
+      authAdapterSource.includes('query ConsoleKitCurrentAccount') &&
+      authAdapterSource.includes('mutation ConsoleKitResetPassword'),
+    'Auth discovery or its fixed adapter operation shapes changed; update the limitation.'
+  );
+
+  const usersModuleSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx',
+    'Users Console module path'
+  ), 'utf8');
+  const usersAdapterSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts',
+    'Users adapter path'
+  ), 'utf8');
+  assert(
+    usersModuleSource.includes("fields: ['users']") &&
+      usersModuleSource.includes("fields: ['appMemberships']") &&
+      usersAdapterSource.includes("connectionSelection(adminSchema, 'AppMembership'") &&
+      usersAdapterSource.includes('mutation ConsoleKitUpdateAppMembership'),
+    'Users discovery or its connection/action shapes changed; update the limitation.'
+  );
+
+  const billingModuleSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx',
+    'Billing Console module path'
+  ), 'utf8');
+  const billingAdapterSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts',
+    'Billing adapter path'
+  ), 'utf8');
+  assert(
+    billingModuleSource.includes("fields: ['plans']") &&
+      billingAdapterSource.includes('function connectionContract(') &&
+      billingAdapterSource.includes('query ConsoleKitBilling'),
+    'Billing discovery or its fixed connection shapes changed; update the limitation.'
+  );
+
+  const notificationsModuleSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx',
+    'Notifications Console module path'
+  ), 'utf8');
+  const notificationsAdapterSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts',
+    'Notifications adapter path'
+  ), 'utf8');
+  const notificationsFeatureSource = readFileSync(resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx',
+    'Notifications feature-pack path'
+  ), 'utf8');
+  assert(
+    notificationsModuleSource.includes("capability: 'notifications.settings'") &&
+      notificationsAdapterSource.includes(
+        "const capabilities: readonly AtomicCapabilityId[] = ['notifications.inbox']"
+      ) &&
+      !notificationsAdapterSource.includes("'notifications.settings'") &&
+      notificationsAdapterSource.includes('function connectionContract(') &&
+      notificationsFeatureSource.includes('NotificationsFeatureData') &&
+      !notificationsFeatureSource.includes('notificationPreferences'),
+    'Notifications discovery, inbox adapter shape, or unimplemented settings boundary changed; update the limitations.'
+  );
+
+  const appShellSource = readFileSync(resolveInside(
+    blocksRepo,
+    'packages/ui/src/components/app-shell.tsx',
+    'App shell source path'
+  ), 'utf8');
+  const sidebarSource = readFileSync(resolveInside(
+    blocksRepo,
+    'packages/ui/src/components/sidebar.tsx',
+    'Sidebar source path'
+  ), 'utf8');
+  const uiIndexSource = readFileSync(resolveInside(
+    blocksRepo,
+    'packages/ui/src/index.ts',
+    'UI package index path'
+  ), 'utf8');
+  assert(
+    appShellSource.includes('<SidebarProvider') &&
+      appShellSource.includes('return useRender({') &&
+      sidebarSource.includes("const SIDEBAR_COOKIE_NAME = 'sidebar_state'") &&
+      sidebarSource.includes('function SidebarProvider(') &&
+      uiIndexSource.includes('AppShell,') &&
+      uiIndexSource.includes('SidebarProvider,'),
+    'The pinned shadcn-aligned app shell or sidebar export contract changed.'
   );
 
   const inspectorPath = resolveInside(

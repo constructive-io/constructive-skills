@@ -14,6 +14,10 @@
     },
     "publicationStatus": "branch-only",
     "trackedWorktreeRequired": true,
+    "acceptedCheckoutStates": [
+      "named-branch-at-pinned-commit",
+      "detached-at-pinned-commit"
+    ],
     "attestations": {
       "algorithm": "sha256",
       "aggregateRegistry": {
@@ -62,6 +66,10 @@
           "sha256": "7b092ecb015eedad25e659fcd564939f11bf1ef59d9275f9ce61f33bc2681f78"
         },
         {
+          "path": "apps/blocks/src/blocks/console-runtime/standalone-session.ts",
+          "sha256": "9f36e69d3bbcd27adebbb000acfb5212e8897bf67c8aeba650af37bdfec0bc8a"
+        },
+        {
           "path": "apps/blocks/src/blocks/console-kit/feature-module.ts",
           "sha256": "f2524093568bb955ba6b7eb3900e97aa1ae6c945da8d6f9543edc8b293fc1134"
         },
@@ -102,12 +110,44 @@
           "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
         },
         {
+          "path": "packages/sheets/src/auth/auth-execute.ts",
+          "sha256": "202e43e34ccb7677a092ee26ccaab3ee56f27e85d8e6a94b410cefb554fc683b"
+        },
+        {
+          "path": "packages/sheets/src/auth/utils/token-store.ts",
+          "sha256": "8f1840ad5b49528cf0c2ad72db725c4f2de5475799c2690e1a6a629ad8956592"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-login.ts",
+          "sha256": "0128599a8c2a6ba14f7717757f6c0fb8dc407f2f2c2a4d61fb80326ec31b39b3"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-register.ts",
+          "sha256": "c967f644cd6a65eb2880cffaecb7de15a4a91ef253085707a23aa94a74afb3a4"
+        },
+        {
           "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
           "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
         },
         {
           "path": "packages/ui/package.json",
           "sha256": "25bb3f7c9faa713107d90dff57adacad6b3a0b877f92261ceb70cca7ffb09989"
+        },
+        {
+          "path": "packages/ui/src/components/sidebar.tsx",
+          "sha256": "838bea7824394551408835169f3a8d7392a9b79a298a5e0f89232c5c87b918e7"
+        },
+        {
+          "path": "packages/ui/src/components/app-bar.tsx",
+          "sha256": "223ba2b7542d5daa9633658e3df948e6ff91f18059d7076a8ad600e09895e277"
+        },
+        {
+          "path": "packages/ui/src/components/app-shell.tsx",
+          "sha256": "77be740e5fee1a410b586a669d5bb27b99be51e1c08f329e4eae55c57913d8d6"
+        },
+        {
+          "path": "packages/ui/src/index.ts",
+          "sha256": "7fb432a69eee6f08229043cecf3bdf47b51c5dfaa2831de1ffcb28d8fee810c5"
         },
         {
           "path": "packages/schema-builder/package.json",
@@ -122,12 +162,32 @@
           "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
         },
         {
+          "path": "apps/blocks/src/blocks/feature-packs/auth/auth-feature-pack.tsx",
+          "sha256": "0d5498ee937a72bad80488f162c4eb991bf15de4e1a6ac2842bdd5901941b4d2"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts",
+          "sha256": "f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527"
+        },
+        {
           "path": "apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx",
           "sha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
         },
         {
+          "path": "apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx",
+          "sha256": "907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b"
+        },
+        {
           "path": "apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx",
           "sha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-feature-pack.tsx",
+          "sha256": "0eda91c1eaaf3350a7fa983c5dc9f59acdca696168e576b387e5d0f651e510d6"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts",
+          "sha256": "c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39"
         },
         {
           "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
@@ -142,6 +202,10 @@
           "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
         },
         {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx",
+          "sha256": "aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11"
+        },
+        {
           "path": "apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts",
           "sha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
         },
@@ -150,8 +214,24 @@
           "sha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
         },
         {
+          "path": "apps/blocks/src/blocks/feature-packs/billing/billing-feature-pack.tsx",
+          "sha256": "d9a68dedca37a2e3f04fbb57020bfd8379ea7c4ffde601cb503853ba6b8f5ccf"
+        },
+        {
+          "path": "apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx",
+          "sha256": "5397c2813be9629e500e0ffc0eae75ce2f061c772476e55b6811281feb50a89b"
+        },
+        {
           "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
           "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+          "sha256": "95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts",
+          "sha256": "4beae59678b57e32decbbe8e823e434d06e94102be13634fd5557cd6d4a73552"
         },
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts",
@@ -375,6 +455,24 @@
     "urlTemplate": "https://constructive-io.github.io/blocks/r/{name}.json",
     "shadcnVersion": "4.13.1",
     "shadcnVersionPolicy": "exact",
+    "queryOverrides": [
+      {
+        "item": "feature-pack-data",
+        "field": "docs",
+        "status": "superseded-by-portable-contract",
+        "sourceValueSha256": "d72a2acee5ee58aa71cc2a413226936dbd18725d98678f371a756440b7eecbc5",
+        "portableValue": "`feature-pack-data` installs an adapter-driven Sheets view and `.constructive/feature-packs/data.json`. Import from `@/blocks/feature-packs/data/data-feature-pack`. The host supplies `SheetsConfig` with a resolved data endpoint and auth/session transport; Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and owns its table state and CRUD execution.\n\nFor `auth.mode: 'standalone'`, require an explicit non-empty `authEndpoint` and fail closed before rendering when it is absent; the pinned source otherwise falls back to the data endpoint. In embedded mode, the host may inject `SheetsExecuteFn` as `execute` to preserve its scoped transport boundary. Add `console-module-data` when Console Kit should resolve the semantic data endpoint and session transport.\n\nDegraded states: incompatible metadata stays explicit, missing standalone auth routing is a configuration error, and PostgreSQL privileges and RLS decide every query and mutation.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
+        "reason": "Pinned registry documentation applies generic standalone-pack ownership prose that contradicts the attested DataFeaturePack and Sheets sources. Validated queries replace that field while retaining the raw catalog only as source evidence."
+      },
+      {
+        "item": "console-module-data",
+        "field": "docs",
+        "status": "superseded-by-portable-contract",
+        "sourceValueSha256": "1601f1a98def8390d3dd92d28f2b0b6b67f4da9b9ca40ed5f8e0b94bdbf863b8",
+        "portableValue": "`console-module-data` installs Console Kit core, the adapter-driven Data view, and its Constructive integration. Import `dataConsoleModule` from `@/blocks/feature-packs/data/data-console-module` and compose it with `ConstructiveConsoleKitCore`; the validated install-root query reports the exact import targets, transitive closure, endpoint binding, current source limitations, and mitigations.\n\nConsole Kit resolves the explicit semantic data endpoint and session-scoped transport. Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and executes table CRUD through that transport. The pinned Data module currently mounts a nested Sheets Zustand store instead of contributing its state through `storeSlice`, so Console roots containing Data remain blocked against the target single-store architecture until Blocks source is unified.\n\nDegraded states: a missing or incompatible data endpoint, current `_meta` contract, introspection result, or application table scope keeps Data unavailable; PostgreSQL privileges and RLS remain authoritative.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
+        "reason": "Pinned registry documentation describes the Data view with the generic standalone ownership model and omits the attested nested-store limitation. Validated queries replace that field while retaining the raw catalog only as source evidence."
+      }
+    ],
     "catalog": {
       "path": "references/registry-catalog.v1.json",
       "itemCount": 102,
@@ -435,6 +533,115 @@
       "standard GraphQL introspection cross-check"
     ]
   },
+  "adapterContractProfiles": {
+    "minimal-nodes-connection": {
+      "requiredConnectionFields": [
+        "nodes"
+      ]
+    },
+    "relay-forward-connection": {
+      "requiredRootArguments": [
+        {
+          "name": "first",
+          "allowedTypes": [
+            "Int",
+            "Int!"
+          ]
+        },
+        {
+          "name": "after",
+          "allowedTypes": [
+            "Cursor"
+          ],
+          "requiredNullability": "nullable"
+        }
+      ],
+      "requiredConnectionFields": [
+        "nodes",
+        "pageInfo"
+      ],
+      "requiredPageInfoFields": [
+        "hasNextPage",
+        "endCursor"
+      ]
+    }
+  },
+  "adapterActionProfiles": {
+    "users-enabled-actions": {
+      "source": {
+        "path": "apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts",
+        "sha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
+      },
+      "appliesWhen": "action-policy-would-be-enabled",
+      "readinessImpact": "action-only",
+      "endpointKind": "admin",
+      "requiredArgument": "input",
+      "inputValidation": "adapter-declared-required-fields",
+      "documentTupleFields": [
+        "coordinate",
+        "inputType",
+        "payloadPath",
+        "requiredPayloadFields"
+      ],
+      "documents": [
+        ["Mutation.updateAppMembership", "UpdateAppMembershipInput", "appMembership", ["id"]],
+        ["Mutation.createAppOwnerGrant", "CreateAppOwnerGrantInput", "appOwnerGrant", ["id"]],
+        ["Mutation.createAppAdminGrant", "CreateAppAdminGrantInput", "appAdminGrant", ["id"]],
+        ["Mutation.createAppGrant", "CreateAppGrantInput", "appGrant", ["id"]],
+        ["Mutation.createAppProfileGrant", "CreateAppProfileGrantInput", "appProfileGrant", ["id"]],
+        ["Mutation.createAppProfileDefinitionGrant", "CreateAppProfileDefinitionGrantInput", "appProfileDefinitionGrant", ["id"]],
+        ["Mutation.createAppPermissionDefaultGrant", "CreateAppPermissionDefaultGrantInput", "appPermissionDefaultGrant", ["id"]],
+        ["Mutation.createAppProfile", "CreateAppProfileInput", "appProfile", ["id"]],
+        ["Mutation.updateAppProfile", "UpdateAppProfileInput", "appProfile", ["id"]],
+        ["Mutation.deleteAppProfile", "DeleteAppProfileInput", "appProfile", ["id"]],
+        ["Mutation.createAppInvite", "CreateAppInviteInput", "appInvite", ["id"]],
+        ["Mutation.updateAppInvite", "UpdateAppInviteInput", "appInvite", ["id"]],
+        ["Mutation.deleteAppInvite", "DeleteAppInviteInput", "appInvite", ["id"]]
+      ]
+    },
+    "organizations-enabled-actions": {
+      "source": {
+        "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
+        "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+      },
+      "appliesWhen": "action-policy-would-be-enabled",
+      "readinessImpact": "action-only",
+      "endpointKind": "admin",
+      "requiredArgument": "input",
+      "inputValidation": "adapter-declared-required-fields",
+      "documentTupleFields": [
+        "coordinate",
+        "inputType",
+        "payloadPath",
+        "requiredPayloadFields"
+      ],
+      "documents": [
+        ["Mutation.updateOrgMembership", "UpdateOrgMembershipInput", "orgMembership", ["id"]],
+        ["Mutation.deleteOrgMembership", "DeleteOrgMembershipInput", "orgMembership", ["id"]],
+        ["Mutation.createOrgAdminGrant", "CreateOrgAdminGrantInput", "orgAdminGrant", ["id"]],
+        ["Mutation.createOrgOwnerGrant", "CreateOrgOwnerGrantInput", "orgOwnerGrant", ["id"]],
+        ["Mutation.createOrgGrant", "CreateOrgGrantInput", "orgGrant", ["id"]],
+        ["Mutation.createOrgProfileGrant", "CreateOrgProfileGrantInput", "orgProfileGrant", ["id"]],
+        ["Mutation.createOrgProfileDefinitionGrant", "CreateOrgProfileDefinitionGrantInput", "orgProfileDefinitionGrant", ["id"]],
+        ["Mutation.createOrgProfile", "CreateOrgProfileInput", "orgProfile", ["id"]],
+        ["Mutation.updateOrgProfile", "UpdateOrgProfileInput", "orgProfile", ["id"]],
+        ["Mutation.deleteOrgProfile", "DeleteOrgProfileInput", "orgProfile", ["id"]],
+        ["Mutation.createOrgMemberProfile", "CreateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
+        ["Mutation.updateOrgMemberProfile", "UpdateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
+        ["Mutation.updateOrgMembershipSetting", "UpdateOrgMembershipSettingInput", "orgMembershipSetting", ["id"]],
+        ["Mutation.updateOrgMembershipDefault", "UpdateOrgMembershipDefaultInput", "orgMembershipDefault", ["id"]],
+        ["Mutation.createOrgChartEdgeGrant", "CreateOrgChartEdgeGrantInput", "orgChartEdgeGrant", ["id"]],
+        ["Mutation.createOrgInvite", "CreateOrgInviteInput", "orgInvite", ["id"]],
+        ["Mutation.deleteOrgInvite", "DeleteOrgInviteInput", "orgInvite", ["id"]],
+        ["Mutation.deleteUser", "DeleteUserInput", "user", ["id"]],
+        ["Mutation.updateUser", "UpdateUserInput", "user", ["id"]],
+        ["Mutation.revokeOrgApiKey", "RevokeOrgApiKeyInput", null, ["result"]],
+        ["Mutation.deleteOrgPrincipal", "DeleteOrgPrincipalInput", null, ["result"]],
+        ["Mutation.createOrgPrincipal", "CreateOrgPrincipalInput", null, ["result"]],
+        ["Mutation.createUser", "CreateUserInput", "user", ["id", "type", "displayName", "username", "profilePicture"]]
+      ]
+    }
+  },
   "standaloneContracts": {
     "nonData": {
       "featurePacks": [
@@ -455,7 +662,626 @@
         "semantic actions",
         "errors",
         "selection and view state"
-      ]
+      ],
+      "packs": {
+        "auth": {
+          "component": "AuthFeaturePack",
+          "importTarget": "src/blocks/feature-packs/auth/auth-feature-pack.tsx",
+          "propsType": "AuthFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/auth/auth-feature-pack.tsx",
+            "sha256": "0d5498ee937a72bad80488f162c4eb991bf15de4e1a6ac2842bdd5901941b4d2"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/auth/auth-contracts.ts",
+            "sha256": "f8285d204946bc596a84ba323cebf33f649ade1a4b8a2af6365bc7c4bdaef527"
+          },
+          "resourceProps": [
+            "view",
+            "account"
+          ],
+          "policyType": "FeatureActionPolicy<AuthFeatureAction>",
+          "actionsType": "AuthFeatureActions",
+          "policyKeys": [
+            "signIn",
+            "signUp",
+            "recoverPassword",
+            "resetPassword",
+            "sendVerificationEmail",
+            "signOut",
+            "updateProfile",
+            "changePassword",
+            "verifyPassword",
+            "requestAccountDeletion",
+            "disconnectConnectedAccount",
+            "revokeSession"
+          ],
+          "actionInputs": [
+            [
+              "signIn",
+              "{ email; password; rememberMe? }"
+            ],
+            [
+              "signUp",
+              "{ email; password; rememberMe? }"
+            ],
+            [
+              "recoverPassword",
+              "{ email }"
+            ],
+            [
+              "resetPassword",
+              "{ password }"
+            ],
+            [
+              "sendVerificationEmail",
+              "{ email }"
+            ],
+            [
+              "signOut",
+              null
+            ],
+            [
+              "updateProfile",
+              "{ displayName }"
+            ],
+            [
+              "changePassword",
+              "{ currentPassword; newPassword }"
+            ],
+            [
+              "verifyPassword",
+              "{ password }"
+            ],
+            [
+              "requestAccountDeletion",
+              "{ password }"
+            ],
+            [
+              "disconnectConnectedAccount",
+              "{ accountId; password }"
+            ],
+            [
+              "revokeSession",
+              "{ sessionId }"
+            ]
+          ],
+          "viewState": {
+            "controlled": [
+              "mode:onModeChange",
+              "accountSection:onAccountSectionChange"
+            ],
+            "defaults": [
+              "defaultAccountSection"
+            ],
+            "required": [
+              "view"
+            ],
+            "local": [
+              "form values",
+              "pending actions",
+              "transient errors"
+            ]
+          }
+        },
+        "users": {
+          "component": "UsersFeaturePack",
+          "importTarget": "src/blocks/feature-packs/users/users-feature-pack.tsx",
+          "propsType": "UsersFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx",
+            "sha256": "907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/users/users-feature-pack.tsx",
+            "sha256": "907b439865b2d65be794718227e84912df8a72b507d80773e02bb487da4c0b0b"
+          },
+          "resourceProps": [
+            "resource"
+          ],
+          "policyType": "FeatureActionPolicy<UsersFeatureAction>",
+          "actionsType": "UsersFeatureActions",
+          "policyKeys": [
+            "invite",
+            "assignInviteProfile",
+            "setApproved",
+            "setVerified",
+            "setBanned",
+            "setDisabled",
+            "setOwner",
+            "setAdmin",
+            "setProfile",
+            "setDirectPermission",
+            "createProfile",
+            "updateProfile",
+            "deleteProfile",
+            "setDefaultProfile",
+            "setProfilePermission",
+            "setDefaultPermission",
+            "cancelInvite",
+            "extendInvite"
+          ],
+          "actionInputs": [
+            [
+              "invite",
+              "{ recipient; profileId? }"
+            ],
+            [
+              "setApproved",
+              "{ membershipId; approved }"
+            ],
+            [
+              "setVerified",
+              "{ membershipId; verified }"
+            ],
+            [
+              "setBanned",
+              "{ membershipId; banned }"
+            ],
+            [
+              "setDisabled",
+              "{ membershipId; disabled }"
+            ],
+            [
+              "setOwner",
+              "{ userId; owner }"
+            ],
+            [
+              "setAdmin",
+              "{ userId; admin }"
+            ],
+            [
+              "setProfile",
+              "{ membershipId; profileId? }"
+            ],
+            [
+              "setDirectPermission",
+              "{ userId; permissionId; granted }"
+            ],
+            [
+              "createProfile",
+              "{ name; slug; description? }"
+            ],
+            [
+              "updateProfile",
+              "{ profileId; name; slug; description? }"
+            ],
+            [
+              "deleteProfile",
+              "{ profileId }"
+            ],
+            [
+              "setDefaultProfile",
+              "{ profileId }"
+            ],
+            [
+              "setProfilePermission",
+              "{ profileId; permissionId; granted }"
+            ],
+            [
+              "setDefaultPermission",
+              "{ permissionId; granted }"
+            ],
+            [
+              "cancelInvite",
+              "{ inviteId }"
+            ],
+            [
+              "extendInvite",
+              "{ inviteId }"
+            ]
+          ],
+          "viewState": {
+            "controlled": [
+              "section:onSectionChange"
+            ],
+            "defaults": [
+              "defaultSection=members"
+            ],
+            "required": [
+              "resource"
+            ],
+            "local": [
+              "filters",
+              "dialogs",
+              "pending actions",
+              "transient errors"
+            ]
+          }
+        },
+        "organizations": {
+          "component": "OrganizationsFeaturePack",
+          "importTarget": "src/blocks/feature-packs/organizations/organizations-feature-pack.tsx",
+          "propsType": "OrganizationsFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-feature-pack.tsx",
+            "sha256": "0eda91c1eaaf3350a7fa983c5dc9f59acdca696168e576b387e5d0f651e510d6"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-contracts.ts",
+            "sha256": "c4d403ac826dff46178212cbeba06b1416cd4b8be42d56fe29ad684299c55c39"
+          },
+          "resourceProps": [
+            "resource"
+          ],
+          "policyType": "FeatureActionPolicy<OrganizationsFeatureAction>",
+          "actionsType": "OrganizationsFeatureActions",
+          "policyKeys": [
+            "createOrganization",
+            "selectOrganization",
+            "updateOrganization",
+            "deleteOrganization",
+            "leaveOrganization",
+            "inviteMember",
+            "assignInviteProfile",
+            "cancelInvite",
+            "approveMember",
+            "banMember",
+            "disableMember",
+            "markMemberExternal",
+            "markMemberReadOnly",
+            "removeMember",
+            "grantAdmin",
+            "grantOwner",
+            "assignProfile",
+            "grantPermission",
+            "updateMemberProfile",
+            "createAccessProfile",
+            "updateAccessProfile",
+            "deleteAccessProfile",
+            "setProfilePermission",
+            "updateMembershipSettings",
+            "updateMembershipDefault",
+            "setHierarchyEdge",
+            "removeHierarchyEdge",
+            "createOrganizationApiKey",
+            "createOrganizationPrincipal",
+            "revokeOrganizationApiKey",
+            "revokeOrganizationPrincipal"
+          ],
+          "actionInputs": [
+            [
+              "createOrganization",
+              "{ name }"
+            ],
+            [
+              "selectOrganization",
+              "{ organizationId }"
+            ],
+            [
+              "updateOrganization",
+              "{ organizationId; name; slug? }"
+            ],
+            [
+              "deleteOrganization",
+              "{ organizationId }"
+            ],
+            [
+              "leaveOrganization",
+              "{ organizationId; membershipId }"
+            ],
+            [
+              "inviteMember",
+              "{ organizationId; channel; recipient?; profileId?; expiresAt?; multiple?; inviteLimit?; isReadOnly? }"
+            ],
+            [
+              "cancelInvite",
+              "{ organizationId; inviteId }"
+            ],
+            [
+              "updateMemberLifecycle",
+              "{ organizationId; membershipId; patch }"
+            ],
+            [
+              "removeMember",
+              "{ organizationId; membershipId }"
+            ],
+            [
+              "setMemberAdmin",
+              "{ organizationId; actorId; isGrant }"
+            ],
+            [
+              "setMemberOwner",
+              "{ organizationId; actorId; isGrant }"
+            ],
+            [
+              "setMemberProfile",
+              "{ organizationId; membershipId; profileId; isGrant }"
+            ],
+            [
+              "setMemberPermission",
+              "{ organizationId; actorId; permissions; isGrant }"
+            ],
+            [
+              "upsertMemberProfile",
+              "{ organizationId; membershipId; profile }"
+            ],
+            [
+              "createAccessProfile",
+              "{ organizationId; name; description? }"
+            ],
+            [
+              "updateAccessProfile",
+              "{ organizationId; profileId; name; description? }"
+            ],
+            [
+              "deleteAccessProfile",
+              "{ organizationId; profileId }"
+            ],
+            [
+              "setProfilePermission",
+              "{ organizationId; profileId; permissionId; isGrant }"
+            ],
+            [
+              "updateMembershipSettings",
+              "{ organizationId; settingsId; patch }"
+            ],
+            [
+              "updateMembershipDefault",
+              "{ organizationId; defaultId; isApproved }"
+            ],
+            [
+              "setHierarchyEdge",
+              "{ organizationId; childId; parentId; positionTitle?; positionLevel? }"
+            ],
+            [
+              "removeHierarchyEdge",
+              "{ organizationId; edge }"
+            ],
+            [
+              "createOrganizationApiKey",
+              "{ organizationId; principalId; name; accessLevel?; mfaLevel?; expiresIn? }"
+            ],
+            [
+              "createOrganizationPrincipal",
+              "{ organizationId; name; useAdminOwner?; isReadOnly?; bypassStepUp? }"
+            ],
+            [
+              "revokeOrganizationApiKey",
+              "{ organizationId; apiKeyId }"
+            ],
+            [
+              "revokeOrganizationPrincipal",
+              "{ organizationId; principalId }"
+            ]
+          ],
+          "viewState": {
+            "controlled": [
+              "section:onSectionChange",
+              "createOrganizationOpen:onCreateOrganizationOpenChange"
+            ],
+            "defaults": [
+              "defaultSection=members"
+            ],
+            "required": [
+              "resource"
+            ],
+            "local": [
+              "filters",
+              "dialogs",
+              "pending actions",
+              "transient errors"
+            ]
+          }
+        },
+        "storage": {
+          "component": "StorageFeaturePack",
+          "importTarget": "src/blocks/feature-packs/storage/storage-feature-pack.tsx",
+          "propsType": "StorageFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx",
+            "sha256": "aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/storage/storage-feature-pack.tsx",
+            "sha256": "aab932eeb2f12415858dd085f6298fd68de3aa853a5a2120118570a33e188f11"
+          },
+          "resourceProps": [
+            "resource"
+          ],
+          "policyType": "FeatureActionPolicy<StorageFeatureAction>",
+          "actionsType": "StorageFeatureActions",
+          "policyKeys": [
+            "selectBucket",
+            "navigate",
+            "createBucket",
+            "upload",
+            "download",
+            "deleteObject"
+          ],
+          "actionInputs": [
+            [
+              "selectBucket",
+              "{ bucketKey }"
+            ],
+            [
+              "navigate",
+              "{ bucketKey; path }"
+            ],
+            [
+              "createBucket",
+              "{ name; access: 'public' | 'private' }"
+            ],
+            [
+              "upload",
+              "{ bucketKey; path; files }"
+            ],
+            [
+              "download",
+              "{ bucketKey; objectKey }"
+            ],
+            [
+              "deleteObject",
+              "{ bucketKey; objectKey }"
+            ]
+          ],
+          "viewState": {
+            "controlled": [],
+            "defaults": [],
+            "required": [
+              "resource"
+            ],
+            "local": [
+              "dialogs",
+              "pending actions",
+              "transient errors"
+            ]
+          }
+        },
+        "billing": {
+          "component": "BillingFeaturePack",
+          "importTarget": "src/blocks/feature-packs/billing/billing-feature-pack.tsx",
+          "propsType": "BillingFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/billing/billing-feature-pack.tsx",
+            "sha256": "d9a68dedca37a2e3f04fbb57020bfd8379ea7c4ffde601cb503853ba6b8f5ccf"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/billing/billing-settings-page/billing-settings-page.tsx",
+            "sha256": "5397c2813be9629e500e0ffc0eae75ce2f061c772476e55b6811281feb50a89b"
+          },
+          "resourceProps": [
+            "account",
+            "resources",
+            "formatOptions"
+          ],
+          "policyType": null,
+          "actionsType": "BillingSettingsActions",
+          "policyKeys": [],
+          "actionInputs": [
+            [
+              "onPricingIntervalChange",
+              "BillingPricingTableProps['onIntervalChange']"
+            ],
+            [
+              "onSelectPlan",
+              "BillingPricingTableProps['onSelectPlan']"
+            ],
+            [
+              "onContactSales",
+              "BillingPricingTableProps['onContactSales']"
+            ],
+            [
+              "onManageSubscription",
+              "BillingSubscriptionCardProps['onManageSubscription']"
+            ],
+            [
+              "onChangePlan",
+              "BillingSubscriptionCardProps['onChangePlan']"
+            ],
+            [
+              "onResolvePayment",
+              "BillingSubscriptionCardProps['onResolvePayment']"
+            ],
+            [
+              "onViewHistory",
+              "BillingUsageOverviewProps['onViewHistory']"
+            ],
+            [
+              "onBuyCredits",
+              "BillingUsageOverviewProps['onBuyCredits']"
+            ],
+            [
+              "onHistoryMeterChange",
+              "BillingUsageHistoryProps['onMeterChange']"
+            ],
+            [
+              "onHistoryPeriodChange",
+              "BillingUsageHistoryProps['onPeriodChange']"
+            ],
+            [
+              "onHistoryPageChange",
+              "BillingUsageHistoryProps['onPageChange']"
+            ],
+            [
+              "onActivityMeterChange",
+              "BillingActivityTableProps['onMeterChange']"
+            ],
+            [
+              "onActivityEntryTypeChange",
+              "BillingActivityTableProps['onEntryTypeChange']"
+            ],
+            [
+              "onActivityPageChange",
+              "BillingActivityTableProps['onPageChange']"
+            ]
+          ],
+          "viewState": {
+            "controlled": [
+              "section:onSectionChange",
+              "controls.*"
+            ],
+            "defaults": [
+              "defaultSection",
+              "controls.*.default*"
+            ],
+            "required": [
+              "account",
+              "resources",
+              "formatOptions"
+            ],
+            "local": [
+              "pending actions",
+              "transient messages"
+            ]
+          }
+        },
+        "notifications": {
+          "component": "NotificationsFeaturePack",
+          "importTarget": "src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+          "propsType": "NotificationsFeaturePackProps",
+          "componentSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+            "sha256": "95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800"
+          },
+          "contractSource": {
+            "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+            "sha256": "95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800"
+          },
+          "resourceProps": [
+            "resource"
+          ],
+          "policyType": "FeatureActionPolicy<NotificationsFeatureAction>",
+          "actionsType": "NotificationsFeatureActions",
+          "policyKeys": [
+            "markRead",
+            "markAllRead",
+            "deleteNotification",
+            "openNotification"
+          ],
+          "actionInputs": [
+            [
+              "markRead",
+              "{ notificationId }"
+            ],
+            [
+              "markAllRead",
+              null
+            ],
+            [
+              "deleteNotification",
+              "{ notificationId }"
+            ],
+            [
+              "openNotification",
+              "{ notification }"
+            ]
+          ],
+          "viewState": {
+            "controlled": [],
+            "defaults": [],
+            "required": [
+              "resource"
+            ],
+            "local": [
+              "filter",
+              "dialogs",
+              "pending actions",
+              "transient errors"
+            ]
+          }
+        }
+      }
     },
     "data": {
       "featurePack": "data",
@@ -493,6 +1319,16 @@
           "auth.getToken"
         ]
       },
+      "authEndpointPolicy": {
+        "standaloneMode": "required-explicit",
+        "sourceType": "optional-string",
+        "sourceFallback": "config.authEndpoint || config.endpoint",
+        "portableBehavior": "fail-closed-before-render",
+        "source": {
+          "path": "packages/sheets/src/auth/auth-execute.ts",
+          "sha256": "202e43e34ccb7677a092ee26ccaab3ee56f27e85d8e6a94b410cefb554fc683b"
+        }
+      },
       "hostOwns": [
         "semantic endpoint selection",
         "endpoint URL resolution",
@@ -506,7 +1342,13 @@
       "doesNotOwn": [
         "ConsoleEndpointMap resolution",
         "ConstructiveTenantConsoleSession",
-        "cross-endpoint fallback policy"
+        "authority to treat the data endpoint as an auth endpoint"
+      ],
+      "sourceLimitationIds": [
+        "data-standalone-auth-endpoint-fallback",
+        "data-standalone-database-scope-fallback",
+        "data-standalone-persistent-token-storage",
+        "data-standalone-csrf-auth-unavailable"
       ],
       "providerSource": {
         "path": "packages/sheets/src/context/sheets-provider.tsx",
@@ -531,6 +1373,8 @@
           "capability": "data.meta",
           "alternatives": [
             {
+              "id": "data.meta.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "data"
               ],
@@ -545,6 +1389,8 @@
           "capability": "data.introspection",
           "alternatives": [
             {
+              "id": "data.introspection.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "data"
               ],
@@ -587,6 +1433,9 @@
           "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
           "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
         }
+      ],
+      "sourceLimitationIds": [
+        "data-console-nested-sheets-store"
       ]
     },
     {
@@ -595,12 +1444,14 @@
         "path": "apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx",
         "sha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-and-adapter-requirements",
       "required": [
         {
           "capability": "auth.credentials",
           "alternatives": [
             {
+              "id": "auth.credentials.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -619,6 +1470,8 @@
           "capability": "auth.sessions",
           "alternatives": [
             {
+              "id": "auth.sessions.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -636,6 +1489,8 @@
           "capability": "auth.password",
           "alternatives": [
             {
+              "id": "auth.password.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -656,6 +1511,8 @@
           "capability": "auth.email",
           "alternatives": [
             {
+              "id": "auth.email.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -673,6 +1530,8 @@
           "capability": "auth.connected-accounts",
           "alternatives": [
             {
+              "id": "auth.connected-accounts.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -695,11 +1554,153 @@
         "auth.phone",
         "auth.devices"
       ],
+      "adapterRequirements": [
+        {
+          "endpointKind": "auth",
+          "coordinate": "Mutation.signIn",
+          "shape": "mutation-input-and-payload",
+          "requiredArguments": [
+            "input"
+          ],
+          "inputType": "SignInInput",
+          "requiredInputFields": [
+            "email",
+            "password",
+            "rememberMe",
+            "credentialKind"
+          ],
+          "conditionalInputFields": [
+            "csrfToken"
+          ],
+          "requiredPayloadPath": "result",
+          "requiredPayloadFields": [
+            "userId",
+            "accessToken"
+          ],
+          "selectedPayloadFields": [
+            "id",
+            "userId",
+            "accessToken",
+            "accessTokenExpiresAt",
+            "mfaRequired",
+            "mfaChallengeToken"
+          ]
+        },
+        {
+          "endpointKind": "auth",
+          "coordinate": "Mutation.signUp",
+          "shape": "mutation-input-and-payload",
+          "requiredArguments": [
+            "input"
+          ],
+          "inputType": "SignUpInput",
+          "requiredInputFields": [
+            "email",
+            "password",
+            "rememberMe",
+            "credentialKind"
+          ],
+          "conditionalInputFields": [
+            "csrfToken"
+          ],
+          "requiredPayloadPath": "result",
+          "requiredPayloadFields": [
+            "userId",
+            "accessToken"
+          ],
+          "selectedPayloadFields": [
+            "id",
+            "userId",
+            "accessToken",
+            "accessTokenExpiresAt"
+          ]
+        },
+        {
+          "endpointKind": "auth",
+          "coordinate": "Mutation.signOut",
+          "shape": "mutation-input-and-payload",
+          "requiredArguments": [
+            "input"
+          ],
+          "inputType": "SignOutInput",
+          "requiredInputFields": [],
+          "requiredPayloadPath": null,
+          "requiredPayloadFields": [
+            "clientMutationId"
+          ],
+          "selectedPayloadFields": [
+            "clientMutationId"
+          ]
+        },
+        {
+          "endpointKind": "auth",
+          "coordinate": "Mutation.forgotPassword",
+          "shape": "mutation-input-and-payload",
+          "requiredArguments": [
+            "input"
+          ],
+          "inputType": "ForgotPasswordInput",
+          "requiredInputFields": [
+            "email"
+          ],
+          "requiredPayloadPath": null,
+          "requiredPayloadFields": [
+            "clientMutationId"
+          ],
+          "selectedPayloadFields": [
+            "clientMutationId"
+          ]
+        },
+        {
+          "endpointKind": "auth",
+          "coordinate": "Mutation.resetPassword",
+          "shape": "mutation-input-and-payload",
+          "requiredArguments": [
+            "input"
+          ],
+          "inputType": "ResetPasswordInput",
+          "requiredInputFields": [
+            "roleId",
+            "resetToken",
+            "newPassword"
+          ],
+          "requiredPayloadPath": null,
+          "requiredPayloadFields": [
+            "result"
+          ],
+          "selectedPayloadFields": [
+            "result"
+          ]
+        },
+        {
+          "endpointKind": "auth",
+          "coordinate": "Query.currentUser",
+          "shape": "object",
+          "nodeType": "User",
+          "requiredFields": [
+            "id",
+            "displayName",
+            "username",
+            "profilePicture",
+            "createdAt"
+          ],
+          "selectedFields": [
+            "id",
+            "displayName",
+            "username",
+            "profilePicture",
+            "createdAt"
+          ]
+        }
+      ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts",
           "sha256": "cf2165d253e7119166db684070c72ef00dcad52ba7f2003b2b9139a1d718b96f"
         }
+      ],
+      "sourceLimitationIds": [
+        "auth-adapter-shape-false-ready"
       ]
     },
     {
@@ -708,12 +1709,14 @@
         "path": "apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx",
         "sha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-and-adapter-requirements",
       "required": [
         {
           "capability": "users.directory",
           "alternatives": [
             {
+              "id": "users.directory.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "auth"
               ],
@@ -731,6 +1734,8 @@
           "capability": "users.memberships",
           "alternatives": [
             {
+              "id": "users.memberships.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -750,6 +1755,8 @@
           "capability": "users.permissions",
           "alternatives": [
             {
+              "id": "users.permissions.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -767,6 +1774,8 @@
           "capability": "users.profiles",
           "alternatives": [
             {
+              "id": "users.profiles.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -784,6 +1793,8 @@
           "capability": "users.invites",
           "alternatives": [
             {
+              "id": "users.invites.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -799,11 +1810,61 @@
         }
       ],
       "unboundOptionalCapabilities": [],
+      "adapterRequirements": [
+        {
+          "endpointKind": "auth",
+          "coordinate": "Query.users",
+          "shape": "connection-nodes",
+          "nodeType": "User",
+          "connectionProfile": "relay-forward-connection",
+          "requiredFields": [
+            "id"
+          ],
+          "selectedFields": [
+            "id",
+            "displayName",
+            "username",
+            "profilePicture"
+          ]
+        },
+        {
+          "endpointKind": "admin",
+          "coordinate": "Query.appMemberships",
+          "shape": "connection-nodes",
+          "nodeType": "AppMembership",
+          "connectionProfile": "relay-forward-connection",
+          "requiredFields": [
+            "id",
+            "actorId"
+          ],
+          "selectedFields": [
+            "id",
+            "actorId",
+            "createdAt",
+            "isOwner",
+            "isAdmin",
+            "isActive",
+            "isApproved",
+            "isVerified",
+            "isBanned",
+            "isDisabled",
+            "permissions",
+            "granted",
+            "profileId"
+          ]
+        }
+      ],
+      "adapterActionProfileIds": [
+        "users-enabled-actions"
+      ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts",
           "sha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
         }
+      ],
+      "sourceLimitationIds": [
+        "users-adapter-shape-false-ready"
       ]
     },
     {
@@ -812,12 +1873,66 @@
         "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
         "sha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-adapter-requirements-and-prerequisites",
+      "prerequisites": [
+        {
+          "capability": "organizations.identity-directory",
+          "alternatives": [
+            {
+              "id": "organizations.identity-directory.path-1",
+              "verificationProfile": "tenant-runtime",
+              "adapterPathGroup": "auth-identity-path",
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operation-fields",
+                "operation": "query",
+                "coordinate": "Query.users",
+                "requiredFields": [
+                  "id",
+                  "type"
+                ]
+              }
+            },
+            {
+              "id": "organizations.identity-directory.path-2",
+              "verificationProfile": "tenant-runtime",
+              "adapterPathGroup": "meta-identity-path",
+              "endpointKinds": [
+                "data",
+                "auth",
+                "admin",
+                "billing",
+                "storage",
+                "notifications"
+              ],
+              "evidence": {
+                "type": "compatible-meta-contract",
+                "coordinate": "Query._meta",
+                "contractSource": {
+                  "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts",
+                  "sha256": "3b12684a654b76623fd203b736411eb069036eba202196c3f7a575879b911d27"
+                },
+                "requirements": [
+                  "current _meta contract",
+                  "standard GraphQL introspection",
+                  "readable application organization root",
+                  "executable public query root"
+                ]
+              }
+            }
+          ]
+        }
+      ],
       "required": [
         {
           "capability": "organizations.memberships",
           "alternatives": [
             {
+              "id": "organizations.memberships.path-1",
+              "verificationProfile": "tenant-runtime",
+              "adapterPathGroup": "admin-membership-path",
               "endpointKinds": [
                 "admin"
               ],
@@ -830,6 +1945,9 @@
               }
             },
             {
+              "id": "organizations.memberships.path-2",
+              "verificationProfile": "tenant-runtime",
+              "adapterPathGroup": "meta-membership-path",
               "endpointKinds": [
                 "data",
                 "auth",
@@ -860,6 +1978,8 @@
           "capability": "organizations.permissions",
           "alternatives": [
             {
+              "id": "organizations.permissions.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -877,6 +1997,8 @@
           "capability": "organizations.limits",
           "alternatives": [
             {
+              "id": "organizations.limits.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "billing"
               ],
@@ -894,6 +2016,8 @@
           "capability": "organizations.profiles",
           "alternatives": [
             {
+              "id": "organizations.profiles.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -911,6 +2035,8 @@
           "capability": "organizations.hierarchy",
           "alternatives": [
             {
+              "id": "organizations.hierarchy.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -928,6 +2054,8 @@
           "capability": "organizations.invites",
           "alternatives": [
             {
+              "id": "organizations.invites.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "admin"
               ],
@@ -943,11 +2071,145 @@
         }
       ],
       "unboundOptionalCapabilities": [],
+      "adapterRequirements": [
+        {
+          "id": "identity-auth-users",
+          "endpointKind": "auth",
+          "coordinate": "Query.users",
+          "shape": "connection-nodes",
+          "nodeType": "User",
+          "connectionProfile": "relay-forward-connection",
+          "requiredFields": [
+            "id",
+            "type"
+          ],
+          "selectedFields": [
+            "id",
+            "type",
+            "displayName",
+            "username",
+            "profilePicture"
+          ]
+        },
+        {
+          "id": "memberships-admin",
+          "endpointKind": "admin",
+          "coordinate": "Query.orgMemberships",
+          "shape": "connection-nodes",
+          "nodeType": "OrgMembership",
+          "connectionProfile": "relay-forward-connection",
+          "requiredFields": [
+            "id",
+            "actorId",
+            "entityId"
+          ],
+          "selectedFields": [
+            "id",
+            "actorId",
+            "entityId",
+            "createdAt",
+            "isOwner",
+            "isAdmin",
+            "isActive",
+            "isApproved",
+            "isBanned",
+            "isDisabled",
+            "isReadOnly",
+            "permissions",
+            "granted",
+            "profileId"
+          ]
+        },
+        {
+          "id": "meta-organizations",
+          "endpointKind": "meta-contract-source",
+          "coordinate": "Query.<organizations-root>",
+          "shape": "connection-nodes",
+          "nodeType": "meta-contract-organizations-table",
+          "connectionProfile": "relay-forward-connection",
+          "requiredSemanticFields": [
+            "id",
+            "name"
+          ],
+          "selectedSemanticFields": [
+            "id",
+            "name",
+            "slug",
+            "avatar"
+          ]
+        },
+        {
+          "id": "memberships-meta-members",
+          "endpointKind": "meta-contract-source",
+          "coordinate": "Query.<members-root>",
+          "shape": "connection-nodes",
+          "nodeType": "meta-contract-members-table",
+          "connectionProfile": "relay-forward-connection",
+          "requiredSemanticFields": [
+            "id",
+            "organizationId"
+          ],
+          "selectedSemanticFields": [
+            "id",
+            "organizationId",
+            "userId",
+            "role",
+            "status",
+            "joinedAt",
+            "invitedAt"
+          ]
+        }
+      ],
+      "adapterRequirementPolicy": {
+        "membershipPath": {
+          "mode": "one-complete-alternative",
+          "alternatives": [
+            {
+              "id": "admin-membership-path",
+              "requirementIds": [
+                "memberships-admin"
+              ]
+            },
+            {
+              "id": "meta-membership-path",
+              "requirementIds": [
+                "meta-organizations",
+                "memberships-meta-members"
+              ]
+            }
+          ]
+        },
+        "identityDirectory": {
+          "mode": "one-complete-alternative",
+          "alternatives": [
+            {
+              "id": "auth-identity-path",
+              "requirementIds": [
+                "identity-auth-users"
+              ]
+            },
+            {
+              "id": "meta-identity-path",
+              "requirementIds": [
+                "meta-organizations"
+              ]
+            }
+          ]
+        },
+        "readyWhen": "one membership path and one identity-directory path pass"
+      },
+      "adapterActionProfileIds": [
+        "organizations-enabled-actions"
+      ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
           "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
         }
+      ],
+      "sourceLimitationIds": [
+        "organizations-meta-membership-false-ready",
+        "organizations-adapter-shape-false-ready"
       ]
     },
     {
@@ -956,12 +2218,14 @@
         "path": "apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx",
         "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-and-adapter-requirements",
       "required": [
         {
           "capability": "storage.buckets",
           "alternatives": [
             {
+              "id": "storage.buckets.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "storage",
                 "admin",
@@ -977,6 +2241,8 @@
               }
             },
             {
+              "id": "storage.buckets.path-2",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "data",
                 "auth",
@@ -1005,6 +2271,8 @@
           "capability": "storage.files",
           "alternatives": [
             {
+              "id": "storage.files.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "storage",
                 "admin",
@@ -1020,6 +2288,8 @@
               }
             },
             {
+              "id": "storage.files.path-2",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "data",
                 "auth",
@@ -1052,11 +2322,65 @@
         "storage.custom-keys",
         "storage.audit-log"
       ],
+      "adapterRequirements": [
+        {
+          "endpointKind": "storage-or-admin-or-data",
+          "coordinate": "Query.<bucket-root>",
+          "shape": "connection-nodes",
+          "nodeType": "selected-bucket-family",
+          "connectionProfile": "relay-forward-connection",
+          "requiredSemanticFields": [
+            "id",
+            "key"
+          ],
+          "selectedSemanticFields": [
+            "id",
+            "key",
+            "description",
+            "type",
+            "isPublic"
+          ]
+        },
+        {
+          "endpointKind": "storage-or-admin-or-data",
+          "coordinate": "Query.<file-root>",
+          "shape": "connection-nodes",
+          "nodeType": "selected-file-family",
+          "connectionProfile": "relay-forward-connection",
+          "optionalRootArguments": [
+            {
+              "name": "condition",
+              "type": "selected-file-family-condition-input"
+            }
+          ],
+          "requiredSemanticFields": [
+            "id",
+            "key",
+            "bucketId"
+          ],
+          "selectedSemanticFields": [
+            "id",
+            "key",
+            "bucketId",
+            "filename",
+            "mimeType",
+            "size",
+            "path",
+            "status",
+            "createdAt",
+            "updatedAt"
+          ]
+        }
+      ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts",
           "sha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
         }
+      ],
+      "sourceLimitationIds": [
+        "storage-cross-endpoint-capability-false-ready",
+        "storage-adapter-shape-false-ready"
       ]
     },
     {
@@ -1065,12 +2389,14 @@
         "path": "apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx",
         "sha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-and-adapter-requirements",
       "required": [
         {
           "capability": "billing.plans",
           "alternatives": [
             {
+              "id": "billing.plans.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "billing"
               ],
@@ -1088,6 +2414,8 @@
           "capability": "billing.subscriptions",
           "alternatives": [
             {
+              "id": "billing.subscriptions.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "billing"
               ],
@@ -1107,6 +2435,8 @@
           "capability": "billing.meters",
           "alternatives": [
             {
+              "id": "billing.meters.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "billing"
               ],
@@ -1122,11 +2452,55 @@
         }
       ],
       "unboundOptionalCapabilities": [],
+      "adapterRequirements": [
+        {
+          "endpointKind": "billing",
+          "coordinate": "Query.plans",
+          "shape": "connection-nodes",
+          "nodeType": "Plan",
+          "connectionProfile": "minimal-nodes-connection",
+          "requiredFields": [
+            "id",
+            "name"
+          ],
+          "selectedFields": [
+            "id",
+            "name",
+            "description",
+            "isActive"
+          ]
+        },
+        {
+          "endpointKind": "billing",
+          "coordinate": "Query.planSubscriptions",
+          "shape": "connection-nodes",
+          "nodeType": "PlanSubscription",
+          "connectionProfile": "minimal-nodes-connection",
+          "requiredFields": [
+            "id",
+            "entityId",
+            "planId"
+          ],
+          "selectedFields": [
+            "id",
+            "entityId",
+            "entityType",
+            "organizationId",
+            "planId",
+            "isActive",
+            "startsAt",
+            "endsAt"
+          ]
+        }
+      ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts",
           "sha256": "57e7a090408443b3e5fb21dfce72105e16750fd03c28b21b563ccc5d1d566b1c"
         }
+      ],
+      "sourceLimitationIds": [
+        "billing-adapter-shape-false-ready"
       ]
     },
     {
@@ -1135,12 +2509,14 @@
         "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
         "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
       },
-      "readyState": "all-required-capabilities",
+      "readyState": "all-required-capabilities-and-adapter-requirements",
       "required": [
         {
           "capability": "notifications.inbox",
           "alternatives": [
             {
+              "id": "notifications.inbox.path-1",
+              "verificationProfile": "tenant-runtime",
               "endpointKinds": [
                 "notifications"
               ],
@@ -1155,33 +2531,44 @@
           ]
         }
       ],
-      "optional": [
+      "optional": [],
+      "unboundOptionalCapabilities": [
+        "notifications.settings",
+        "notifications.realtime"
+      ],
+      "adapterRequirements": [
         {
-          "capability": "notifications.settings",
-          "alternatives": [
-            {
-              "endpointKinds": [
-                "notifications"
-              ],
-              "evidence": {
-                "type": "graphql-operations",
-                "operation": "query",
-                "coordinates": [
-                  "Query.notificationPreferences"
-                ]
-              }
-            }
+          "endpointKind": "notifications",
+          "coordinate": "Query.notifications",
+          "shape": "connection-nodes",
+          "nodeType": "Notification",
+          "connectionProfile": "minimal-nodes-connection",
+          "requiredFields": [
+            "id",
+            "title",
+            "createdAt"
+          ],
+          "selectedFields": [
+            "id",
+            "title",
+            "body",
+            "category",
+            "kind",
+            "createdAt",
+            "actionUrl",
+            "actions"
           ]
         }
-      ],
-      "unboundOptionalCapabilities": [
-        "notifications.realtime"
       ],
       "adapterSources": [
         {
           "path": "apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts",
           "sha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
         }
+      ],
+      "sourceLimitationIds": [
+        "notifications-adapter-shape-false-ready",
+        "notifications-settings-discovered-unimplemented"
       ]
     }
   ],
@@ -1231,8 +2618,798 @@
         "sha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
       },
       "impact": "A Console Kit instance with Data currently owns the Console core store plus a nested Sheets store. The Data module contributes no storeSlice, so the pinned source does not yet satisfy the target invariant."
-    }
+    },
+    "sourceLimitationIds": [
+      "data-console-nested-sheets-store"
+    ]
   },
+  "sourceLimitations": [
+    {
+      "id": "data-console-nested-sheets-store",
+      "status": "open-pinned-source-gap",
+      "acceptance": "blocking",
+      "mitigationRequirements": [
+        {
+          "id": "unify-data-console-store",
+          "requirement": "Unify Data state into the Console Kit modular Zustand store in Blocks source."
+        },
+        {
+          "id": "contribute-data-store-slice",
+          "requirement": "Make dataConsoleModule contribute the resulting storeSlice and remove the nested Sheets store."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-data",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "console"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx",
+          "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx",
+          "sha256": "f43e577186073c352feca69e6f3f7e9914e491808357066fe90bfc79d7a62c67"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/store/sheets-store.ts",
+          "sha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
+        }
+      ],
+      "observedBehavior": "dataConsoleModule contributes no storeSlice, while DataFeaturePack mounts SheetsProvider and SheetsProvider creates a nested Sheets Zustand store.",
+      "portableRequirement": "Keep one modular Console store as the target and do not copy this pattern into another module. Data remains known nonconforming until its Sheets state is contributed through storeSlice or otherwise unified in Blocks source.",
+      "failureState": "known-nonconforming"
+    },
+    {
+      "id": "data-standalone-auth-endpoint-fallback",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "require-explicit-auth-endpoint",
+          "requirement": "When auth.mode is standalone, resolve an explicit non-empty authEndpoint."
+        },
+        {
+          "id": "fail-closed-without-auth-endpoint",
+          "requirement": "Fail closed before rendering DataFeaturePack when authEndpoint is absent."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "standalone-feature-pack"
+        ],
+        "installRoots": [
+          "feature-pack-data"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "standalone-auth"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "packages/sheets/src/context/sheets-context.ts",
+          "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+        },
+        {
+          "path": "packages/sheets/src/auth/auth-execute.ts",
+          "sha256": "202e43e34ccb7677a092ee26ccaab3ee56f27e85d8e6a94b410cefb554fc683b"
+        }
+      ],
+      "observedBehavior": "SheetsConfig types authEndpoint as optional and executeAuthMutation selects config.authEndpoint || config.endpoint, silently routing standalone auth mutations to the data endpoint when authEndpoint is absent.",
+      "portableRequirement": "When auth.mode is standalone, the host must validate an explicit non-empty authEndpoint and fail closed before rendering DataFeaturePack when it is absent. Never authorize the source fallback to the data endpoint.",
+      "failureState": "configuration-error-before-render"
+    },
+    {
+      "id": "data-standalone-database-scope-fallback",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "require-explicit-database-id",
+          "requirement": "Resolve an explicit non-empty databaseId for standalone auth."
+        },
+        {
+          "id": "match-active-tenant-database-id",
+          "requirement": "Require databaseId to equal the active tenant descriptor before rendering DataFeaturePack."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "standalone-feature-pack"
+        ],
+        "installRoots": [
+          "feature-pack-data"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "standalone-auth"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "packages/sheets/src/context/sheets-context.ts",
+          "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-login.ts",
+          "sha256": "0128599a8c2a6ba14f7717757f6c0fb8dc407f2f2c2a4d61fb80326ec31b39b3"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-register.ts",
+          "sha256": "c967f644cd6a65eb2880cffaecb7de15a4a91ef253085707a23aa94a74afb3a4"
+        }
+      ],
+      "observedBehavior": "SheetsConfig types databaseId as optional, and SheetsProvider plus the standalone login and registration hooks select config.databaseId || 'default' for credential restoration and storage.",
+      "portableRequirement": "The host must provide an explicit non-empty databaseId that equals the active tenant descriptor before rendering standalone Data auth. Never share the default credential scope across tenant databases.",
+      "failureState": "configuration-error-before-render"
+    },
+    {
+      "id": "data-standalone-persistent-token-storage",
+      "status": "open-pinned-source-gap",
+      "acceptance": "blocking",
+      "mitigationRequirements": [
+        {
+          "id": "use-host-owned-embedded-auth",
+          "requirement": "Use embedded auth with a host-owned session and injected transport instead of Sheets standalone auth."
+        },
+        {
+          "id": "block-until-token-persistence-is-selectable",
+          "requirement": "Keep standalone auth blocked until Blocks honors remember-me and supports non-persistent session storage."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "standalone-feature-pack"
+        ],
+        "installRoots": [
+          "feature-pack-data"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "standalone-auth"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/auth/utils/token-store.ts",
+          "sha256": "8f1840ad5b49528cf0c2ad72db725c4f2de5475799c2690e1a6a629ad8956592"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-login.ts",
+          "sha256": "0128599a8c2a6ba14f7717757f6c0fb8dc407f2f2c2a4d61fb80326ec31b39b3"
+        },
+        {
+          "path": "packages/sheets/src/auth/hooks/use-register.ts",
+          "sha256": "c967f644cd6a65eb2880cffaecb7de15a4a91ef253085707a23aa94a74afb3a4"
+        }
+      ],
+      "observedBehavior": "The standalone token store always uses window.localStorage, and successful login or registration calls setStoredToken without conditioning persistence on rememberMe.",
+      "portableRequirement": "Use embedded host authentication for portable Data installs so the host owns credential persistence. Standalone Sheets auth remains blocked until rememberMe controls session versus local persistence and non-persistent storage is supported.",
+      "failureState": "unsafe-persistent-credential-storage"
+    },
+    {
+      "id": "data-standalone-csrf-auth-unavailable",
+      "status": "open-pinned-source-gap",
+      "acceptance": "blocking",
+      "mitigationRequirements": [
+        {
+          "id": "use-host-auth-for-csrf-tenants",
+          "requirement": "For a tenant requiring CSRF for auth, use embedded host auth and session transport."
+        },
+        {
+          "id": "block-until-sheets-csrf-bootstrap-exists",
+          "requirement": "Keep Sheets standalone auth blocked until Blocks exposes anonymous CSRF bootstrap and request-header injection."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "standalone-feature-pack"
+        ],
+        "installRoots": [
+          "feature-pack-data"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "standalone-auth-csrf-required"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "packages/sheets/src/context/sheets-context.ts",
+          "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+        },
+        {
+          "path": "packages/sheets/src/auth/auth-execute.ts",
+          "sha256": "202e43e34ccb7677a092ee26ccaab3ee56f27e85d8e6a94b410cefb554fc683b"
+        }
+      ],
+      "observedBehavior": "SheetsConfig exposes no csrfTokenProvider or anonymous-session bootstrap, and executeAuthMutation cannot inject a tenant CSRF token into the fixed standalone auth request headers.",
+      "portableRequirement": "When require_csrf_for_auth is enabled, standalone Sheets auth is unsupported. Use embedded host auth with anonymous CSRF bootstrap and an injected authenticated transport.",
+      "failureState": "unsupported-security-mode"
+    },
+    {
+      "id": "organizations-meta-membership-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "require-meta-membership-root",
+          "requirement": "Require contract.members with a readable membership query root for the metadata membership alternative."
+        },
+        {
+          "id": "prove-meta-membership-root-executable",
+          "requirement": "Confirm the membership root through same-endpoint introspection and prove the operation executable."
+        },
+        {
+          "id": "prove-organization-identity-directory",
+          "requirement": "Satisfy organizations.identity-directory through auth Query.users with id and type or a readable application organization _meta root."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-organizations",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "organizations"
+        ],
+        "runtimeModes": [
+          "console-meta-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts",
+          "sha256": "3b12684a654b76623fd203b736411eb069036eba202196c3f7a575879b911d27"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
+          "sha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
+          "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+        }
+      ],
+      "observedBehavior": "resolveApplicationOrganizationContract can return an organizations contract with no contract.members, but organizationsCapabilityDiscovery still reports organizations.memberships supported from the organization root alone and the adapter loads an empty application membership list.",
+      "portableRequirement": "For the metadata alternative to organizations.memberships, require contract.members with a readable membership root, confirm that root through introspection, and prove it executable. An organizations-only contract is unavailable for memberships and must never produce ready.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "storage-cross-endpoint-capability-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "restrict-storage-endpoint-kind",
+          "requirement": "Use only the storage, admin, or data endpoint kinds supported by the adapter."
+        },
+        {
+          "id": "prove-storage-pair-on-one-endpoint",
+          "requirement": "Prove buckets and files together on the same endpoint through a paired GraphQL root variant or one compatible _meta family."
+        },
+        {
+          "id": "fail-storage-without-paired-evidence",
+          "requirement": "Report Storage unavailable when same-endpoint paired evidence is absent."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-storage",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "storage"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx",
+          "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts",
+          "sha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts",
+          "sha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
+        }
+      ],
+      "observedBehavior": "Storage discovery can aggregate bucket and file rule evidence from different endpoints, and its metadata assessment iterates any configured endpoint. The adapter supports only storage, admin, or data and selects a compatible bucket/files pair from one endpoint.",
+      "portableRequirement": "Mark Storage ready only when storage.buckets and storage.files are both proven on the same endpoint, that endpoint is storage, admin, or data, and the adapter confirms either a supported paired GraphQL root variant or one compatible bucket/files _meta family. Otherwise report unavailable.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "organizations-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-organizations-connection-shapes",
+          "requirement": "Validate pagination arguments, connection fields, pageInfo fields, and adapter-selected node fields for every required Organizations root."
+        },
+        {
+          "id": "validate-meta-derived-organizations-shapes",
+          "requirement": "Apply the same validation to _meta-derived organization and membership roots before reporting Organizations ready."
+        },
+        {
+          "id": "validate-organization-action-payloads",
+          "requirement": "Before enabling an Organizations action, validate its adapter-declared input plus the fixed payload path and required payload fields in organizations-enabled-actions."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-organizations",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "organizations"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
+          "sha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
+          "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts",
+          "sha256": "4beae59678b57e32decbbe8e823e434d06e94102be13634fd5557cd6d4a73552"
+        }
+      ],
+      "observedBehavior": "Organizations capability discovery can report operation roots or _meta families without validating the Relay pagination arguments, nodes and pageInfo envelope, or every adapter-selected node field used by executeConstructiveConnectionQuery.",
+      "portableRequirement": "Use standard introspection to validate one complete memberships path and one identity-directory path. Every selected root must accept first as Int or Int!, accept nullable after as Cursor, expose nodes and pageInfo with hasNextPage and endCursor, and expose the exact selected node fields before ready.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "storage-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-storage-connection-shapes",
+          "requirement": "Validate pagination arguments, connection fields, pageInfo fields, and semantic node fields for the selected bucket and file roots."
+        },
+        {
+          "id": "fail-storage-on-adapter-shape-mismatch",
+          "requirement": "Report Storage unavailable when either selected family cannot execute the adapter document shape."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-storage",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "storage"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx",
+          "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts",
+          "sha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-graphql.ts",
+          "sha256": "4beae59678b57e32decbbe8e823e434d06e94102be13634fd5557cd6d4a73552"
+        }
+      ],
+      "observedBehavior": "Storage capability discovery can report bucket and file roots without validating the pagination arguments, nodes and pageInfo envelope, or semantic fields required by executeBoundedMetaConnection and the selected bucket/file family.",
+      "portableRequirement": "Use standard introspection to validate the paired selected bucket and file roots. Both must satisfy the relay-forward-connection profile and expose every required semantic node field before Storage is ready.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "auth-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-auth-operation-shapes",
+          "requirement": "Validate every required Auth mutation input and payload field through standard introspection."
+        },
+        {
+          "id": "fail-auth-on-adapter-shape-mismatch",
+          "requirement": "Report Auth unavailable when an operation name exists but its adapter-required shape does not."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-auth",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "auth"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx",
+          "sha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts",
+          "sha256": "cf2165d253e7119166db684070c72ef00dcad52ba7f2003b2b9139a1d718b96f"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-runtime/standalone-session.ts",
+          "sha256": "9f36e69d3bbcd27adebbb000acfb5212e8897bf67c8aeba650af37bdfec0bc8a"
+        }
+      ],
+      "observedBehavior": "Auth capability discovery proves required operation names but does not prove the fixed SignIn, SignUp, SignOut, password, and currentUser document shapes consumed by the standalone session and Auth adapter.",
+      "portableRequirement": "Use standard introspection to validate each required argument, exact input type and field, fixed payload selection, and currentUser field before Auth is ready. Include csrfToken when a CSRF provider is configured and require the selected MFA fields even when MFA is inactive.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "users-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-users-read-shapes",
+          "requirement": "Validate the users and appMemberships connection node types and required fields through standard introspection."
+        },
+        {
+          "id": "fail-users-on-adapter-shape-mismatch",
+          "requirement": "Report Users unavailable when a query root exists but its adapter-required shape does not."
+        },
+        {
+          "id": "validate-users-action-payloads",
+          "requirement": "Before enabling a Users action, validate its adapter-declared input plus the fixed payload path and required payload fields in users-enabled-actions."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-users",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "users"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx",
+          "sha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts",
+          "sha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
+        }
+      ],
+      "observedBehavior": "Users capability discovery proves query and mutation operation names, but the adapter requires paginated users and appMemberships query shapes and fixed mutation payload object paths ending in id before an action can execute.",
+      "portableRequirement": "Use standard introspection to validate the relay-forward-connection profile and exact selected node fields for required reads. Before enabling each action, validate its complete input contract and fixed payload object path with id.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "billing-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-billing-read-shapes",
+          "requirement": "Validate the plans and planSubscriptions connection node types and required fields through standard introspection."
+        },
+        {
+          "id": "fail-billing-on-adapter-shape-mismatch",
+          "requirement": "Report Billing unavailable when a query root exists but its adapter-required shape does not."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-billing",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "billing"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx",
+          "sha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts",
+          "sha256": "57e7a090408443b3e5fb21dfce72105e16750fd03c28b21b563ccc5d1d566b1c"
+        }
+      ],
+      "observedBehavior": "Billing capability discovery proves the plans and planSubscriptions query root names, while the adapter additionally requires connection nodes and exact Plan and PlanSubscription fields.",
+      "portableRequirement": "Use standard introspection to validate the nodes connection envelope, node types, and every adapter-selected field before Billing is ready. Billing does not require the relay pageInfo profile because its adapter issues a bounded single query.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "notifications-adapter-shape-false-ready",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "validate-notifications-inbox-shape",
+          "requirement": "Validate the notifications connection node type and required fields through standard introspection."
+        },
+        {
+          "id": "fail-notifications-on-adapter-shape-mismatch",
+          "requirement": "Report Notifications unavailable when the query root exists but its adapter-required shape does not."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-notifications",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "notifications"
+        ],
+        "runtimeModes": [
+          "console-discovery"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
+          "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts",
+          "sha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
+        }
+      ],
+      "observedBehavior": "Notifications capability discovery proves the notifications query root name, while the adapter requires a nodes connection envelope and exact Notification fields before the inbox document can execute.",
+      "portableRequirement": "Use standard introspection to validate the nodes connection envelope, Notification node type, and every adapter-selected field before the inbox is ready. Notifications does not require the relay pageInfo profile because its adapter issues a bounded single query.",
+      "failureState": "unavailable"
+    },
+    {
+      "id": "notifications-settings-discovered-unimplemented",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "hide-unimplemented-notification-settings",
+          "requirement": "Treat notifications.settings as unavailable in Console Kit even when Query.notificationPreferences is discovered."
+        },
+        {
+          "id": "require-notification-settings-resource-and-surface",
+          "requirement": "Expose settings only after the Notifications adapter and feature-pack contract implement a settings resource and surface."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "console-module-notifications",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "notifications"
+        ],
+        "runtimeModes": [
+          "console"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
+          "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-feature-pack.tsx",
+          "sha256": "95df17d39e8747f56fa6e396656aba91dd5ddb938b7a5f11368dd8c911d67800"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts",
+          "sha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
+        }
+      ],
+      "observedBehavior": "notificationsCapabilityDiscovery can report notifications.settings from Query.notificationPreferences, but the Notifications adapter declares only notifications.inbox and the feature-pack contract exposes only inbox and read-state resources and actions.",
+      "portableRequirement": "Treat notifications.settings as discovered but unimplemented. The current Console module is inbox and read-state only, so settings must remain unavailable until both an adapter resource and a UI contract exist.",
+      "failureState": "unavailable"
+    }
+  ],
+  "verificationProfiles": [
+    {
+      "id": "static-registry-install",
+      "appliesTo": {
+        "catalogItems": "all-except-runtime-install-roots",
+        "excludedInstallRoots": [
+          "console-kit-nextjs",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-core",
+          "console-module-data",
+          "console-module-auth",
+          "console-module-users",
+          "console-module-organizations",
+          "console-module-storage",
+          "console-module-billing",
+          "console-module-notifications",
+          "feature-pack-data",
+          "feature-pack-auth",
+          "feature-pack-users",
+          "feature-pack-organizations",
+          "feature-pack-storage",
+          "feature-pack-billing",
+          "feature-pack-notifications"
+        ]
+      },
+      "requirements": [
+        "Verify installed file bytes and declared registry dependency closure.",
+        "Run the consumer typecheck and production build.",
+        "Review visual and accessibility behavior when rendered UI changed."
+      ],
+      "mustNotRequire": [
+        "tenant endpoint configuration",
+        "Query._meta or GraphQL capability discovery",
+        "Auth flow acceptance",
+        "tenant CRUD or RLS acceptance"
+      ]
+    },
+    {
+      "id": "tenant-runtime",
+      "appliesTo": {
+        "installRoots": [
+          "console-kit-nextjs",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-core",
+          "console-module-data",
+          "console-module-auth",
+          "console-module-users",
+          "console-module-organizations",
+          "console-module-storage",
+          "console-module-billing",
+          "console-module-notifications",
+          "feature-pack-data",
+          "feature-pack-auth",
+          "feature-pack-users",
+          "feature-pack-organizations",
+          "feature-pack-storage",
+          "feature-pack-billing",
+          "feature-pack-notifications"
+        ],
+        "surfaces": [
+          "standalone-feature-pack",
+          "console-module",
+          "preset",
+          "core",
+          "full-console"
+        ]
+      },
+      "requirements": [
+        "Verify installed bytes, sidecars, typecheck, and production build.",
+        "Verify host endpoint and session configuration when required by the selected packs.",
+        "Verify _meta, introspection, and capability evidence when the selected surface performs discovery.",
+        "Verify Auth flows when Auth is installed and tenant CRUD plus denied RLS cases when the selected packs expose data actions."
+      ],
+      "sourceLimitationPolicy": {
+        "blocking": "fail acceptance while any applicable blocking limitation is open",
+        "requireMitigation": "pass only after every applicable mitigation requirement has evidence"
+      }
+    }
+  ],
   "items": [
     {
       "name": "console-kit-nextjs",
@@ -1851,6 +4028,88 @@
         "billing",
         "notifications"
       ]
+    }
+  ],
+  "backendPresetSource": {
+    "repository": "https://github.com/constructive-io/constructive-db",
+    "commit": "0b30917f77284d61b5c997c3aa15195c6018ea87",
+    "verification": "portable-attestation-no-live-repository-required",
+    "authoritativeSources": [
+      {
+        "path": "packages/node-type-registry/src/generate.ts",
+        "sha256": "1f4ab27a84ac82bec2efea0fdf2b70e69a7fcc77a261c1a3128cf16c1c590837"
+      },
+      {
+        "path": "packages/node-type-registry/src/module-presets/index.ts",
+        "sha256": "b18205178f8c8ffa444ac7e7c29c95de5c4fe4b67f1c329e01947e9570fdbf5b"
+      },
+      {
+        "path": "packages/node-type-registry/src/module-presets/auth-hardened.ts",
+        "sha256": "510c6338f8b1b7203cea79c66ff1d5b095bc8e6048e4411d2015ebae20351784"
+      },
+      {
+        "path": "packages/node-type-registry/src/module-presets/b2b-storage.ts",
+        "sha256": "d549a4adc358bf88c134b0d235eba6374f4cc9ba89c078d236a8a433b4df98cd"
+      },
+      {
+        "path": "packages/node-type-registry/src/module-presets/full.ts",
+        "sha256": "3b7dac7542479a73e34162374bd0191c653621f2fdb67d99954c45b8ea30584c"
+      },
+      {
+        "path": "packages/metaschema-generators/deploy/schemas/metaschema_generators/procedures/db_preset_seed_data.sql",
+        "sha256": "b49f8c8cdf0c20b7b1e67ce0e70943f8ab04137e7dacfc1fcd46a3d7076013f5"
+      }
+    ]
+  },
+  "backendPresetRouting": [
+    {
+      "presetSlug": "blank",
+      "backendProvisioning": "empty",
+      "frontendPresetRoot": null,
+      "featurePacks": [],
+      "customComposition": {
+        "coreRoot": "console-kit-core",
+        "moduleSelection": "explicit-console-module-roots"
+      }
+    },
+    {
+      "presetSlug": "auth:hardened",
+      "backendProvisioning": "featureful",
+      "frontendPresetRoot": "preset-auth-hardened",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users"
+      ],
+      "customComposition": null
+    },
+    {
+      "presetSlug": "b2b:storage",
+      "backendProvisioning": "featureful",
+      "frontendPresetRoot": "preset-b2b-storage",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage"
+      ],
+      "customComposition": null
+    },
+    {
+      "presetSlug": "full",
+      "backendProvisioning": "featureful",
+      "frontendPresetRoot": "preset-full",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage",
+        "billing",
+        "notifications"
+      ],
+      "customComposition": null
     }
   ],
   "runtimeContract": {
