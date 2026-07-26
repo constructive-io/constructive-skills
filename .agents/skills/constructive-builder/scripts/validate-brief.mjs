@@ -2,16 +2,11 @@
 
 import path from 'node:path';
 import process from 'node:process';
-import { fileURLToPath } from 'node:url';
 import {
   ensureSafeWorkspaceDirectory,
   validateBriefFiles,
   writeJsonAtomic
 } from './lib/brief-contract.mjs';
-
-const DEFAULT_CATALOG = fileURLToPath(
-  new URL('../../constructive-blocks/references/install-roots.v1.json', import.meta.url)
-);
 
 function usage() {
   return [
@@ -19,7 +14,6 @@ function usage() {
     '  node <builder-skill>/scripts/validate-brief.mjs <app-brief.json> --blocks-source <pinned-blocks-worktree> [options]',
     '',
     'Options:',
-    '  --catalog <install-roots.v1.json>  Override the sibling Blocks contract snapshot.',
     '  --tenant <tenant-database.json>    Provide the tenant descriptor; it must match tenant.descriptorPath.',
     '  --blocks-source <directory>        Required while the Blocks release is branch-only.',
     '  --output <validation.json>         Atomically write the journal-ready validation report.',
@@ -31,13 +25,11 @@ function usage() {
 function parseArguments(argv) {
   const parsed = {
     briefPath: '',
-    catalogPath: DEFAULT_CATALOG,
     tenantPath: '',
     blocksSource: '',
     outputPath: ''
   };
   const options = new Map([
-    ['--catalog', 'catalogPath'],
     ['--tenant', 'tenantPath'],
     ['--blocks-source', 'blocksSource'],
     ['--output', 'outputPath']

@@ -9,6 +9,9 @@ export const BRIEF_SCHEMA_VERSION = 2;
 export const BRIEF_KIND = 'constructive.tenant-frontend-brief';
 export const VALIDATION_SCHEMA_VERSION = 2;
 export const VALIDATION_KIND = 'constructive.builder-validation';
+export const CANONICAL_BLOCKS_CATALOG_PATH = fileURLToPath(
+  new URL('../../../constructive-blocks/references/install-roots.v1.json', import.meta.url)
+);
 
 const CAPABILITY_STATES = new Set(['ready', 'partial', 'unavailable']);
 const DOMAIN_MODES = new Set(['crud']);
@@ -908,7 +911,8 @@ function validateIsolationTenants(acceptance, isolationDocuments, tenantResult, 
       descriptorPath: isolation.descriptorPath,
       sessionRef: isolation.sessionRef,
       databaseId: descriptor.id,
-      endpointKinds: descriptor.endpointKinds
+      endpointKinds: descriptor.endpointKinds,
+      requireCsrfForAuth: descriptor.requireCsrfForAuth
     });
   }
   return result;
@@ -1699,7 +1703,7 @@ function validateScenarios(acceptance, surfaces, routes, actors, tenantId, expec
       }
       const seenChecks = new Set();
       if (!Array.isArray(scenario.checks) || scenario.checks.length === 0) {
-        addError(errors, pointer + '.checks must cover every required Auth flow.');
+        addError(errors, pointer + '.checks must cover every required Auth check.');
       } else {
         for (let checkIndex = 0; checkIndex < scenario.checks.length; checkIndex += 1) {
           const check = scenario.checks[checkIndex];
@@ -1709,7 +1713,7 @@ function validateScenarios(acceptance, surfaces, routes, actors, tenantId, expec
           }
           validateKeys(check, ['id', 'expected'], ['id', 'expected'], checkPointer, errors);
           if (!AUTH_CHECKS.includes(check.id)) {
-            addError(errors, checkPointer + '.id is not a required Auth flow.');
+            addError(errors, checkPointer + '.id is not a required Auth check.');
             continue;
           }
           if (seenChecks.has(check.id)) {
@@ -2139,7 +2143,7 @@ function validateAcceptance(acceptance, composition, routesArray, tenantResult, 
       if (scenario.kind === 'auth' && Array.isArray(scenario.checks)) {
         for (const check of scenario.checks) {
           addAssertion(
-            'flow:' + check.id + ':' + check.expected,
+            'auth-check:' + check.id + ':' + check.expected,
             AUTH_CHECK_CAPABILITY.get(check.id)
           );
         }
@@ -2455,6 +2459,7 @@ export function validateBriefDocument(input) {
   const warnings = [];
   const resolved = {
     tenantId: null,
+    tenantContract: null,
     tenantProvenance: null,
     compositionKind: null,
     installRoots: [],
@@ -2492,6 +2497,11 @@ export function validateBriefDocument(input) {
   }
   const tenantResult = validateTenant(tenant, catalog, errors);
   resolved.tenantId = tenantResult.id;
+  resolved.tenantContract = {
+    id: tenantResult.id,
+    endpointKinds: tenantResult.endpointKinds.slice(),
+    requireCsrfForAuth: tenantResult.requireCsrfForAuth
+  };
   resolved.tenantProvenance = provenance;
   if (descriptorPath && input.tenantPath && path.resolve(input.tenantPath) !== descriptorPath) {
     addError(errors, 'The tenant input must exactly match brief.tenant.descriptorPath.');
@@ -2577,7 +2587,7 @@ function attestFile(role, filePath, expectedSha256, errors, immutableFiles) {
   return attestation;
 }
 
-const WORKSPACE_EXCLUDED_DIRECTORIES = new Set([
+const WORKSPACE_ROOT_EXCLUDED_DIRECTORIES = new Set([
   '.git',
   '.next',
   '.turbo',
@@ -2598,7 +2608,7 @@ function collectWorkspaceEntries(workspacePath, relativeDirectory, entries) {
       ? path.posix.join(relativeDirectory.split(path.sep).join('/'), directoryEntry.name)
       : directoryEntry.name;
     if (directoryEntry.isDirectory()) {
-      if (WORKSPACE_EXCLUDED_DIRECTORIES.has(directoryEntry.name)) {
+      if (relativeDirectory === '' && WORKSPACE_ROOT_EXCLUDED_DIRECTORIES.has(directoryEntry.name)) {
         continue;
       }
       if (relativePath === '.constructive/harness') {
@@ -2725,6 +2735,10 @@ function validateBlocksSource(catalog, catalogPath, blocksSourceInput, errors, i
   try {
     headCommit = runGit(blocksSource, ['rev-parse', 'HEAD']);
     branch = runGit(blocksSource, ['branch', '--show-current']);
+    const trackedStatus = runGit(blocksSource, ['status', '--porcelain=v1', '--untracked-files=no']);
+    if (trackedStatus) {
+      addError(errors, '--blocks-source must have no tracked worktree changes.');
+    }
   } catch (error) {
     addError(errors, '--blocks-source must be a Git worktree: ' + error.message);
     return null;
@@ -2742,6 +2756,13 @@ function validateBlocksSource(catalog, catalogPath, blocksSourceInput, errors, i
     }
   }
   const checkerPath = path.resolve(path.dirname(catalogPath), '..', 'scripts', 'check-blocks-contract.mjs');
+  const checkerAttestation = attestFile(
+    'blocks-checker',
+    checkerPath,
+    null,
+    errors,
+    immutableFiles
+  );
   try {
     checkerOutput = execFileSync(
       process.execPath,
@@ -2756,6 +2777,7 @@ function validateBlocksSource(catalog, catalogPath, blocksSourceInput, errors, i
     headCommit,
     branch,
     checkerPath,
+    checkerSha256: checkerAttestation ? checkerAttestation.sha256 : null,
     checkerOutputSha256: checkerOutput ? sha256Text(checkerOutput) : null
   };
 }
@@ -2765,7 +2787,10 @@ export function validateBriefFiles(options) {
   const warnings = [];
   const immutableFiles = [];
   const briefPath = path.resolve(options.briefPath);
-  const catalogPath = path.resolve(options.catalogPath);
+  const catalogPath = CANONICAL_BLOCKS_CATALOG_PATH;
+  if (options.catalogPath && path.resolve(options.catalogPath) !== catalogPath) {
+    addError(errors, 'The Blocks catalog is fixed to the canonical constructive-blocks sibling skill and cannot be overridden.');
+  }
   const brief = readJsonFile(briefPath, 'App brief', errors);
   const catalog = readJsonFile(catalogPath, 'Blocks catalog', errors);
   let tenantPath = options.tenantPath ? path.resolve(options.tenantPath) : null;

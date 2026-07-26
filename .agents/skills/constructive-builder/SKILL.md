@@ -55,7 +55,7 @@ blocks_source=/absolute/path/to/pinned/blocks
      --state .constructive/harness/run-state.json
    ```
 
-3. **Install from current plans.** Activate `constructive-blocks`, query each validated root, retain the compact plan, follow the branch-only local-consumption recipe, and save the full post-build Blocks checker output during the install stage. Retain package provenance proving `@constructive-io/data` and other Blocks packages came from that attested local source while `publicRegistryReady` is false; never silently resolve an unrelated public version. Builder owns composition validation; do not attribute multi-root rejection to Blocks.
+3. **Install from current plans.** Activate `constructive-blocks`, query each validated root, retain the compact plan, follow the branch-only local-consumption recipe, and save the full post-build Blocks checker output during the install stage. Retain package-manager provenance for every npm dependency named by the attested plans and bind it to the pinned Blocks commit while `publicRegistryReady` is false; never silently resolve an unrelated public version. Builder owns composition validation; do not attribute multi-root rejection to Blocks.
 
 4. **Bind runtime ownership.** For Console, implement exactly the briefed internal-auth or host-session discriminant, one pinned verification profile per surface/pack expectation, and every per-capability alternative ID selected from `consoleModuleBindings`. The chosen endpoint kind establishes routing, while the attested alternative, adapter verification group, and live assertion establish readiness. For standalone Data, pass the host's `SheetsConfig`, explicit data endpoint, session mode, and default/custom `execute` or adapter boundary. Standalone Auth also requires an explicit Auth endpoint and exact tenant `databaseId`; reject it when the tenant requires Auth CSRF because Sheets has no CSRF bootstrap seam. Prefer embedded host sessions because the pinned standalone token behavior is source-attested separately. Other standalone packs receive host resources, states, policies, actions, and session references.
 
@@ -74,6 +74,7 @@ Finish only when every stage derives `passed` from its attempt events, every Con
 - [app-brief.md](./references/app-brief.md) — strict composition, tenant/session, capability, actor, and scenario grammar.
 - [runbook.md](./references/runbook.md) — source preflight, typed stages, event journal, locking, and commands.
 - [verification.md](./references/verification.md) — machine evidence and end-to-end proof requirements.
+- [evidence-schemas.md](./references/evidence-schemas.md) — exact JSON, file-reference, complete PNG, and semantic replay contract for every stage proof type.
 - [recovery.md](./references/recovery.md) — frontend-only failure classification and safe invalidation.
 - [tenant-database.template.json](./fixtures/tenant-database.template.json) and [tenant-database.isolation.template.json](./fixtures/tenant-database.isolation.template.json) — exact secret-free descriptor examples.
 

@@ -664,7 +664,7 @@ const invalidCases = [
     pattern: /does not select a source-attested alternative ID for users.memberships/
   },
   {
-    name: 'missing Auth password flow proof',
+    name: 'missing Auth password check proof',
     mutate(input) {
       const scenario = input.brief.acceptance.scenarios.find(
         (candidate) => candidate.id === 'auth-lifecycle'
@@ -717,6 +717,16 @@ test('validate-brief CLI rejects duplicate scalar flags before reading inputs', 
   );
   assert.equal(result.status, 2);
   assert.match(result.stderr, /--blocks-source may be provided only once/);
+});
+
+test('validate-brief CLI rejects catalog overrides', () => {
+  const result = spawnSync(
+    process.execPath,
+    [validateBriefCliPath, briefPath, '--catalog', '/tmp/injected-catalog.json'],
+    { encoding: 'utf8' }
+  );
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Unknown option: --catalog/);
 });
 
 test('brief-owned descriptors reject a real file reached through a symlinked parent', () => {

@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
+import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { isDeepStrictEqual } from 'node:util';
 import {
@@ -11,6 +12,7 @@ import {
   ensureSafeWorkspaceDirectory,
   isSafeRelativePath,
   sha256File,
+  sha256Text,
   writeJsonAtomic
 } from './brief-contract.mjs';
 
@@ -39,10 +41,23 @@ const EVIDENCE_REQUIREMENTS = new Map([
 ]);
 
 const MACHINE_EVIDENCE_KINDS = new Map([
+  ['validation', 'constructive.builder-validation'],
+  ['tenant-contract', 'constructive.builder-tenant-contract-evidence'],
+  ['endpoint-check', 'constructive.builder-endpoint-check-evidence'],
+  ['install-plan', 'constructive.builder-install-plan-evidence'],
+  ['install-log', 'constructive.builder-install-log-evidence'],
+  ['manifest', 'constructive.builder-manifest-evidence'],
+  ['package-provenance', 'constructive.builder-package-provenance-evidence'],
+  ['blocks-check', 'constructive.builder-blocks-check-evidence'],
+  ['source-check', 'constructive.builder-source-check-evidence'],
+  ['meta-contract', 'constructive.builder-meta-contract-evidence'],
+  ['typecheck', 'constructive.builder-typecheck-evidence'],
+  ['build', 'constructive.builder-build-evidence'],
   ['live-session', 'constructive.builder-live-session-evidence'],
   ['graphql', 'constructive.builder-graphql-evidence'],
   ['rls', 'constructive.builder-rls-evidence'],
   ['screenshot', 'constructive.builder-visual-evidence'],
+  ['interaction', 'constructive.builder-interaction-evidence'],
   ['evaluator', 'constructive.builder-acceptance-evidence']
 ]);
 
@@ -71,6 +86,137 @@ function assertTimestamp(value, label) {
 
 function now() {
   return new Date().toISOString();
+}
+
+function journalInputRoot(state) {
+  const immutableFiles = Array.isArray(state.inputs?.immutableFiles)
+    ? state.inputs.immutableFiles.map((inputFile) => {
+      return {
+        role: inputFile.role,
+        sha256: inputFile.sha256
+      };
+    })
+    : [];
+  return sha256Text(JSON.stringify({
+    validationSha256: state.validation?.sha256 || null,
+    blocksHeadCommit: state.inputs?.blocksSource?.headCommit || null,
+    blocksCheckerSha256: state.inputs?.blocksSource?.checkerSha256 || null,
+    immutableFiles
+  }));
+}
+
+function journalPayloadHash(state) {
+  const payload = structuredClone(state);
+  delete payload.integrity;
+  return sha256Text(JSON.stringify(payload));
+}
+
+function sealJournal(state) {
+  state.integrity = {
+    algorithm: 'sha256',
+    inputRoot: journalInputRoot(state),
+    journalHash: journalPayloadHash(state)
+  };
+}
+
+function attemptChainSeed(state, stageName, attemptNumber) {
+  return sha256Text(journalInputRoot(state) + ':attempt:' + stageName + ':' + attemptNumber);
+}
+
+function invalidationChainSeed(state) {
+  return sha256Text(journalInputRoot(state) + ':invalidations');
+}
+
+function chainedEventHash(event, context) {
+  const payload = structuredClone(event);
+  delete payload.eventHash;
+  return sha256Text(JSON.stringify({
+    context,
+    event: payload
+  }));
+}
+
+function chainAttemptEvent(state, stageName, attempt, event) {
+  const previousEvent = attempt.events.length > 0
+    ? attempt.events[attempt.events.length - 1]
+    : null;
+  event.previousHash = previousEvent
+    ? previousEvent.eventHash
+    : attemptChainSeed(state, stageName, attempt.number);
+  event.eventHash = chainedEventHash(event, {
+    kind: 'attempt',
+    stageName,
+    attemptNumber: attempt.number,
+    eventIndex: attempt.events.length
+  });
+}
+
+function chainInvalidation(state, invalidation) {
+  const previous = state.invalidations.length > 0
+    ? state.invalidations[state.invalidations.length - 1]
+    : null;
+  invalidation.previousHash = previous
+    ? previous.eventHash
+    : invalidationChainSeed(state);
+  invalidation.eventHash = chainedEventHash(invalidation, {
+    kind: 'invalidation',
+    index: state.invalidations.length
+  });
+}
+
+function verifyEventChains(state) {
+  for (const stageName of STAGES) {
+    const stage = state.stages[stageName];
+    for (const attempt of stage.attempts) {
+      let expectedPrevious = attemptChainSeed(state, stageName, attempt.number);
+      for (let eventIndex = 0; eventIndex < attempt.events.length; eventIndex += 1) {
+        const event = attempt.events[eventIndex];
+        if (event.previousHash !== expectedPrevious) {
+          throw new Error('Run state event chain is broken for ' + stageName + ' attempt ' + attempt.number + '.');
+        }
+        const expectedHash = chainedEventHash(event, {
+          kind: 'attempt',
+          stageName,
+          attemptNumber: attempt.number,
+          eventIndex
+        });
+        if (event.eventHash !== expectedHash) {
+          throw new Error('Run state event hash is invalid for ' + stageName + ' attempt ' + attempt.number + '.');
+        }
+        expectedPrevious = event.eventHash;
+      }
+    }
+  }
+  let expectedInvalidationPrevious = invalidationChainSeed(state);
+  for (let index = 0; index < state.invalidations.length; index += 1) {
+    const invalidation = state.invalidations[index];
+    if (invalidation.previousHash !== expectedInvalidationPrevious) {
+      throw new Error('Run state invalidation chain is broken.');
+    }
+    const expectedHash = chainedEventHash(invalidation, {
+      kind: 'invalidation',
+      index
+    });
+    if (invalidation.eventHash !== expectedHash) {
+      throw new Error('Run state invalidation event hash is invalid.');
+    }
+    expectedInvalidationPrevious = invalidation.eventHash;
+  }
+}
+
+function verifyJournalIntegrity(state) {
+  exactKeys(state.integrity, ['algorithm', 'inputRoot', 'journalHash'], 'Run state integrity');
+  if (state.integrity.algorithm !== 'sha256') {
+    throw new Error('Run state integrity algorithm must equal sha256.');
+  }
+  assertSha256(state.integrity.inputRoot, 'Run state integrity.inputRoot');
+  assertSha256(state.integrity.journalHash, 'Run state integrity.journalHash');
+  if (state.integrity.inputRoot !== journalInputRoot(state)) {
+    throw new Error('Run state integrity is not bound to the immutable validation inputs.');
+  }
+  if (state.integrity.journalHash !== journalPayloadHash(state)) {
+    throw new Error('Run state integrity check failed; the journal was edited outside the harness.');
+  }
 }
 
 function duration(startedAt, finishedAt) {
@@ -151,10 +297,38 @@ function verifyBlocksSource(blocksSource) {
   if (!blocksSource || typeof blocksSource.path !== 'string') {
     throw new Error('The validation report has a malformed Blocks source attestation.');
   }
+  exactKeys(
+    blocksSource,
+    ['path', 'headCommit', 'branch', 'checkerPath', 'checkerSha256', 'checkerOutputSha256'],
+    'Blocks source attestation'
+  );
   const sourcePath = path.resolve(blocksSource.path);
   const head = runGit(sourcePath, ['rev-parse', 'HEAD']);
   if (head !== blocksSource.headCommit) {
     throw new Error('The pinned Blocks source moved after validation; validate again and initialize a new journal.');
+  }
+  const trackedStatus = runGit(sourcePath, ['status', '--porcelain=v1', '--untracked-files=no']);
+  if (trackedStatus) {
+    throw new Error('The pinned Blocks source has tracked worktree changes; restore the validated clean commit.');
+  }
+  const checkerPath = path.resolve(blocksSource.checkerPath);
+  if (!fs.existsSync(checkerPath)) {
+    throw new Error('The pinned Blocks checker no longer exists.');
+  }
+  const checkerStats = fs.lstatSync(checkerPath);
+  if (!checkerStats.isFile() || checkerStats.isSymbolicLink()) {
+    throw new Error('The pinned Blocks checker must remain a regular, non-symlink file.');
+  }
+  if (sha256File(checkerPath) !== blocksSource.checkerSha256) {
+    throw new Error('The pinned Blocks checker bytes changed after validation.');
+  }
+  const checkerOutput = execFileSync(
+    process.execPath,
+    [checkerPath, '--blocks-repo', sourcePath, '--source-preflight'],
+    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }
+  ).trim();
+  if (!blocksSource.checkerOutputSha256 || sha256Text(checkerOutput) !== blocksSource.checkerOutputSha256) {
+    throw new Error('The pinned Blocks canonical source preflight output changed after validation.');
   }
 }
 
@@ -208,9 +382,11 @@ function validateStateShape(state) {
   }
   exactKeys(
     state,
-    ['schemaVersion', 'kind', 'revision', 'validation', 'inputs', 'resolved', 'startedAt', 'invalidations', 'stages'],
+    ['schemaVersion', 'kind', 'revision', 'validation', 'inputs', 'resolved', 'startedAt', 'invalidations', 'stages', 'integrity'],
     'Run state'
   );
+  verifyJournalIntegrity(state);
+  verifyEventChains(state);
   exactKeys(state.validation, ['path', 'sha256'], 'Run state validation');
   assertSha256(state.validation.sha256, 'Run state validation.sha256');
   assertTimestamp(state.startedAt, 'Run state startedAt');
@@ -243,15 +419,23 @@ function validateStateShape(state) {
       if (attempt.events.length === 2 && attempt.events[1].kind !== 'passed' && attempt.events[1].kind !== 'failed') {
         throw new Error('Run state stage ' + stageName + ' has an unsupported terminal event.');
       }
-      exactKeys(attempt.events[0], ['kind', 'at', 'workspaceBeforeSha256'], 'Run state started event');
+      exactKeys(
+        attempt.events[0],
+        ['kind', 'at', 'workspaceBeforeSha256', 'previousHash', 'eventHash'],
+        'Run state started event'
+      );
+      assertSha256(attempt.events[0].previousHash, 'Run state started event previousHash');
+      assertSha256(attempt.events[0].eventHash, 'Run state started event eventHash');
       assertTimestamp(attempt.events[0].at, 'Run state started event at');
       assertSha256(attempt.events[0].workspaceBeforeSha256, 'Run state started event workspaceBeforeSha256');
       if (attempt.events.length === 2) {
         const terminal = attempt.events[1];
         const terminalKeys = terminal.kind === 'passed'
-          ? ['kind', 'at', 'evidence', 'workspace']
-          : ['kind', 'at', 'evidence', 'reason', 'workspace'];
+          ? ['kind', 'at', 'evidence', 'workspace', 'previousHash', 'eventHash']
+          : ['kind', 'at', 'evidence', 'reason', 'workspace', 'previousHash', 'eventHash'];
         exactKeys(terminal, terminalKeys, 'Run state terminal event');
+        assertSha256(terminal.previousHash, 'Run state terminal event previousHash');
+        assertSha256(terminal.eventHash, 'Run state terminal event eventHash');
         assertTimestamp(terminal.at, 'Run state terminal event at');
         if (Date.parse(terminal.at) < Date.parse(attempt.events[0].at)) {
           throw new Error('Run state terminal event predates its start event.');
@@ -271,7 +455,13 @@ function validateStateShape(state) {
     }
   }
   for (const invalidation of state.invalidations) {
-    exactKeys(invalidation, ['at', 'fromStage', 'reason', 'affected', 'workspace'], 'Run state invalidation');
+    exactKeys(
+      invalidation,
+      ['at', 'fromStage', 'reason', 'affected', 'workspace', 'previousHash', 'eventHash'],
+      'Run state invalidation'
+    );
+    assertSha256(invalidation.previousHash, 'Run state invalidation previousHash');
+    assertSha256(invalidation.eventHash, 'Run state invalidation eventHash');
     assertTimestamp(invalidation.at, 'Run state invalidation at');
     assertStage(invalidation.fromStage);
     if (typeof invalidation.reason !== 'string' || invalidation.reason.trim().length === 0) {
@@ -369,9 +559,32 @@ function verifyRetainedEvidence(state) {
               'Retained evidence outcome reference',
               ['kind', 'path', 'sha256', 'size']
             );
-            if (!['request', 'ui', 'screenshot', 'interaction'].includes(reference.kind)) {
-              throw new Error('Retained evidence outcome reference kind must be request, ui, screenshot, or interaction.');
+            if (![
+              'request',
+              'ui',
+              'screenshot',
+              'interaction',
+              'manifest',
+              'package',
+              'source',
+              'install-output',
+              'command-output'
+            ].includes(reference.kind)) {
+              throw new Error(
+                'Retained evidence reference kind is not supported by the exact machine schemas.'
+              );
             }
+          }
+          const replayEvidence = {
+            type: evidence.type,
+            path: evidence.path,
+            sha256: evidence.sha256,
+            size: evidence.size,
+            references: []
+          };
+          validateMachineEvidence(replayEvidence, stageName, state, event.kind === 'passed');
+          if (!isDeepStrictEqual(replayEvidence.references, evidence.references)) {
+            throw new Error('Retained ' + stageName + ' evidence references do not match semantic replay.');
           }
         }
       }
@@ -636,7 +849,237 @@ function setEquals(actualValues, expectedValues) {
   return true;
 }
 
-function attestOutcomeReference(relativePath, kind, workspacePath) {
+function assertMachineHeader(document, evidenceType, label) {
+  if (document.schemaVersion !== 1 || document.kind !== MACHINE_EVIDENCE_KINDS.get(evidenceType)) {
+    throw new Error(label + ' has the wrong schemaVersion or kind.');
+  }
+}
+
+function validateCheckResults(checks, label) {
+  if (!Array.isArray(checks) || checks.length === 0) {
+    throw new Error(label + ' checks must be a non-empty array.');
+  }
+  const ids = new Set();
+  let allPassed = true;
+  for (const check of checks) {
+    exactKeys(check, ['id', 'passed'], label + ' check');
+    requireValue(check.id, label + ' check id');
+    if (ids.has(check.id)) {
+      throw new Error(label + ' checks duplicate ' + check.id + '.');
+    }
+    ids.add(check.id);
+    if (typeof check.passed !== 'boolean') {
+      throw new Error(label + ' check passed must be boolean.');
+    }
+    if (!check.passed) {
+      allPassed = false;
+    }
+  }
+  return allPassed;
+}
+
+function validateRequestOutcome(document, context) {
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'endpointKind', 'operation', 'statusCode', 'checks', 'passed'],
+    'Request outcome artifact'
+  );
+  if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-request-outcome') {
+    throw new Error('Request outcome artifact has the wrong schemaVersion or kind.');
+  }
+  requireValue(document.endpointKind, 'Request outcome endpointKind');
+  requireValue(document.operation, 'Request outcome operation');
+  if (
+    !Number.isInteger(document.statusCode) ||
+    (document.statusCode !== 0 && (document.statusCode < 100 || document.statusCode > 599))
+  ) {
+    throw new Error('Request outcome statusCode must be 0 or a valid HTTP status code.');
+  }
+  const allPassed = validateCheckResults(document.checks, 'Request outcome');
+  if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
+    throw new Error('Request outcome passed must equal all request checks.');
+  }
+  if (document.passed && (document.statusCode < 200 || document.statusCode > 299)) {
+    throw new Error('A passing request outcome requires a 2xx statusCode.');
+  }
+  if (context?.endpointKind && document.endpointKind !== context.endpointKind) {
+    throw new Error('Request outcome endpointKind does not match the evidence result.');
+  }
+  if (typeof context?.passed === 'boolean' && document.passed !== context.passed) {
+    throw new Error('Request outcome passed does not match the evidence result.');
+  }
+}
+
+function validateUiOutcome(document, context) {
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'state', 'visible', 'interactive', 'checks', 'passed'],
+    'UI outcome artifact'
+  );
+  if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-ui-outcome') {
+    throw new Error('UI outcome artifact has the wrong schemaVersion or kind.');
+  }
+  requireValue(document.state, 'UI outcome state');
+  if (typeof document.visible !== 'boolean' || typeof document.interactive !== 'boolean') {
+    throw new Error('UI outcome visible and interactive must be boolean.');
+  }
+  const allPassed = validateCheckResults(document.checks, 'UI outcome');
+  if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
+    throw new Error('UI outcome passed must equal all UI checks.');
+  }
+  if (document.passed && !document.visible) {
+    throw new Error('A passing UI outcome must be visible.');
+  }
+  if (typeof context?.passed === 'boolean' && document.passed !== context.passed) {
+    throw new Error('UI outcome passed does not match the evidence result.');
+  }
+}
+
+function validateInteractionOutcome(document, context) {
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'targetKey', 'viewportId', 'state', 'checks', 'passed'],
+    'Interaction outcome artifact'
+  );
+  if (document.schemaVersion !== 1 || document.kind !== 'constructive.builder-interaction-outcome') {
+    throw new Error('Interaction outcome artifact has the wrong schemaVersion or kind.');
+  }
+  requireValue(document.targetKey, 'Interaction outcome targetKey');
+  requireValue(document.viewportId, 'Interaction outcome viewportId');
+  requireValue(document.state, 'Interaction outcome state');
+  const allPassed = validateCheckResults(document.checks, 'Interaction outcome');
+  if (typeof document.passed !== 'boolean' || document.passed !== allPassed) {
+    throw new Error('Interaction outcome passed must equal all interaction checks.');
+  }
+  if (context) {
+    if (
+      document.targetKey !== context.targetKey ||
+      document.viewportId !== context.viewportId ||
+      document.state !== context.state
+    ) {
+      throw new Error('Interaction outcome does not match its visual target, viewport, and state.');
+    }
+    if (typeof context.passed === 'boolean' && document.passed !== context.passed) {
+      throw new Error('Interaction outcome passed does not match the visual result.');
+    }
+  }
+}
+
+function crc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      const mask = -(crc & 1);
+      crc = (crc >>> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function parseCompletePng(bytes) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  if (bytes.length < 57 || !bytes.subarray(0, 8).equals(signature)) {
+    throw new Error('Screenshot must be a complete PNG image.');
+  }
+  let offset = 8;
+  let ihdr = null;
+  const idatChunks = [];
+  let ended = false;
+  let chunkIndex = 0;
+  while (offset < bytes.length) {
+    if (offset + 12 > bytes.length) {
+      throw new Error('Screenshot PNG ends inside a chunk.');
+    }
+    const length = bytes.readUInt32BE(offset);
+    const chunkEnd = offset + 12 + length;
+    if (chunkEnd > bytes.length) {
+      throw new Error('Screenshot PNG has a truncated chunk.');
+    }
+    const typeBytes = bytes.subarray(offset + 4, offset + 8);
+    const type = typeBytes.toString('ascii');
+    const data = bytes.subarray(offset + 8, offset + 8 + length);
+    const expectedCrc = bytes.readUInt32BE(offset + 8 + length);
+    const crcInput = Buffer.concat([typeBytes, data]);
+    if (crc32(crcInput) !== expectedCrc) {
+      throw new Error('Screenshot PNG has an invalid ' + type + ' chunk checksum.');
+    }
+    if (chunkIndex === 0 && type !== 'IHDR') {
+      throw new Error('Screenshot PNG must begin with IHDR.');
+    }
+    if (type === 'IHDR') {
+      if (ihdr || length !== 13 || chunkIndex !== 0) {
+        throw new Error('Screenshot PNG must contain one 13-byte leading IHDR chunk.');
+      }
+      ihdr = Buffer.from(data);
+    } else if (type === 'IDAT') {
+      if (!ihdr || ended || length === 0) {
+        throw new Error('Screenshot PNG must contain non-empty IDAT data after IHDR.');
+      }
+      idatChunks.push(Buffer.from(data));
+    } else if (type === 'IEND') {
+      if (length !== 0 || idatChunks.length === 0 || chunkEnd !== bytes.length) {
+        throw new Error('Screenshot PNG must end with one terminal IEND after image data.');
+      }
+      ended = true;
+    } else if (ended) {
+      throw new Error('Screenshot PNG contains data after IEND.');
+    }
+    offset = chunkEnd;
+    chunkIndex += 1;
+  }
+  if (!ihdr || !ended || idatChunks.length === 0) {
+    throw new Error('Screenshot PNG must contain IHDR, non-empty IDAT, and terminal IEND chunks.');
+  }
+  const width = ihdr.readUInt32BE(0);
+  const height = ihdr.readUInt32BE(4);
+  const bitDepth = ihdr[8];
+  const colorType = ihdr[9];
+  if (width < 1 || height < 1 || ihdr[10] !== 0 || ihdr[11] !== 0 || ihdr[12] !== 0) {
+    throw new Error('Screenshot PNG must use valid dimensions and non-interlaced standard compression and filtering.');
+  }
+  const channelCounts = new Map([[0, 1], [2, 3], [3, 1], [4, 2], [6, 4]]);
+  const allowedBitDepths = new Map([[0, [1, 2, 4, 8, 16]], [2, [8, 16]], [3, [1, 2, 4, 8]], [4, [8, 16]], [6, [8, 16]]]);
+  const channels = channelCounts.get(colorType);
+  if (!channels || !allowedBitDepths.get(colorType).includes(bitDepth)) {
+    throw new Error('Screenshot PNG uses an unsupported color type or bit depth.');
+  }
+  const rowBytes = Math.ceil(width * channels * bitDepth / 8);
+  const expectedInflatedSize = (rowBytes + 1) * height;
+  let scanlines;
+  try {
+    scanlines = zlib.inflateSync(Buffer.concat(idatChunks), { maxOutputLength: expectedInflatedSize });
+  } catch (error) {
+    throw new Error('Screenshot PNG IDAT data cannot be inflated to its declared pixel dimensions: ' + error.message);
+  }
+  if (scanlines.length !== expectedInflatedSize) {
+    throw new Error('Screenshot PNG scanline bytes do not match its declared pixel dimensions.');
+  }
+  for (let row = 0; row < height; row += 1) {
+    if (scanlines[row * (rowBytes + 1)] > 4) {
+      throw new Error('Screenshot PNG contains an invalid scanline filter.');
+    }
+  }
+  return { width, height };
+}
+
+function validateScreenshotArtifact(artifactPath, context) {
+  const bytes = fs.readFileSync(artifactPath);
+  const dimensions = parseCompletePng(bytes);
+  if (!context?.viewport) {
+    throw new Error('Screenshot validation requires a resolved viewport.');
+  }
+  const expectedWidth = Math.round(context.viewport.width * context.viewport.deviceScaleFactor);
+  const expectedHeight = Math.round(context.viewport.height * context.viewport.deviceScaleFactor);
+  if (dimensions.width !== expectedWidth || dimensions.height !== expectedHeight) {
+    throw new Error(
+      'Screenshot dimensions ' + dimensions.width + 'x' + dimensions.height +
+      ' do not match viewport pixels ' + expectedWidth + 'x' + expectedHeight + '.'
+    );
+  }
+}
+
+function attestOutcomeReference(relativePath, kind, workspacePath, context = null) {
   if (!isSafeRelativePath(relativePath) || relativePath === '.') {
     throw new Error('Machine evidence ' + kind + ' references must be safe workspace-relative paths.');
   }
@@ -652,6 +1095,17 @@ function attestOutcomeReference(relativePath, kind, workspacePath) {
   const realArtifact = fs.realpathSync(artifactPath);
   if (!isWithin(realWorkspace, realArtifact)) {
     throw new Error('Machine evidence ' + kind + ' reference escapes through a symlinked parent directory.');
+  }
+  if (kind === 'request') {
+    validateRequestOutcome(readJson(artifactPath, 'Request outcome artifact'), context);
+  } else if (kind === 'ui') {
+    validateUiOutcome(readJson(artifactPath, 'UI outcome artifact'), context);
+  } else if (kind === 'interaction') {
+    validateInteractionOutcome(readJson(artifactPath, 'Interaction outcome artifact'), context);
+  } else if (kind === 'screenshot') {
+    validateScreenshotArtifact(artifactPath, context);
+  } else {
+    throw new Error('Unsupported machine evidence outcome reference kind ' + kind + '.');
   }
   return {
     kind,
@@ -699,7 +1153,9 @@ function addOutcomeReferences(assertion, evidence, workspacePath, seenReferences
       continue;
     }
     seenReferences.add(key);
-    evidence.references.push(attestOutcomeReference(pair[1], pair[0], workspacePath));
+    evidence.references.push(
+      attestOutcomeReference(pair[1], pair[0], workspacePath, { passed: assertion.passed })
+    );
   }
 }
 
@@ -1039,8 +1495,16 @@ function validateVisualEvidence(document, evidence, state, requirePass) {
       const referenceKey = pair[0] + ':' + pair[1];
       if (!seenReferences.has(referenceKey)) {
         seenReferences.add(referenceKey);
+        const referenceContext = pair[0] === 'screenshot'
+          ? { viewport: expectedResult.viewport }
+          : {
+            targetKey: visualCombinationKey(result.target, result.viewport, result.state),
+            viewportId: result.viewport.id,
+            state: result.state,
+            passed: result.passed
+          };
         evidence.references.push(
-          attestOutcomeReference(pair[1], pair[0], state.inputs.workspace.path)
+          attestOutcomeReference(pair[1], pair[0], state.inputs.workspace.path, referenceContext)
         );
       }
     }
@@ -1053,18 +1517,630 @@ function validateVisualEvidence(document, evidence, state, requirePass) {
   }
 }
 
+function validateResultPassState(passed, requirePass, label) {
+  if (typeof passed !== 'boolean') {
+    throw new Error(label + ' passed must be boolean.');
+  }
+  if (requirePass && !passed) {
+    throw new Error(label + ' failed during a passing stage transition.');
+  }
+  return !passed;
+}
+
+function requireObservedFailure(observedFailure, requirePass, label) {
+  if (!requirePass && !observedFailure) {
+    throw new Error('Failed ' + label + ' evidence must contain a failed result.');
+  }
+}
+
+function validateValidationEvidence(document, evidence, state, requirePass) {
+  if (!requirePass) {
+    throw new Error('A journal can only attach its passing validation report to the brief stage.');
+  }
+  if (evidence.sha256 !== state.validation.sha256 || !isDeepStrictEqual(document, readJson(state.validation.path, 'Validation report'))) {
+    throw new Error('Brief validation evidence must exactly equal the immutable validation report.');
+  }
+}
+
+function expectedTenantContracts(state) {
+  const contracts = [];
+  const primary = state.resolved.tenantContract;
+  if (!primary || primary.id !== state.resolved.tenantId || !Array.isArray(primary.endpointKinds)) {
+    throw new Error('The validated brief has no resolved primary tenant contract.');
+  }
+  contracts.push({
+    tenantId: primary.id,
+    role: 'primary',
+    endpointKinds: primary.endpointKinds,
+    requireCsrfForAuth: primary.requireCsrfForAuth
+  });
+  const isolationTenants = state.resolved.acceptance?.isolationTenants;
+  if (Array.isArray(isolationTenants)) {
+    for (const isolation of isolationTenants) {
+      contracts.push({
+        tenantId: isolation.databaseId,
+        role: 'isolation',
+        endpointKinds: isolation.endpointKinds,
+        requireCsrfForAuth: isolation.requireCsrfForAuth
+      });
+    }
+  }
+  return contracts;
+}
+
+function validateTenantContractEvidence(document, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'tenants'], 'Tenant contract evidence');
+  assertMachineHeader(document, 'tenant-contract', 'Tenant contract evidence');
+  if (!Array.isArray(document.tenants)) {
+    throw new Error('Tenant contract evidence tenants must be an array.');
+  }
+  const expected = expectedTenantContracts(state);
+  if (document.tenants.length !== expected.length) {
+    throw new Error('Tenant contract evidence must cover every primary and isolation descriptor.');
+  }
+  let observedFailure = false;
+  for (let index = 0; index < expected.length; index += 1) {
+    const result = document.tenants[index];
+    const expectedResult = expected[index];
+    exactKeys(
+      result,
+      ['tenantId', 'role', 'endpointKinds', 'requireCsrfForAuth', 'passed'],
+      'Tenant contract result'
+    );
+    if (
+      result.tenantId !== expectedResult.tenantId ||
+      result.role !== expectedResult.role ||
+      !Array.isArray(result.endpointKinds) ||
+      !setEquals(result.endpointKinds, expectedResult.endpointKinds) ||
+      result.requireCsrfForAuth !== expectedResult.requireCsrfForAuth
+    ) {
+      throw new Error('Tenant contract result does not match the resolved descriptor contract.');
+    }
+    if (validateResultPassState(result.passed, requirePass, 'Tenant contract result')) {
+      observedFailure = true;
+    }
+  }
+  requireObservedFailure(observedFailure, requirePass, 'tenant-contract');
+}
+
+function expectedEndpointChecks(state) {
+  const expected = [];
+  for (const tenant of expectedTenantContracts(state)) {
+    for (const endpointKind of tenant.endpointKinds) {
+      expected.push({
+        tenantId: tenant.tenantId,
+        endpointKind
+      });
+    }
+  }
+  return expected;
+}
+
+function validateEndpointCheckEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Endpoint check evidence');
+  assertMachineHeader(document, 'endpoint-check', 'Endpoint check evidence');
+  if (!Array.isArray(document.results)) {
+    throw new Error('Endpoint check evidence results must be an array.');
+  }
+  const expected = expectedEndpointChecks(state);
+  if (document.results.length !== expected.length) {
+    throw new Error('Endpoint check evidence must cover every declared semantic endpoint.');
+  }
+  const expectedKeys = new Set(expected.map((result) => result.tenantId + ':' + result.endpointKind));
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(
+      result,
+      ['tenantId', 'endpointKind', 'statusCode', 'passed', 'requestRef'],
+      'Endpoint check result'
+    );
+    const key = result.tenantId + ':' + result.endpointKind;
+    if (!expectedKeys.has(key) || seen.has(key)) {
+      throw new Error('Endpoint check evidence has an unexpected or duplicate endpoint ' + key + '.');
+    }
+    seen.add(key);
+    if (!Number.isInteger(result.statusCode)) {
+      throw new Error('Endpoint check statusCode must be an integer.');
+    }
+    if (validateResultPassState(result.passed, requirePass, 'Endpoint check result')) {
+      observedFailure = true;
+    }
+    const reference = attestOutcomeReference(
+      result.requestRef,
+      'request',
+      state.inputs.workspace.path,
+      { endpointKind: result.endpointKind, passed: result.passed }
+    );
+    const requestDocument = readJson(reference.path, 'Endpoint request outcome');
+    if (requestDocument.statusCode !== result.statusCode) {
+      throw new Error('Endpoint check statusCode does not match its request outcome artifact.');
+    }
+    evidence.references.push(reference);
+  }
+  requireObservedFailure(observedFailure, requirePass, 'endpoint-check');
+}
+
+function installPlanContracts(state) {
+  if (!Array.isArray(state.inputs.installPlans)) {
+    throw new Error('The validated inputs have no install plan attestations.');
+  }
+  if (state.inputs.installPlans.length !== state.resolved.installRoots.length) {
+    throw new Error('The validated install plans must exactly cover every selected install root.');
+  }
+  const expectedRoots = new Set(state.resolved.installRoots);
+  const seen = new Set();
+  const contracts = [];
+  for (const attestation of state.inputs.installPlans) {
+    if (!expectedRoots.has(attestation.root) || seen.has(attestation.root)) {
+      throw new Error('The validated install plans contain an unexpected or duplicate root.');
+    }
+    seen.add(attestation.root);
+    const plan = readJson(attestation.path, 'Attested compact install plan');
+    if (
+      plan.schemaVersion !== 1 ||
+      plan.kind !== 'constructive.console-kit-install-plan' ||
+      plan.item !== attestation.root ||
+      !plan.install ||
+      typeof plan.install.command !== 'string' ||
+      plan.install.command.trim().length === 0 ||
+      !plan.composition ||
+      !Array.isArray(plan.composition.npmDependencies)
+    ) {
+      throw new Error('Attested compact install plan has an invalid executable contract for ' + attestation.root + '.');
+    }
+    const packageNames = [];
+    for (const dependency of plan.composition.npmDependencies) {
+      if (!dependency || typeof dependency.name !== 'string' || dependency.name.trim().length === 0) {
+        throw new Error('Attested compact install plan has an invalid npm dependency for ' + attestation.root + '.');
+      }
+      packageNames.push(dependency.name);
+    }
+    contracts.push({
+      root: attestation.root,
+      sha256: attestation.sha256,
+      command: plan.install.command,
+      packageNames
+    });
+  }
+  return contracts;
+}
+
+function validateInstallPlanEvidence(document, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'plans'], 'Install plan evidence');
+  assertMachineHeader(document, 'install-plan', 'Install plan evidence');
+  if (!Array.isArray(document.plans)) {
+    throw new Error('Install plan evidence plans must be an array.');
+  }
+  const expected = installPlanContracts(state);
+  if (document.plans.length !== expected.length) {
+    throw new Error('Install plan evidence must cover every selected root.');
+  }
+  let observedFailure = false;
+  for (let index = 0; index < expected.length; index += 1) {
+    const result = document.plans[index];
+    exactKeys(result, ['root', 'sha256', 'passed'], 'Install plan result');
+    if (result.root !== expected[index].root || result.sha256 !== expected[index].sha256) {
+      throw new Error('Install plan result does not match the attested compact plan.');
+    }
+    assertSha256(result.sha256, 'Install plan result sha256');
+    if (validateResultPassState(result.passed, requirePass, 'Install plan result')) {
+      observedFailure = true;
+    }
+  }
+  requireObservedFailure(observedFailure, requirePass, 'install-plan');
+}
+
+function validateInstallLogEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Install log evidence');
+  assertMachineHeader(document, 'install-log', 'Install log evidence');
+  const planContracts = installPlanContracts(state);
+  if (!Array.isArray(document.results) || document.results.length !== planContracts.length) {
+    throw new Error('Install log evidence must cover every selected root.');
+  }
+  const expectedByRoot = new Map(planContracts.map((contract) => [contract.root, contract]));
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(
+      result,
+      ['root', 'command', 'exitCode', 'outputRef', 'outputSha256', 'passed'],
+      'Install log result'
+    );
+    const expected = expectedByRoot.get(result.root);
+    if (!expected || seen.has(result.root)) {
+      throw new Error('Install log evidence has an unexpected or duplicate root ' + String(result.root) + '.');
+    }
+    seen.add(result.root);
+    if (result.command !== expected.command) {
+      throw new Error('Install log command does not match the attested compact plan for ' + result.root + '.');
+    }
+    if (!Number.isInteger(result.exitCode)) {
+      throw new Error('Install log exitCode must be an integer.');
+    }
+    if (result.passed !== (result.exitCode === 0)) {
+      throw new Error('Install log passed must equal exitCode === 0.');
+    }
+    if (validateResultPassState(result.passed, requirePass, 'Install log result')) {
+      observedFailure = true;
+    }
+    evidence.references.push(
+      attestDeclaredWorkspaceFile(
+        result.outputRef,
+        result.outputSha256,
+        state.inputs.workspace.path,
+        'install-output',
+        'Install command output'
+      )
+    );
+  }
+  requireObservedFailure(observedFailure, requirePass, 'install-log');
+}
+
+function attestDeclaredWorkspaceFile(relativePath, declaredSha256, workspacePath, kind, label) {
+  if (!isSafeRelativePath(relativePath) || relativePath === '.') {
+    throw new Error(label + ' path must be a safe workspace-relative file.');
+  }
+  const absolutePath = path.resolve(workspacePath, relativePath);
+  const record = {
+    kind,
+    path: absolutePath,
+    sha256: declaredSha256,
+    size: 0
+  };
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(label + ' does not exist: ' + relativePath + '.');
+  }
+  const stats = fs.lstatSync(absolutePath);
+  record.size = stats.size;
+  verifyArtifactRecord(record, workspacePath, label, ['kind', 'path', 'sha256', 'size']);
+  return record;
+}
+
+function expectedSurfacePacks(state) {
+  const expected = [];
+  for (const surface of state.resolved.surfaces) {
+    for (const featurePack of surface.featurePacks) {
+      expected.push({
+        surfaceId: surface.id,
+        featurePack
+      });
+    }
+  }
+  return expected;
+}
+
+function validateInstalledManifest(document, featurePack, label) {
+  if (!document || document.schemaVersion !== 1 || document.id !== featurePack) {
+    throw new Error(label + ' must be a schemaVersion 1 manifest for ' + featurePack + '.');
+  }
+  if (!document.capabilities || !Array.isArray(document.capabilities.required)) {
+    throw new Error(label + ' has no required capability list.');
+  }
+}
+
+function validateManifestEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Manifest evidence');
+  assertMachineHeader(document, 'manifest', 'Manifest evidence');
+  if (!Array.isArray(document.results)) {
+    throw new Error('Manifest evidence results must be an array.');
+  }
+  const expected = expectedSurfacePacks(state);
+  if (document.results.length !== expected.length) {
+    throw new Error('Manifest evidence must cover every installed surface feature pack.');
+  }
+  const expectedKeys = new Set(expected.map((result) => result.surfaceId + ':' + result.featurePack));
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(
+      result,
+      ['surfaceId', 'featurePack', 'manifestRef', 'sha256', 'passed'],
+      'Manifest result'
+    );
+    const key = result.surfaceId + ':' + result.featurePack;
+    if (!expectedKeys.has(key) || seen.has(key)) {
+      throw new Error('Manifest evidence has an unexpected or duplicate surface feature pack ' + key + '.');
+    }
+    seen.add(key);
+    const reference = attestDeclaredWorkspaceFile(
+      result.manifestRef,
+      result.sha256,
+      state.inputs.workspace.path,
+      'manifest',
+      'Installed feature-pack manifest'
+    );
+    validateInstalledManifest(readJson(reference.path, 'Installed feature-pack manifest'), result.featurePack, 'Installed feature-pack manifest');
+    evidence.references.push(reference);
+    if (validateResultPassState(result.passed, requirePass, 'Manifest result')) {
+      observedFailure = true;
+    }
+  }
+  requireObservedFailure(observedFailure, requirePass, 'manifest');
+}
+
+function validatePackageProvenanceEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'packages'], 'Package provenance evidence');
+  assertMachineHeader(document, 'package-provenance', 'Package provenance evidence');
+  const expectedNames = new Set();
+  for (const plan of installPlanContracts(state)) {
+    for (const packageName of plan.packageNames) {
+      expectedNames.add(packageName);
+    }
+  }
+  if (!Array.isArray(document.packages) || document.packages.length !== expectedNames.size) {
+    throw new Error('Package provenance evidence must exactly cover every attested npm dependency.');
+  }
+  const names = new Set();
+  let observedFailure = false;
+  for (const result of document.packages) {
+    exactKeys(
+      result,
+      ['name', 'resolvedRef', 'sha256', 'sourceCommit', 'passed'],
+      'Package provenance result'
+    );
+    requireValue(result.name, 'Package provenance name');
+    if (!expectedNames.has(result.name) || names.has(result.name)) {
+      throw new Error('Package provenance evidence has an unexpected or duplicate package ' + result.name + '.');
+    }
+    names.add(result.name);
+    const expectedSourceCommit = state.inputs.blocksSource ? state.inputs.blocksSource.headCommit : null;
+    if (result.sourceCommit !== expectedSourceCommit) {
+      throw new Error('Package provenance sourceCommit does not match the pinned Blocks source.');
+    }
+    const reference = attestDeclaredWorkspaceFile(
+      result.resolvedRef,
+      result.sha256,
+      state.inputs.workspace.path,
+      'package',
+      'Resolved package provenance file'
+    );
+    evidence.references.push(reference);
+    if (validateResultPassState(result.passed, requirePass, 'Package provenance result')) {
+      observedFailure = true;
+    }
+  }
+  requireObservedFailure(observedFailure, requirePass, 'package-provenance');
+}
+
+function runFullBlocksCheck(blocksSource) {
+  if (!blocksSource) {
+    return null;
+  }
+  return execFileSync(
+    process.execPath,
+    [blocksSource.checkerPath, '--blocks-repo', blocksSource.path],
+    { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, stdio: ['ignore', 'pipe', 'pipe'] }
+  ).trim();
+}
+
+function validateBlocksCheckEvidence(document, state, requirePass) {
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'headCommit', 'checkerSha256', 'outputSha256', 'passed'],
+    'Blocks check evidence'
+  );
+  assertMachineHeader(document, 'blocks-check', 'Blocks check evidence');
+  if (!state.inputs.blocksSource) {
+    if (document.headCommit !== null || document.checkerSha256 !== null || document.outputSha256 !== null) {
+      throw new Error('Blocks check evidence must use null source fields when no branch-only source is resolved.');
+    }
+  } else {
+    if (
+      document.headCommit !== state.inputs.blocksSource.headCommit ||
+      document.checkerSha256 !== state.inputs.blocksSource.checkerSha256
+    ) {
+      throw new Error('Blocks check evidence does not match the pinned source and checker bytes.');
+    }
+    const output = runFullBlocksCheck(state.inputs.blocksSource);
+    if (document.outputSha256 !== sha256Text(output)) {
+      throw new Error('Blocks check evidence does not match a full checker run without --source-preflight.');
+    }
+  }
+  if (document.passed !== true) {
+    throw new Error('Blocks check passed must be true because the canonical full checker completed successfully.');
+  }
+  const observedFailure = validateResultPassState(document.passed, requirePass, 'Blocks check result');
+  requireObservedFailure(observedFailure, requirePass, 'blocks-check');
+}
+
+function validateSourceCheckEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Source check evidence');
+  assertMachineHeader(document, 'source-check', 'Source check evidence');
+  if (!Array.isArray(document.results) || document.results.length !== state.resolved.domainRoutes.length) {
+    throw new Error('Source check evidence must cover every application-owned domain route.');
+  }
+  const expectedRoutes = new Set(state.resolved.domainRoutes.map((route) => route.id));
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(result, ['routeId', 'sourceRef', 'sha256', 'passed'], 'Source check result');
+    if (!expectedRoutes.has(result.routeId) || seen.has(result.routeId)) {
+      throw new Error('Source check evidence has an unexpected or duplicate route ' + String(result.routeId) + '.');
+    }
+    seen.add(result.routeId);
+    const reference = attestDeclaredWorkspaceFile(
+      result.sourceRef,
+      result.sha256,
+      state.inputs.workspace.path,
+      'source',
+      'Domain route source'
+    );
+    evidence.references.push(reference);
+    if (validateResultPassState(result.passed, requirePass, 'Source check result')) {
+      observedFailure = true;
+    }
+  }
+  requireObservedFailure(observedFailure, requirePass, 'source-check');
+}
+
+function validateMetaContractEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Meta contract evidence');
+  assertMachineHeader(document, 'meta-contract', 'Meta contract evidence');
+  if (!Array.isArray(document.results) || document.results.length !== state.resolved.domainRoutes.length) {
+    throw new Error('Meta contract evidence must cover every application-owned domain route.');
+  }
+  const expectedRoutes = new Map(state.resolved.domainRoutes.map((route) => [route.id, route]));
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(
+      result,
+      [
+        'routeId',
+        'resource',
+        'endpointKind',
+        'contractVersion',
+        'metaPassed',
+        'introspectionPassed',
+        'reconciled',
+        'requestRef',
+        'passed'
+      ],
+      'Meta contract result'
+    );
+    const route = expectedRoutes.get(result.routeId);
+    if (!route || seen.has(result.routeId) || result.resource !== route.resource) {
+      throw new Error('Meta contract evidence has an unexpected or duplicate route.');
+    }
+    seen.add(result.routeId);
+    if (result.endpointKind !== 'data' || result.contractVersion !== state.resolved.metaContractVersion) {
+      throw new Error('Meta contract evidence does not use the resolved data contract version.');
+    }
+    if (
+      typeof result.metaPassed !== 'boolean' ||
+      typeof result.introspectionPassed !== 'boolean' ||
+      typeof result.reconciled !== 'boolean' ||
+      result.passed !== (result.metaPassed && result.introspectionPassed && result.reconciled)
+    ) {
+      throw new Error('Meta contract passed must equal metadata, introspection, and reconciliation results.');
+    }
+    if (validateResultPassState(result.passed, requirePass, 'Meta contract result')) {
+      observedFailure = true;
+    }
+    evidence.references.push(
+      attestOutcomeReference(
+        result.requestRef,
+        'request',
+        state.inputs.workspace.path,
+        { endpointKind: 'data', passed: result.passed }
+      )
+    );
+  }
+  requireObservedFailure(observedFailure, requirePass, 'meta-contract');
+}
+
+function validateCommandEvidence(document, evidence, state, evidenceType, requirePass) {
+  const label = evidenceType === 'typecheck' ? 'Typecheck evidence' : 'Build evidence';
+  exactKeys(
+    document,
+    ['schemaVersion', 'kind', 'command', 'exitCode', 'outputRef', 'outputSha256', 'passed'],
+    label
+  );
+  assertMachineHeader(document, evidenceType, label);
+  requireValue(document.command, label + ' command');
+  if (!Number.isInteger(document.exitCode)) {
+    throw new Error(label + ' exitCode must be an integer.');
+  }
+  assertSha256(document.outputSha256, label + ' outputSha256');
+  evidence.references.push(
+    attestDeclaredWorkspaceFile(
+      document.outputRef,
+      document.outputSha256,
+      state.inputs.workspace.path,
+      'command-output',
+      label + ' output'
+    )
+  );
+  if (document.passed !== (document.exitCode === 0)) {
+    throw new Error(label + ' passed must equal exitCode === 0.');
+  }
+  const observedFailure = validateResultPassState(document.passed, requirePass, label);
+  requireObservedFailure(observedFailure, requirePass, evidenceType);
+}
+
+function validateInteractionEvidence(document, evidence, state, requirePass) {
+  exactKeys(document, ['schemaVersion', 'kind', 'results'], 'Interaction evidence');
+  assertMachineHeader(document, 'interaction', 'Interaction evidence');
+  if (!Array.isArray(document.results)) {
+    throw new Error('Interaction evidence results must be an array.');
+  }
+  const expected = expectedVisualCombinations(state);
+  if (document.results.length !== expected.size) {
+    throw new Error('Interaction evidence must cover every visual target, viewport, and state.');
+  }
+  const seen = new Set();
+  let observedFailure = false;
+  for (const result of document.results) {
+    exactKeys(
+      result,
+      ['target', 'viewport', 'state', 'passed', 'artifactRef'],
+      'Interaction evidence result'
+    );
+    const key = visualCombinationKey(result.target, result.viewport, result.state);
+    const expectedResult = expected.get(key);
+    if (
+      !expectedResult ||
+      seen.has(key) ||
+      !isDeepStrictEqual(result.target, expectedResult.target) ||
+      !isDeepStrictEqual(result.viewport, expectedResult.viewport)
+    ) {
+      throw new Error('Interaction evidence has an unexpected or duplicate visual result.');
+    }
+    seen.add(key);
+    if (validateResultPassState(result.passed, requirePass, 'Interaction evidence result')) {
+      observedFailure = true;
+    }
+    evidence.references.push(
+      attestOutcomeReference(
+        result.artifactRef,
+        'interaction',
+        state.inputs.workspace.path,
+        {
+          targetKey: key,
+          viewportId: result.viewport.id,
+          state: result.state,
+          passed: result.passed
+        }
+      )
+    );
+  }
+  requireObservedFailure(observedFailure, requirePass, 'interaction');
+}
+
 function validateMachineEvidence(evidence, stageName, state, requirePass) {
-  if (!MACHINE_EVIDENCE_KINDS.has(evidence.type)) {
-    return;
-  }
-  if (stageName !== 'live' && stageName !== 'visual' && stageName !== 'acceptance') {
-    throw new Error('Machine evidence type ' + evidence.type + ' is attached to the wrong stage.');
-  }
   const document = readJson(evidence.path, 'Machine evidence');
-  if (evidence.type === 'evaluator') {
+  if (!MACHINE_EVIDENCE_KINDS.has(evidence.type)) {
+    throw new Error('Evidence type ' + evidence.type + ' has no exact machine schema.');
+  }
+  if (evidence.type === 'validation') {
+    validateValidationEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'tenant-contract') {
+    validateTenantContractEvidence(document, state, requirePass);
+  } else if (evidence.type === 'endpoint-check') {
+    validateEndpointCheckEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'install-plan') {
+    validateInstallPlanEvidence(document, state, requirePass);
+  } else if (evidence.type === 'install-log') {
+    validateInstallLogEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'manifest') {
+    validateManifestEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'package-provenance') {
+    validatePackageProvenanceEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'blocks-check') {
+    validateBlocksCheckEvidence(document, state, requirePass);
+  } else if (evidence.type === 'source-check') {
+    validateSourceCheckEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'meta-contract') {
+    validateMetaContractEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'typecheck' || evidence.type === 'build') {
+    validateCommandEvidence(document, evidence, state, evidence.type, requirePass);
+  } else if (evidence.type === 'evaluator') {
     validateAcceptanceEvidence(document, evidence, state, requirePass);
   } else if (evidence.type === 'screenshot') {
     validateVisualEvidence(document, evidence, state, requirePass);
+  } else if (evidence.type === 'interaction') {
+    validateInteractionEvidence(document, evidence, state, requirePass);
   } else {
     validateLiveEvidence(document, evidence, state, requirePass);
   }
@@ -1119,6 +2195,7 @@ export function initializeJournal(validationPathInput, statePathInput) {
       invalidations: [],
       stages
     };
+    sealJournal(state);
     writeJsonAtomic(statePath, state);
     return state;
   }, workspace.path);
@@ -1136,17 +2213,20 @@ export function startJournalStage(state, stageName) {
     throw new Error('Stage ' + stageName + ' already has a running attempt.');
   }
   const timestamp = now();
-  stage.attempts.push({
+  const attempt = {
     number: stage.attempts.length + 1,
-    events: [
-      {
-        kind: 'started',
-        at: timestamp,
-        workspaceBeforeSha256: computeWorkspaceAttestation(state.inputs.workspace.path).sha256
-      }
-    ]
-  });
+    events: []
+  };
+  const event = {
+    kind: 'started',
+    at: timestamp,
+    workspaceBeforeSha256: computeWorkspaceAttestation(state.inputs.workspace.path).sha256
+  };
+  chainAttemptEvent(state, stageName, attempt, event);
+  attempt.events.push(event);
+  stage.attempts.push(attempt);
   incrementRevision(state);
+  sealJournal(state);
 }
 
 export function passJournalStage(state, stageName, evidenceReferences) {
@@ -1161,7 +2241,7 @@ export function passJournalStage(state, stageName, evidenceReferences) {
   validateMachineEvidenceSet(evidence, stageName, state, true);
   const workspace = computeWorkspaceAttestation(state.inputs.workspace.path);
   const timestamp = now();
-  attempt.events.push({
+  const event = {
     kind: 'passed',
     at: timestamp,
     evidence,
@@ -1170,8 +2250,11 @@ export function passJournalStage(state, stageName, evidenceReferences) {
       fileCount: workspace.fileCount,
       gitHead: workspace.gitHead
     }
-  });
+  };
+  chainAttemptEvent(state, stageName, attempt, event);
+  attempt.events.push(event);
   incrementRevision(state);
+  sealJournal(state);
 }
 
 export function failJournalStage(state, stageName, reason, evidenceReferences) {
@@ -1187,7 +2270,7 @@ export function failJournalStage(state, stageName, reason, evidenceReferences) {
   validateMachineEvidenceSet(evidence, stageName, state, false);
   const workspace = computeWorkspaceAttestation(state.inputs.workspace.path);
   const timestamp = now();
-  attempt.events.push({
+  const event = {
     kind: 'failed',
     at: timestamp,
     evidence,
@@ -1197,8 +2280,11 @@ export function failJournalStage(state, stageName, reason, evidenceReferences) {
       fileCount: workspace.fileCount,
       gitHead: workspace.gitHead
     }
-  });
+  };
+  chainAttemptEvent(state, stageName, attempt, event);
+  attempt.events.push(event);
   incrementRevision(state);
+  sealJournal(state);
 }
 
 export function invalidateJournalStages(state, stageName, reason) {
@@ -1227,7 +2313,7 @@ export function invalidateJournalStages(state, stageName, reason) {
       attemptCount: stage.attempts.length
     });
   }
-  state.invalidations.push({
+  const invalidation = {
     at: timestamp,
     fromStage: stageName,
     reason,
@@ -1237,8 +2323,11 @@ export function invalidateJournalStages(state, stageName, reason) {
       fileCount: workspace.fileCount,
       gitHead: workspace.gitHead
     }
-  });
+  };
+  chainInvalidation(state, invalidation);
+  state.invalidations.push(invalidation);
   incrementRevision(state);
+  sealJournal(state);
 }
 
 export function withJournalLock(statePathInput, action, workspacePathInput = '') {
@@ -1284,6 +2373,7 @@ export function mutateJournal(statePathInput, operation, options = null) {
   withJournalLock(statePathInput, (statePath) => {
     const state = loadJournal(statePath, options);
     operation(state);
+    sealJournal(state);
     writeJsonAtomic(statePath, state);
   });
 }

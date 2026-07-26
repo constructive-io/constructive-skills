@@ -9,10 +9,12 @@ Run every command from the selected compact Blocks plan, then the consumer typec
 - the exact attested plan for each selected root;
 - installation output through the current branch-only local registry/package recipe;
 - installed `.constructive/feature-packs/*.json` manifests;
-- local package provenance proving `@constructive-io/data` and all consumed Blocks packages resolve from the attested checkout while `publicRegistryReady` is false;
+- package-manager provenance for every unique npm dependency declared by the attested plans, bound to the pinned Blocks commit while the release is branch-only;
 - the full post-build `constructive-blocks` checker output, which verifies ignored aggregate bytes and prebuilt compact inspector plans.
 
 The source preflight used during brief validation is deliberately narrower and cannot replace post-build proof.
+
+[evidence-schemas.md](./evidence-schemas.md) is the producer contract for every required stage type. Its key sets, result coverage, referenced artifacts, commands, source hashes, and pass/fail relationships are enforced exactly; prose summaries in this file do not relax them.
 
 ## Metadata and capability proof
 
@@ -52,7 +54,7 @@ CRUD proof includes create/read/update/delete plus reload persistence through th
 
 ## Visual proof
 
-Inspect every `acceptance.visual.targets[]` entry at desktop and mobile using the resolved immutable viewport definitions. The `screenshot` evidence is an exact `constructive.builder-visual-evidence` manifest with one result for every target × viewport × state and fields `{ target, viewport, state, passed, screenshotRef, interactionRef }`; `viewport` repeats the full `{ id, width, height, deviceScaleFactor, colorScheme }` object. The journal validates semantic target keys plus exact dimensions, re-hashes both referenced files, and rejects incomplete or duplicated combinations. Capture states after fonts/data settle; interaction artifacts cover keyboard traversal, focus/return, dialog behavior, responsive navigation, overflow, touch targets, destructive confirmation, action feedback, retry, and diagnostics containment.
+Inspect every `acceptance.visual.targets[]` entry at desktop and mobile using the resolved immutable viewport definitions. The `screenshot` evidence is an exact `constructive.builder-visual-evidence` manifest with one result for every target × viewport × state and fields `{ target, viewport, state, passed, screenshotRef, interactionRef }`; `viewport` repeats the full `{ id, width, height, deviceScaleFactor, colorScheme }` object. The separate `interaction` evidence covers the same combinations and points at the same exact interaction outcomes. Screenshots must be complete CRC-valid PNG files whose IDAT bytes inflate to the declared scanlines and whose pixel dimensions equal viewport dimensions × device scale factor. Capture states after fonts/data settle; interaction outcomes cover keyboard traversal, focus/return, dialog behavior, responsive navigation, overflow, touch targets, destructive confirmation, action feedback, retry, and diagnostics containment.
 
 ## Evaluator evidence
 

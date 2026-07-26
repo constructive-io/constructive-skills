@@ -9,7 +9,7 @@ blocks_source=/absolute/path/to/pinned/blocks
 
 ## Freeze the source and brief
 
-While Blocks is branch-only, validation requires a local source preflight. The owning `constructive-blocks` checker verifies the exact clean commit and canonical tracked source without requiring a branch name or ignored generated registry artifacts; a detached checkout at the exact commit is valid, and first-run validation stays non-circular.
+While Blocks is branch-only, validation requires a local source preflight. The canonical sibling `constructive-blocks` catalog and checker cannot be overridden. The source must remain at the exact clean tracked commit; a detached checkout of that commit is valid, the recorded branch is observational, and ignored generated registry artifacts do not affect the tracked-source gate.
 
 ```bash
 node "$builder_skill_root/scripts/validate-brief.mjs" app-brief.json \
@@ -27,7 +27,7 @@ Both output and state must remain beneath `.constructive/harness` through real d
 
 1. **brief** proves that the exact passing validation report is the frozen intent.
 2. **tenant** proves all descriptors match the strict secret-free shape and their explicit endpoints are safely routable.
-3. **install** retains selected compact plans, installation output, installed sidecars, attested-local package provenance, and the full post-build Blocks checker result.
+3. **install** retains selected compact plans, exact command output, installed sidecars, provenance for every npm dependency declared by those plans, and the full post-build Blocks checker result.
 4. **domain** proves application routes use the attested 2026-07 `_meta` contract plus standard introspection.
 5. **static** retains consumer typecheck and production-build output.
 6. **live** proves Auth, every required capability/prerequisite, CRUD, and owner/peer/anonymous/revoked/cross-tenant behavior with exact source-contract machine reports.
@@ -60,6 +60,8 @@ node "$builder_skill_root/scripts/harness-state.mjs" pass --state "$state" --sta
 
 Evidence paths are workspace-relative regular files. The journal records their type, absolute path, SHA-256, size, and machine-report outcome references; every resume rechecks them and rejects missing, changed, or symlink-escaped artifacts.
 
+Produce every artifact from [evidence-schemas.md](./evidence-schemas.md). It defines the exact keys, coverage sets, referenced request/UI/interaction outcomes, complete PNG requirements, and source/checker hashes accepted by the journal.
+
 ## Record failure and retry
 
 A failure also needs at least one valid typed artifact:
@@ -72,7 +74,7 @@ node "$builder_skill_root/scripts/harness-state.mjs" fail --state "$state" --sta
 node "$builder_skill_root/scripts/harness-state.mjs" start --state "$state" --stage live
 ```
 
-Attempts are append-only event streams. A retry creates a new attempt; it never overwrites prior duration, evidence, or failure reason. Current stage/run status is derived from start/pass/fail plus invalidation events rather than duplicated mutable flags.
+Attempts are append-only event streams. A retry creates a new attempt; it never overwrites prior duration, evidence, or failure reason. Current stage/run status is derived from start/pass/fail plus invalidation events rather than duplicated mutable flags. Event and whole-journal SHA-256 chains detect stale or accidental edits, but they are unkeyed and do not establish cryptographic authenticity. Exact semantic replay of every retained artifact is the enforcement boundary.
 
 ## Invalidate deliberate drift
 

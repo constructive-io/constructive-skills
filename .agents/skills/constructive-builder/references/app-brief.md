@@ -112,7 +112,7 @@ Actors are exact variants:
 
 Every domain route has `mode: "crud"`; there is no opaque custom route mode. Each route needs a complete CRUD scenario with reload persistence and five structured RLS scenarios: same-tenant owner, same-tenant peer, anonymous, revoked session, and cross-tenant. Each RLS scenario declares create/read/update/delete outcomes and whether a denied mutation leaves storage unchanged. Actor rules require two distinct same-tenant accounts for peer checks and a real isolation descriptor/session for cross-tenant checks.
 
-Auth scenarios cover sign-up, sign-in, session restoration, sign-out, forgot-password, reset-password, and revoked-session denial. Each check is `{ "id", "expected" }`; its expected ready/unavailable state is derived from the Auth required-capability partition, so partial Auth proves both working flows and deliberate unavailable controls.
+Auth scenarios cover sign-up, sign-in, session restoration, sign-out, forgot-password, reset-password, and revoked-session denial. Each check is `{ "id", "expected" }`; its expected ready/unavailable state is derived from the Auth required-capability partition, so partial Auth proves both working scenarios and deliberate unavailable controls.
 
 Feature scenarios cover every other ready/partial surface pack with structured `capabilityChecks`. Each `{ "capability", "expected" }` must exactly cover every source-required capability and prerequisite; arbitrary prose belongs only in optional `observations` and cannot replace contract coverage. Targets name an exact surface/pack or domain route/resource, so generic prose cannot stand in for route coverage.
 

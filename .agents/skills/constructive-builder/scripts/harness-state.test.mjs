@@ -5,11 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import zlib from 'node:zlib';
 
 import {
   computeWorkspaceAttestation,
   ensureSafeWorkspaceDirectory,
   sha256File,
+  sha256Text,
   writeJsonAtomic
 } from './lib/brief-contract.mjs';
 import {
@@ -61,6 +63,11 @@ function writeText(filePath, text) {
   fs.writeFileSync(filePath, text, 'utf8');
 }
 
+function writeBytes(filePath, bytes) {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, bytes);
+}
+
 function createHarness(runtimeLimitations = []) {
   const temporaryRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'constructive-builder-journal-'));
   const workspace = path.join(temporaryRoot, 'workspace');
@@ -69,16 +76,37 @@ function createHarness(runtimeLimitations = []) {
   const briefPath = path.join(workspace, 'brief.json');
   const tenantPath = path.join(workspace, 'tenant.json');
   const catalogPath = path.join(workspace, 'catalog.json');
+  const planPath = path.join(workspace, 'console-module-auth.plan.json');
   writeText(briefPath, '{"brief":true}\n');
   writeText(tenantPath, '{"tenant":true}\n');
   writeText(catalogPath, '{"catalog":true}\n');
+  writeJsonAtomic(planPath, {
+    schemaVersion: 1,
+    kind: 'constructive.console-kit-install-plan',
+    item: 'console-module-auth',
+    install: {
+      command: 'pnpm dlx shadcn@4.13.1 add @constructive/console-module-auth'
+    },
+    composition: {
+      npmDependencies: [
+        { name: '@constructive-io/data' },
+        { name: 'zustand' }
+      ]
+    }
+  });
   const immutableFiles = [
     { role: 'brief', path: briefPath, sha256: sha256File(briefPath) },
     { role: 'tenant', path: tenantPath, sha256: sha256File(tenantPath) },
-    { role: 'blocks-contract', path: catalogPath, sha256: sha256File(catalogPath) }
+    { role: 'blocks-contract', path: catalogPath, sha256: sha256File(catalogPath) },
+    { role: 'install-plan:console-module-auth', path: planPath, sha256: sha256File(planPath) }
   ];
   const resolved = {
     tenantId: 'tenant-primary',
+    tenantContract: {
+      id: 'tenant-primary',
+      endpointKinds: ['auth'],
+      requireCsrfForAuth: true
+    },
     tenantProvenance: { kind: 'custom', preset: null },
     compositionKind: 'console-modules',
     installRoots: ['console-module-auth'],
@@ -108,7 +136,8 @@ function createHarness(runtimeLimitations = []) {
           databaseId: 'tenant-isolation',
           sessionRef: 'qa.otherSession',
           descriptorPath: './other.json',
-          endpointKinds: ['auth']
+          endpointKinds: ['auth'],
+          requireCsrfForAuth: true
         }
       ],
       actors: [
@@ -191,7 +220,13 @@ function createHarness(runtimeLimitations = []) {
       tenant: tenantPath,
       catalog: catalogPath,
       blocksSource: null,
-      installPlans: [],
+      installPlans: [
+        {
+          root: 'console-module-auth',
+          path: planPath,
+          sha256: sha256File(planPath)
+        }
+      ],
       immutableFiles,
       workspace: workspaceAttestation
     },
@@ -243,6 +278,325 @@ function writeEvidence(harness, name, contents = 'evidence\n') {
   return relativePath;
 }
 
+function writeJsonEvidence(harness, name, document) {
+  return writeEvidence(harness, name, JSON.stringify(document) + '\n');
+}
+
+function requestOutcome(endpointKind, passed = true, statusCode = 200) {
+  return {
+    schemaVersion: 1,
+    kind: 'constructive.builder-request-outcome',
+    endpointKind,
+    operation: 'contract-check',
+    statusCode,
+    checks: [{ id: 'response-contract', passed }],
+    passed
+  };
+}
+
+function uiOutcome(passed = true) {
+  return {
+    schemaVersion: 1,
+    kind: 'constructive.builder-ui-outcome',
+    state: passed ? 'ready' : 'error',
+    visible: true,
+    interactive: passed,
+    checks: [{ id: 'render-state', passed }],
+    passed
+  };
+}
+
+function writeRequestEvidence(harness, name, endpointKind = 'auth', passed = true, statusCode = null) {
+  const resolvedStatus = statusCode === null ? (passed ? 200 : 503) : statusCode;
+  return writeJsonEvidence(harness, name, requestOutcome(endpointKind, passed, resolvedStatus));
+}
+
+function writeUiEvidence(harness, name, passed = true) {
+  return writeJsonEvidence(harness, name, uiOutcome(passed));
+}
+
+function pngCrc32(bytes) {
+  let crc = 0xffffffff;
+  for (const byte of bytes) {
+    crc ^= byte;
+    for (let bit = 0; bit < 8; bit += 1) {
+      const mask = -(crc & 1);
+      crc = (crc >>> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+
+function pngChunk(type, data) {
+  const typeBytes = Buffer.from(type, 'ascii');
+  const length = Buffer.alloc(4);
+  length.writeUInt32BE(data.length);
+  const checksum = Buffer.alloc(4);
+  checksum.writeUInt32BE(pngCrc32(Buffer.concat([typeBytes, data])));
+  return Buffer.concat([length, typeBytes, data, checksum]);
+}
+
+function completePng(width, height) {
+  const signature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(width, 0);
+  ihdr.writeUInt32BE(height, 4);
+  ihdr[8] = 8;
+  ihdr[9] = 6;
+  const rowBytes = width * 4;
+  const scanlines = Buffer.alloc((rowBytes + 1) * height);
+  for (let row = 0; row < height; row += 1) {
+    scanlines[row * (rowBytes + 1)] = 0;
+  }
+  return Buffer.concat([
+    signature,
+    pngChunk('IHDR', ihdr),
+    pngChunk('IDAT', zlib.deflateSync(scanlines)),
+    pngChunk('IEND', Buffer.alloc(0))
+  ]);
+}
+
+function writePngEvidence(harness, name, viewport) {
+  const relativePath = '.constructive/harness/evidence/' + name;
+  const width = Math.round(viewport.width * viewport.deviceScaleFactor);
+  const height = Math.round(viewport.height * viewport.deviceScaleFactor);
+  writeBytes(path.join(harness.workspace, relativePath), completePng(width, height));
+  return relativePath;
+}
+
+function visualTargetKey(target, viewport, stateName = 'ready') {
+  if (target.kind === 'surface') {
+    return 'surface|' + target.surfaceId + '|' + target.featurePack + '|' + viewport.id + '|' + stateName;
+  }
+  if (target.kind === 'domain-route') {
+    return 'domain-route|' + target.routeId + '|' + target.resource + '|' + viewport.id + '|' + stateName;
+  }
+  return 'shell|' + target.surfaceId + '|' + viewport.id + '|' + stateName;
+}
+
+function writeInteractionOutcome(harness, name, target, viewport, passed = true, stateName = 'ready') {
+  return writeJsonEvidence(harness, name, {
+    schemaVersion: 1,
+    kind: 'constructive.builder-interaction-outcome',
+    targetKey: visualTargetKey(target, viewport, stateName),
+    viewportId: viewport.id,
+    state: stateName,
+    checks: [{ id: 'primary-interaction', passed }],
+    passed
+  });
+}
+
+function interactionEvidenceFromVisualResults(results) {
+  return {
+    schemaVersion: 1,
+    kind: 'constructive.builder-interaction-evidence',
+    results: results.map((result) => {
+      return {
+        target: result.target,
+        viewport: result.viewport,
+        state: result.state,
+        passed: result.passed,
+        artifactRef: result.interactionRef
+      };
+    })
+  };
+}
+
+function machineKind(type) {
+  const kinds = new Map([
+    ['tenant-contract', 'constructive.builder-tenant-contract-evidence'],
+    ['endpoint-check', 'constructive.builder-endpoint-check-evidence'],
+    ['install-plan', 'constructive.builder-install-plan-evidence'],
+    ['install-log', 'constructive.builder-install-log-evidence'],
+    ['manifest', 'constructive.builder-manifest-evidence'],
+    ['package-provenance', 'constructive.builder-package-provenance-evidence'],
+    ['blocks-check', 'constructive.builder-blocks-check-evidence'],
+    ['source-check', 'constructive.builder-source-check-evidence'],
+    ['meta-contract', 'constructive.builder-meta-contract-evidence'],
+    ['typecheck', 'constructive.builder-typecheck-evidence'],
+    ['build', 'constructive.builder-build-evidence']
+  ]);
+  return kinds.get(type);
+}
+
+function staticMachineEvidence(harness, state, stage, type, passed = true) {
+  if (type === 'validation') {
+    return path.relative(harness.workspace, harness.validationPath);
+  }
+  let document;
+  if (type === 'tenant-contract') {
+    const contracts = [
+      {
+        tenantId: state.resolved.tenantContract.id,
+        role: 'primary',
+        endpointKinds: state.resolved.tenantContract.endpointKinds,
+        requireCsrfForAuth: state.resolved.tenantContract.requireCsrfForAuth,
+        passed
+      }
+    ];
+    for (const isolation of state.resolved.acceptance.isolationTenants) {
+      contracts.push({
+        tenantId: isolation.databaseId,
+        role: 'isolation',
+        endpointKinds: isolation.endpointKinds,
+        requireCsrfForAuth: isolation.requireCsrfForAuth,
+        passed: true
+      });
+    }
+    document = { schemaVersion: 1, kind: machineKind(type), tenants: contracts };
+  } else if (type === 'endpoint-check') {
+    const results = [];
+    const tenants = [state.resolved.tenantContract];
+    for (const isolation of state.resolved.acceptance.isolationTenants) {
+      tenants.push({ id: isolation.databaseId, endpointKinds: isolation.endpointKinds });
+    }
+    for (const tenant of tenants) {
+      for (const endpointKind of tenant.endpointKinds) {
+        const resultPassed = passed || results.length > 0;
+        const statusCode = resultPassed ? 200 : 503;
+        const requestRef = writeRequestEvidence(
+          harness,
+          stage + '-' + tenant.id + '-' + endpointKind + '-request.json',
+          endpointKind,
+          resultPassed,
+          statusCode
+        );
+        results.push({ tenantId: tenant.id, endpointKind, statusCode, passed: resultPassed, requestRef });
+      }
+    }
+    document = { schemaVersion: 1, kind: machineKind(type), results };
+  } else if (type === 'install-plan') {
+    document = {
+      schemaVersion: 1,
+      kind: machineKind(type),
+      plans: state.inputs.installPlans.map((plan, index) => {
+        return { root: plan.root, sha256: plan.sha256, passed: passed || index > 0 };
+      })
+    };
+  } else if (type === 'install-log') {
+    const planByRoot = new Map();
+    for (const plan of state.inputs.installPlans) {
+      planByRoot.set(plan.root, JSON.parse(fs.readFileSync(plan.path, 'utf8')));
+    }
+    document = {
+      schemaVersion: 1,
+      kind: machineKind(type),
+      results: state.resolved.installRoots.map((root, index) => {
+        const resultPassed = passed || index > 0;
+        const outputRef = '.constructive/harness/evidence/' + stage + '-' + root + '-install-output.txt';
+        writeEvidence(harness, path.basename(outputRef), resultPassed ? 'installed\n' : 'install failed\n');
+        return {
+          root,
+          command: planByRoot.get(root).install.command,
+          exitCode: resultPassed ? 0 : 1,
+          outputRef,
+          outputSha256: sha256File(path.join(harness.workspace, outputRef)),
+          passed: resultPassed
+        };
+      })
+    };
+  } else if (type === 'manifest') {
+    const results = [];
+    for (const surface of state.resolved.surfaces) {
+      for (const featurePack of surface.featurePacks) {
+        const manifestRef = '.constructive/harness/evidence/' + stage + '-' + surface.id + '-' + featurePack + '-manifest.json';
+        writeJsonEvidence(harness, path.basename(manifestRef), {
+          schemaVersion: 1,
+          id: featurePack,
+          capabilities: { required: [] }
+        });
+        results.push({
+          surfaceId: surface.id,
+          featurePack,
+          manifestRef,
+          sha256: sha256File(path.join(harness.workspace, manifestRef)),
+          passed
+        });
+      }
+    }
+    document = { schemaVersion: 1, kind: machineKind(type), results };
+  } else if (type === 'package-provenance') {
+    const names = new Set();
+    for (const plan of state.inputs.installPlans) {
+      const planDocument = JSON.parse(fs.readFileSync(plan.path, 'utf8'));
+      for (const dependency of planDocument.composition.npmDependencies) {
+        names.add(dependency.name);
+      }
+    }
+    const packages = [];
+    let packageIndex = 0;
+    for (const name of names) {
+      const resolvedRef = '.constructive/harness/evidence/' + stage + '-package-' + packageIndex + '.json';
+      writeJsonEvidence(harness, path.basename(resolvedRef), { name, version: '0.0.0-test' });
+      packages.push({
+        name,
+        resolvedRef,
+        sha256: sha256File(path.join(harness.workspace, resolvedRef)),
+        sourceCommit: state.inputs.blocksSource ? state.inputs.blocksSource.headCommit : null,
+        passed
+      });
+      packageIndex += 1;
+    }
+    document = {
+      schemaVersion: 1,
+      kind: machineKind(type),
+      packages
+    };
+  } else if (type === 'blocks-check') {
+    document = {
+      schemaVersion: 1,
+      kind: machineKind(type),
+      headCommit: state.inputs.blocksSource ? state.inputs.blocksSource.headCommit : null,
+      checkerSha256: state.inputs.blocksSource ? state.inputs.blocksSource.checkerSha256 : null,
+      outputSha256: null,
+      passed
+    };
+  } else if (type === 'source-check') {
+    const results = [];
+    for (const route of state.resolved.domainRoutes) {
+      const sourceRef = '.constructive/harness/evidence/' + stage + '-' + route.id + '.tsx';
+      writeEvidence(harness, path.basename(sourceRef), 'export default function Route() { return null; }\n');
+      results.push({
+        routeId: route.id,
+        sourceRef,
+        sha256: sha256File(path.join(harness.workspace, sourceRef)),
+        passed
+      });
+    }
+    document = { schemaVersion: 1, kind: machineKind(type), results };
+  } else if (type === 'meta-contract') {
+    const results = [];
+    for (const route of state.resolved.domainRoutes) {
+      const requestRef = writeRequestEvidence(harness, stage + '-' + route.id + '-meta.json', 'data', passed);
+      results.push({
+        routeId: route.id,
+        resource: route.resource,
+        endpointKind: 'data',
+        contractVersion: state.resolved.metaContractVersion,
+        metaPassed: passed,
+        introspectionPassed: passed,
+        reconciled: passed,
+        requestRef,
+        passed
+      });
+    }
+    document = { schemaVersion: 1, kind: machineKind(type), results };
+  } else {
+    const outputRef = '.constructive/harness/evidence/' + stage + '-' + type + '-output.txt';
+    writeEvidence(harness, path.basename(outputRef), type + '-output');
+    document = {
+      schemaVersion: 1,
+      kind: machineKind(type),
+      command: type === 'typecheck' ? 'pnpm typecheck' : 'pnpm build',
+      exitCode: passed ? 0 : 1,
+      outputRef,
+      outputSha256: sha256File(path.join(harness.workspace, outputRef)),
+      passed
+    };
+  }
+  return writeJsonEvidence(harness, stage + '-' + type + '.json', document);
+}
+
 function start(statePath, stage) {
   mutateJournal(statePath, (state) => {
     startJournalStage(state, stage);
@@ -257,12 +611,66 @@ function pass(statePath, stage, references) {
 
 function passTextStage(harness, stage, types) {
   start(harness.statePath, stage);
+  const state = loadJournal(harness.statePath, { allowWorkspaceDrift: true });
   const references = [];
   for (const type of types) {
-    const relativePath = writeEvidence(harness, stage + '-' + type + '.txt');
+    const relativePath = staticMachineEvidence(harness, state, stage, type);
     references.push(type + '=' + relativePath);
   }
   pass(harness.statePath, stage, references);
+}
+
+function journalInputRootForTest(state) {
+  const immutableFiles = state.inputs.immutableFiles.map((inputFile) => {
+    return { role: inputFile.role, sha256: inputFile.sha256 };
+  });
+  return sha256Text(JSON.stringify({
+    validationSha256: state.validation.sha256,
+    blocksHeadCommit: state.inputs.blocksSource ? state.inputs.blocksSource.headCommit : null,
+    blocksCheckerSha256: state.inputs.blocksSource ? state.inputs.blocksSource.checkerSha256 : null,
+    immutableFiles
+  }));
+}
+
+function hashJournalEventForTest(event, context) {
+  const payload = structuredClone(event);
+  delete payload.eventHash;
+  return sha256Text(JSON.stringify({ context, event: payload }));
+}
+
+function recomputeJournalSealsForTest(state) {
+  const inputRoot = journalInputRootForTest(state);
+  const stageNames = ['brief', 'tenant', 'install', 'domain', 'static', 'live', 'visual', 'acceptance'];
+  for (const stageName of stageNames) {
+    for (const attempt of state.stages[stageName].attempts) {
+      let previousHash = sha256Text(inputRoot + ':attempt:' + stageName + ':' + attempt.number);
+      for (let eventIndex = 0; eventIndex < attempt.events.length; eventIndex += 1) {
+        const event = attempt.events[eventIndex];
+        event.previousHash = previousHash;
+        event.eventHash = hashJournalEventForTest(event, {
+          kind: 'attempt',
+          stageName,
+          attemptNumber: attempt.number,
+          eventIndex
+        });
+        previousHash = event.eventHash;
+      }
+    }
+  }
+  let invalidationPreviousHash = sha256Text(inputRoot + ':invalidations');
+  for (let index = 0; index < state.invalidations.length; index += 1) {
+    const invalidation = state.invalidations[index];
+    invalidation.previousHash = invalidationPreviousHash;
+    invalidation.eventHash = hashJournalEventForTest(invalidation, { kind: 'invalidation', index });
+    invalidationPreviousHash = invalidation.eventHash;
+  }
+  const payload = structuredClone(state);
+  delete payload.integrity;
+  state.integrity = {
+    algorithm: 'sha256',
+    inputRoot,
+    journalHash: sha256Text(JSON.stringify(payload))
+  };
 }
 
 function visualResult(target, viewportId, screenshotRef, interactionRef) {
@@ -282,13 +690,15 @@ test('journal preserves attempt events, re-hashes evidence, acknowledges drift t
   passTextStage(harness, 'brief', ['validation']);
 
   start(harness.statePath, 'tenant');
-  const failedEvidence = writeEvidence(harness, 'tenant-failed.json', '{"reachable":false}\n');
+  let journal = loadJournal(harness.statePath, { allowWorkspaceDrift: true });
+  const failedEvidence = staticMachineEvidence(harness, journal, 'tenant-failed', 'tenant-contract', false);
   mutateJournal(harness.statePath, (state) => {
     failJournalStage(state, 'tenant', 'The endpoint was unreachable.', ['tenant-contract=' + failedEvidence]);
   });
   start(harness.statePath, 'tenant');
-  const tenantContract = writeEvidence(harness, 'tenant-contract.json', '{"valid":true}\n');
-  const endpointCheck = writeEvidence(harness, 'endpoint-check.json', '{"reachable":true}\n');
+  journal = loadJournal(harness.statePath, { allowWorkspaceDrift: true });
+  const tenantContract = staticMachineEvidence(harness, journal, 'tenant', 'tenant-contract');
+  const endpointCheck = staticMachineEvidence(harness, journal, 'tenant', 'endpoint-check');
   pass(harness.statePath, 'tenant', [
     'tenant-contract=' + tenantContract,
     'endpoint-check=' + endpointCheck
@@ -300,9 +710,10 @@ test('journal preserves attempt events, re-hashes evidence, acknowledges drift t
   assert.equal(state.stages.tenant.attempts[1].events[1].kind, 'passed');
 
   const endpointPath = path.join(harness.workspace, endpointCheck);
+  const endpointOriginal = fs.readFileSync(endpointPath, 'utf8');
   writeText(endpointPath, '{"reachable":"tampered"}\n');
   assert.throws(() => loadJournal(harness.statePath), /changed after it was journaled/);
-  writeText(endpointPath, '{"reachable":true}\n');
+  writeText(endpointPath, endpointOriginal);
 
   writeText(path.join(harness.workspace, 'src', 'new-work.ts'), 'export const changed = true;\n');
   assert.throws(() => loadJournal(harness.statePath), /workspace changed outside a running journal stage/);
@@ -337,6 +748,76 @@ test('journal preserves attempt events, re-hashes evidence, acknowledges drift t
   fs.renameSync(harness.statePath, stateBackup);
   fs.symlinkSync(stateBackup, harness.statePath);
   assert.throws(() => loadJournal(harness.statePath), /Run state must be a regular, non-symlink file/);
+});
+
+test('semantic replay rejects changed evidence even when every unkeyed journal hash is recomputed', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  passTextStage(harness, 'tenant', ['tenant-contract', 'endpoint-check']);
+  const state = JSON.parse(fs.readFileSync(harness.statePath, 'utf8'));
+  const tenantEvent = state.stages.tenant.attempts[0].events[1];
+  const tenantEvidence = tenantEvent.evidence.find((evidence) => evidence.type === 'tenant-contract');
+  writeText(tenantEvidence.path, '{"schemaVersion":1}\n');
+  tenantEvidence.sha256 = sha256File(tenantEvidence.path);
+  tenantEvidence.size = fs.statSync(tenantEvidence.path).size;
+  tenantEvidence.references = [];
+  recomputeJournalSealsForTest(state);
+  writeJsonAtomic(harness.statePath, state);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /Tenant contract evidence must contain exactly/
+  );
+});
+
+test('semantic replay rejects a fabricated terminal event with recomputed event and journal hashes', () => {
+  const harness = createHarness();
+  initializeJournal(harness.validationPath, harness.statePath);
+  passTextStage(harness, 'brief', ['validation']);
+  const state = JSON.parse(fs.readFileSync(harness.statePath, 'utf8'));
+  const fabricatedPath = path.join(harness.harnessDirectory, 'evidence', 'fabricated-tenant.json');
+  writeText(fabricatedPath, '{"schemaVersion":1}\n');
+  const workspace = computeWorkspaceAttestation(harness.workspace);
+  const timestamp = new Date().toISOString();
+  state.stages.tenant.attempts.push({
+    number: 1,
+    events: [
+      {
+        kind: 'started',
+        at: timestamp,
+        workspaceBeforeSha256: workspace.sha256,
+        previousHash: sha256Text('placeholder'),
+        eventHash: sha256Text('placeholder')
+      },
+      {
+        kind: 'passed',
+        at: timestamp,
+        evidence: [
+          {
+            type: 'tenant-contract',
+            path: fabricatedPath,
+            sha256: sha256File(fabricatedPath),
+            size: fs.statSync(fabricatedPath).size,
+            references: []
+          }
+        ],
+        workspace: {
+          sha256: workspace.sha256,
+          fileCount: workspace.fileCount,
+          gitHead: workspace.gitHead
+        },
+        previousHash: sha256Text('placeholder'),
+        eventHash: sha256Text('placeholder')
+      }
+    ]
+  });
+  state.revision += 2;
+  recomputeJournalSealsForTest(state);
+  writeJsonAtomic(harness.statePath, state);
+  assert.throws(
+    () => loadJournal(harness.statePath),
+    /Tenant contract evidence must contain exactly/
+  );
 });
 
 function assertion(id, passed, requestRef, uiRef, contract = null) {
@@ -380,8 +861,8 @@ test('live and acceptance passes require complete machine evidence and concrete 
   passTextStage(harness, 'static', ['typecheck', 'build']);
 
   start(harness.statePath, 'live');
-  const requestRef = writeEvidence(harness, 'request.json', '{"status":200}\n');
-  const uiRef = writeEvidence(harness, 'ui.json', '{"visible":true}\n');
+  const requestRef = writeRequestEvidence(harness, 'request.json');
+  const uiRef = writeUiEvidence(harness, 'ui.json');
   const outside = path.join(harness.temporaryRoot, 'outside');
   fs.mkdirSync(outside);
   writeText(path.join(outside, 'escaped.json'), '{"escaped":true}\n');
@@ -461,14 +942,25 @@ test('live and acceptance passes require complete machine evidence and concrete 
     'rls=' + rlsRef
   ]);
   start(harness.statePath, 'visual');
-  const incompleteScreenshot = writeEvidence(harness, 'visual-incomplete.png', 'incomplete image bytes\n');
-  const incompleteInteraction = writeEvidence(harness, 'visual-incomplete-interaction.json', '{"passed":true}\n');
+  const authTarget = { featurePack: 'auth', surfaceId: 'console', kind: 'surface' };
+  const shellTarget = { surfaceId: 'console', kind: 'shell' };
+  const incompleteScreenshot = writePngEvidence(
+    harness,
+    'visual-incomplete.png',
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const incompleteInteraction = writeInteractionOutcome(
+    harness,
+    'visual-incomplete-interaction.json',
+    authTarget,
+    VIEWPORT_DEFINITIONS.desktop
+  );
   const incompleteManifest = {
     schemaVersion: 1,
     kind: 'constructive.builder-visual-evidence',
     results: [
       visualResult(
-        { featurePack: 'auth', surfaceId: 'console', kind: 'surface' },
+        authTarget,
         'desktop',
         incompleteScreenshot,
         incompleteInteraction
@@ -483,42 +975,74 @@ test('live and acceptance passes require complete machine evidence and concrete 
   assert.throws(
     () => pass(harness.statePath, 'visual', [
       'screenshot=' + incompleteManifestRef,
-      'interaction=' + incompleteInteraction
+      'interaction=' + writeJsonEvidence(
+        harness,
+        'visual-incomplete-summary.json',
+        interactionEvidenceFromVisualResults(incompleteManifest.results)
+      )
     ]),
     /does not cover every target, viewport, and state/
   );
-  const desktopScreenshot = writeEvidence(harness, 'visual-desktop-ready.png', 'desktop image bytes\n');
-  const mobileScreenshot = writeEvidence(harness, 'visual-mobile-ready.png', 'mobile image bytes\n');
-  const desktopInteraction = writeEvidence(harness, 'visual-desktop-interaction.json', '{"keyboard":true}\n');
-  const mobileInteraction = writeEvidence(harness, 'visual-mobile-interaction.json', '{"touch":true}\n');
-  const shellDesktopScreenshot = writeEvidence(harness, 'shell-desktop-ready.png', 'shell desktop bytes\n');
-  const shellMobileScreenshot = writeEvidence(harness, 'shell-mobile-ready.png', 'shell mobile bytes\n');
-  const shellDesktopInteraction = writeEvidence(harness, 'shell-desktop-interaction.json', '{"sidebar":true}\n');
-  const shellMobileInteraction = writeEvidence(harness, 'shell-mobile-interaction.json', '{"navigation":true}\n');
+  const desktopScreenshot = writePngEvidence(harness, 'visual-desktop-ready.png', VIEWPORT_DEFINITIONS.desktop);
+  const mobileScreenshot = writePngEvidence(harness, 'visual-mobile-ready.png', VIEWPORT_DEFINITIONS.mobile);
+  const desktopInteraction = writeInteractionOutcome(
+    harness,
+    'visual-desktop-interaction.json',
+    authTarget,
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const mobileInteraction = writeInteractionOutcome(
+    harness,
+    'visual-mobile-interaction.json',
+    authTarget,
+    VIEWPORT_DEFINITIONS.mobile
+  );
+  const shellDesktopScreenshot = writePngEvidence(
+    harness,
+    'shell-desktop-ready.png',
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const shellMobileScreenshot = writePngEvidence(
+    harness,
+    'shell-mobile-ready.png',
+    VIEWPORT_DEFINITIONS.mobile
+  );
+  const shellDesktopInteraction = writeInteractionOutcome(
+    harness,
+    'shell-desktop-interaction.json',
+    shellTarget,
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const shellMobileInteraction = writeInteractionOutcome(
+    harness,
+    'shell-mobile-interaction.json',
+    shellTarget,
+    VIEWPORT_DEFINITIONS.mobile
+  );
   const completeManifest = {
     schemaVersion: 1,
     kind: 'constructive.builder-visual-evidence',
     results: [
       visualResult(
-        { featurePack: 'auth', surfaceId: 'console', kind: 'surface' },
+        authTarget,
         'desktop',
         desktopScreenshot,
         desktopInteraction
       ),
       visualResult(
-        { featurePack: 'auth', surfaceId: 'console', kind: 'surface' },
+        authTarget,
         'mobile',
         mobileScreenshot,
         mobileInteraction
       ),
       visualResult(
-        { surfaceId: 'console', kind: 'shell' },
+        shellTarget,
         'desktop',
         shellDesktopScreenshot,
         shellDesktopInteraction
       ),
       visualResult(
-        { surfaceId: 'console', kind: 'shell' },
+        shellTarget,
         'mobile',
         shellMobileScreenshot,
         shellMobileInteraction
@@ -526,12 +1050,37 @@ test('live and acceptance passes require complete machine evidence and concrete 
     ]
   };
   const completeManifestRef = writeEvidence(harness, 'visual-manifest.json', JSON.stringify(completeManifest) + '\n');
+  const completeInteractionRef = writeJsonEvidence(
+    harness,
+    'visual-interaction-summary.json',
+    interactionEvidenceFromVisualResults(completeManifest.results)
+  );
+  const pngHeaderStub = Buffer.alloc(24);
+  Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]).copy(pngHeaderStub);
+  pngHeaderStub.writeUInt32BE(13, 8);
+  pngHeaderStub.write('IHDR', 12, 'ascii');
+  pngHeaderStub.writeUInt32BE(VIEWPORT_DEFINITIONS.desktop.width, 16);
+  pngHeaderStub.writeUInt32BE(VIEWPORT_DEFINITIONS.desktop.height, 20);
+  const stubPath = '.constructive/harness/evidence/visual-header-stub.png';
+  writeBytes(path.join(harness.workspace, stubPath), pngHeaderStub);
+  const stubManifest = structuredClone(completeManifest);
+  stubManifest.results[0].screenshotRef = stubPath;
+  const stubManifestRef = writeJsonEvidence(harness, 'visual-header-stub-manifest.json', stubManifest);
+  assert.throws(
+    () => pass(harness.statePath, 'visual', [
+      'screenshot=' + stubManifestRef,
+      'interaction=' + completeInteractionRef
+    ]),
+    /complete PNG image/
+  );
   pass(harness.statePath, 'visual', [
     'screenshot=' + completeManifestRef,
-    'interaction=' + writeEvidence(harness, 'visual-interaction-summary.json', '{"passed":true}\n')
+    'interaction=' + completeInteractionRef
   ]);
 
   start(harness.statePath, 'acceptance');
+  const failedRequestRef = writeRequestEvidence(harness, 'acceptance-failed-request.json', 'auth', false);
+  const failedUiRef = writeUiEvidence(harness, 'acceptance-failed-ui.json', false);
   const failedAcceptance = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -543,15 +1092,15 @@ test('live and acceptance passes require complete machine evidence and concrete 
         expected: 'ready',
         actual: 'partial',
         passed: false,
-        requestRef,
-        uiRef
+        requestRef: failedRequestRef,
+        uiRef: failedUiRef
       }
     ],
     scenarios: [
       scenarioResult(
         'auth-lifecycle',
         ['owner', 'revoked'],
-        [assertion('sign-in', false, requestRef, uiRef)]
+        [assertion('sign-in', false, failedRequestRef, failedUiRef)]
       )
     ],
     limitations: [],
@@ -663,8 +1212,8 @@ test('standalone Data can pass live proof with exact empty Auth and RLS result s
       }
     ]
   });
-  const requestRef = writeEvidence(harness, 'standalone-data-request.json', '{"status":200}\n');
-  const uiRef = writeEvidence(harness, 'standalone-data-ui.json', '{"tables":true}\n');
+  const requestRef = writeRequestEvidence(harness, 'standalone-data-request.json', 'data');
+  const uiRef = writeUiEvidence(harness, 'standalone-data-ui.json');
   const sessionRef = writeEvidence(
     harness,
     'standalone-live-session.json',
@@ -752,6 +1301,30 @@ test('blank Console core with no packs or domain routes journals exact empty liv
       }
     ]
   };
+  const corePlanPath = validation.inputs.installPlans[0].path;
+  writeJsonAtomic(corePlanPath, {
+    schemaVersion: 1,
+    kind: 'constructive.console-kit-install-plan',
+    item: 'console-kit-core',
+    install: {
+      command: 'pnpm dlx shadcn@4.13.1 add @constructive/console-kit-core'
+    },
+    composition: {
+      npmDependencies: [
+        { name: '@constructive-io/data' },
+        { name: 'zustand' }
+      ]
+    }
+  });
+  const corePlanSha256 = sha256File(corePlanPath);
+  validation.inputs.installPlans[0].root = 'console-kit-core';
+  validation.inputs.installPlans[0].sha256 = corePlanSha256;
+  const planImmutable = validation.inputs.immutableFiles.find(
+    (inputFile) => inputFile.path === corePlanPath
+  );
+  planImmutable.role = 'install-plan:console-kit-core';
+  planImmutable.sha256 = corePlanSha256;
+  validation.inputs.workspace = computeWorkspaceAttestation(harness.workspace);
   writeJsonAtomic(harness.validationPath, validation);
   initializeJournal(harness.validationPath, harness.statePath);
   passTextStage(harness, 'brief', ['validation']);
@@ -787,22 +1360,33 @@ test('blank Console core with no packs or domain routes journals exact empty liv
   pass(harness.statePath, 'live', emptyLiveReferences);
 
   start(harness.statePath, 'visual');
-  const desktopScreenshot = writeEvidence(harness, 'empty-shell-desktop.png', 'desktop shell bytes\n');
-  const mobileScreenshot = writeEvidence(harness, 'empty-shell-mobile.png', 'mobile shell bytes\n');
-  const desktopInteraction = writeEvidence(harness, 'empty-shell-desktop-interaction.json', '{"sidebar":true}\n');
-  const mobileInteraction = writeEvidence(harness, 'empty-shell-mobile-interaction.json', '{"navigation":true}\n');
+  const emptyShellTarget = { kind: 'shell', surfaceId: 'app-shell' };
+  const desktopScreenshot = writePngEvidence(harness, 'empty-shell-desktop.png', VIEWPORT_DEFINITIONS.desktop);
+  const mobileScreenshot = writePngEvidence(harness, 'empty-shell-mobile.png', VIEWPORT_DEFINITIONS.mobile);
+  const desktopInteraction = writeInteractionOutcome(
+    harness,
+    'empty-shell-desktop-interaction.json',
+    emptyShellTarget,
+    VIEWPORT_DEFINITIONS.desktop
+  );
+  const mobileInteraction = writeInteractionOutcome(
+    harness,
+    'empty-shell-mobile-interaction.json',
+    emptyShellTarget,
+    VIEWPORT_DEFINITIONS.mobile
+  );
   const visualManifest = {
     schemaVersion: 1,
     kind: 'constructive.builder-visual-evidence',
     results: [
       visualResult(
-        { kind: 'shell', surfaceId: 'app-shell' },
+        emptyShellTarget,
         'desktop',
         desktopScreenshot,
         desktopInteraction
       ),
       visualResult(
-        { kind: 'shell', surfaceId: 'app-shell' },
+        emptyShellTarget,
         'mobile',
         mobileScreenshot,
         mobileInteraction
@@ -810,7 +1394,11 @@ test('blank Console core with no packs or domain routes journals exact empty liv
     ]
   };
   const visualRef = writeEvidence(harness, 'empty-shell-visual.json', JSON.stringify(visualManifest) + '\n');
-  const interactionRef = writeEvidence(harness, 'empty-shell-interactions.json', '{"passed":true}\n');
+  const interactionRef = writeJsonEvidence(
+    harness,
+    'empty-shell-interactions.json',
+    interactionEvidenceFromVisualResults(visualManifest.results)
+  );
   pass(harness.statePath, 'visual', [
     'screenshot=' + visualRef,
     'interaction=' + interactionRef
@@ -854,8 +1442,8 @@ test('a blocking source limitation prevents a false acceptance pass', () => {
     }
   ]);
   initializeJournal(harness.validationPath, harness.statePath);
-  const requestRef = writeEvidence(harness, 'limitation-request.json', '{"status":200}\n');
-  const uiRef = writeEvidence(harness, 'limitation-ui.json', '{"visible":true}\n');
+  const requestRef = writeRequestEvidence(harness, 'limitation-request.json');
+  const uiRef = writeUiEvidence(harness, 'limitation-ui.json');
   const document = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
@@ -935,8 +1523,8 @@ test('a require-mitigation source limitation can pass only with retained passing
     }
   ]);
   initializeJournal(harness.validationPath, harness.statePath);
-  const requestRef = writeEvidence(harness, 'mitigation-request.json', '{"status":200}\n');
-  const uiRef = writeEvidence(harness, 'mitigation-ui.json', '{"visible":true}\n');
+  const requestRef = writeRequestEvidence(harness, 'mitigation-request.json');
+  const uiRef = writeUiEvidence(harness, 'mitigation-ui.json');
   const document = {
     schemaVersion: 1,
     kind: 'constructive.builder-acceptance-evidence',
