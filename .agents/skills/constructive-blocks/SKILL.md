@@ -60,12 +60,22 @@ returns every `sourceLimitations` record whose explicit install-root scope
 matches the selection. Do not read the inspector v1 generic Data,
 single-store, or Organizations-ready sentences in isolation.
 
+The returned `metaContract` is executable evidence rather than a version
+label: it contains the exact 27-alias type/field requirements plus SHA-256 and
+byte-length attestations for `META_QUERY_SOURCE` and the generated contract
+introspection query. Any alias, type, field, or document drift fails the
+checker.
+
 Every query returns an `installability` envelope. While
 `publicRegistryReady` is false, public install commands are blocked and
 future-only; use only the envelope's exact pinned local workflow and command
 template in a disposable consumer or isolated worktree with the frozen
 lockfile rule. List queries also return the current `_meta` contract and mark
-each root `blocked` when any applicable limitation has `acceptance: blocking`.
+each root with a `runtimeStatus`. `blocked` means a blocker applies in every
+supported mode; `conditionalBlockers` names blockers limited to particular
+`modes`. Standalone Data therefore keeps secure `embedded-auth` eligible while
+its standalone-auth modes are blocked, whereas Console roots containing Data
+remain blocked by the nested-store limitation.
 
 [`references/registry-catalog.v1.json`](references/registry-catalog.v1.json)
 and [`references/install-plans.v1/`](references/install-plans.v1/) remain the
@@ -194,8 +204,10 @@ The pinned source otherwise falls back to the data endpoint and the shared
 `default` database scope. Standalone Sheets auth also always persists tokens
 in `localStorage`, ignores `rememberMe` as a persistence choice, and cannot
 bootstrap tenant CSRF. Use embedded host authentication for portable installs;
-standalone auth remains blocked for credential persistence and CSRF-capable
-tenants until Blocks implements those boundaries.
+the `feature-pack-data` root is not unconditionally blocked because
+`embedded-auth` avoids those source paths. Its `standalone-auth` mode remains
+blocked by credential persistence, and `standalone-auth-csrf-required` is also
+blocked by the missing CSRF boundary until Blocks implements both.
 
 For `console-kit-nextjs`, render `ConstructiveConsoleKit` from
 `@/blocks/console-kit/constructive`. Pass a secret-free

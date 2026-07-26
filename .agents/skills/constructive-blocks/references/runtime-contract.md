@@ -123,7 +123,7 @@ executable operation, privilege, or RLS-visible row.
 | Auth | Credentials, sessions, and password operations use `auth` |
 | Users | `users.directory` uses `auth`; `users.memberships` uses `admin` |
 | Organizations | Memberships use `admin`/`Query.orgMemberships`, or a compatible `_meta` contract with a readable `contract.members` root found on an explicitly configured endpoint, confirmed by introspection, and proven executable |
-| Storage | Named bucket/file roots use `storage`, `admin`, or `data`; a compatible storage `_meta` contract may be found on any explicitly configured endpoint and must be confirmed by introspection |
+| Storage | Named bucket/file roots and compatible storage `_meta` contracts use `storage`, `admin`, or `data` only; the selected endpoint must be confirmed by introspection |
 | Billing | Plans, subscriptions, and meters use `billing` only |
 | Notifications | Inbox uses `notifications` only; settings may be discovered but are unimplemented and must stay unavailable |
 
@@ -135,9 +135,11 @@ Notifications manifest endpoint candidate lists are broader than their
 first-party adapters; do not route either module through `admin`, `auth`, or
 `data` based on manifest candidates.
 
-Organization and Storage metadata alternatives evaluate only endpoints that
-the host explicitly configured. This does not create an implicit fallback or
-allow the frontend to derive another host.
+The Organizations metadata alternative evaluates only endpoints that the host
+explicitly configured. Storage evaluates only explicitly configured
+`storage`, `admin`, or `data` endpoints because those are the endpoint kinds
+its adapter can execute. Neither rule creates an implicit fallback or allows
+the frontend to derive another host.
 
 Readiness uses the adapter contract profiles returned by `--root`. A
 `relay-forward-connection` root must accept `first: Int` or `Int!`, accept a
@@ -148,18 +150,25 @@ must satisfy one complete membership path group and one complete identity path
 group, rather than accumulating unrelated partial evidence. Users and
 Organizations actions remain disabled until the corresponding
 `users-enabled-actions` or `organizations-enabled-actions` profile validates
-the declared input type, fixed payload path, and required payload fields.
+the endpoint kind, declared input type, fixed payload path, and required
+payload fields for that document tuple. Users actions all use `admin`.
+Organizations uses `admin` for 17 documents and `auth` for `createUser`,
+`updateUser`, `deleteUser`, `createOrgPrincipal`, `revokeOrgApiKey`, and
+`deleteOrgPrincipal`. The `createUser` payload minimum is `id`, `type`, and
+`username`; `displayName` is required in the nested input but optional in the
+selected output, and `profilePicture` is optional output.
 
 ## Pinned source limitations
 
 `sourceLimitations` is the machine-readable list of open Blocks source gaps.
 Each record declares exact `surfaces`, `installRoots`, `featurePacks`, and
 `runtimeModes`; filter by `appliesTo.installRoots` instead of guessing from
-prose or treating every limitation as global. A `blocking` record fails the
-`tenant-runtime` verification profile while it remains open. A
-`require-mitigation` record can pass only when every named mitigation has
-evidence; the list-root query exposes both severity and the derived `blocked`
-status.
+prose or treating every limitation as global. A `blocking` record fails only
+the runtime modes named by that record. The list-root query reports each
+mode's blockers and mitigations, exposes mode-limited records under
+`conditionalBlockers`, and sets root-level `blocked` only when a blocker is
+unconditional across every supported mode. A `require-mitigation` record can
+pass only when every named mitigation has evidence.
 
 ### Data limitations
 
@@ -182,10 +191,10 @@ status.
 
 | ID | Acceptance | Required handling | Mitigation IDs |
 | --- | --- | --- | --- |
-| `organizations-adapter-shape-false-ready` | `require-mitigation` | Validate one complete membership path and one identity path against the Relay connection profile, exact selected node fields, and enabled-action payloads. | `validate-organizations-connection-shapes`, `validate-meta-derived-organizations-shapes`, `validate-organization-action-payloads` |
+| `organizations-adapter-shape-false-ready` | `require-mitigation` | Validate one complete membership path and one identity path against the Relay connection profile, exact selected node fields, and every enabled action's endpoint, input, and payload. | `validate-organizations-connection-shapes`, `validate-meta-derived-organizations-shapes`, `validate-organization-action-payloads` |
 | `storage-adapter-shape-false-ready` | `require-mitigation` | Validate both selected bucket and file roots against the Relay connection profile and their semantic fields. | `validate-storage-connection-shapes`, `fail-storage-on-adapter-shape-mismatch` |
 | `auth-adapter-shape-false-ready` | `require-mitigation` | Validate every fixed SignIn, SignUp, SignOut, password, and `currentUser` argument, input type and field, payload selection, and selected MFA field. | `validate-auth-operation-shapes`, `fail-auth-on-adapter-shape-mismatch` |
-| `users-adapter-shape-false-ready` | `require-mitigation` | Validate the users and app-membership Relay reads, exact node fields, and each enabled action's input and fixed payload object ending in `id`. | `validate-users-read-shapes`, `fail-users-on-adapter-shape-mismatch`, `validate-users-action-payloads` |
+| `users-adapter-shape-false-ready` | `require-mitigation` | Validate the users and app-membership Relay reads, exact node fields, and each enabled action's endpoint, input, and fixed payload object ending in `id`. | `validate-users-read-shapes`, `fail-users-on-adapter-shape-mismatch`, `validate-users-action-payloads` |
 | `billing-adapter-shape-false-ready` | `require-mitigation` | Validate the minimal `nodes` connection envelope, node types, and every selected Plan and PlanSubscription field. | `validate-billing-read-shapes`, `fail-billing-on-adapter-shape-mismatch` |
 | `notifications-adapter-shape-false-ready` | `require-mitigation` | Validate the minimal `nodes` connection envelope, Notification type, and every selected inbox field. | `validate-notifications-inbox-shape`, `fail-notifications-on-adapter-shape-mismatch` |
 | `notifications-settings-discovered-unimplemented` | `require-mitigation` | Treat settings as discovered but unavailable. The current adapter and feature pack implement only inbox and read state; settings need both a resource adapter and a UI contract. | `hide-unimplemented-notification-settings`, `require-notification-settings-resource-and-surface` |
@@ -203,6 +212,18 @@ If it is inspected during remediation, still require a non-empty
 host-resolved `authEndpoint` and `databaseId` equal to the active tenant before
 rendering; those checks prevent the separate endpoint and `default` scope
 fallbacks but do not clear the blocking limitations.
+
+This makes the root `conditionally-blocked`, not unconditionally blocked:
+`embedded-auth` is eligible, `standalone-auth` is blocked by persistent token
+storage, and `standalone-auth-csrf-required` is blocked by persistent storage
+plus the absent CSRF bootstrap. Console roots containing Data remain
+unconditionally blocked by the separate nested-store limitation.
+
+The validated `--root feature-pack-data` response pins the import target and
+`DataFeaturePackProps` vocabulary. `config` is required, Data has no injected
+resource prop, `activeTable` is controlled by `onActiveTableChange`, and
+`defaultActiveTable` seeds its uncontrolled state. The remaining local state
+is the metadata request plus Sheets grid/editor state.
 
 ```tsx
 'use client';
@@ -301,15 +322,16 @@ import * as React from 'react';
 import {
   ConstructiveConsoleKitCore,
   createConsoleKitStore,
+  type ConsoleKitFeatureModule,
   type ConstructiveTenantDatabase
 } from '@/blocks/console-kit/console-kit-core';
 import { dataConsoleModule } from '@/blocks/feature-packs/data/data-console-module';
 import { storageConsoleModule } from '@/blocks/feature-packs/storage/storage-console-module';
 
-const featureModules = [
+const featureModules: readonly ConsoleKitFeatureModule[] = [
   dataConsoleModule,
   storageConsoleModule
-] as const;
+];
 
 export function CustomTenantConsole({
   database
@@ -372,7 +394,14 @@ interface.
 
 The current `_meta` contract is `2026-07` at GraphQL coordinate
 `Query._meta`. Its implementation and compatibility sources are SHA-256 pinned
-under `metaContract`.
+under `metaContract`. `metaContract.requirements` contains the exact 27-alias
+type-and-field map consumed by `META_CONTRACT_REQUIREMENTS`.
+`metaContract.documents` also pins the runtime GraphQL strings: the
+2,885-byte `META_QUERY_SOURCE` has SHA-256
+`8b5b46f141f8303ffafac5fbb4f34103a363d8a0755d1fba16199bbf3b78f7ee`,
+and the 1,949-byte generated `META_CONTRACT_INTROSPECTION_SOURCE` has SHA-256
+`5a0aaeec9659cb0e6b43154f0db3fea6459a313f80feb67e87f3d1680985496a`.
+Every Data-bearing validated query returns this complete contract.
 
 Evaluate evidence in this order:
 
@@ -407,9 +436,10 @@ Use `tenant-runtime` for every standalone feature pack, Console module, preset,
 core, and full Console root. It includes static installation checks, then adds
 host endpoint/session checks, discovery evidence for surfaces that discover,
 Auth lifecycle tests when Auth is present, and allowed plus denied CRUD/RLS
-cases for data actions. Any applicable `blocking` source limitation fails this
-profile; every `require-mitigation` record needs evidence for all of its stable
-mitigation IDs.
+cases for data actions. A `blocking` source limitation fails this profile only
+for the runtime modes in its `appliesTo.runtimeModes`; every applicable
+`require-mitigation` record needs evidence for all of its stable mitigation
+IDs.
 
 ## Pinned local consumption before release
 

@@ -461,7 +461,7 @@
         "field": "docs",
         "status": "superseded-by-portable-contract",
         "sourceValueSha256": "d72a2acee5ee58aa71cc2a413226936dbd18725d98678f371a756440b7eecbc5",
-        "portableValue": "`feature-pack-data` installs an adapter-driven Sheets view and `.constructive/feature-packs/data.json`. Import from `@/blocks/feature-packs/data/data-feature-pack`. The host supplies `SheetsConfig` with a resolved data endpoint and auth/session transport; Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and owns its table state and CRUD execution.\n\nFor `auth.mode: 'standalone'`, require an explicit non-empty `authEndpoint` and fail closed before rendering when it is absent; the pinned source otherwise falls back to the data endpoint. In embedded mode, the host may inject `SheetsExecuteFn` as `execute` to preserve its scoped transport boundary. Add `console-module-data` when Console Kit should resolve the semantic data endpoint and session transport.\n\nDegraded states: incompatible metadata stays explicit, missing standalone auth routing is a configuration error, and PostgreSQL privileges and RLS decide every query and mutation.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
+        "portableValue": "`feature-pack-data` installs an adapter-driven Sheets view and `.constructive/feature-packs/data.json`. Import from `@/blocks/feature-packs/data/data-feature-pack`. The host supplies `SheetsConfig` with a resolved data endpoint and auth/session transport; Sheets internally loads `Query._meta`, validates standard GraphQL introspection, and owns its table state and CRUD execution.\n\nThe validated runtime status keeps `embedded-auth` eligible, so this root is not unconditionally blocked. For `auth.mode: 'standalone'`, require an explicit non-empty `authEndpoint` and tenant-matched `databaseId`, but the pinned source still blocks `standalone-auth` because it always persists credentials. `standalone-auth-csrf-required` is also blocked because Sheets cannot bootstrap tenant CSRF. In embedded mode, the host may inject `SheetsExecuteFn` as `execute` to preserve its scoped transport boundary. Add `console-module-data` when Console Kit should resolve the semantic data endpoint and session transport.\n\nDegraded states: incompatible metadata stays explicit, missing standalone auth routing is a configuration error, and PostgreSQL privileges and RLS decide every query and mutation.\n\nGuide: https://constructive-io.github.io/blocks/blocks/features/data/",
         "reason": "Pinned registry documentation applies generic standalone-pack ownership prose that contradicts the attested DataFeaturePack and Sheets sources. Validated queries replace that field while retaining the raw catalog only as source evidence."
       },
       {
@@ -527,6 +527,55 @@
       "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
       "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
     },
+    "requirements": {
+      "queryType": { "typeName": "Query", "fields": ["_meta"] },
+      "metaSchema": { "typeName": "MetaSchema", "fields": ["tables"] },
+      "metaTable": {
+        "typeName": "MetaTable",
+        "fields": ["name", "schemaName", "query", "fields", "inflection", "indexes", "constraints", "foreignKeyConstraints", "primaryKeyConstraints", "uniqueConstraints", "relations", "storage", "search", "i18n", "realtime", "scope"]
+      },
+      "metaTableQuery": { "typeName": "MetaQuery", "fields": ["all", "one", "create", "update", "delete"] },
+      "metaField": {
+        "typeName": "MetaField",
+        "fields": ["name", "type", "isNotNull", "hasDefault", "isPrimaryKey", "isForeignKey", "description", "enumValues"]
+      },
+      "metaEnum": { "typeName": "MetaEnum", "fields": ["name", "values"] },
+      "metaType": { "typeName": "MetaType", "fields": ["pgType", "gqlType", "isArray", "isNotNull", "hasDefault", "subtype", "encoding"] },
+      "metaEncoding": { "typeName": "MetaScalarEncoding", "fields": ["kind", "elementType", "dimensions", "geometrySubtype", "srid", "dotPath"] },
+      "metaIndex": { "typeName": "MetaIndex", "fields": ["name", "isUnique", "isPrimary", "columns", "fields"] },
+      "metaPrimaryKey": { "typeName": "MetaPrimaryKeyConstraint", "fields": ["name", "fields"] },
+      "metaUnique": { "typeName": "MetaUniqueConstraint", "fields": ["name", "fields"] },
+      "metaForeignKey": { "typeName": "MetaForeignKeyConstraint", "fields": ["name", "fields", "referencedTable", "referencedFields", "refFields", "refTable"] },
+      "metaRefTable": { "typeName": "MetaRefTable", "fields": ["name"] },
+      "metaConstraints": { "typeName": "MetaConstraints", "fields": ["primaryKey", "unique", "foreignKey"] },
+      "metaInflection": { "typeName": "MetaInflection", "fields": ["tableType", "allRows", "connection", "edge", "filterType", "orderByType", "conditionType", "patchType", "createInputType", "createPayloadType", "updatePayloadType", "deletePayloadType"] },
+      "metaRelations": { "typeName": "MetaRelations", "fields": ["belongsTo", "has", "hasOne", "hasMany", "manyToMany"] },
+      "metaBelongsTo": { "typeName": "MetaBelongsToRelation", "fields": ["fieldName", "isUnique", "type", "keys", "references"] },
+      "metaHas": { "typeName": "MetaHasRelation", "fields": ["fieldName", "isUnique", "type", "keys", "referencedBy"] },
+      "metaManyToMany": { "typeName": "MetaManyToManyRelation", "fields": ["fieldName", "type", "junctionTable", "junctionLeftConstraint", "junctionLeftKeyAttributes", "junctionRightConstraint", "junctionRightKeyAttributes", "leftKeyAttributes", "rightKeyAttributes", "rightTable"] },
+      "metaStorage": { "typeName": "MetaStorage", "fields": ["isFilesTable", "isBucketsTable"] },
+      "metaSearch": { "typeName": "MetaSearch", "fields": ["algorithms", "columns", "hasUnifiedSearch", "config"] },
+      "metaSearchColumn": { "typeName": "MetaSearchColumn", "fields": ["name", "algorithm"] },
+      "metaSearchConfig": { "typeName": "MetaSearchConfig", "fields": ["weights", "boostRecent", "boostRecencyField", "boostRecencyDecay"] },
+      "metaI18n": { "typeName": "MetaI18n", "fields": ["translationTable", "translatableFields"] },
+      "metaI18nField": { "typeName": "MetaI18nField", "fields": ["name", "type"] },
+      "metaRealtime": { "typeName": "MetaRealtime", "fields": ["subscriptionFieldName"] },
+      "metaScope": { "typeName": "MetaScope", "fields": ["scope", "tier", "keyColumn", "entityTable", "source"] }
+    },
+    "documents": {
+      "metaQuery": {
+        "sourceConstant": "META_QUERY_SOURCE",
+        "operationName": "ConstructiveMeta",
+        "byteLength": 2885,
+        "sha256": "8b5b46f141f8303ffafac5fbb4f34103a363d8a0755d1fba16199bbf3b78f7ee"
+      },
+      "contractIntrospection": {
+        "sourceConstant": "META_CONTRACT_INTROSPECTION_SOURCE",
+        "operationName": "ConstructiveMetaContract",
+        "byteLength": 1949,
+        "sha256": "5a0aaeec9659cb0e6b43154f0db3fea6459a313f80feb67e87f3d1680985496a"
+      }
+    },
     "evidenceOrder": [
       "current _meta signature introspection",
       "Query._meta payload validation",
@@ -574,29 +623,30 @@
       },
       "appliesWhen": "action-policy-would-be-enabled",
       "readinessImpact": "action-only",
-      "endpointKind": "admin",
+      "endpointPolicy": "per-document",
       "requiredArgument": "input",
       "inputValidation": "adapter-declared-required-fields",
       "documentTupleFields": [
+        "endpointKind",
         "coordinate",
         "inputType",
         "payloadPath",
         "requiredPayloadFields"
       ],
       "documents": [
-        ["Mutation.updateAppMembership", "UpdateAppMembershipInput", "appMembership", ["id"]],
-        ["Mutation.createAppOwnerGrant", "CreateAppOwnerGrantInput", "appOwnerGrant", ["id"]],
-        ["Mutation.createAppAdminGrant", "CreateAppAdminGrantInput", "appAdminGrant", ["id"]],
-        ["Mutation.createAppGrant", "CreateAppGrantInput", "appGrant", ["id"]],
-        ["Mutation.createAppProfileGrant", "CreateAppProfileGrantInput", "appProfileGrant", ["id"]],
-        ["Mutation.createAppProfileDefinitionGrant", "CreateAppProfileDefinitionGrantInput", "appProfileDefinitionGrant", ["id"]],
-        ["Mutation.createAppPermissionDefaultGrant", "CreateAppPermissionDefaultGrantInput", "appPermissionDefaultGrant", ["id"]],
-        ["Mutation.createAppProfile", "CreateAppProfileInput", "appProfile", ["id"]],
-        ["Mutation.updateAppProfile", "UpdateAppProfileInput", "appProfile", ["id"]],
-        ["Mutation.deleteAppProfile", "DeleteAppProfileInput", "appProfile", ["id"]],
-        ["Mutation.createAppInvite", "CreateAppInviteInput", "appInvite", ["id"]],
-        ["Mutation.updateAppInvite", "UpdateAppInviteInput", "appInvite", ["id"]],
-        ["Mutation.deleteAppInvite", "DeleteAppInviteInput", "appInvite", ["id"]]
+        ["admin", "Mutation.updateAppMembership", "UpdateAppMembershipInput", "appMembership", ["id"]],
+        ["admin", "Mutation.createAppOwnerGrant", "CreateAppOwnerGrantInput", "appOwnerGrant", ["id"]],
+        ["admin", "Mutation.createAppAdminGrant", "CreateAppAdminGrantInput", "appAdminGrant", ["id"]],
+        ["admin", "Mutation.createAppGrant", "CreateAppGrantInput", "appGrant", ["id"]],
+        ["admin", "Mutation.createAppProfileGrant", "CreateAppProfileGrantInput", "appProfileGrant", ["id"]],
+        ["admin", "Mutation.createAppProfileDefinitionGrant", "CreateAppProfileDefinitionGrantInput", "appProfileDefinitionGrant", ["id"]],
+        ["admin", "Mutation.createAppPermissionDefaultGrant", "CreateAppPermissionDefaultGrantInput", "appPermissionDefaultGrant", ["id"]],
+        ["admin", "Mutation.createAppProfile", "CreateAppProfileInput", "appProfile", ["id"]],
+        ["admin", "Mutation.updateAppProfile", "UpdateAppProfileInput", "appProfile", ["id"]],
+        ["admin", "Mutation.deleteAppProfile", "DeleteAppProfileInput", "appProfile", ["id"]],
+        ["admin", "Mutation.createAppInvite", "CreateAppInviteInput", "appInvite", ["id"]],
+        ["admin", "Mutation.updateAppInvite", "UpdateAppInviteInput", "appInvite", ["id"]],
+        ["admin", "Mutation.deleteAppInvite", "DeleteAppInviteInput", "appInvite", ["id"]]
       ]
     },
     "organizations-enabled-actions": {
@@ -606,39 +656,40 @@
       },
       "appliesWhen": "action-policy-would-be-enabled",
       "readinessImpact": "action-only",
-      "endpointKind": "admin",
+      "endpointPolicy": "per-document",
       "requiredArgument": "input",
       "inputValidation": "adapter-declared-required-fields",
       "documentTupleFields": [
+        "endpointKind",
         "coordinate",
         "inputType",
         "payloadPath",
         "requiredPayloadFields"
       ],
       "documents": [
-        ["Mutation.updateOrgMembership", "UpdateOrgMembershipInput", "orgMembership", ["id"]],
-        ["Mutation.deleteOrgMembership", "DeleteOrgMembershipInput", "orgMembership", ["id"]],
-        ["Mutation.createOrgAdminGrant", "CreateOrgAdminGrantInput", "orgAdminGrant", ["id"]],
-        ["Mutation.createOrgOwnerGrant", "CreateOrgOwnerGrantInput", "orgOwnerGrant", ["id"]],
-        ["Mutation.createOrgGrant", "CreateOrgGrantInput", "orgGrant", ["id"]],
-        ["Mutation.createOrgProfileGrant", "CreateOrgProfileGrantInput", "orgProfileGrant", ["id"]],
-        ["Mutation.createOrgProfileDefinitionGrant", "CreateOrgProfileDefinitionGrantInput", "orgProfileDefinitionGrant", ["id"]],
-        ["Mutation.createOrgProfile", "CreateOrgProfileInput", "orgProfile", ["id"]],
-        ["Mutation.updateOrgProfile", "UpdateOrgProfileInput", "orgProfile", ["id"]],
-        ["Mutation.deleteOrgProfile", "DeleteOrgProfileInput", "orgProfile", ["id"]],
-        ["Mutation.createOrgMemberProfile", "CreateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
-        ["Mutation.updateOrgMemberProfile", "UpdateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
-        ["Mutation.updateOrgMembershipSetting", "UpdateOrgMembershipSettingInput", "orgMembershipSetting", ["id"]],
-        ["Mutation.updateOrgMembershipDefault", "UpdateOrgMembershipDefaultInput", "orgMembershipDefault", ["id"]],
-        ["Mutation.createOrgChartEdgeGrant", "CreateOrgChartEdgeGrantInput", "orgChartEdgeGrant", ["id"]],
-        ["Mutation.createOrgInvite", "CreateOrgInviteInput", "orgInvite", ["id"]],
-        ["Mutation.deleteOrgInvite", "DeleteOrgInviteInput", "orgInvite", ["id"]],
-        ["Mutation.deleteUser", "DeleteUserInput", "user", ["id"]],
-        ["Mutation.updateUser", "UpdateUserInput", "user", ["id"]],
-        ["Mutation.revokeOrgApiKey", "RevokeOrgApiKeyInput", null, ["result"]],
-        ["Mutation.deleteOrgPrincipal", "DeleteOrgPrincipalInput", null, ["result"]],
-        ["Mutation.createOrgPrincipal", "CreateOrgPrincipalInput", null, ["result"]],
-        ["Mutation.createUser", "CreateUserInput", "user", ["id", "type", "displayName", "username", "profilePicture"]]
+        ["admin", "Mutation.updateOrgMembership", "UpdateOrgMembershipInput", "orgMembership", ["id"]],
+        ["admin", "Mutation.deleteOrgMembership", "DeleteOrgMembershipInput", "orgMembership", ["id"]],
+        ["admin", "Mutation.createOrgAdminGrant", "CreateOrgAdminGrantInput", "orgAdminGrant", ["id"]],
+        ["admin", "Mutation.createOrgOwnerGrant", "CreateOrgOwnerGrantInput", "orgOwnerGrant", ["id"]],
+        ["admin", "Mutation.createOrgGrant", "CreateOrgGrantInput", "orgGrant", ["id"]],
+        ["admin", "Mutation.createOrgProfileGrant", "CreateOrgProfileGrantInput", "orgProfileGrant", ["id"]],
+        ["admin", "Mutation.createOrgProfileDefinitionGrant", "CreateOrgProfileDefinitionGrantInput", "orgProfileDefinitionGrant", ["id"]],
+        ["admin", "Mutation.createOrgProfile", "CreateOrgProfileInput", "orgProfile", ["id"]],
+        ["admin", "Mutation.updateOrgProfile", "UpdateOrgProfileInput", "orgProfile", ["id"]],
+        ["admin", "Mutation.deleteOrgProfile", "DeleteOrgProfileInput", "orgProfile", ["id"]],
+        ["admin", "Mutation.createOrgMemberProfile", "CreateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
+        ["admin", "Mutation.updateOrgMemberProfile", "UpdateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
+        ["admin", "Mutation.updateOrgMembershipSetting", "UpdateOrgMembershipSettingInput", "orgMembershipSetting", ["id"]],
+        ["admin", "Mutation.updateOrgMembershipDefault", "UpdateOrgMembershipDefaultInput", "orgMembershipDefault", ["id"]],
+        ["admin", "Mutation.createOrgChartEdgeGrant", "CreateOrgChartEdgeGrantInput", "orgChartEdgeGrant", ["id"]],
+        ["admin", "Mutation.createOrgInvite", "CreateOrgInviteInput", "orgInvite", ["id"]],
+        ["admin", "Mutation.deleteOrgInvite", "DeleteOrgInviteInput", "orgInvite", ["id"]],
+        ["auth", "Mutation.deleteUser", "DeleteUserInput", "user", ["id"]],
+        ["auth", "Mutation.updateUser", "UpdateUserInput", "user", ["id"]],
+        ["auth", "Mutation.revokeOrgApiKey", "RevokeOrgApiKeyInput", null, ["result"]],
+        ["auth", "Mutation.deleteOrgPrincipal", "DeleteOrgPrincipalInput", null, ["result"]],
+        ["auth", "Mutation.createOrgPrincipal", "CreateOrgPrincipalInput", null, ["result"]],
+        ["auth", "Mutation.createUser", "CreateUserInput", "user", ["id", "type", "username"]]
       ]
     }
   },
@@ -1286,6 +1337,41 @@
     "data": {
       "featurePack": "data",
       "component": "DataFeaturePack",
+      "importTarget": "src/blocks/feature-packs/data/data-feature-pack.tsx",
+      "propsType": "DataFeaturePackProps",
+      "propVocabulary": [
+        "config",
+        "activeTable",
+        "defaultActiveTable",
+        "applicationScopes",
+        "includeTables",
+        "excludeTables",
+        "pageSize",
+        "onActiveTableChange",
+        "onCreateTable",
+        "onEvent",
+        "sheetsProps"
+      ],
+      "resourceProps": [],
+      "configProps": [
+        "config"
+      ],
+      "viewState": {
+        "controlled": [
+          "activeTable:onActiveTableChange"
+        ],
+        "defaults": [
+          "defaultActiveTable"
+        ],
+        "required": [
+          "config"
+        ],
+        "local": [
+          "uncontrolled active table",
+          "metadata request state",
+          "Sheets grid and editor state"
+        ]
+      },
       "componentSource": {
         "path": "apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx",
         "sha256": "f43e577186073c352feca69e6f3f7e9914e491808357066fe90bfc79d7a62c67"
@@ -2242,14 +2328,11 @@
             },
             {
               "id": "storage.buckets.path-2",
-              "verificationProfile": "tenant-runtime",
-              "endpointKinds": [
-                "data",
-                "auth",
-                "admin",
-                "billing",
-                "storage",
-                "notifications"
+          "verificationProfile": "tenant-runtime",
+          "endpointKinds": [
+            "storage",
+            "admin",
+            "data"
               ],
               "evidence": {
                 "type": "compatible-meta-contract",
@@ -2289,14 +2372,11 @@
             },
             {
               "id": "storage.files.path-2",
-              "verificationProfile": "tenant-runtime",
-              "endpointKinds": [
-                "data",
-                "auth",
-                "admin",
-                "billing",
-                "storage",
-                "notifications"
+          "verificationProfile": "tenant-runtime",
+          "endpointKinds": [
+            "storage",
+            "admin",
+            "data"
               ],
               "evidence": {
                 "type": "compatible-meta-contract",
@@ -2989,7 +3069,7 @@
         },
         {
           "id": "validate-organization-action-payloads",
-          "requirement": "Before enabling an Organizations action, validate its adapter-declared input plus the fixed payload path and required payload fields in organizations-enabled-actions."
+          "requirement": "Before enabling an Organizations action, validate its per-document endpoint kind, adapter-declared input, fixed payload path, and required payload fields in organizations-enabled-actions."
         }
       ],
       "appliesTo": {
@@ -3026,7 +3106,7 @@
         }
       ],
       "observedBehavior": "Organizations capability discovery can report operation roots or _meta families without validating the Relay pagination arguments, nodes and pageInfo envelope, or every adapter-selected node field used by executeConstructiveConnectionQuery.",
-      "portableRequirement": "Use standard introspection to validate one complete memberships path and one identity-directory path. Every selected root must accept first as Int or Int!, accept nullable after as Cursor, expose nodes and pageInfo with hasNextPage and endCursor, and expose the exact selected node fields before ready.",
+      "portableRequirement": "Use standard introspection to validate one complete memberships path and one identity-directory path. Every selected root must accept first as Int or Int!, accept nullable after as Cursor, expose nodes and pageInfo with hasNextPage and endCursor, and expose the exact selected node fields before ready. Validate each enabled action against the endpoint kind, input, payload path, and required output fields in its action tuple.",
       "failureState": "unavailable"
     },
     {
@@ -3147,7 +3227,7 @@
         },
         {
           "id": "validate-users-action-payloads",
-          "requirement": "Before enabling a Users action, validate its adapter-declared input plus the fixed payload path and required payload fields in users-enabled-actions."
+          "requirement": "Before enabling a Users action, validate its per-document endpoint kind, adapter-declared input, fixed payload path, and required payload fields in users-enabled-actions."
         }
       ],
       "appliesTo": {
@@ -3181,7 +3261,7 @@
         }
       ],
       "observedBehavior": "Users capability discovery proves query and mutation operation names, but the adapter requires paginated users and appMemberships query shapes and fixed mutation payload object paths ending in id before an action can execute.",
-      "portableRequirement": "Use standard introspection to validate the relay-forward-connection profile and exact selected node fields for required reads. Before enabling each action, validate its complete input contract and fixed payload object path with id.",
+      "portableRequirement": "Use standard introspection to validate the relay-forward-connection profile and exact selected node fields for required reads. Before enabling each action, validate its per-document endpoint kind, complete input contract, and fixed payload object path with id.",
       "failureState": "unavailable"
     },
     {

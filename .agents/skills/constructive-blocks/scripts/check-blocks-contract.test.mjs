@@ -226,6 +226,8 @@ test('query mode validates first and is independent of the current directory', (
   );
   assert.equal(root.portableContract.consoleStore, null);
   assert.equal(root.portableContract.metaContract.coordinate, 'Query._meta');
+  assert.equal(root.runtimeStatus.status, 'conditionally-blocked');
+  assert.equal(root.runtimeStatus.blocked, false);
 
   const consoleRoot = runQuery(['--root', 'console-module-data']);
   assert.equal(
@@ -239,6 +241,8 @@ test('query mode validates first and is independent of the current directory', (
     ['data-console-nested-sheets-store']
   );
   assert.equal(consoleRoot.portableContract.metaContract.coordinate, 'Query._meta');
+  assert.equal(consoleRoot.runtimeStatus.status, 'blocked');
+  assert.equal(consoleRoot.runtimeStatus.blocked, true);
 
   const organizationsRoot = runQuery(['--root', 'console-module-organizations']);
   assert.deepEqual(
@@ -288,7 +292,7 @@ test('every query mode exposes the same branch-only installability gate', () => 
   }
 });
 
-test('list queries expose Data metadata and limitation severity without hiding blockers', () => {
+test('list queries expose Data metadata and runtime-mode-aware blockers', () => {
   const roots = runQuery(['--list-roots']);
   const registry = runQuery(['--list-registry']);
   assert.equal(roots.metaContract.version, '2026-07');
@@ -297,11 +301,56 @@ test('list queries expose Data metadata and limitation severity without hiding b
   assert.equal(registry.metaContract.coordinate, 'Query._meta');
 
   const data = roots.items.find((item) => item.name === 'feature-pack-data');
-  assert.equal(data.blocked, true);
+  assert.equal(data.blocked, false);
+  assert.equal(data.runtimeStatus.status, 'conditionally-blocked');
+  assert.deepEqual(data.runtimeStatus.unconditionalBlockerIds, []);
+  assert.deepEqual(data.runtimeStatus.conditionalBlockerIds, [
+    'data-standalone-persistent-token-storage',
+    'data-standalone-csrf-auth-unavailable'
+  ]);
+  assert.deepEqual(data.runtimeStatus.modes, [
+    {
+      id: 'embedded-auth',
+      status: 'eligible',
+      blockingLimitationIds: [],
+      mitigationRequiredLimitationIds: []
+    },
+    {
+      id: 'standalone-auth',
+      status: 'blocked',
+      blockingLimitationIds: [
+        'data-standalone-persistent-token-storage'
+      ],
+      mitigationRequiredLimitationIds: [
+        'data-standalone-auth-endpoint-fallback',
+        'data-standalone-database-scope-fallback'
+      ]
+    },
+    {
+      id: 'standalone-auth-csrf-required',
+      status: 'blocked',
+      blockingLimitationIds: [
+        'data-standalone-persistent-token-storage',
+        'data-standalone-csrf-auth-unavailable'
+      ],
+      mitigationRequiredLimitationIds: [
+        'data-standalone-auth-endpoint-fallback',
+        'data-standalone-database-scope-fallback'
+      ]
+    }
+  ]);
   assert.deepEqual(
     data.sourceLimitationAcceptances.map((entry) => entry.acceptance),
     ['require-mitigation', 'require-mitigation', 'blocking', 'blocking']
   );
+  const consoleData = roots.items.find(
+    (item) => item.name === 'console-module-data'
+  );
+  assert.equal(consoleData.blocked, true);
+  assert.equal(consoleData.runtimeStatus.status, 'blocked');
+  assert.deepEqual(consoleData.runtimeStatus.unconditionalBlockerIds, [
+    'data-console-nested-sheets-store'
+  ]);
   const auth = roots.items.find((item) => item.name === 'feature-pack-auth');
   assert.equal(auth.blocked, false);
   assert.deepEqual(auth.sourceLimitationIds, []);
@@ -337,6 +386,77 @@ test('root queries expose standalone pack vocabulary, adapter profiles, and back
   assert.equal(
     organizations.backendPresetSource.verification,
     'portable-attestation-no-live-repository-required'
+  );
+});
+
+test('every Data-bearing query surface returns the exact pinned _meta shape and documents', () => {
+  const expected = loadPortableContract().snapshot.metaContract;
+  const outputs = [
+    runQuery(['--list-roots']).metaContract,
+    runQuery(['--list-registry']).metaContract,
+    runQuery(['--registry-item', 'feature-pack-data']).metaContract,
+    runQuery(['--registry-item', 'console-module-data']).metaContract,
+    runQuery(['--root', 'feature-pack-data']).portableContract.metaContract,
+    runQuery(['--root', 'console-module-data']).portableContract.metaContract
+  ];
+  for (const contract of outputs) assert.deepEqual(contract, expected);
+  assert.equal(Object.keys(expected.requirements).length, 27);
+  assert.deepEqual(expected.requirements.metaScope, {
+    typeName: 'MetaScope',
+    fields: ['scope', 'tier', 'keyColumn', 'entityTable', 'source']
+  });
+  assert.deepEqual(expected.documents.metaQuery, {
+    sourceConstant: 'META_QUERY_SOURCE',
+    operationName: 'ConstructiveMeta',
+    byteLength: 2885,
+    sha256: '8b5b46f141f8303ffafac5fbb4f34103a363d8a0755d1fba16199bbf3b78f7ee'
+  });
+});
+
+test('_meta alias, type, field, and document drift all fail closed', () => {
+  const loaded = loadPortableContract();
+  const mutations = [
+    (contract) => {
+      contract.requirements.legacyScope = contract.requirements.metaScope;
+      delete contract.requirements.metaScope;
+    },
+    (contract) => { contract.requirements.metaScope.typeName = 'LegacyScope'; },
+    (contract) => contract.requirements.metaScope.fields.pop(),
+    (contract) => { contract.documents.metaQuery.sha256 = '0'.repeat(64); },
+    (contract) => { contract.documents.contractIntrospection.byteLength = 1; }
+  ];
+  for (const mutate of mutations) {
+    const mutation = structuredClone(loaded.snapshot);
+    mutate(mutation.metaContract);
+    assert.throws(
+      () => assertSnapshot(mutation),
+      /metaContract\.(requirements|documents) drifted/
+    );
+  }
+});
+
+test('standalone Data query exposes its complete props and view-state contract', () => {
+  const root = runQuery(['--root', 'feature-pack-data']);
+  const contract = root.portableContract.standalone.contract;
+  assert.equal(
+    contract.importTarget,
+    'src/blocks/feature-packs/data/data-feature-pack.tsx'
+  );
+  assert.equal(contract.propsType, 'DataFeaturePackProps');
+  assert.deepEqual(contract.resourceProps, []);
+  assert.deepEqual(contract.configProps, ['config']);
+  assert.deepEqual(contract.viewState.controlled, [
+    'activeTable:onActiveTableChange'
+  ]);
+  assert.deepEqual(contract.viewState.defaults, ['defaultActiveTable']);
+  assert.deepEqual(contract.viewState.required, ['config']);
+  assert.ok(contract.propVocabulary.includes('sheetsProps'));
+
+  const mutation = structuredClone(loadPortableContract().snapshot);
+  mutation.standaloneContracts.data.viewState.controlled.length = 0;
+  assert.throws(
+    () => assertSnapshot(mutation),
+    /Standalone Data view contract drifted/
   );
 });
 
@@ -390,10 +510,92 @@ test('connection, alternative-path, and action-document shape drift fails closed
   const actionMutation = structuredClone(loaded.snapshot);
   actionMutation.adapterActionProfiles[
     'users-enabled-actions'
-  ].documents[0][2] = 'legacyPayload';
+  ].documents[0][3] = 'legacyPayload';
   assert.throws(
     () => assertSnapshot(actionMutation),
     /Adapter action profiles drifted/
+  );
+});
+
+test('action profiles pin each endpoint and the exact createUser output minimum', () => {
+  const loaded = loadPortableContract();
+  const users = loaded.snapshot.adapterActionProfiles['users-enabled-actions'];
+  assert.equal(users.endpointPolicy, 'per-document');
+  assert.ok(users.documents.every((document) => document[0] === 'admin'));
+
+  const organizations = loaded.snapshot.adapterActionProfiles[
+    'organizations-enabled-actions'
+  ];
+  assert.equal(organizations.endpointPolicy, 'per-document');
+  const authCoordinates = organizations.documents.filter(
+    (document) => document[0] === 'auth'
+  ).map((document) => document[1]);
+  assert.deepEqual(authCoordinates, [
+    'Mutation.deleteUser',
+    'Mutation.updateUser',
+    'Mutation.revokeOrgApiKey',
+    'Mutation.deleteOrgPrincipal',
+    'Mutation.createOrgPrincipal',
+    'Mutation.createUser'
+  ]);
+  assert.deepEqual(
+    organizations.documents.find(
+      (document) => document[1] === 'Mutation.createUser'
+    ),
+    [
+      'auth',
+      'Mutation.createUser',
+      'CreateUserInput',
+      'user',
+      ['id', 'type', 'username']
+    ]
+  );
+
+  const endpointMutation = structuredClone(loaded.snapshot);
+  endpointMutation.adapterActionProfiles[
+    'organizations-enabled-actions'
+  ].documents[17][0] = 'admin';
+  assert.throws(
+    () => assertSnapshot(endpointMutation),
+    /Adapter action profiles drifted/
+  );
+
+  const outputMutation = structuredClone(loaded.snapshot);
+  outputMutation.adapterActionProfiles[
+    'organizations-enabled-actions'
+  ].documents[22][4].push('displayName');
+  assert.throws(
+    () => assertSnapshot(outputMutation),
+    /Adapter action profiles drifted/
+  );
+});
+
+test('Storage metadata alternatives stay on adapter-supported endpoint kinds', () => {
+  const loaded = loadPortableContract();
+  const storage = loaded.snapshot.consoleModuleBindings.find(
+    (binding) => binding.featurePack === 'storage'
+  );
+  for (const capability of storage.required) {
+    assert.deepEqual(capability.alternatives[0].endpointKinds, [
+      'storage',
+      'admin',
+      'data'
+    ]);
+    assert.deepEqual(capability.alternatives[1].endpointKinds, [
+      'storage',
+      'admin',
+      'data'
+    ]);
+  }
+
+  const mutation = structuredClone(loaded.snapshot);
+  const mutatedStorage = mutation.consoleModuleBindings.find(
+    (binding) => binding.featurePack === 'storage'
+  );
+  mutatedStorage.required[0].alternatives[1].endpointKinds.push('auth');
+  assert.throws(
+    () => assertSnapshot(mutation),
+    /storage required bindings drifted/
   );
 });
 
@@ -430,10 +632,18 @@ test('stable alternative, mitigation, and checkout identifiers fail closed on dr
   );
 });
 
-test('the modular store TSX example keeps its factory and hook closures balanced', () => {
+test('the modular store TSX example pins module typing and balanced closures', () => {
   const reference = readFileSync(runtimeReference, 'utf8');
   const fences = reference.match(/^```/gmu) ?? [];
   assert.equal(fences.length % 2, 0);
+  assert.match(
+    reference,
+    /type ConsoleKitFeatureModule[\s\S]*?const featureModules: readonly ConsoleKitFeatureModule\[\] = \[/
+  );
+  assert.doesNotMatch(
+    reference,
+    /const featureModules = \[[\s\S]*?\] as const;/
+  );
   assert.match(
     reference,
     /return createConsoleKitStore\([\s\S]*?\n\s{4}\);\n\s{2}\}\);\n\n\s{2}return \(/

@@ -60,6 +60,145 @@ const PACK_IDS = [
   'notifications'
 ];
 
+const META_CONTRACT_REQUIREMENTS = {
+  queryType: { typeName: 'Query', fields: ['_meta'] },
+  metaSchema: { typeName: 'MetaSchema', fields: ['tables'] },
+  metaTable: {
+    typeName: 'MetaTable',
+    fields: [
+      'name', 'schemaName', 'query', 'fields', 'inflection', 'indexes',
+      'constraints', 'foreignKeyConstraints', 'primaryKeyConstraints',
+      'uniqueConstraints', 'relations', 'storage', 'search', 'i18n',
+      'realtime', 'scope'
+    ]
+  },
+  metaTableQuery: {
+    typeName: 'MetaQuery',
+    fields: ['all', 'one', 'create', 'update', 'delete']
+  },
+  metaField: {
+    typeName: 'MetaField',
+    fields: [
+      'name', 'type', 'isNotNull', 'hasDefault', 'isPrimaryKey',
+      'isForeignKey', 'description', 'enumValues'
+    ]
+  },
+  metaEnum: { typeName: 'MetaEnum', fields: ['name', 'values'] },
+  metaType: {
+    typeName: 'MetaType',
+    fields: [
+      'pgType', 'gqlType', 'isArray', 'isNotNull', 'hasDefault', 'subtype',
+      'encoding'
+    ]
+  },
+  metaEncoding: {
+    typeName: 'MetaScalarEncoding',
+    fields: [
+      'kind', 'elementType', 'dimensions', 'geometrySubtype', 'srid', 'dotPath'
+    ]
+  },
+  metaIndex: {
+    typeName: 'MetaIndex',
+    fields: ['name', 'isUnique', 'isPrimary', 'columns', 'fields']
+  },
+  metaPrimaryKey: {
+    typeName: 'MetaPrimaryKeyConstraint',
+    fields: ['name', 'fields']
+  },
+  metaUnique: {
+    typeName: 'MetaUniqueConstraint',
+    fields: ['name', 'fields']
+  },
+  metaForeignKey: {
+    typeName: 'MetaForeignKeyConstraint',
+    fields: [
+      'name', 'fields', 'referencedTable', 'referencedFields', 'refFields',
+      'refTable'
+    ]
+  },
+  metaRefTable: { typeName: 'MetaRefTable', fields: ['name'] },
+  metaConstraints: {
+    typeName: 'MetaConstraints',
+    fields: ['primaryKey', 'unique', 'foreignKey']
+  },
+  metaInflection: {
+    typeName: 'MetaInflection',
+    fields: [
+      'tableType', 'allRows', 'connection', 'edge', 'filterType',
+      'orderByType', 'conditionType', 'patchType', 'createInputType',
+      'createPayloadType', 'updatePayloadType', 'deletePayloadType'
+    ]
+  },
+  metaRelations: {
+    typeName: 'MetaRelations',
+    fields: ['belongsTo', 'has', 'hasOne', 'hasMany', 'manyToMany']
+  },
+  metaBelongsTo: {
+    typeName: 'MetaBelongsToRelation',
+    fields: ['fieldName', 'isUnique', 'type', 'keys', 'references']
+  },
+  metaHas: {
+    typeName: 'MetaHasRelation',
+    fields: ['fieldName', 'isUnique', 'type', 'keys', 'referencedBy']
+  },
+  metaManyToMany: {
+    typeName: 'MetaManyToManyRelation',
+    fields: [
+      'fieldName', 'type', 'junctionTable', 'junctionLeftConstraint',
+      'junctionLeftKeyAttributes', 'junctionRightConstraint',
+      'junctionRightKeyAttributes', 'leftKeyAttributes', 'rightKeyAttributes',
+      'rightTable'
+    ]
+  },
+  metaStorage: {
+    typeName: 'MetaStorage',
+    fields: ['isFilesTable', 'isBucketsTable']
+  },
+  metaSearch: {
+    typeName: 'MetaSearch',
+    fields: ['algorithms', 'columns', 'hasUnifiedSearch', 'config']
+  },
+  metaSearchColumn: {
+    typeName: 'MetaSearchColumn',
+    fields: ['name', 'algorithm']
+  },
+  metaSearchConfig: {
+    typeName: 'MetaSearchConfig',
+    fields: ['weights', 'boostRecent', 'boostRecencyField', 'boostRecencyDecay']
+  },
+  metaI18n: {
+    typeName: 'MetaI18n',
+    fields: ['translationTable', 'translatableFields']
+  },
+  metaI18nField: {
+    typeName: 'MetaI18nField',
+    fields: ['name', 'type']
+  },
+  metaRealtime: {
+    typeName: 'MetaRealtime',
+    fields: ['subscriptionFieldName']
+  },
+  metaScope: {
+    typeName: 'MetaScope',
+    fields: ['scope', 'tier', 'keyColumn', 'entityTable', 'source']
+  }
+};
+
+const META_DOCUMENT_ATTESTATIONS = {
+  metaQuery: {
+    sourceConstant: 'META_QUERY_SOURCE',
+    operationName: 'ConstructiveMeta',
+    byteLength: 2885,
+    sha256: '8b5b46f141f8303ffafac5fbb4f34103a363d8a0755d1fba16199bbf3b78f7ee'
+  },
+  contractIntrospection: {
+    sourceConstant: 'META_CONTRACT_INTROSPECTION_SOURCE',
+    operationName: 'ConstructiveMetaContract',
+    byteLength: 1949,
+    sha256: '5a0aaeec9659cb0e6b43154f0db3fea6459a313f80feb67e87f3d1680985496a'
+  }
+};
+
 const PROFILE_IDS = [
   'auth-hardened',
   'b2b-storage',
@@ -287,8 +426,14 @@ const REQUIRED_BINDING_ENDPOINTS = {
     'organizations.memberships': [['admin'], ENDPOINT_KINDS]
   },
   storage: {
-    'storage.buckets': [['storage', 'admin', 'data'], ENDPOINT_KINDS],
-    'storage.files': [['storage', 'admin', 'data'], ENDPOINT_KINDS]
+    'storage.buckets': [
+      ['storage', 'admin', 'data'],
+      ['storage', 'admin', 'data']
+    ],
+    'storage.files': [
+      ['storage', 'admin', 'data'],
+      ['storage', 'admin', 'data']
+    ]
   },
   billing: {
     'billing.plans': [['billing']],
@@ -696,29 +841,30 @@ const ADAPTER_ACTION_PROFILES = {
     },
     appliesWhen: 'action-policy-would-be-enabled',
     readinessImpact: 'action-only',
-    endpointKind: 'admin',
+    endpointPolicy: 'per-document',
     requiredArgument: 'input',
     inputValidation: 'adapter-declared-required-fields',
     documentTupleFields: [
+      'endpointKind',
       'coordinate',
       'inputType',
       'payloadPath',
       'requiredPayloadFields'
     ],
     documents: [
-      ['Mutation.updateAppMembership', 'UpdateAppMembershipInput', 'appMembership', ['id']],
-      ['Mutation.createAppOwnerGrant', 'CreateAppOwnerGrantInput', 'appOwnerGrant', ['id']],
-      ['Mutation.createAppAdminGrant', 'CreateAppAdminGrantInput', 'appAdminGrant', ['id']],
-      ['Mutation.createAppGrant', 'CreateAppGrantInput', 'appGrant', ['id']],
-      ['Mutation.createAppProfileGrant', 'CreateAppProfileGrantInput', 'appProfileGrant', ['id']],
-      ['Mutation.createAppProfileDefinitionGrant', 'CreateAppProfileDefinitionGrantInput', 'appProfileDefinitionGrant', ['id']],
-      ['Mutation.createAppPermissionDefaultGrant', 'CreateAppPermissionDefaultGrantInput', 'appPermissionDefaultGrant', ['id']],
-      ['Mutation.createAppProfile', 'CreateAppProfileInput', 'appProfile', ['id']],
-      ['Mutation.updateAppProfile', 'UpdateAppProfileInput', 'appProfile', ['id']],
-      ['Mutation.deleteAppProfile', 'DeleteAppProfileInput', 'appProfile', ['id']],
-      ['Mutation.createAppInvite', 'CreateAppInviteInput', 'appInvite', ['id']],
-      ['Mutation.updateAppInvite', 'UpdateAppInviteInput', 'appInvite', ['id']],
-      ['Mutation.deleteAppInvite', 'DeleteAppInviteInput', 'appInvite', ['id']]
+      ['admin', 'Mutation.updateAppMembership', 'UpdateAppMembershipInput', 'appMembership', ['id']],
+      ['admin', 'Mutation.createAppOwnerGrant', 'CreateAppOwnerGrantInput', 'appOwnerGrant', ['id']],
+      ['admin', 'Mutation.createAppAdminGrant', 'CreateAppAdminGrantInput', 'appAdminGrant', ['id']],
+      ['admin', 'Mutation.createAppGrant', 'CreateAppGrantInput', 'appGrant', ['id']],
+      ['admin', 'Mutation.createAppProfileGrant', 'CreateAppProfileGrantInput', 'appProfileGrant', ['id']],
+      ['admin', 'Mutation.createAppProfileDefinitionGrant', 'CreateAppProfileDefinitionGrantInput', 'appProfileDefinitionGrant', ['id']],
+      ['admin', 'Mutation.createAppPermissionDefaultGrant', 'CreateAppPermissionDefaultGrantInput', 'appPermissionDefaultGrant', ['id']],
+      ['admin', 'Mutation.createAppProfile', 'CreateAppProfileInput', 'appProfile', ['id']],
+      ['admin', 'Mutation.updateAppProfile', 'UpdateAppProfileInput', 'appProfile', ['id']],
+      ['admin', 'Mutation.deleteAppProfile', 'DeleteAppProfileInput', 'appProfile', ['id']],
+      ['admin', 'Mutation.createAppInvite', 'CreateAppInviteInput', 'appInvite', ['id']],
+      ['admin', 'Mutation.updateAppInvite', 'UpdateAppInviteInput', 'appInvite', ['id']],
+      ['admin', 'Mutation.deleteAppInvite', 'DeleteAppInviteInput', 'appInvite', ['id']]
     ]
   },
   'organizations-enabled-actions': {
@@ -728,39 +874,40 @@ const ADAPTER_ACTION_PROFILES = {
     },
     appliesWhen: 'action-policy-would-be-enabled',
     readinessImpact: 'action-only',
-    endpointKind: 'admin',
+    endpointPolicy: 'per-document',
     requiredArgument: 'input',
     inputValidation: 'adapter-declared-required-fields',
     documentTupleFields: [
+      'endpointKind',
       'coordinate',
       'inputType',
       'payloadPath',
       'requiredPayloadFields'
     ],
     documents: [
-      ['Mutation.updateOrgMembership', 'UpdateOrgMembershipInput', 'orgMembership', ['id']],
-      ['Mutation.deleteOrgMembership', 'DeleteOrgMembershipInput', 'orgMembership', ['id']],
-      ['Mutation.createOrgAdminGrant', 'CreateOrgAdminGrantInput', 'orgAdminGrant', ['id']],
-      ['Mutation.createOrgOwnerGrant', 'CreateOrgOwnerGrantInput', 'orgOwnerGrant', ['id']],
-      ['Mutation.createOrgGrant', 'CreateOrgGrantInput', 'orgGrant', ['id']],
-      ['Mutation.createOrgProfileGrant', 'CreateOrgProfileGrantInput', 'orgProfileGrant', ['id']],
-      ['Mutation.createOrgProfileDefinitionGrant', 'CreateOrgProfileDefinitionGrantInput', 'orgProfileDefinitionGrant', ['id']],
-      ['Mutation.createOrgProfile', 'CreateOrgProfileInput', 'orgProfile', ['id']],
-      ['Mutation.updateOrgProfile', 'UpdateOrgProfileInput', 'orgProfile', ['id']],
-      ['Mutation.deleteOrgProfile', 'DeleteOrgProfileInput', 'orgProfile', ['id']],
-      ['Mutation.createOrgMemberProfile', 'CreateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
-      ['Mutation.updateOrgMemberProfile', 'UpdateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
-      ['Mutation.updateOrgMembershipSetting', 'UpdateOrgMembershipSettingInput', 'orgMembershipSetting', ['id']],
-      ['Mutation.updateOrgMembershipDefault', 'UpdateOrgMembershipDefaultInput', 'orgMembershipDefault', ['id']],
-      ['Mutation.createOrgChartEdgeGrant', 'CreateOrgChartEdgeGrantInput', 'orgChartEdgeGrant', ['id']],
-      ['Mutation.createOrgInvite', 'CreateOrgInviteInput', 'orgInvite', ['id']],
-      ['Mutation.deleteOrgInvite', 'DeleteOrgInviteInput', 'orgInvite', ['id']],
-      ['Mutation.deleteUser', 'DeleteUserInput', 'user', ['id']],
-      ['Mutation.updateUser', 'UpdateUserInput', 'user', ['id']],
-      ['Mutation.revokeOrgApiKey', 'RevokeOrgApiKeyInput', null, ['result']],
-      ['Mutation.deleteOrgPrincipal', 'DeleteOrgPrincipalInput', null, ['result']],
-      ['Mutation.createOrgPrincipal', 'CreateOrgPrincipalInput', null, ['result']],
-      ['Mutation.createUser', 'CreateUserInput', 'user', ['id', 'type', 'displayName', 'username', 'profilePicture']]
+      ['admin', 'Mutation.updateOrgMembership', 'UpdateOrgMembershipInput', 'orgMembership', ['id']],
+      ['admin', 'Mutation.deleteOrgMembership', 'DeleteOrgMembershipInput', 'orgMembership', ['id']],
+      ['admin', 'Mutation.createOrgAdminGrant', 'CreateOrgAdminGrantInput', 'orgAdminGrant', ['id']],
+      ['admin', 'Mutation.createOrgOwnerGrant', 'CreateOrgOwnerGrantInput', 'orgOwnerGrant', ['id']],
+      ['admin', 'Mutation.createOrgGrant', 'CreateOrgGrantInput', 'orgGrant', ['id']],
+      ['admin', 'Mutation.createOrgProfileGrant', 'CreateOrgProfileGrantInput', 'orgProfileGrant', ['id']],
+      ['admin', 'Mutation.createOrgProfileDefinitionGrant', 'CreateOrgProfileDefinitionGrantInput', 'orgProfileDefinitionGrant', ['id']],
+      ['admin', 'Mutation.createOrgProfile', 'CreateOrgProfileInput', 'orgProfile', ['id']],
+      ['admin', 'Mutation.updateOrgProfile', 'UpdateOrgProfileInput', 'orgProfile', ['id']],
+      ['admin', 'Mutation.deleteOrgProfile', 'DeleteOrgProfileInput', 'orgProfile', ['id']],
+      ['admin', 'Mutation.createOrgMemberProfile', 'CreateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
+      ['admin', 'Mutation.updateOrgMemberProfile', 'UpdateOrgMemberProfileInput', 'orgMemberProfile', ['id']],
+      ['admin', 'Mutation.updateOrgMembershipSetting', 'UpdateOrgMembershipSettingInput', 'orgMembershipSetting', ['id']],
+      ['admin', 'Mutation.updateOrgMembershipDefault', 'UpdateOrgMembershipDefaultInput', 'orgMembershipDefault', ['id']],
+      ['admin', 'Mutation.createOrgChartEdgeGrant', 'CreateOrgChartEdgeGrantInput', 'orgChartEdgeGrant', ['id']],
+      ['admin', 'Mutation.createOrgInvite', 'CreateOrgInviteInput', 'orgInvite', ['id']],
+      ['admin', 'Mutation.deleteOrgInvite', 'DeleteOrgInviteInput', 'orgInvite', ['id']],
+      ['auth', 'Mutation.deleteUser', 'DeleteUserInput', 'user', ['id']],
+      ['auth', 'Mutation.updateUser', 'UpdateUserInput', 'user', ['id']],
+      ['auth', 'Mutation.revokeOrgApiKey', 'RevokeOrgApiKeyInput', null, ['result']],
+      ['auth', 'Mutation.deleteOrgPrincipal', 'DeleteOrgPrincipalInput', null, ['result']],
+      ['auth', 'Mutation.createOrgPrincipal', 'CreateOrgPrincipalInput', null, ['result']],
+      ['auth', 'Mutation.createUser', 'CreateUserInput', 'user', ['id', 'type', 'username']]
     ]
   }
 };
@@ -1091,7 +1238,7 @@ const SOURCE_LIMITATION_POLICIES = {
       },
       {
         id: 'validate-organization-action-payloads',
-        requirement: 'Before enabling an Organizations action, validate its adapter-declared input plus the fixed payload path and required payload fields in organizations-enabled-actions.'
+        requirement: 'Before enabling an Organizations action, validate its per-document endpoint kind, adapter-declared input, fixed payload path, and required payload fields in organizations-enabled-actions.'
       }
     ]
   },
@@ -1134,7 +1281,7 @@ const SOURCE_LIMITATION_POLICIES = {
       },
       {
         id: 'validate-users-action-payloads',
-        requirement: 'Before enabling a Users action, validate its adapter-declared input plus the fixed payload path and required payload fields in users-enabled-actions.'
+        requirement: 'Before enabling a Users action, validate its per-document endpoint kind, adapter-declared input, fixed payload path, and required payload fields in users-enabled-actions.'
       }
     ]
   },
@@ -1188,7 +1335,8 @@ const REGISTRY_QUERY_OVERRIDE_ITEMS = [
       'adapter-driven Sheets view',
       'Query._meta',
       'authEndpoint',
-      'fail closed'
+      'embedded-auth',
+      'standalone-auth'
     ]
   },
   {
@@ -1247,6 +1395,28 @@ const VERIFICATION_PROFILES = [
     }
   }
 ];
+
+const STANDALONE_DATA_VIEW_CONTRACT = {
+  importTarget: 'src/blocks/feature-packs/data/data-feature-pack.tsx',
+  propsType: 'DataFeaturePackProps',
+  propVocabulary: [
+    'config', 'activeTable', 'defaultActiveTable', 'applicationScopes',
+    'includeTables', 'excludeTables', 'pageSize', 'onActiveTableChange',
+    'onCreateTable', 'onEvent', 'sheetsProps'
+  ],
+  resourceProps: [],
+  configProps: ['config'],
+  viewState: {
+    controlled: ['activeTable:onActiveTableChange'],
+    defaults: ['defaultActiveTable'],
+    required: ['config'],
+    local: [
+      'uncontrolled active table',
+      'metadata request state',
+      'Sheets grid and editor state'
+    ]
+  }
+};
 
 export const STANDALONE_PACK_SUMMARIES = {
   auth: {
@@ -1967,6 +2137,16 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
     'metaContract.sheetsAdapterSource'
   );
   assertExact(
+    snapshot.metaContract.requirements,
+    META_CONTRACT_REQUIREMENTS,
+    'metaContract.requirements'
+  );
+  assertExact(
+    snapshot.metaContract.documents,
+    META_DOCUMENT_ATTESTATIONS,
+    'metaContract.documents'
+  );
+  assertExact(
     snapshot.metaContract.evidenceOrder,
     [
       'current _meta signature introspection',
@@ -2025,6 +2205,18 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
   assertObject(data, 'standaloneContracts.data');
   assert(data.featurePack === 'data', 'Standalone Data featurePack drifted.');
   assert(data.component === 'DataFeaturePack', 'Standalone Data component drifted.');
+  assertExact(
+    {
+      importTarget: data.importTarget,
+      propsType: data.propsType,
+      propVocabulary: data.propVocabulary,
+      resourceProps: data.resourceProps,
+      configProps: data.configProps,
+      viewState: data.viewState
+    },
+    STANDALONE_DATA_VIEW_CONTRACT,
+    'Standalone Data view contract'
+  );
   assert(data.discovery === 'internal-data-schema', 'Standalone Data discovery drifted.');
   assertObject(data.planFieldOverride, 'Standalone Data planFieldOverride');
   assert(
@@ -2720,6 +2912,23 @@ export function assertSnapshot(snapshot) {
           document.length === profile.documentTupleFields.length,
         `${profileId} action document tuple drifted.`
       );
+      assert(
+        ENDPOINT_KINDS.includes(document[0]),
+        `${profileId} action document endpoint drifted.`
+      );
+      assert(
+        /^Mutation\.[A-Za-z_][A-Za-z0-9_]*$/u.test(document[1]),
+        `${profileId} action document coordinate drifted.`
+      );
+      assertString(document[2], `${profileId} action document input type`);
+      assert(
+        document[3] === null || typeof document[3] === 'string',
+        `${profileId} action document payload path drifted.`
+      );
+      assertStringArray(
+        document[4],
+        `${profileId} action document required payload fields`
+      );
     }
   }
   assertMetaAndStandaloneContracts(snapshot, sources);
@@ -3063,6 +3272,97 @@ function sourceLimitationsForRoot(snapshot, rootName) {
   );
 }
 
+function runtimeModeProfilesForRoot(item) {
+  if (item.name === 'feature-pack-data') {
+    return [
+      { id: 'embedded-auth', limitationModes: [] },
+      { id: 'standalone-auth', limitationModes: ['standalone-auth'] },
+      {
+        id: 'standalone-auth-csrf-required',
+        limitationModes: [
+          'standalone-auth',
+          'standalone-auth-csrf-required'
+        ]
+      }
+    ];
+  }
+  if (item.surface === 'standalone-feature-pack') {
+    return [{ id: 'host-controlled', limitationModes: [] }];
+  }
+  return [{
+    id: 'console',
+    limitationModes: [
+      'console',
+      'console-discovery',
+      'console-meta-discovery'
+    ]
+  }];
+}
+
+function limitationAppliesToRuntimeProfile(limitation, profile) {
+  return limitation.appliesTo.runtimeModes.some(
+    (mode) => profile.limitationModes.includes(mode)
+  );
+}
+
+function runtimeStatusForRoot(item, snapshot) {
+  const limitations = sourceLimitationsForRoot(snapshot, item.name);
+  const profiles = runtimeModeProfilesForRoot(item);
+  const modes = profiles.map((profile) => {
+    const applicable = limitations.filter(
+      (limitation) => limitationAppliesToRuntimeProfile(limitation, profile)
+    );
+    const blockingLimitationIds = applicable.filter(
+      (limitation) => limitation.acceptance === 'blocking'
+    ).map((limitation) => limitation.id);
+    const mitigationRequiredLimitationIds = applicable.filter(
+      (limitation) => limitation.acceptance === 'require-mitigation'
+    ).map((limitation) => limitation.id);
+    let status = 'eligible';
+    if (blockingLimitationIds.length > 0) status = 'blocked';
+    else if (mitigationRequiredLimitationIds.length > 0) {
+      status = 'mitigation-required';
+    }
+    return {
+      id: profile.id,
+      status,
+      blockingLimitationIds,
+      mitigationRequiredLimitationIds
+    };
+  });
+  const blockingLimitations = limitations.filter(
+    (limitation) => limitation.acceptance === 'blocking'
+  );
+  const unconditionalBlockerIds = blockingLimitations.filter(
+    (limitation) => profiles.every(
+      (profile) => limitationAppliesToRuntimeProfile(limitation, profile)
+    )
+  ).map((limitation) => limitation.id);
+  const conditionalBlockers = blockingLimitations.filter(
+    (limitation) => !unconditionalBlockerIds.includes(limitation.id)
+  ).map((limitation) => ({
+    id: limitation.id,
+    limitationRuntimeModes: limitation.appliesTo.runtimeModes,
+    blockedRuntimeModes: modes.filter(
+      (mode) => mode.blockingLimitationIds.includes(limitation.id)
+    ).map((mode) => mode.id)
+  }));
+  let status = 'eligible';
+  if (unconditionalBlockerIds.length > 0) status = 'blocked';
+  else if (conditionalBlockers.length > 0) status = 'conditionally-blocked';
+  else if (modes.some((mode) => mode.status === 'mitigation-required')) {
+    status = 'mitigation-required';
+  }
+  return {
+    status,
+    blocked: unconditionalBlockerIds.length > 0,
+    unconditionalBlockerIds,
+    conditionalBlockerIds: conditionalBlockers.map((blocker) => blocker.id),
+    conditionalBlockers,
+    modes
+  };
+}
+
 function installabilityEnvelope(snapshot) {
   const local = snapshot.release.localConsumption;
   return {
@@ -3099,9 +3399,7 @@ function installabilityEnvelope(snapshot) {
 
 function rootItemForQuery(item, snapshot) {
   const limitations = sourceLimitationsForRoot(snapshot, item.name);
-  const blocked = limitations.some(
-    (limitation) => limitation.acceptance === 'blocking'
-  );
+  const runtimeStatus = runtimeStatusForRoot(item, snapshot);
   return {
     name: item.name,
     surface: item.surface,
@@ -3113,9 +3411,11 @@ function rootItemForQuery(item, snapshot) {
     sourceLimitationIds: limitations.map((limitation) => limitation.id),
     sourceLimitationAcceptances: limitations.map((limitation) => ({
       id: limitation.id,
-      acceptance: limitation.acceptance
+      acceptance: limitation.acceptance,
+      runtimeModes: limitation.appliesTo.runtimeModes
     })),
-    blocked
+    runtimeStatus,
+    blocked: runtimeStatus.blocked
   };
 }
 
@@ -3129,6 +3429,9 @@ function metaContractForItem(snapshot, itemName) {
 
 function registryItemForQuery(item, snapshot) {
   const override = registryQueryOverride(snapshot, item.name);
+  const installRoot = snapshot.items.find(
+    (candidate) => candidate.name === item.name
+  );
   const portableOverrides = override
     ? [{
         field: override.field,
@@ -3151,6 +3454,9 @@ function registryItemForQuery(item, snapshot) {
     portableOverrides,
     sourceLimitations: sourceLimitationsForRoot(snapshot, item.name),
     metaContract: metaContractForItem(snapshot, item.name),
+    runtimeStatus: installRoot
+      ? runtimeStatusForRoot(installRoot, snapshot)
+      : null,
     installability: installabilityEnvelope(snapshot)
   };
 }
@@ -3242,6 +3548,7 @@ function queryOutput(options, loaded) {
         kind: 'constructive.blocks-install-root',
         sourceCommit: PINNED.commit,
         installability: installabilityEnvelope(loaded.snapshot),
+        runtimeStatus: runtimeStatusForRoot(item, loaded.snapshot),
         backendPresetSource: loaded.snapshot.backendPresetSource,
         backendPresetRoute: loaded.snapshot.backendPresetRouting.find(
           (route) => route.frontendPresetRoot === item.name
@@ -3309,6 +3616,7 @@ function queryOutput(options, loaded) {
           categories: item.categories,
           docs: item.docs,
           installCommand: item.installCommand,
+          runtimeStatus: item.runtimeStatus,
           sourceLimitationIds: item.sourceLimitations.map(
             (limitation) => limitation.id
           )
@@ -3393,6 +3701,163 @@ function assertLiveRelease(blocksRepo) {
   }
 }
 
+function sha256Text(value) {
+  return createHash('sha256').update(value).digest('hex');
+}
+
+function templateLiteralConstant(source, constantName) {
+  const marker = `export const ${constantName} = /* GraphQL */ \``;
+  const start = source.indexOf(marker);
+  assert(start >= 0, `Missing ${constantName} GraphQL source constant.`);
+  const contentStart = start + marker.length;
+  const end = source.indexOf('`;', contentStart);
+  assert(end >= 0, `Unterminated ${constantName} GraphQL source constant.`);
+  return source.slice(contentStart, end);
+}
+
+function assertMetaSourceContract(snapshot, blocksRepo) {
+  const sourcePath = resolveInside(
+    blocksRepo,
+    snapshot.metaContract.source.path,
+    'Meta contract source path'
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  const requirementsStart = source.indexOf(
+    'export const META_CONTRACT_REQUIREMENTS = {'
+  );
+  const requirementsEnd = source.indexOf(
+    '} as const satisfies Record<MetaContractTypeAlias',
+    requirementsStart
+  );
+  assert(
+    requirementsStart >= 0 && requirementsEnd > requirementsStart,
+    'The pinned META_CONTRACT_REQUIREMENTS source block is missing.'
+  );
+  const requirementsSource = source.slice(
+    requirementsStart,
+    requirementsEnd
+  );
+  for (const [alias, requirement] of Object.entries(
+    META_CONTRACT_REQUIREMENTS
+  )) {
+    assert(
+      requirementsSource.includes(`${alias}:`) &&
+        requirementsSource.includes(`typeName: '${requirement.typeName}'`) &&
+        requirement.fields.every((field) =>
+          requirementsSource.includes(`'${field}'`)
+        ),
+      `Pinned _meta requirement ${alias} drifted in source.`
+    );
+  }
+
+  const querySource = templateLiteralConstant(source, 'META_QUERY_SOURCE');
+  const introspectionFields = Object.entries(META_CONTRACT_REQUIREMENTS).map(
+    ([alias, requirement]) =>
+      `${alias}: __type(name: "${requirement.typeName}") { name fields { name } }`
+  ).join('\n\t\t');
+  const introspectionSource =
+    `\n\tquery ConstructiveMetaContract {\n\t\t${introspectionFields}\n\t}\n`;
+  const introspectionTemplate = templateLiteralConstant(
+    source,
+    'META_CONTRACT_INTROSPECTION_SOURCE'
+  );
+  assert(
+    introspectionTemplate ===
+      '\n\tquery ConstructiveMetaContract {\n\t\t${metaContractIntrospectionFields}\n\t}\n',
+    'META_CONTRACT_INTROSPECTION_SOURCE template drifted.'
+  );
+  const actualDocuments = {
+    metaQuery: {
+      sourceConstant: 'META_QUERY_SOURCE',
+      operationName: 'ConstructiveMeta',
+      byteLength: Buffer.byteLength(querySource),
+      sha256: sha256Text(querySource)
+    },
+    contractIntrospection: {
+      sourceConstant: 'META_CONTRACT_INTROSPECTION_SOURCE',
+      operationName: 'ConstructiveMetaContract',
+      byteLength: Buffer.byteLength(introspectionSource),
+      sha256: sha256Text(introspectionSource)
+    }
+  };
+  assertExact(
+    actualDocuments,
+    snapshot.metaContract.documents,
+    'Pinned _meta GraphQL document attestations'
+  );
+}
+
+function assertActionProfileSources(snapshot, blocksRepo) {
+  for (const [profileId, profile] of Object.entries(
+    snapshot.adapterActionProfiles
+  )) {
+    const sourcePath = resolveInside(
+      blocksRepo,
+      profile.source.path,
+      `${profileId} action source path`
+    );
+    const source = readFileSync(sourcePath, 'utf8');
+    const compactSource = source.replace(/\s+/gu, '');
+    for (const document of profile.documents) {
+      const coordinate = document[1];
+      const inputType = document[2];
+      const payloadPath = document[3];
+      const requiredPayloadFields = document[4];
+      const mutationName = coordinate.slice('Mutation.'.length);
+      if (coordinate === 'Mutation.createUser') continue;
+      const selection = payloadPath === null
+        ? requiredPayloadFields.join('')
+        : `${payloadPath}{${requiredPayloadFields.join('')}}`;
+      assert(
+        compactSource.includes(`$input:${inputType}!`) &&
+          compactSource.includes(
+            `${mutationName}(input:$input){${selection}}`
+          ),
+        `${profileId} source no longer contains ${coordinate} with its required payload minimum.`
+      );
+    }
+  }
+
+  const organizations = snapshot.adapterActionProfiles[
+    'organizations-enabled-actions'
+  ];
+  const createUser = organizations.documents.find(
+    (document) => document[1] === 'Mutation.createUser'
+  );
+  assertExact(
+    createUser,
+    [
+      'auth',
+      'Mutation.createUser',
+      'CreateUserInput',
+      'user',
+      ['id', 'type', 'username']
+    ],
+    'Organizations createUser action minimum'
+  );
+  const sourcePath = resolveInside(
+    blocksRepo,
+    organizations.source.path,
+    'Organizations action source path'
+  );
+  const source = readFileSync(sourcePath, 'utf8');
+  assert(
+    source.includes("fields.includes('id') && fields.includes('type')") &&
+      source.includes("loaded.userFields.includes('username')") &&
+      source.includes(
+        "requiredFields: ['username', 'displayName', 'type']"
+      ) &&
+      source.includes('const returnedId = asString(returnedUser?.id);') &&
+      source.includes('returnedUser?.type === 2') &&
+      source.includes(
+        'asString(returnedUser?.username) === provisioning.username'
+      ) &&
+      source.includes("!loaded.userFields.includes('displayName')") &&
+      source.includes('returnedUser?.displayName === name'),
+    'Organizations createUser input, required output, or optional displayName behavior drifted.'
+  );
+}
+
 export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
   assert(existsSync(blocksRepo), `Blocks repository does not exist: ${blocksRepo}`);
   const commit = runGit(blocksRepo, ['rev-parse', 'HEAD'], 'Resolving Blocks HEAD');
@@ -3414,6 +3879,8 @@ export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
     assertAttestedFile(blocksRepo, record, `Live canonical source ${record.path}`);
   }
   assertLiveRelease(blocksRepo);
+  assertMetaSourceContract(snapshot, blocksRepo);
+  assertActionProfileSources(snapshot, blocksRepo);
 
   const dataModulePath = resolveInside(
     blocksRepo,
@@ -3434,6 +3901,29 @@ export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
   assert(
     /\bcreateSheetsStore\s*\(\s*\)/.test(dataProviderSource),
     'The pinned SheetsProvider no longer creates its nested Zustand store; update the conformance record.'
+  );
+  const dataFeaturePath = resolveInside(
+    blocksRepo,
+    'apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx',
+    'Standalone Data feature-pack path'
+  );
+  const dataFeatureSource = readFileSync(dataFeaturePath, 'utf8');
+  assert(
+    dataFeatureSource.includes('export type DataFeaturePackProps') &&
+      dataFeatureSource.includes('config: SheetsConfig;') &&
+      dataFeatureSource.includes('activeTable?: string;') &&
+      dataFeatureSource.includes('defaultActiveTable?: string;') &&
+      dataFeatureSource.includes(
+        'onActiveTableChange?: (tableName: string) => void;'
+      ) &&
+      dataFeatureSource.includes(
+        'React.useState(defaultActiveTable ?? \'\')'
+      ) &&
+      dataFeatureSource.includes(
+        'controlledActiveTable === undefined'
+      ) &&
+      dataFeatureSource.includes('onActiveTableChange?.(tableName)'),
+    'Standalone Data props or controlled/default active-table behavior drifted.'
   );
   const authExecutePath = resolveInside(
     blocksRepo,
