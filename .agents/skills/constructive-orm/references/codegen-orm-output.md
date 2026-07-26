@@ -97,31 +97,14 @@ db.user.update(options)     // Update existing
 db.user.delete(options)     // Delete
 ```
 
-### M:N Convenience Methods
-
-When `_meta` enrichment provides M:N relation metadata, entity models also get:
-
-```typescript
-// Generated on entities with M:N relations
-db.post.addTag(postId, tagId)      // Creates junction row
-db.post.removeTag(postId, tagId)    // Deletes junction row by composite PK
-db.tag.addPost(tagId, postId)       // Reverse direction
-db.tag.removePost(tagId, postId)
-```
-
-Method signatures use actual PK types from the junction table:
-
-```typescript
-// UUID PKs -> string parameters
-addTag(postId: string, tagId: string): QueryBuilder<...>
-
-// Integer PKs -> number parameters
-addStudent(courseId: number, studentId: number): QueryBuilder<...>
-```
-
 ### Junction Table Models
 
-Junction tables get full CRUD models with composite PK support:
+Junction tables get full CRUD models with composite PK support. Use these
+models for M:N writes. The generator can emit entity-level convenience
+helpers, but the current `add<Relation>()` implementation selects a junction
+`id`; that is invalid for the documented composite-key shape, so those helpers
+are outside the supported contract until their selection follows the actual
+primary key.
 
 ```typescript
 // Standard CRUD on junction table
@@ -282,7 +265,8 @@ const result = await db.post.findMany({
   },
 }).execute();
 
-// On success, result.data.posts.nodes[0].author.name is typed.
+// On success, the selected relation remains nullable when the FK is nullable.
+const firstAuthorName = result.data?.posts.nodes[0]?.author?.name;
 ```
 
 ### HasMany (Collection)
@@ -317,11 +301,7 @@ const result = await db.post.findMany({
 
 // On success, result.data.posts.nodes contains the selected posts.
 
-// Mutate via convenience methods
-await db.post.addTag(postId, tagId).execute();
-await db.post.removeTag(postId, tagId).execute();
-
-// Or via junction table directly
+// Mutate through the junction table
 await db.postTag.create({
   data: { postId, tagId },
   select: { postId: true, tagId: true },

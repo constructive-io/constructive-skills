@@ -206,7 +206,8 @@ const postsResult = await db.post.findMany({
 }).unwrap();
 const posts = postsResult.posts.nodes;
 
-// posts[0].author.name is fully typed
+// Belongs-to relations preserve database nullability.
+const firstAuthorName = posts[0]?.author?.name;
 ```
 
 ### Error Handling

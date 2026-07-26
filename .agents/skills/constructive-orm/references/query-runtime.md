@@ -193,7 +193,10 @@ buildSelect(table, tables, {
 });
 ```
 
-HasMany relations are automatically wrapped in the PostGraphile Connection pattern (`nodes { ... }` with a default `first: 20` limit). BelongsTo relations are nested directly.
+HasMany relations are wrapped in the PostGraphile Connection pattern under
+`nodes { ... }`. The generator applies only nested arguments supplied by the
+caller; it does not add a default `first` value. BelongsTo relations are nested
+directly.
 
 ---
 

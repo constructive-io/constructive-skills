@@ -95,7 +95,7 @@ const posts = postsResult.posts.nodes;
 
 // Access
 posts.forEach(post => {
-  console.log(`${post.title} by ${post.author.name}`);
+  console.log(`${post.title} by ${post.author?.name ?? 'Unknown author'}`);
 });
 ```
 
@@ -189,29 +189,15 @@ tags.forEach(tag => {
 });
 ```
 
-## M:N Mutation Methods
+## M:N Writes
 
-The ORM generates `add<Relation>()` and `remove<Relation>()` convenience methods on entity models for M:N relations. These create/delete junction rows without touching the junction table directly.
+Use the junction-table ORM model directly. The current generator can emit
+`add<Relation>()` and `remove<Relation>()` helpers, but `add<Relation>()`
+selects a junction `id` even when the documented composite-key table has no
+such field. Those helpers are outside the supported contract until their
+selection is derived from the junction primary key.
 
-### addTag / removeTag (Generated Methods)
-
-```typescript
-// Add a tag to a post (creates junction row)
-await db.post.addTag(postId, tagId).execute();
-
-// Remove a tag from a post (deletes junction row by composite PK)
-await db.post.removeTag(postId, tagId).execute();
-```
-
-These methods are generated when:
-- The `_meta` endpoint provides `manyToMany` relation metadata with `junctionLeftKeyFields` and `junctionRightKeyFields`
-- The junction table has a `delete` mutation (required for `remove<Relation>`)
-
-**Method naming:** The method name is derived from the M:N field name. For a field called `tags`, the ORM generates `addTag` and `removeTag` (singularized).
-
-### Junction Table CRUD (Always Available)
-
-You can always operate on the junction table directly via its ORM model. This works regardless of `expose_in_api`:
+Direct junction CRUD works regardless of `expose_in_api`:
 
 ```typescript
 // Create a junction row (link post to tag)
@@ -278,15 +264,9 @@ The `buildDeleteByPkDocument` in `query-builder.ts` handles both cases - it maps
 
 ### PK Type Safety
 
-PK field types are resolved from the actual table constraints via `getPrimaryKeyInfo(table)`, not hardcoded as `string`. This means:
-
-```typescript
-// If post_id is UUID and tag_id is UUID, parameters are typed as string
-db.post.addTag(postId: string, tagId: string)
-
-// If a junction uses integer PKs, parameters are typed as number
-db.enrollment.addStudent(courseId: number, studentId: number)
-```
+Junction-model `data`, `where`, and `select` fields are resolved from the
+actual table constraints, so composite UUID and integer keys retain their
+generated field types without relying on the unsupported convenience helpers.
 
 ## Nested Relations
 
@@ -327,7 +307,7 @@ users.forEach(user => {
     const tagNames = post.tags.nodes.map(t => t.name).join(', ');
     console.log(`${post.title} [${tagNames}]`);
     post.comments.nodes.forEach(comment => {
-      console.log(`  ${comment.author.name}: ${comment.body}`);
+      console.log(`  ${comment.author?.name ?? 'Unknown author'}: ${comment.body}`);
     });
   });
 });
@@ -402,10 +382,10 @@ const users = await db.user.findMany({
 }).execute();
 ```
 
-## Pagination on Relations
+## Bounded Nested Relations
 
 ```typescript
-// Get first page of posts for a user
+// Bound the nested posts selected with this user
 const user = await db.user.findOne({
   id: userId,
   select: {
@@ -414,24 +394,16 @@ const user = await db.user.findOne({
     posts: {
       select: { id: true, title: true },
       first: 10,
-      offset: 0,
-    },
-  },
-}).execute();
-
-// Get second page
-const userPage2 = await db.user.findOne({
-  id: userId,
-  select: {
-    id: true,
-    posts: {
-      select: { id: true, title: true },
-      first: 10,
-      offset: 10,
     },
   },
 }).execute();
 ```
+
+Generated nested relation selections currently accept only `first`, `filter`,
+and `orderBy`; they do not expose `offset`, cursors, or an implicit page-size
+default. For independent pagination, query the related entity model at the
+root and apply its generated foreign-key filter with the top-level pagination
+arguments.
 
 ## React Query Patterns
 
@@ -656,9 +628,8 @@ const userWithPosts = userWithPostsResult.user;
 
 3. ORM codegen (model-generator.ts)
    |- Standard CRUD: findMany, findFirst, findOne, create, update, delete
-   |- add<Relation>() - calls buildCreateDocument on junction table
-   '- remove<Relation>() - calls buildJunctionRemoveDocument on junction table
-      '- Only generated when junction table has a delete mutation
+   '- M:N convenience helpers may be emitted but are not part of the supported
+      contract until create selections follow the junction primary key
 
 4. Input type naming (centralized)
    |- utils.ts: getDeleteInputTypeName(table), getUpdateInputTypeName(table)

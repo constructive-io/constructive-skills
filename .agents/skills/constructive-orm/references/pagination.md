@@ -135,6 +135,8 @@ const page1 = page1Result.users;
 // pageInfo.endCursor and pageInfo.hasNextPage are always included
 
 // Page 2 — pass endCursor from page 1
+const nextCursor = page1.pageInfo.endCursor;
+if (!nextCursor) throw new Error('The first page has no next cursor.');
 const page2Result = await db.user.findMany({
   select: {
     id: true,
@@ -142,7 +144,7 @@ const page2Result = await db.user.findMany({
     email: true,
   },
   first: 20,
-  after: page1.pageInfo.endCursor,
+  after: nextCursor,
   orderBy: ['CREATED_AT_DESC'],
 }).unwrap();
 const page2 = page2Result.users;
@@ -160,10 +162,12 @@ const lastPageResult = await db.user.findMany({
 const lastPage = lastPageResult.users;
 
 // Previous page — use startCursor + before
+const previousCursor = lastPage.pageInfo.startCursor;
+if (!previousCursor) throw new Error('The last page has no previous cursor.');
 const prevPageResult = await db.user.findMany({
   select: { id: true, name: true },
   last: 20,
-  before: lastPage.pageInfo.startCursor,
+  before: previousCursor,
   orderBy: ['CREATED_AT_DESC'],
 }).unwrap();
 const prevPage = prevPageResult.users;
@@ -287,7 +291,9 @@ const user = await db.user.findOne({
 }).execute();
 ```
 
-In the ORM codegen, nested connections use a default `first: 20` limit unless you specify otherwise. The runtime `buildSelect` generator uses `first: 20` for nested hasMany/manyToMany relations.
+Nested relation selections accept `first`, `filter`, and `orderBy`. They do not
+apply an implicit page-size default or expose top-level cursor/offset arguments;
+query the related entity model directly when it needs independent pagination.
 
 ---
 
