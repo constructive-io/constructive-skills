@@ -1,0 +1,1945 @@
+{
+  "schemaVersion": 1,
+  "kind": "constructive.blocks-install-roots",
+  "source": {
+    "repository": "https://github.com/constructive-io/blocks",
+    "branch": "feat/feature-packs-console-kit",
+    "commit": "4f2a789fde9a90c0c6ed5977896493bb4818fa77",
+    "inspector": {
+      "schemaVersion": 1,
+      "kind": "constructive.console-kit-install-roots",
+      "script": "scripts/inspect-console-kit.ts",
+      "mode": "pinned-prebuilt",
+      "command": "pnpm --dir <blocks-repo> --silent console-kit:inspect --no-build"
+    },
+    "publicationStatus": "branch-only",
+    "trackedWorktreeRequired": true,
+    "attestations": {
+      "algorithm": "sha256",
+      "aggregateRegistry": {
+        "path": "apps/registry/registry.json",
+        "sha256": "c936b8230cef7ca78c6ad9557ac0975e839ad361be3a90e4358b846b105558d8"
+      },
+      "registryCatalog": {
+        "path": "references/registry-catalog.v1.json",
+        "sha256": "84ce9d2b9728b3d62cb6b9e48ec2cd12153ea657490c419e68f849f672be3d1f"
+      },
+      "canonicalFiles": [
+        {
+          "path": "package.json",
+          "sha256": "23b937b73c59eb348753fcbc4358253aeea5b11f9969864b7138ae281cdfe1a0"
+        },
+        {
+          "path": "apps/registry/package.json",
+          "sha256": "0263177a6461eb7223fc33c5725bba85053e5ea34a814a4b1ba5371220badcfb"
+        },
+        {
+          "path": "apps/registry/scripts/build.ts",
+          "sha256": "b8ad62ecf1e0a71503d1bd1da80b067f1b1377c4bddf5085e0c96c6bb7222be3"
+        },
+        {
+          "path": "packages/ui/registry.json",
+          "sha256": "095ab3caba8b5155dbce0585c09f36810d11801bcb8773954543946a6a2de104"
+        },
+        {
+          "path": "apps/blocks/registry.json",
+          "sha256": "169b49db903fe9af3cff736138fca8d5da295438e760d6c4f4853ecc5372b040"
+        },
+        {
+          "path": "scripts/inspect-console-kit.ts",
+          "sha256": "227b742500fd81b8908d5c19e052c40898991d1bdf49223399c09c48610bd446"
+        },
+        {
+          "path": "apps/blocks/src/feature-packs/catalog.ts",
+          "sha256": "093a093acc9fdf302b05c31e4246818301d1e69c82c0673aee85ffd26c8f0b7d"
+        },
+        {
+          "path": "apps/blocks/src/feature-packs/capabilities.ts",
+          "sha256": "65220e521e0adb3eb982b36ebac572b4a32d252c481bc29f8279c323a31f853d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-runtime/endpoints.ts",
+          "sha256": "7b092ecb015eedad25e659fcd564939f11bf1ef59d9275f9ce61f33bc2681f78"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/feature-module.ts",
+          "sha256": "f2524093568bb955ba6b7eb3900e97aa1ae6c945da8d6f9543edc8b293fc1134"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/store/console-kit-store.tsx",
+          "sha256": "b2381ac6bf3f0602ca07cdde8cc7ea1037b9598d528d2fc6bceb0fea506017cf"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-capabilities.ts",
+          "sha256": "c99fbb3cb9d21dfdeff0098bfe3faeaf94dbeaacd465ed1ab5aababc9e36bad1"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-console-kit.tsx",
+          "sha256": "0ef7be98aba38a316d74711151b3cdc50a7e712fc53dfdf898498dbff03f547f"
+        },
+        {
+          "path": "packages/data/package.json",
+          "sha256": "6f807b216dace7cc2fe5cd92fcdb6f9b4d005fb0edace67d51735286a841e796"
+        },
+        {
+          "path": "packages/data/src/meta-query.ts",
+          "sha256": "e78315830284f63719a056e3b13ff2ebb418ceca1d403a933b4beac91468378d"
+        },
+        {
+          "path": "packages/data/src/schema-introspection-compatibility.ts",
+          "sha256": "1c2f0bcce237157111e4f47895d31bd9cf09cbe019d0c2699bf5c30210904010"
+        },
+        {
+          "path": "packages/sheets/package.json",
+          "sha256": "b2696df554c8339844a46cfed6f19df699c2b1ba12fab6f7962bbfc1b5f964f3"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-context.ts",
+          "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-execute.ts",
+          "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+        },
+        {
+          "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
+          "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+        },
+        {
+          "path": "packages/ui/package.json",
+          "sha256": "25bb3f7c9faa713107d90dff57adacad6b3a0b877f92261ceb70cca7ffb09989"
+        },
+        {
+          "path": "packages/schema-builder/package.json",
+          "sha256": "e02d5d8d7e4e6cf2ef5f6bc7f257919f8e3017c371909e46cba4b83cc410453d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx",
+          "sha256": "f43e577186073c352feca69e6f3f7e9914e491808357066fe90bfc79d7a62c67"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx",
+          "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx",
+          "sha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx",
+          "sha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
+          "sha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts",
+          "sha256": "3b12684a654b76623fd203b736411eb069036eba202196c3f7a575879b911d27"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx",
+          "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts",
+          "sha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx",
+          "sha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
+        },
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
+          "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts",
+          "sha256": "cf2165d253e7119166db684070c72ef00dcad52ba7f2003b2b9139a1d718b96f"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts",
+          "sha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
+          "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts",
+          "sha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts",
+          "sha256": "57e7a090408443b3e5fb21dfce72105e16750fd03c28b21b563ccc5d1d566b1c"
+        },
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts",
+          "sha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/store/sheets-store.ts",
+          "sha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
+        },
+        {
+          "path": "packages/sheets/src/hooks/use-sheets-meta.ts",
+          "sha256": "134fb8e3d7b5da30e62b85eabdf120b288045dceeb33681e173727c48e172478"
+        }
+      ],
+      "installPlans": [
+        {
+          "item": "console-kit-core",
+          "path": "references/install-plans.v1/console-kit-core.json",
+          "sha256": "5244d84e0e4888225bc7e0d4adf769e2ce1e26b8459e4d0d2ab5d1bf0d138968"
+        },
+        {
+          "item": "console-kit-nextjs",
+          "path": "references/install-plans.v1/console-kit-nextjs.json",
+          "sha256": "8efe2a3e0614916906d08db100dee4dc562a68785453b2e692e749c149aba17d"
+        },
+        {
+          "item": "console-module-auth",
+          "path": "references/install-plans.v1/console-module-auth.json",
+          "sha256": "26ef98810fe46f7cc20bccb19ac75925aae13e89c3acdbe4e8446bae148d9abe"
+        },
+        {
+          "item": "console-module-billing",
+          "path": "references/install-plans.v1/console-module-billing.json",
+          "sha256": "d15bf94159034cca954c329f8fd5bd9f5269f5ab5a7d8f6c76d1d78e6ebe92ec"
+        },
+        {
+          "item": "console-module-data",
+          "path": "references/install-plans.v1/console-module-data.json",
+          "sha256": "05d4877fa294e24f3cb73ba1ae60067569b842c13fbb446f98f2a385ea18fff5"
+        },
+        {
+          "item": "console-module-notifications",
+          "path": "references/install-plans.v1/console-module-notifications.json",
+          "sha256": "dfc2646ec940e762e8ad1d3e10a3f6d87419ea8e0f78a48c511510cd1ac6a36d"
+        },
+        {
+          "item": "console-module-organizations",
+          "path": "references/install-plans.v1/console-module-organizations.json",
+          "sha256": "c48c228cd57d69bc08c2f802a2909ad498f11c91ac567353d2ed8f60120e9ab6"
+        },
+        {
+          "item": "console-module-storage",
+          "path": "references/install-plans.v1/console-module-storage.json",
+          "sha256": "6eae680af0e48a0cff82c9048bb578e4e912fc508fd793426b18f474e5d0feb2"
+        },
+        {
+          "item": "console-module-users",
+          "path": "references/install-plans.v1/console-module-users.json",
+          "sha256": "2dc40e24a79c1f7d8a1a632ad44606118b36f509ec07c464acd9d1e61583036e"
+        },
+        {
+          "item": "feature-pack-auth",
+          "path": "references/install-plans.v1/feature-pack-auth.json",
+          "sha256": "bbf4a8e9e0fde6ac950d03d36863026fb7621e7b0a46ab970ef543b43c624506"
+        },
+        {
+          "item": "feature-pack-billing",
+          "path": "references/install-plans.v1/feature-pack-billing.json",
+          "sha256": "db4e4b528bd624ab072574a540656e0f6c637b0c90bb3fe7bd9010ea7972d322"
+        },
+        {
+          "item": "feature-pack-data",
+          "path": "references/install-plans.v1/feature-pack-data.json",
+          "sha256": "60b8cb0d7a69487225a4dd244bb37fcaf73c27968bbe74144b6ea61a16059d5a"
+        },
+        {
+          "item": "feature-pack-notifications",
+          "path": "references/install-plans.v1/feature-pack-notifications.json",
+          "sha256": "db7bb7227b51c42ce43b07229e29225c928e544fbd22516fa20a2442e3935615"
+        },
+        {
+          "item": "feature-pack-organizations",
+          "path": "references/install-plans.v1/feature-pack-organizations.json",
+          "sha256": "9d1d14ece5f438e8c4d29f0b7257e7466a3f96a335bc074ab6a946901280e1dc"
+        },
+        {
+          "item": "feature-pack-storage",
+          "path": "references/install-plans.v1/feature-pack-storage.json",
+          "sha256": "5261a3e9145d113ad3cc03e45e11edbde7e9fbf025d3188ce097bd72d6ee15be"
+        },
+        {
+          "item": "feature-pack-users",
+          "path": "references/install-plans.v1/feature-pack-users.json",
+          "sha256": "946ee2328e1823e29b5253338b6c984d33231dba2539329f773a73d400c3a7d1"
+        },
+        {
+          "item": "preset-auth-hardened",
+          "path": "references/install-plans.v1/preset-auth-hardened.json",
+          "sha256": "042ac311ea165aac996dcab89e3cf309118f2b3e12601a34d8a04bef29881562"
+        },
+        {
+          "item": "preset-b2b-storage",
+          "path": "references/install-plans.v1/preset-b2b-storage.json",
+          "sha256": "b0036470ef8ea29bc04ec248c77c808c43409a1dae1063d40607de6b8dd0d7cb"
+        },
+        {
+          "item": "preset-full",
+          "path": "references/install-plans.v1/preset-full.json",
+          "sha256": "554904aae57c5444f2eaade918de8f8ee3f93bff1075170c96ee583954d9f921"
+        }
+      ]
+    }
+  },
+  "release": {
+    "status": "branch-only",
+    "publicRegistryReady": false,
+    "packageManager": "pnpm@10.28.0",
+    "nodeEngine": ">=24.0.0",
+    "shadcnVersion": "4.13.1",
+    "packages": [
+      {
+        "name": "@constructive-io/ui",
+        "version": "0.5.0",
+        "snapshotStatus": "branch-only",
+        "manifestSource": {
+          "path": "packages/ui/package.json",
+          "sha256": "25bb3f7c9faa713107d90dff57adacad6b3a0b877f92261ceb70cca7ffb09989"
+        }
+      },
+      {
+        "name": "@constructive-io/data",
+        "version": "0.2.0",
+        "snapshotStatus": "branch-only",
+        "manifestSource": {
+          "path": "packages/data/package.json",
+          "sha256": "6f807b216dace7cc2fe5cd92fcdb6f9b4d005fb0edace67d51735286a841e796"
+        }
+      },
+      {
+        "name": "@constructive-io/sheets",
+        "version": "0.5.0",
+        "snapshotStatus": "branch-only",
+        "manifestSource": {
+          "path": "packages/sheets/package.json",
+          "sha256": "b2696df554c8339844a46cfed6f19df699c2b1ba12fab6f7962bbfc1b5f964f3"
+        }
+      },
+      {
+        "name": "@constructive-io/schema-builder",
+        "version": "0.1.0",
+        "snapshotStatus": "branch-only",
+        "manifestSource": {
+          "path": "packages/schema-builder/package.json",
+          "sha256": "e02d5d8d7e4e6cf2ef5f6bc7f257919f8e3017c371909e46cba4b83cc410453d"
+        }
+      }
+    ],
+    "localConsumption": {
+      "mode": "pinned-local-build",
+      "mutatesTrackedSource": false,
+      "generatedPaths": [
+        ".artifacts/npm",
+        "apps/registry/registry.json",
+        "apps/registry/public/r",
+        "apps/registry/registry",
+        "packages/ui/dist",
+        "packages/data/dist",
+        "packages/sheets/dist",
+        "packages/schema-builder/dist"
+      ],
+      "bootstrapSequence": [
+        "node <skills-repo>/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs --blocks-repo <blocks-repo> --source-preflight",
+        "pnpm --dir <blocks-repo> install --frozen-lockfile",
+        "pnpm --dir <blocks-repo> build:registry",
+        "pnpm --dir <blocks-repo> pack:local",
+        "node <skills-repo>/.agents/skills/constructive-blocks/scripts/check-blocks-contract.mjs --blocks-repo <blocks-repo>"
+      ],
+      "prepareCommands": [
+        "pnpm --dir <blocks-repo> install --frozen-lockfile",
+        "pnpm --dir <blocks-repo> build:registry",
+        "pnpm --dir <blocks-repo> pack:local"
+      ],
+      "packageRegistryCommand": "LOCAL_NPM_REGISTRY_PORT=4873 pnpm --dir <blocks-repo> local:registry",
+      "blockRegistryCommand": "python3 -m http.server 4174 --bind 127.0.0.1 --directory <blocks-repo>/apps/registry/public",
+      "consumerNpmrc": "@constructive-io:registry=http://127.0.0.1:4873",
+      "consumerRegistryTemplate": "http://127.0.0.1:4174/r/{name}.json",
+      "consumerWorkspace": "disposable-or-isolated-worktree",
+      "localLockfilePolicy": "The local install necessarily records localhost tarball resolutions; never commit its temporary .npmrc or lockfile.",
+      "promotionRule": "After public release, remove local registry settings, regenerate the lockfile from public registries, reject every localhost reference, then commit or merge the consumer.",
+      "installCommandTemplate": "pnpm dlx shadcn@4.13.1 add @constructive/{name}",
+      "localInstallCommandTemplate": "pnpm --dir <blocks-repo>/apps/registry exec shadcn add @constructive/{name} --cwd <consumer-repo> --yes",
+      "maintainerVerificationCommand": "SMOKE_CASE=app-shell,billing-settings-page,feature-pack-data,preset-b2b-storage,console-kit-nextjs pnpm --dir <blocks-repo> --filter @constructive-io/registry smoke:install"
+    }
+  },
+  "registry": {
+    "namespace": "@constructive",
+    "urlTemplate": "https://constructive-io.github.io/blocks/r/{name}.json",
+    "shadcnVersion": "4.13.1",
+    "shadcnVersionPolicy": "exact",
+    "catalog": {
+      "path": "references/registry-catalog.v1.json",
+      "itemCount": 102,
+      "projection": [
+        "name",
+        "type",
+        "title",
+        "description",
+        "categories",
+        "docs",
+        "dependencies",
+        "devDependencies",
+        "registryDependencies",
+        "files",
+        "installCommand"
+      ]
+    },
+    "componentsJson": {
+      "registries": {
+        "@constructive": "https://constructive-io.github.io/blocks/r/{name}.json"
+      }
+    }
+  },
+  "endpointKinds": [
+    "data",
+    "auth",
+    "admin",
+    "billing",
+    "storage",
+    "notifications"
+  ],
+  "constructiveApiNames": {
+    "data": "api",
+    "auth": "auth",
+    "admin": "admin",
+    "billing": "usage",
+    "storage": "objects",
+    "notifications": "notifications"
+  },
+  "metaContract": {
+    "version": "2026-07",
+    "coordinate": "Query._meta",
+    "source": {
+      "path": "packages/data/src/meta-query.ts",
+      "sha256": "e78315830284f63719a056e3b13ff2ebb418ceca1d403a933b4beac91468378d"
+    },
+    "compatibilitySource": {
+      "path": "packages/data/src/schema-introspection-compatibility.ts",
+      "sha256": "1c2f0bcce237157111e4f47895d31bd9cf09cbe019d0c2699bf5c30210904010"
+    },
+    "sheetsAdapterSource": {
+      "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
+      "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+    },
+    "evidenceOrder": [
+      "current _meta signature introspection",
+      "Query._meta payload validation",
+      "standard GraphQL introspection cross-check"
+    ]
+  },
+  "standaloneContracts": {
+    "nonData": {
+      "featurePacks": [
+        "auth",
+        "users",
+        "organizations",
+        "storage",
+        "billing",
+        "notifications"
+      ],
+      "discovery": "none",
+      "endpointResolution": "none",
+      "sessionOwnership": "host",
+      "hostProvides": [
+        "resources",
+        "resource states",
+        "policy grants",
+        "semantic actions",
+        "errors",
+        "selection and view state"
+      ]
+    },
+    "data": {
+      "featurePack": "data",
+      "component": "DataFeaturePack",
+      "componentSource": {
+        "path": "apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx",
+        "sha256": "f43e577186073c352feca69e6f3f7e9914e491808357066fe90bfc79d7a62c67"
+      },
+      "discovery": "internal-data-schema",
+      "planFieldOverride": {
+        "plan": "references/install-plans.v1/feature-pack-data.json",
+        "field": "standaloneContract.discovery",
+        "status": "superseded-for-data",
+        "reason": "Inspector v1 applies a generic standalone sentence to every pack; DataFeaturePack actually delegates _meta and standard introspection to Sheets while its host supplies the endpoint and auth or execute boundary."
+      },
+      "configType": "SheetsConfig",
+      "configSource": {
+        "path": "packages/sheets/src/context/sheets-context.ts",
+        "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+      },
+      "executeType": "SheetsExecuteFn",
+      "executeSource": {
+        "path": "packages/sheets/src/context/sheets-execute.ts",
+        "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+      },
+      "requiredConfigFields": [
+        "endpoint",
+        "auth"
+      ],
+      "conditionalConfig": {
+        "standaloneAuth": [
+          "authEndpoint"
+        ],
+        "embeddedAuth": [
+          "auth.getToken"
+        ]
+      },
+      "hostOwns": [
+        "semantic endpoint selection",
+        "endpoint URL resolution",
+        "authentication mode and session boundary",
+        "transport injection through execute when needed"
+      ],
+      "internalEvidence": [
+        "Query._meta",
+        "standard GraphQL introspection"
+      ],
+      "doesNotOwn": [
+        "ConsoleEndpointMap resolution",
+        "ConstructiveTenantConsoleSession",
+        "cross-endpoint fallback policy"
+      ],
+      "providerSource": {
+        "path": "packages/sheets/src/context/sheets-provider.tsx",
+        "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+      },
+      "metaHookSource": {
+        "path": "packages/sheets/src/hooks/use-sheets-meta.ts",
+        "sha256": "134fb8e3d7b5da30e62b85eabdf120b288045dceeb33681e173727c48e172478"
+      }
+    }
+  },
+  "consoleModuleBindings": [
+    {
+      "featurePack": "data",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx",
+        "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "data.meta",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "data"
+              ],
+              "evidence": {
+                "type": "current-meta",
+                "coordinate": "Query._meta"
+              }
+            }
+          ]
+        },
+        {
+          "capability": "data.introspection",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "data"
+              ],
+              "evidence": {
+                "type": "standard-introspection",
+                "coordinate": "__schema"
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [],
+      "unboundOptionalCapabilities": [
+        "data.search",
+        "data.i18n",
+        "data.realtime"
+      ],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx",
+          "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-context.ts",
+          "sha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/context/sheets-execute.ts",
+          "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+        },
+        {
+          "path": "packages/sheets/src/hooks/use-sheets-meta.ts",
+          "sha256": "134fb8e3d7b5da30e62b85eabdf120b288045dceeb33681e173727c48e172478"
+        },
+        {
+          "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
+          "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+        }
+      ]
+    },
+    {
+      "featurePack": "auth",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/auth/auth-console-module.tsx",
+        "sha256": "fdc449e54312a7d558ce6324f90df5337043099556453c305b230c6afbf73f04"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "auth.credentials",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "mutation",
+                "coordinates": [
+                  "Mutation.signIn",
+                  "Mutation.signUp"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "auth.sessions",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "mutation",
+                "coordinates": [
+                  "Mutation.signOut"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "auth.password",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "mutation",
+                "coordinates": [
+                  "Mutation.forgotPassword",
+                  "Mutation.resetPassword"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [
+        {
+          "capability": "auth.email",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.emails"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "auth.connected-accounts",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "schema-assessment",
+                "coordinates": [
+                  "Query.userConnectedAccounts",
+                  "Mutation.verifyPassword",
+                  "Mutation.disconnectAccount",
+                  "UserConnectedAccount"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "unboundOptionalCapabilities": [
+        "auth.identity-providers",
+        "auth.passkeys",
+        "auth.phone",
+        "auth.devices"
+      ],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/auth-adapter.ts",
+          "sha256": "cf2165d253e7119166db684070c72ef00dcad52ba7f2003b2b9139a1d718b96f"
+        }
+      ]
+    },
+    {
+      "featurePack": "users",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/users/users-console-module.tsx",
+        "sha256": "c6b07d02db54c133da4841abf19af142fa5b49fc954c2d98f508ad5a843f1319"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "users.directory",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "auth"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.users"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "users.memberships",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.appMemberships"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [
+        {
+          "capability": "users.permissions",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.appPermissions"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "users.profiles",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.appProfiles"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "users.invites",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.appInvites"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "unboundOptionalCapabilities": [],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/users-adapter.ts",
+          "sha256": "22e45cbf37b59d815ec408fd91bf44087e54c61f7f30e32e603e61a5862dedc2"
+        }
+      ]
+    },
+    {
+      "featurePack": "organizations",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-console-module.tsx",
+        "sha256": "57ea0c60c9e953283e06815bbceaac2e6c4b170aeca202dac3f440b282925a6d"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "organizations.memberships",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgMemberships"
+                ]
+              }
+            },
+            {
+              "endpointKinds": [
+                "data",
+                "auth",
+                "admin",
+                "billing",
+                "storage",
+                "notifications"
+              ],
+              "evidence": {
+                "type": "compatible-meta-contract",
+                "coordinate": "Query._meta",
+                "contractSource": {
+                  "path": "apps/blocks/src/blocks/feature-packs/organizations/organizations-meta-contract.ts",
+                  "sha256": "3b12684a654b76623fd203b736411eb069036eba202196c3f7a575879b911d27"
+                },
+                "requirements": [
+                  "current _meta contract",
+                  "standard GraphQL introspection",
+                  "executable public query roots"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [
+        {
+          "capability": "organizations.permissions",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgPermissions"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "organizations.limits",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "billing"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgLimits"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "organizations.profiles",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgProfiles"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "organizations.hierarchy",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgChartEdges"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "organizations.invites",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "admin"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.orgInvites"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "unboundOptionalCapabilities": [],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/organizations-adapter.ts",
+          "sha256": "b93e78d928f38e396bb529ac4b582c73b36dc219e01aeb3735e66bcc26fbb179"
+        }
+      ]
+    },
+    {
+      "featurePack": "storage",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/storage/storage-console-module.tsx",
+        "sha256": "265a592bb9b6848664dfd1366b2dfd40e93551f9ed5831da903095a74c7b9dce"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "storage.buckets",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "storage",
+                "admin",
+                "data"
+              ],
+              "evidence": {
+                "type": "graphql-operation-any",
+                "operation": "query",
+                "coordinates": [
+                  "Query.buckets",
+                  "Query.appBuckets"
+                ]
+              }
+            },
+            {
+              "endpointKinds": [
+                "data",
+                "auth",
+                "admin",
+                "billing",
+                "storage",
+                "notifications"
+              ],
+              "evidence": {
+                "type": "compatible-meta-contract",
+                "coordinate": "Query._meta",
+                "contractSource": {
+                  "path": "apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts",
+                  "sha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
+                },
+                "requirements": [
+                  "current _meta contract",
+                  "standard GraphQL introspection",
+                  "executable public query roots"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "storage.files",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "storage",
+                "admin",
+                "data"
+              ],
+              "evidence": {
+                "type": "graphql-operation-any",
+                "operation": "query",
+                "coordinates": [
+                  "Query.files",
+                  "Query.appFiles"
+                ]
+              }
+            },
+            {
+              "endpointKinds": [
+                "data",
+                "auth",
+                "admin",
+                "billing",
+                "storage",
+                "notifications"
+              ],
+              "evidence": {
+                "type": "compatible-meta-contract",
+                "coordinate": "Query._meta",
+                "contractSource": {
+                  "path": "apps/blocks/src/blocks/feature-packs/storage/storage-meta-contract.ts",
+                  "sha256": "b8ed730fbea85e3e49bdbdaa44e9323ee6dbf8e15a00044e39eaa3d931aee67d"
+                },
+                "requirements": [
+                  "current _meta contract",
+                  "standard GraphQL introspection",
+                  "executable public query roots"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [],
+      "unboundOptionalCapabilities": [
+        "storage.versioning",
+        "storage.content-hash",
+        "storage.custom-keys",
+        "storage.audit-log"
+      ],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/storage-adapter.ts",
+          "sha256": "9067fbf3dd755873573eed457cae3a77b1825ec3216eeb7e3119611bb0de718c"
+        }
+      ]
+    },
+    {
+      "featurePack": "billing",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/billing/billing-console-module.tsx",
+        "sha256": "1b86ccc77764939b31d1689a95a1722b6a38e1ccae52ac34adfda019751d9292"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "billing.plans",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "billing"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.plans"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "capability": "billing.subscriptions",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "billing"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.planSubscriptions"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [
+        {
+          "capability": "billing.meters",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "billing"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.meters"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "unboundOptionalCapabilities": [],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts",
+          "sha256": "57e7a090408443b3e5fb21dfce72105e16750fd03c28b21b563ccc5d1d566b1c"
+        }
+      ]
+    },
+    {
+      "featurePack": "notifications",
+      "source": {
+        "path": "apps/blocks/src/blocks/feature-packs/notifications/notifications-console-module.tsx",
+        "sha256": "e40d42f5b4b72e844fff9f21dc4572b0458a1b9ae7f10c6d4c1849e02a98e518"
+      },
+      "readyState": "all-required-capabilities",
+      "required": [
+        {
+          "capability": "notifications.inbox",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "notifications"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.notifications"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "optional": [
+        {
+          "capability": "notifications.settings",
+          "alternatives": [
+            {
+              "endpointKinds": [
+                "notifications"
+              ],
+              "evidence": {
+                "type": "graphql-operations",
+                "operation": "query",
+                "coordinates": [
+                  "Query.notificationPreferences"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "unboundOptionalCapabilities": [
+        "notifications.realtime"
+      ],
+      "adapterSources": [
+        {
+          "path": "apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts",
+          "sha256": "1eb4832ecc90312d0bda329bc79b8b261e227454d18cba53ff70409e074713c0"
+        }
+      ]
+    }
+  ],
+  "hostOwnedStore": {
+    "factory": "createConsoleKitStore",
+    "source": {
+      "path": "apps/blocks/src/blocks/console-kit/store/console-kit-store.tsx",
+      "sha256": "b2381ac6bf3f0602ca07cdde8cc7ea1037b9598d528d2fc6bceb0fea506017cf"
+    },
+    "positionalSignature": [
+      "initialRouteInput: ConsoleKitRoute | FeaturePackId",
+      "initialContext: ConsoleKitContext | null = null",
+      "sliceContributions: readonly ConsoleKitStoreSliceContribution[] = []"
+    ],
+    "moduleContractSource": {
+      "path": "apps/blocks/src/blocks/console-kit/feature-module.ts",
+      "sha256": "f2524093568bb955ba6b7eb3900e97aa1ae6c945da8d6f9543edc8b293fc1134"
+    },
+    "moduleSliceProperty": "storeSlice",
+    "coreComponent": "ConstructiveConsoleKitCore",
+    "coreSource": {
+      "path": "apps/blocks/src/blocks/console-kit/constructive/constructive-console-kit.tsx",
+      "sha256": "0ef7be98aba38a316d74711151b3cdc50a7e712fc53dfdf898498dbff03f547f"
+    },
+    "targetInvariant": "one host-owned vanilla Zustand store per Console Kit instance with every installed module slice",
+    "planFieldOverride": {
+      "appliesTo": "all non-standalone install plans containing Data",
+      "field": "runtimeContract.state",
+      "status": "superseded-by-current-source-conformance",
+      "reason": "Inspector v1 declares the target single-store architecture, but DataFeaturePack currently mounts SheetsProvider, which creates a nested Sheets store while dataConsoleModule contributes no storeSlice."
+    },
+    "currentSourceConformance": {
+      "status": "nonconforming-when-data-installed",
+      "consoleCoreStoreCount": 1,
+      "dataNestedStoreCount": 1,
+      "dataModuleStoreSlice": false,
+      "dataModuleSource": {
+        "path": "apps/blocks/src/blocks/feature-packs/data/data-console-module.tsx",
+        "sha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+      },
+      "dataProviderSource": {
+        "path": "packages/sheets/src/context/sheets-provider.tsx",
+        "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+      },
+      "dataStoreSource": {
+        "path": "packages/sheets/src/store/sheets-store.ts",
+        "sha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
+      },
+      "impact": "A Console Kit instance with Data currently owns the Console core store plus a nested Sheets store. The Data module contributes no storeSlice, so the pinned source does not yet satisfy the target invariant."
+    }
+  },
+  "items": [
+    {
+      "name": "console-kit-nextjs",
+      "surface": "full-console",
+      "title": "Constructive Console Kit for Next.js",
+      "description": "A full-page Next.js tenant console with semantic routing, auth, dynamic endpoint discovery, first-party adapters, and every feature pack.",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage",
+        "billing",
+        "notifications"
+      ],
+      "presetProfiles": [
+        "full"
+      ],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-nextjs"
+    },
+    {
+      "name": "preset-auth-hardened",
+      "surface": "preset",
+      "title": "Hardened Authentication Preset",
+      "description": "Stable Constructive auth-hardened backend preset mapped to its supported Console Kit modules.",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users"
+      ],
+      "presetProfiles": [
+        "auth-hardened"
+      ],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-auth-hardened"
+    },
+    {
+      "name": "preset-b2b-storage",
+      "surface": "preset",
+      "title": "B2B with Storage Preset",
+      "description": "Stable Constructive b2b-storage backend preset mapped to its supported Console Kit modules.",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage"
+      ],
+      "presetProfiles": [
+        "b2b-storage"
+      ],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-b2b-storage"
+    },
+    {
+      "name": "preset-full",
+      "surface": "preset",
+      "title": "Full Preset",
+      "description": "Stable Constructive full backend preset mapped to its supported Console Kit modules.",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage",
+        "billing",
+        "notifications"
+      ],
+      "presetProfiles": [
+        "full"
+      ],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-full"
+    },
+    {
+      "name": "console-kit-core",
+      "surface": "core",
+      "title": "Constructive Console Kit Core",
+      "description": "The leaf-independent Console Kit shell, runtime, discovery, and single modular Zustand store.",
+      "featurePacks": [],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-core"
+    },
+    {
+      "name": "console-module-data",
+      "surface": "console-module",
+      "title": "Data Console Module",
+      "description": "Console Kit navigation, capability discovery, and tenant runtime binding for the Data feature pack.",
+      "featurePacks": [
+        "data"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-data"
+    },
+    {
+      "name": "console-module-auth",
+      "surface": "console-module",
+      "title": "Authentication Console Module",
+      "description": "Console Kit session flow, capability discovery, and Constructive adapter for the Authentication feature pack.",
+      "featurePacks": [
+        "auth"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-auth"
+    },
+    {
+      "name": "console-module-users",
+      "surface": "console-module",
+      "title": "App access Console Module",
+      "description": "Console Kit navigation, capability discovery, and Constructive adapter for the App access feature pack.",
+      "featurePacks": [
+        "users"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-users"
+    },
+    {
+      "name": "console-module-organizations",
+      "surface": "console-module",
+      "title": "Organizations Console Module",
+      "description": "Console Kit discovery, metadata resolution, and Constructive adapter for the Organizations feature pack.",
+      "featurePacks": [
+        "organizations"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-organizations"
+    },
+    {
+      "name": "console-module-storage",
+      "surface": "console-module",
+      "title": "Storage Console Module",
+      "description": "Console Kit discovery, metadata resolution, adapter, and modular state slice for the Storage feature pack.",
+      "featurePacks": [
+        "storage"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-storage"
+    },
+    {
+      "name": "console-module-billing",
+      "surface": "console-module",
+      "title": "Billing Console Module",
+      "description": "Console Kit navigation, capability discovery, and Constructive adapter for the Billing feature pack.",
+      "featurePacks": [
+        "billing"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-billing"
+    },
+    {
+      "name": "console-module-notifications",
+      "surface": "console-module",
+      "title": "Notifications Console Module",
+      "description": "Console Kit navigation, capability discovery, and Constructive adapter for the Notifications feature pack.",
+      "featurePacks": [
+        "notifications"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-notifications"
+    },
+    {
+      "name": "feature-pack-data",
+      "surface": "standalone-feature-pack",
+      "title": "Data Feature Pack",
+      "description": "A current-_meta-only application data explorer with application-table filtering and spreadsheet CRUD.",
+      "featurePacks": [
+        "data"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-data"
+    },
+    {
+      "name": "feature-pack-auth",
+      "surface": "standalone-feature-pack",
+      "title": "Authentication Feature Pack",
+      "description": "Provider-neutral public authentication flows and personal account/session management.",
+      "featurePacks": [
+        "auth"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-auth"
+    },
+    {
+      "name": "feature-pack-users",
+      "surface": "standalone-feature-pack",
+      "title": "App access Feature Pack",
+      "description": "App access governance with member lifecycle controls, invitations, access profiles, direct and effective permissions, and new-member defaults.",
+      "featurePacks": [
+        "users"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-users"
+    },
+    {
+      "name": "feature-pack-organizations",
+      "surface": "standalone-feature-pack",
+      "title": "Organizations Feature Pack",
+      "description": "Complete tenant administration for selection, member governance, invitations, profiles, permissions, defaults, hierarchy, settings, principals, and API keys.",
+      "featurePacks": [
+        "organizations"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-organizations"
+    },
+    {
+      "name": "feature-pack-storage",
+      "surface": "standalone-feature-pack",
+      "title": "Storage Feature Pack",
+      "description": "Bucket, folder, object, upload, download, and deletion surfaces backed by injected storage actions.",
+      "featurePacks": [
+        "storage"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-storage"
+    },
+    {
+      "name": "feature-pack-billing",
+      "surface": "standalone-feature-pack",
+      "title": "Billing Feature Pack",
+      "description": "The feature-pack root for Constructive billing plans, subscriptions, usage, entitlements, credits, and activity.",
+      "featurePacks": [
+        "billing"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-billing"
+    },
+    {
+      "name": "feature-pack-notifications",
+      "surface": "standalone-feature-pack",
+      "title": "Notifications Feature Pack",
+      "description": "An application notification inbox with read, open, and deletion actions.",
+      "featurePacks": [
+        "notifications"
+      ],
+      "presetProfiles": [],
+      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-notifications"
+    }
+  ],
+  "featurePackManifests": [
+    {
+      "schemaVersion": 1,
+      "id": "data",
+      "title": "Data",
+      "description": "Dynamic table exploration and CRUD surfaces driven by Constructive metadata and GraphQL introspection.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [
+          "data"
+        ],
+        "optional": []
+      },
+      "capabilities": {
+        "required": [
+          "data.meta",
+          "data.introspection"
+        ],
+        "optional": [
+          "data.search",
+          "data.i18n",
+          "data.realtime"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope"
+        ],
+        "optionalMetaSections": [
+          "encoding",
+          "search",
+          "i18n",
+          "realtime"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "auth",
+      "title": "Authentication",
+      "description": "Consumer sign-in, account profile, password, and session-management surfaces.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [
+          "auth"
+        ],
+        "optional": []
+      },
+      "capabilities": {
+        "required": [
+          "auth.sessions",
+          "auth.credentials",
+          "auth.password"
+        ],
+        "optional": [
+          "auth.email",
+          "auth.connected-accounts",
+          "auth.identity-providers",
+          "auth.passkeys",
+          "auth.phone",
+          "auth.devices"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [],
+        "optionalMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope",
+          "encoding"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "users",
+      "title": "App access",
+      "description": "Application member governance, lifecycle controls, profiles, permission grants, and invitations.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [
+          "admin"
+        ],
+        "optional": [
+          "auth"
+        ]
+      },
+      "capabilities": {
+        "required": [
+          "users.directory",
+          "users.memberships"
+        ],
+        "optional": [
+          "users.permissions",
+          "users.profiles",
+          "users.invites"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [],
+        "optionalMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope",
+          "encoding"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "organizations",
+      "title": "Organizations",
+      "description": "Tenant membership governance, invitations, access policy, hierarchy, settings, and developer credentials.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [],
+        "optional": [
+          "admin",
+          "auth",
+          "billing",
+          "data"
+        ]
+      },
+      "capabilities": {
+        "required": [
+          "organizations.memberships"
+        ],
+        "optional": [
+          "organizations.permissions",
+          "organizations.limits",
+          "organizations.profiles",
+          "organizations.hierarchy",
+          "organizations.invites"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope"
+        ],
+        "optionalMetaSections": [
+          "encoding"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "storage",
+      "title": "Storage",
+      "description": "Policy-aware bucket navigation, uploads, downloads, and object deletion.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [],
+        "optional": [
+          "storage",
+          "admin",
+          "data"
+        ]
+      },
+      "capabilities": {
+        "required": [
+          "storage.buckets",
+          "storage.files"
+        ],
+        "optional": [
+          "storage.versioning",
+          "storage.content-hash",
+          "storage.custom-keys",
+          "storage.audit-log"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope"
+        ],
+        "optionalMetaSections": [
+          "encoding",
+          "storage"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "billing",
+      "title": "Billing",
+      "description": "Plans, subscriptions, entitlement meters, usage, credits, and account activity.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [],
+        "optional": [
+          "billing",
+          "admin",
+          "data"
+        ]
+      },
+      "capabilities": {
+        "required": [
+          "billing.plans",
+          "billing.subscriptions"
+        ],
+        "optional": [
+          "billing.meters"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [],
+        "optionalMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope",
+          "encoding"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    },
+    {
+      "schemaVersion": 1,
+      "id": "notifications",
+      "title": "Notifications",
+      "description": "User notification inbox and read-state actions with optional settings and realtime capabilities.",
+      "dependencies": [],
+      "endpoints": {
+        "required": [],
+        "optional": [
+          "notifications",
+          "auth",
+          "data"
+        ]
+      },
+      "capabilities": {
+        "required": [
+          "notifications.inbox"
+        ],
+        "optional": [
+          "notifications.settings",
+          "notifications.realtime"
+        ]
+      },
+      "metadata": {
+        "requiredMetaSections": [],
+        "optionalMetaSections": [
+          "tables",
+          "fields",
+          "constraints",
+          "relations",
+          "query",
+          "scope",
+          "encoding",
+          "realtime"
+        ],
+        "requiredIntrospectionSections": [
+          "root-operations",
+          "types",
+          "input-objects"
+        ],
+        "optionalIntrospectionSections": [
+          "enums",
+          "directives"
+        ]
+      }
+    }
+  ],
+  "presetProfiles": [
+    {
+      "schemaVersion": 1,
+      "id": "auth-hardened",
+      "presetSlug": "auth:hardened",
+      "title": "Hardened authentication",
+      "description": "Data, authentication, and user-management feature packs.",
+      "stability": "stable",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "b2b-storage",
+      "presetSlug": "b2b:storage",
+      "title": "B2B with storage",
+      "description": "Data, authentication, users, organizations, and storage feature packs.",
+      "stability": "stable",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage"
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "id": "full",
+      "presetSlug": "full",
+      "title": "Full",
+      "description": "Every first-release Constructive feature pack.",
+      "stability": "stable",
+      "featurePacks": [
+        "data",
+        "auth",
+        "users",
+        "organizations",
+        "storage",
+        "billing",
+        "notifications"
+      ]
+    }
+  ],
+  "runtimeContract": {
+    "appliesTo": "console-kit",
+    "tenantDescriptor": {
+      "type": "ConstructiveTenantDatabase",
+      "requiredFields": [
+        "id",
+        "endpoints"
+      ],
+      "optionalFields": [
+        "name"
+      ],
+      "endpointKinds": [
+        "data",
+        "auth",
+        "admin",
+        "billing",
+        "storage",
+        "notifications"
+      ],
+      "endpointValue": "string | { id?: string; url: string }",
+      "rules": [
+        "Use the secret-free descriptor returned by provisioning.",
+        "Pass explicit semantic endpoints; never derive sibling hosts or private routing headers.",
+        "A host-owned session must declare the same databaseId."
+      ]
+    },
+    "routing": {
+      "type": "ConsoleKitRoute",
+      "sourceTarget": "src/blocks/console-kit/console-kit-routes.ts",
+      "internalOwnership": "Omit routes.route and optionally pass routes.defaultRoute.",
+      "controlledProps": [
+        "route",
+        "getHref",
+        "onRouteChange",
+        "renderLink"
+      ],
+      "initialRouteProp": "defaultRoute"
+    },
+    "state": {
+      "factory": "createConsoleKitStore",
+      "architecture": "one per-instance Zustand store with modular slices",
+      "hostStoreRule": "Create a host-owned store with every installed module storeSlice contribution.",
+      "resetScope": [
+        "database",
+        "identity"
+      ],
+      "forbidden": [
+        "credentials in Zustand",
+        "a process-wide Console Kit store",
+        "a second provider or state system per feature pack"
+      ]
+    },
+    "authentication": {
+      "internalSession": "When an auth endpoint is present and no host session is passed, ConstructiveConsoleKitCore creates a database-scoped standalone session that supports sign-in, sign-up, restoration, and authentication-failure handling.",
+      "hostSession": "Without a routable auth endpoint, pass a host-owned session whose databaseId exactly matches the tenant descriptor. A mismatch fails closed.",
+      "csrf": "Pass csrfTokenProvider when the tenant enables require_csrf_for_auth.",
+      "callback": "By default the browser wrapper parses the current URL and scrubs recognized callback credentials. Pass callback={false} only when the host owns the complete callback lifecycle.",
+      "credentials": "Callback credentials stay in a closure-owned vault and session credentials stay in the database-scoped session; neither belongs in Zustand or component props."
+    },
+    "evidenceOrder": [
+      "explicit endpoint resolution",
+      "current _meta",
+      "GraphQL introspection",
+      "authenticated resource reads"
+    ],
+    "metadataStates": [
+      "checking",
+      "compatible",
+      "incompatible",
+      "error"
+    ],
+    "featureAvailabilityStates": [
+      "checking",
+      "available",
+      "unavailable",
+      "unauthorized",
+      "incompatible",
+      "error"
+    ],
+    "capabilityStates": [
+      "checking",
+      "ready",
+      "partial",
+      "unavailable"
+    ],
+    "degradedBehavior": "Installed Console modules stay fail-closed when required public evidence is absent. Standalone feature packs render only the resource, policy, actions, and state supplied by their host.",
+    "authorizationBoundary": "Registry installation and schema discovery never grant authority. PostgreSQL privileges and RLS remain authoritative for every request.",
+    "diagnostics": "Set showDiagnostics on ConstructiveConsoleKit/Core only outside production to expose endpoint and capability evidence. Retry after correcting the host endpoint map; do not infer sibling endpoints or operator authority."
+  }
+}
