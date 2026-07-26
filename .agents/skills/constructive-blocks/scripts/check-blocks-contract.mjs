@@ -352,6 +352,8 @@ const CANONICAL_SOURCE_PATHS = [
   'apps/blocks/src/blocks/console-kit/constructive/billing-adapter.ts',
   'apps/blocks/src/blocks/console-kit/constructive/notifications-adapter.ts',
   'packages/sheets/src/context/sheets-provider.tsx',
+  'packages/sheets/src/utils/sheets-i18n.ts',
+  'packages/sheets/src/utils/sheets-logger.ts',
   'packages/sheets/src/store/sheets-store.ts',
   'packages/sheets/src/hooks/use-sheets-meta.ts'
 ];
@@ -930,6 +932,24 @@ const SOURCE_LIMITATION_SCOPES = {
     featurePacks: ['data'],
     runtimeModes: ['console']
   },
+  'data-provider-global-locale-logger': {
+    surfaces: [
+      'standalone-feature-pack',
+      'console-module',
+      'preset',
+      'full-console'
+    ],
+    installRoots: [
+      'feature-pack-data',
+      'console-module-data',
+      'preset-auth-hardened',
+      'preset-b2b-storage',
+      'preset-full',
+      'console-kit-nextjs'
+    ],
+    featurePacks: ['data'],
+    runtimeModes: ['data-provider']
+  },
   'data-standalone-auth-endpoint-fallback': {
     surfaces: ['standalone-feature-pack'],
     installRoots: ['feature-pack-data'],
@@ -1061,6 +1081,11 @@ const SOURCE_LIMITATION_PATHS = {
     'packages/sheets/src/context/sheets-provider.tsx',
     'packages/sheets/src/store/sheets-store.ts'
   ],
+  'data-provider-global-locale-logger': [
+    'packages/sheets/src/context/sheets-provider.tsx',
+    'packages/sheets/src/utils/sheets-i18n.ts',
+    'packages/sheets/src/utils/sheets-logger.ts'
+  ],
   'data-standalone-auth-endpoint-fallback': [
     'packages/sheets/src/context/sheets-context.ts',
     'packages/sheets/src/auth/auth-execute.ts'
@@ -1136,6 +1161,15 @@ const SOURCE_LIMITATION_POLICIES = {
       {
         id: 'contribute-data-store-slice',
         requirement: 'Make dataConsoleModule contribute the resulting storeSlice and remove the nested Sheets store.'
+      }
+    ]
+  },
+  'data-provider-global-locale-logger': {
+    acceptance: 'require-mitigation',
+    mitigationRequirements: [
+      {
+        id: 'enforce-single-active-sheets-provider',
+        requirement: 'Mount at most one active SheetsProvider in a browser runtime so locale and logger configuration cannot cross provider boundaries.'
       }
     ]
   },
@@ -2463,6 +2497,14 @@ function assertMetaAndStandaloneContracts(snapshot, sources) {
   assert(data.configType === 'SheetsConfig', 'Standalone Data configType drifted.');
   assert(data.executeType === 'SheetsExecuteFn', 'Standalone Data executeType drifted.');
   assertExact(data.requiredConfigFields, ['endpoint', 'auth'], 'Standalone Data required config');
+  assertExact(
+    data.conditionalConfig,
+    {
+      standaloneAuth: ['authEndpoint', 'databaseId'],
+      embeddedAuth: ['auth.getToken']
+    },
+    'Standalone Data conditional config'
+  );
   assertObject(data.authEndpointPolicy, 'Standalone Data authEndpointPolicy');
   assert(
     data.authEndpointPolicy.standaloneMode === 'required-explicit' &&
@@ -2728,6 +2770,16 @@ function assertSourceLimitations(snapshot, sources, itemByName) {
       nestedStore.failureState === 'known-nonconforming',
     'Data nested-store limitation behavior drifted.'
   );
+  const globalConfig = limitationById.get(
+    'data-provider-global-locale-logger'
+  );
+  assert(
+    globalConfig.observedBehavior.includes('process-wide mutable module singletons') &&
+      globalConfig.portableRequirement.includes('one active SheetsProvider') &&
+      globalConfig.portableRequirement.includes('Multiple concurrent Data roots are unsupported') &&
+      globalConfig.failureState === 'cross-instance-config-contamination',
+    'Data provider-global configuration limitation behavior drifted.'
+  );
   const authFallback = limitationById.get(
     'data-standalone-auth-endpoint-fallback'
   );
@@ -2786,6 +2838,7 @@ function assertSourceLimitations(snapshot, sources, itemByName) {
   assertExact(
     snapshot.standaloneContracts.data.sourceLimitationIds,
     [
+      'data-provider-global-locale-logger',
       'data-standalone-auth-endpoint-fallback',
       'data-standalone-database-scope-fallback',
       'data-standalone-persistent-token-storage',
@@ -2799,7 +2852,10 @@ function assertSourceLimitations(snapshot, sources, itemByName) {
   assert(dataBinding, 'Data module binding is missing.');
   assertExact(
     dataBinding.sourceLimitationIds,
-    ['data-console-nested-sheets-store'],
+    [
+      'data-console-nested-sheets-store',
+      'data-provider-global-locale-logger'
+    ],
     'Data Console source limitation links'
   );
   const organizationsBinding = snapshot.consoleModuleBindings.find(
@@ -3510,11 +3566,15 @@ function sourceLimitationsForRoot(snapshot, rootName) {
 function runtimeModeProfilesForRoot(item) {
   if (item.name === 'feature-pack-data') {
     return [
-      { id: 'embedded', limitationModes: [] },
-      { id: 'standalone-auth', limitationModes: ['standalone-auth'] },
+      { id: 'embedded', limitationModes: ['data-provider'] },
+      {
+        id: 'standalone-auth',
+        limitationModes: ['data-provider', 'standalone-auth']
+      },
       {
         id: 'standalone-auth-csrf-required',
         limitationModes: [
+          'data-provider',
           'standalone-auth',
           'standalone-auth-csrf-required'
         ]
@@ -3527,6 +3587,7 @@ function runtimeModeProfilesForRoot(item) {
   return [{
     id: 'console',
     limitationModes: [
+      'data-provider',
       'console',
       'console-discovery',
       'console-meta-discovery'
@@ -4156,6 +4217,33 @@ export function assertBlocksSourcePreflight(snapshot, blocksRepo) {
   assert(
     /\bcreateSheetsStore\s*\(\s*\)/.test(dataProviderSource),
     'The pinned SheetsProvider no longer creates its nested Zustand store; update the conformance record.'
+  );
+  assert(
+    dataProviderSource.includes('setSheetsLogger(config.logger)') &&
+      dataProviderSource.includes('setSheetsLocale(config.locale)'),
+    'SheetsProvider no longer writes logger and locale through module-level setters; update the limitation.'
+  );
+  const sheetsI18nPath = resolveInside(
+    blocksRepo,
+    'packages/sheets/src/utils/sheets-i18n.ts',
+    'Sheets locale singleton path'
+  );
+  const sheetsI18nSource = readFileSync(sheetsI18nPath, 'utf8');
+  assert(
+    sheetsI18nSource.includes('let active: string = DEFAULT_LOCALE;') &&
+      sheetsI18nSource.includes('active = locale || DEFAULT_LOCALE;'),
+    'Sheets locale is no longer process-wide mutable state; update the limitation.'
+  );
+  const sheetsLoggerPath = resolveInside(
+    blocksRepo,
+    'packages/sheets/src/utils/sheets-logger.ts',
+    'Sheets logger singleton path'
+  );
+  const sheetsLoggerSource = readFileSync(sheetsLoggerPath, 'utf8');
+  assert(
+    sheetsLoggerSource.includes('let active: SheetsLogger = defaultLogger;') &&
+      sheetsLoggerSource.includes('active = l ?'),
+    'Sheets logger is no longer process-wide mutable state; update the limitation.'
   );
   const dataFeaturePath = resolveInside(
     blocksRepo,

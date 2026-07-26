@@ -176,6 +176,7 @@ pass only when every named mitigation has evidence.
 | ID | Acceptance | Required handling | Mitigation IDs |
 | --- | --- | --- | --- |
 | `data-console-nested-sheets-store` | `blocking` | Data contributes no `storeSlice`, while `SheetsProvider` creates a nested Zustand store. Keep Console roots containing Data blocked until Blocks unifies that state. | `unify-data-console-store`, `contribute-data-store-slice` |
+| `data-provider-global-locale-logger` | `require-mitigation` | `SheetsProvider` writes locale and logger configuration to process-wide mutable singletons. Mount at most one active provider per browser runtime until Blocks scopes both values through context. | `enforce-single-active-sheets-provider` |
 | `data-standalone-auth-endpoint-fallback` | `require-mitigation` | Require an explicit non-empty `authEndpoint` and fail before render; never allow `config.authEndpoint || config.endpoint` to route auth through Data. | `require-explicit-auth-endpoint`, `fail-closed-without-auth-endpoint` |
 | `data-standalone-database-scope-fallback` | `require-mitigation` | Require a non-empty `databaseId` equal to the active tenant; never share the source fallback scope named `default`. | `require-explicit-database-id`, `match-active-tenant-database-id` |
 | `data-standalone-persistent-token-storage` | `blocking` | The source always writes successful standalone credentials to `localStorage`, regardless of `rememberMe`. Use embedded host auth until selectable non-persistent storage exists. | `use-host-owned-embedded-auth`, `block-until-token-persistence-is-selectable` |
@@ -215,10 +216,12 @@ rendering; those checks prevent the separate endpoint and `default` scope
 fallbacks but do not clear the blocking limitations.
 
 This makes the root `conditionally-blocked`, not unconditionally blocked:
-`embedded` is eligible, `standalone-auth` is blocked by persistent token
-storage, and `standalone-auth-csrf-required` is blocked by persistent storage
-plus the absent CSRF bootstrap. Console roots containing Data remain
-unconditionally blocked by the separate nested-store limitation.
+`embedded` requires the single-active-provider mitigation,
+`standalone-auth` is blocked by persistent token storage, and
+`standalone-auth-csrf-required` is blocked by persistent storage plus the
+absent CSRF bootstrap. Every Data root requires the same provider-isolation
+mitigation; Console roots containing Data remain unconditionally blocked by
+the separate nested-store limitation.
 
 The validated `--root feature-pack-data` response pins the import target and
 `DataFeaturePackProps` vocabulary. `config` is required, Data has no injected

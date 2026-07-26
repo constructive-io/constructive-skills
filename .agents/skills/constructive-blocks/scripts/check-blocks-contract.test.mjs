@@ -33,7 +33,7 @@ test('portable artifacts validate as one complete contract', () => {
   assert.equal(loaded.snapshot.items.length, 19);
   assert.equal(loaded.artifacts.planByItem.size, 19);
   assert.equal(loaded.artifacts.catalog.items.length, 102);
-  assert.equal(loaded.snapshot.sourceLimitations.length, 14);
+  assert.equal(loaded.snapshot.sourceLimitations.length, 15);
 });
 
 test('module endpoint and adapter drift fail closed', () => {
@@ -66,6 +66,30 @@ test('standalone Data cannot regress to the generic no-discovery contract', () =
   assert.throws(
     () => assertSnapshot(mutation),
     /Standalone Data discovery drifted/
+  );
+});
+
+test('standalone Data conditional configuration remains complete and exact', () => {
+  const loaded = loadPortableContract();
+  assert.deepEqual(loaded.snapshot.standaloneContracts.data.conditionalConfig, {
+    standaloneAuth: ['authEndpoint', 'databaseId'],
+    embeddedAuth: ['auth.getToken']
+  });
+
+  const standaloneMutation = structuredClone(loaded.snapshot);
+  standaloneMutation.standaloneContracts.data.conditionalConfig.standaloneAuth = [
+    'authEndpoint'
+  ];
+  assert.throws(
+    () => assertSnapshot(standaloneMutation),
+    /Standalone Data conditional config drifted/
+  );
+
+  const embeddedMutation = structuredClone(loaded.snapshot);
+  embeddedMutation.standaloneContracts.data.conditionalConfig.embeddedAuth = [];
+  assert.throws(
+    () => assertSnapshot(embeddedMutation),
+    /Standalone Data conditional config drifted/
   );
 });
 
@@ -124,6 +148,31 @@ test('the Data nested-store source limitation cannot be hidden', () => {
   assert.throws(
     () => assertSnapshot(mutation),
     /Current Data store conformance must remain explicit/
+  );
+});
+
+test('Data provider-global locale and logger state requires single-provider isolation', () => {
+  const loaded = loadPortableContract();
+  const limitation = loaded.snapshot.sourceLimitations.find(
+    (candidate) => candidate.id === 'data-provider-global-locale-logger'
+  );
+  assert.deepEqual(limitation.appliesTo.installRoots, [
+    'feature-pack-data',
+    'console-module-data',
+    'preset-auth-hardened',
+    'preset-b2b-storage',
+    'preset-full',
+    'console-kit-nextjs'
+  ]);
+  assert.equal(limitation.acceptance, 'require-mitigation');
+
+  const mutation = structuredClone(loaded.snapshot);
+  mutation.sourceLimitations.find(
+    (candidate) => candidate.id === 'data-provider-global-locale-logger'
+  ).appliesTo.installRoots.length = 1;
+  assert.throws(
+    () => assertSnapshot(mutation),
+    /data-provider-global-locale-logger\.appliesTo drifted/
   );
 });
 
@@ -197,6 +246,7 @@ test('validated query surfaces replace both known-wrong Data registry descriptio
   assert.deepEqual(
     item.sourceLimitations.map((limitation) => limitation.id),
     [
+      'data-provider-global-locale-logger',
       'data-standalone-auth-endpoint-fallback',
       'data-standalone-database-scope-fallback',
       'data-standalone-persistent-token-storage',
@@ -245,7 +295,10 @@ test('query mode validates first and is independent of the current directory', (
     consoleRoot.portableContract.sourceLimitations.map(
       (limitation) => limitation.id
     ),
-    ['data-console-nested-sheets-store']
+    [
+      'data-console-nested-sheets-store',
+      'data-provider-global-locale-logger'
+    ]
   );
   assert.equal(consoleRoot.portableContract.metaContract.coordinate, 'Query._meta');
   assert.equal(consoleRoot.runtimeStatus.status, 'blocked');
@@ -350,9 +403,11 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
   assert.deepEqual(data.runtimeStatus.modes, [
     {
       id: 'embedded',
-      status: 'eligible',
+      status: 'mitigation-required',
       blockingLimitationIds: [],
-      mitigationRequiredLimitationIds: []
+      mitigationRequiredLimitationIds: [
+        'data-provider-global-locale-logger'
+      ]
     },
     {
       id: 'standalone-auth',
@@ -361,6 +416,7 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
         'data-standalone-persistent-token-storage'
       ],
       mitigationRequiredLimitationIds: [
+        'data-provider-global-locale-logger',
         'data-standalone-auth-endpoint-fallback',
         'data-standalone-database-scope-fallback'
       ]
@@ -373,6 +429,7 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
         'data-standalone-csrf-auth-unavailable'
       ],
       mitigationRequiredLimitationIds: [
+        'data-provider-global-locale-logger',
         'data-standalone-auth-endpoint-fallback',
         'data-standalone-database-scope-fallback'
       ]
@@ -380,7 +437,13 @@ test('list queries expose Data metadata and runtime-mode-aware blockers', () => 
   ]);
   assert.deepEqual(
     data.sourceLimitationAcceptances.map((entry) => entry.acceptance),
-    ['require-mitigation', 'require-mitigation', 'blocking', 'blocking']
+    [
+      'require-mitigation',
+      'require-mitigation',
+      'require-mitigation',
+      'blocking',
+      'blocking'
+    ]
   );
   const consoleData = roots.items.find(
     (item) => item.name === 'console-module-data'

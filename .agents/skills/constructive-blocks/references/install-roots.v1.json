@@ -262,6 +262,14 @@
           "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
         },
         {
+          "path": "packages/sheets/src/utils/sheets-i18n.ts",
+          "sha256": "bbfd8c9db0ebb7a3b01506203dd04162886218109cee2ad6135e685c1e7fcb6d"
+        },
+        {
+          "path": "packages/sheets/src/utils/sheets-logger.ts",
+          "sha256": "415d96d0e5b1294c2326567a0025f217eeac58239005ad9c2b0641de0551a83f"
+        },
+        {
           "path": "packages/sheets/src/store/sheets-store.ts",
           "sha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
         },
@@ -1702,7 +1710,8 @@
       ],
       "conditionalConfig": {
         "standaloneAuth": [
-          "authEndpoint"
+          "authEndpoint",
+          "databaseId"
         ],
         "embeddedAuth": [
           "auth.getToken"
@@ -1734,6 +1743,7 @@
         "authority to treat the data endpoint as an auth endpoint"
       ],
       "sourceLimitationIds": [
+        "data-provider-global-locale-logger",
         "data-standalone-auth-endpoint-fallback",
         "data-standalone-database-scope-fallback",
         "data-standalone-persistent-token-storage",
@@ -1824,7 +1834,8 @@
         }
       ],
       "sourceLimitationIds": [
-        "data-console-nested-sheets-store"
+        "data-console-nested-sheets-store",
+        "data-provider-global-locale-logger"
       ]
     },
     {
@@ -3062,6 +3073,56 @@
       "observedBehavior": "dataConsoleModule contributes no storeSlice, while DataFeaturePack mounts SheetsProvider and SheetsProvider creates a nested Sheets Zustand store.",
       "portableRequirement": "Keep one modular Console store as the target and do not copy this pattern into another module. Data remains known nonconforming until its Sheets state is contributed through storeSlice or otherwise unified in Blocks source.",
       "failureState": "known-nonconforming"
+    },
+    {
+      "id": "data-provider-global-locale-logger",
+      "status": "open-pinned-source-gap",
+      "acceptance": "require-mitigation",
+      "mitigationRequirements": [
+        {
+          "id": "enforce-single-active-sheets-provider",
+          "requirement": "Mount at most one active SheetsProvider in a browser runtime so locale and logger configuration cannot cross provider boundaries."
+        }
+      ],
+      "appliesTo": {
+        "surfaces": [
+          "standalone-feature-pack",
+          "console-module",
+          "preset",
+          "full-console"
+        ],
+        "installRoots": [
+          "feature-pack-data",
+          "console-module-data",
+          "preset-auth-hardened",
+          "preset-b2b-storage",
+          "preset-full",
+          "console-kit-nextjs"
+        ],
+        "featurePacks": [
+          "data"
+        ],
+        "runtimeModes": [
+          "data-provider"
+        ]
+      },
+      "sourceEvidence": [
+        {
+          "path": "packages/sheets/src/context/sheets-provider.tsx",
+          "sha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+        },
+        {
+          "path": "packages/sheets/src/utils/sheets-i18n.ts",
+          "sha256": "bbfd8c9db0ebb7a3b01506203dd04162886218109cee2ad6135e685c1e7fcb6d"
+        },
+        {
+          "path": "packages/sheets/src/utils/sheets-logger.ts",
+          "sha256": "415d96d0e5b1294c2326567a0025f217eeac58239005ad9c2b0641de0551a83f"
+        }
+      ],
+      "observedBehavior": "Every SheetsProvider writes config.locale and config.logger into process-wide mutable module singletons during render and effects, so concurrent providers can overwrite one another's formatting and diagnostic behavior.",
+      "portableRequirement": "Mount at most one active SheetsProvider in a browser runtime until Blocks scopes locale and logger through provider context. Multiple concurrent Data roots are unsupported.",
+      "failureState": "cross-instance-config-contamination"
     },
     {
       "id": "data-standalone-auth-endpoint-fallback",
