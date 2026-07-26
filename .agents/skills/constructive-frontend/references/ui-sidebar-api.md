@@ -69,6 +69,7 @@ different state.
 ```tsx
 import { cookies } from 'next/headers';
 
+import { signOut } from './actions';
 import { TenantShell } from './tenant-shell';
 
 export default async function TenantLayout({
@@ -81,7 +82,10 @@ export default async function TenantLayout({
   const defaultSidebarOpen = sidebarCookie?.value !== 'false';
 
   return (
-    <TenantShell defaultSidebarOpen={defaultSidebarOpen}>
+    <TenantShell
+      defaultSidebarOpen={defaultSidebarOpen}
+      onSignOut={signOut}
+    >
       {children}
     </TenantShell>
   );
