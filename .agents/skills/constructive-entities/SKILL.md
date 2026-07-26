@@ -10,6 +10,8 @@ metadata:
 
 Hierarchical entity type system for multi-tenancy. Every scope of membership — app, org, channel, department, team, data room — is a membership type with its own entity table, permissions, memberships, and security policies.
 
+For tenant-facing organization selection and governance UI, use the Organizations feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md). This skill owns the entity, membership, invitation, and hierarchy model underneath that surface.
+
 ## When to Apply
 
 Use this skill when:
@@ -122,3 +124,4 @@ See [invites.md](./references/invites.md) for invite types, claim flow, and erro
 - **Blueprint definitions:** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
 - **File uploads:** [`constructive-storage`](../constructive-storage/SKILL.md)
 - **Limits per entity:** [`constructive-billing`](../constructive-billing/SKILL.md)
+- **Organizations feature-pack UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

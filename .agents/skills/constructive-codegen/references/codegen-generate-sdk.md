@@ -74,8 +74,8 @@ await generate({
 
 ```
 hooks/
-├── index.ts              # Barrel export (all hooks, types, configure)
-├── client.ts             # configure() function and execute()
+├── index.ts              # Barrel export (hooks and types)
+├── client.ts             # Generated transport helpers, when enabled
 ├── types.ts              # Entity interfaces, filter types, input types
 ├── queryKeys.ts          # Centralized query key management
 ├── queries/
@@ -104,16 +104,13 @@ orm/
 
 ## Using Generated Hooks
 
-### Configure Client (once at app startup)
+### Bind transport safely
 
-```typescript
-import { configure } from '@/generated/hooks';
-
-configure({
-  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${getToken()}` },
-});
-```
+Generated hooks are intended for a stable custom-domain endpoint. Audit the
+generated transport before use: mutable module-global endpoint or header state
+must not be shared across server requests, tenant switches, or identity
+switches. For those cases, use an instance-scoped request layer or the Blocks
+runtime instead.
 
 ### Query Data
 
@@ -172,15 +169,18 @@ For query key factory details, see `query-keys.md`.
 ```typescript
 import { createClient } from '@/generated/orm';
 
-export const db = createClient({
-  endpoint: process.env.GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
-});
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 ```
 
 ### Query Data
 
 ```typescript
+const db = createDomainClient(dataEndpoint, accessToken);
 const users = await db.user.findMany({
   select: { id: true, name: true, email: true },
   filter: { role: { eq: 'ADMIN' } },
@@ -343,5 +343,5 @@ filter: {
 | Missing custom queries/mutations | Check `queries.include` / `mutations.include` filters |
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match `output` |
-| Auth errors at runtime | Check `configure()` headers (hooks) or `createClient()` headers (ORM) |
+| Auth errors at runtime | Verify the request-scoped endpoint, tenant identity, and credential binding |
 | No docs generated | Set `docs: true` or `docs: { readme: true, agents: true }` |

@@ -1,6 +1,6 @@
 # Node Type Registry
 
-All node types available in blueprint table `nodes[]`. Each node is either a string shorthand (`'DataId'`) or an object with `$type` and `data` (`{ $type: 'SearchUnified', data: {...} }`).
+The canonical registry currently exports 87 node types across the families below. Table-compatible nodes can use string shorthand (`'DataId'`) or an object with `$type` and `data` (`{ $type: 'SearchUnified', data: {...} }`); policy, relation, and view nodes belong in their corresponding blueprint sections.
 
 Source: `constructive-db/packages/node-type-registry/src/`
 
@@ -107,6 +107,14 @@ See `constructive-jobs` skill for payload strategies and compound conditions.
 
 See `constructive-events` skill for achievement wiring.
 
+## Guard Nodes
+
+| Node | Description |
+|------|-------------|
+| `GuardStepUp` | Requires a recent higher-assurance authentication step before a protected operation |
+
+See `constructive-security` for the guard contract and verification requirements.
+
 ## Limit & Billing Nodes
 
 | Node | Description |
@@ -124,7 +132,7 @@ See `constructive-billing` skill for limits, billing, and plan cascade details.
 
 ## Security Nodes (Authz*)
 
-22 registry-selectable policy types — see `constructive-security` skill for the full reference (it additionally documents the platform-applied `AuthzHumanOnly` guard).
+The canonical registry exports 25 Authz nodes. See `constructive-security` for their full reference and for the separate platform-applied `AuthzHumanOnly` guard.
 
 | Node | Description |
 |------|-------------|
@@ -132,6 +140,7 @@ See `constructive-billing` skill for limits, billing, and plan cascade details.
 | `AuthzDirectOwnerAny` | Ownership by any of multiple FK fields |
 | `AuthzEntityMembership` | Membership-to-row binding (default for entity-scoped data) |
 | `AuthzAppMembership` | App-level gate (hardcoded membership_type=1) |
+| `AuthzAppMemberOwner` | Compound: direct authorship AND current app membership |
 | `AuthzOrgHierarchy` | Org hierarchy traversal for nested entity access |
 | `AuthzMemberOwner` | Compound: ownership AND entity membership |
 | `AuthzMemberList` | Named list of members with granted access |
@@ -141,16 +150,20 @@ See `constructive-billing` skill for limits, billing, and plan cascade details.
 | `AuthzFilePath` | Ltree path-based access control |
 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies |
 | `AuthzRelatedEntityMembership` | Membership check via related table's entity |
+| `AuthzRelatedMemberOwner` | Compound: ownership AND membership reached through a related table |
 | `AuthzRelatedMemberList` | Member list check via related table |
 | `AuthzRelatedPeerOwnership` | Peer ownership via related table |
 | `AuthzNotReadOnly` | Blocks mutations for read-only members |
 | `AuthzAllowAll` | Permissive: grants access to all authenticated users |
-| `AuthzDenyAll` | Restrictive: denies all access (explicit block) |
+| `AuthzDenyAll` | Generates `FALSE`; configure it as restrictive when it must hard-deny alongside permissive policies |
 | `AuthzSystemOnly` | Restrictive: writes allowed only from system sessions (triggers/jobs), `role_type = 'system'` |
 | `AuthzValueAllowed` | Check local column against an allowed set of values |
 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row |
 | `AuthzValueMatch` | `EXISTS` in a related table with a value match on the reference row |
+| `AuthzColumnSecurity` | Column-level INSERT/UPDATE write guard driven by a nested Authz node or an immutability rule |
+
+The checked-in generated blueprint union currently contains 24 of these 25 nodes and omits `AuthzColumnSecurity`. Treat `authz/index.ts` and `allNodeTypes` in `constructive-db` as authoritative: do not infer that the node is unavailable or hand-edit generated output. Regenerate the union through the backend node-type-registry codegen workflow when backend changes are separately authorized.
 
 ## Module Presets
 
-Preconfigured module bundles — see `constructive-platform` skill for preset details.
+Preconfigured backend module bundles — see [module-presets.md](./module-presets.md) for the current source-of-truth boundary and supported profiles.

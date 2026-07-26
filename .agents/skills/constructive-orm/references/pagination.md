@@ -175,21 +175,14 @@ const prevPage = await db.user.findMany({
 
 ```typescript
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { createClient } from '@/generated/orm';
-
-const db = createClient({
-  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${getToken()}` },
-});
-
-function InfiniteUserList() {
+function InfiniteUserList({ db, databaseId, identityId }) {
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['users', 'infinite'],
+    queryKey: [databaseId, identityId, 'users', 'infinite'],
     queryFn: async ({ pageParam }) => {
       return db.user.findMany({
         select: { id: true, name: true, email: true },
@@ -379,8 +372,7 @@ interface ConnectionResult<T = unknown> {
 ### Paginated Admin Table with Total Count
 
 ```typescript
-async function getUsers(page: number, pageSize: number, search?: string) {
-  const db = getDb();
+async function getUsers(db: DomainClient, page: number, pageSize: number, search?: string) {
   return db.user.findMany({
     select: { id: true, name: true, email: true, role: true, createdAt: true },
     where: search
@@ -401,8 +393,7 @@ async function getUsers(page: number, pageSize: number, search?: string) {
 ### Cursor-Based Feed with "Load More"
 
 ```typescript
-async function loadFeed(cursor?: string) {
-  const db = getDb();
+async function loadFeed(db: DomainClient, cursor?: string) {
   return db.post.findMany({
     select: {
       id: true,

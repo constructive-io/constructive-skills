@@ -289,13 +289,13 @@ export function QueryErrorBoundary({
 ```typescript
 // app/api/users/[id]/route.ts
 import { NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
+import { createRequestDomainClient } from '@/lib/db';
 
 export async function GET(
   request: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await createRequestDomainClient(request);
   const result = await db.user.findOne({
     id: params.id,
     select: { id: true, name: true, email: true },
@@ -324,11 +324,11 @@ export async function GET(
 // app/actions/user.ts
 'use server';
 
-import { getDb } from '@/lib/db';
+import { createRequestDomainClient } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 
 export async function updateUser(id: string, data: { name: string }) {
-  const db = getDb();
+  const db = await createRequestDomainClient();
   const result = await db.user.update({
     id,
     patch: { name: data.name },
@@ -363,8 +363,7 @@ import pino from 'pino';
 
 const logger = pino();
 
-async function fetchUser(id: string) {
-  const db = getDb();
+async function fetchUser(db: DomainClient, id: string) {
   const result = await db.user.findOne({ id }).execute();
 
   if (!result.ok) {

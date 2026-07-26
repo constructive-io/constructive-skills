@@ -10,12 +10,13 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
-| **constructive-features** | *(router)* | Feature catalog routing to the authoritative skill for every capability |
-| **constructive-builder** | agentic-flow harness | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, Chrome-verify a working CRUD app in under 10 minutes (4 phases, 3 policy tiers) |
+| **constructive-features** | *(router)* | Maps application capabilities to Blocks feature packs and authoritative domain skills |
+| **constructive-blocks** | Constructive Blocks | Feature packs, Console Kit, registry installation, tenant descriptors, discovery, and runtime contracts |
+| **constructive-builder** | application harness | Agent-driven frontend assembly and acceptance against an existing workspace and already-provisioned tenant |
 | **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
 | **constructive-principals** | *(standalone)* | Scoped sub-identities for API keys and agents — API key lifecycle, org scoping, read-only keys (SDK ORM) |
-| **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — Safegres, Authz* types, RLS, grants, storage policies |
+| **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, RLS, grants, storage policies |
 | **constructive-access-control** | *(standalone)* | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | constructive-sdk-entities | Multi-tenancy, memberships, invites, entity types, entity-scoped storage |
 | **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
@@ -29,10 +30,10 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-jobs** | *(standalone)* | Background jobs, JobTrigger, Knative worker pipeline |
 | **constructive-flow-graphs** | graph_module, merkle_store | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | constructive-sdk-i18n | Internationalization — DataI18n, multilingual search, i18n_module |
-| **constructive-frontend** | *(standalone)* | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
-| **constructive-codegen** | codegen refs from constructive-sdk-graphql | Code generation pipeline — config, templates, AST transforms |
-| **constructive-orm** | ORM refs from constructive-sdk-graphql | Generated ORM — query patterns, mutations, relations, pagination, _meta |
-| **constructive-hooks** | hooks refs from constructive-sdk-graphql | Generated React Query hooks — cache, optimistic updates |
+| **constructive-frontend** | *(standalone)* | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| **constructive-codegen** | codegen refs from constructive-sdk-graphql | Optional generated clients for stable custom-domain schemas |
+| **constructive-orm** | ORM refs from constructive-sdk-graphql | Optional generated ORM patterns for stable custom-domain schemas |
+| **constructive-hooks** | hooks refs from constructive-sdk-graphql | Optional generated React Query hook patterns for fixed endpoints |
 | **constructive-platform** | constructive-sdk-api, sdk-services, sdk-site, monorepo-setup | Server config, services, domains, deployment, env, cnc CLI (slimmed) |
 
 Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
@@ -49,7 +50,7 @@ Skills in this repository are API documentation for app builders. All examples M
 .agents/skills/
   {skill-name}/           # kebab-case directory name
     SKILL.md              # Required: skill definition
-    scripts/              # Required: executable scripts
+    scripts/              # Optional: executable helpers for deterministic workflows
       {script-name}.sh    # Bash scripts (preferred)
 ```
 
@@ -145,6 +146,8 @@ If a skill generates both hooks and ORM code, split references into:
 This allows agents helping with ORM queries to read only `orm-patterns.md` instead of loading all documentation.
 
 ### Script Requirements
+
+When a skill includes executable helpers:
 
 - Use `#!/bin/bash` shebang
 - Use `set -e` for fail-fast behavior

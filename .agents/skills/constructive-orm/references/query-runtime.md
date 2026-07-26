@@ -21,15 +21,15 @@ Use this skill when:
 - Replacing hand-written GraphQL with generated queries
 - Needing browser-safe query generation (no Node.js APIs)
 
-**Important**: For build-time code generation (writing `.ts` files to disk, generating React Query hooks, ORM, CLI), use the `constructive-graphql-codegen` skill instead. This package (`graphql-query`) is the **core** that `graphql-codegen` depends on.
+**Important**: For optional build-time generation (writing `.ts` files, React Query hooks, ORM, or CLI), use [`constructive-codegen`](../../constructive-codegen/SKILL.md). This package is the runtime query core that codegen depends on.
 
 ---
 
-## 1. Two Introspection Paths
+## 1. Complementary schema evidence
 
-There are two ways to get schema metadata into `CleanTable[]` — the format all generators require.
+Dynamic Constructive data uses `_meta` for PostgreSQL and Constructive schema facts and standard introspection for the exact executable GraphQL surface. Reconcile both before generating an operation.
 
-### Path A: Standard GraphQL Introspection (recommended for new code)
+### Standard GraphQL introspection
 
 ```ts
 import {
@@ -37,7 +37,7 @@ import {
   SCHEMA_INTROSPECTION_QUERY,
 } from '@constructive-io/graphql-query';
 
-const response = await fetch('/graphql', {
+const response = await fetch(dataEndpoint, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({ query: SCHEMA_INTROSPECTION_QUERY }),
@@ -48,43 +48,28 @@ const tables = inferTablesFromIntrospection(data);
 
 Works with **any** GraphQL endpoint. No PostGraphile-specific features required.
 
-### Path B: PostGraphile `_meta` Endpoint
+### Constructive `_meta`
 
-Every Constructive `app-public` GraphQL API exposes a `_meta` query (via `MetaSchemaPreset` in `graphile-settings`). It returns richer metadata than standard introspection — including `isNotNull`, `hasDefault`, FK constraints, indexes, and server-side inflection names.
+Compatible Constructive tenant endpoints expose the current `_meta` contract. Import its typed document, compatibility probe, guards, and adapter from `@constructive-io/data`; do not copy a query from a Dashboard or derive the endpoint hostname.
 
 ```ts
-import { cleanTable } from '@your-app/data'; // Dashboard adapter
+import {
+  META_DOCUMENT,
+  assertMetaQuery,
+  cleanTable
+} from '@constructive-io/data';
 
-const META_QUERY = `query {
-  _meta {
-    tables {
-      name
-      schemaName
-      fields { name isNotNull hasDefault type { pgType gqlType isArray } }
-      inflection { tableType allRows createInputType patchType filterType orderByType }
-      query { all one create update delete }
-      primaryKeyConstraints { name fields { name } }
-      foreignKeyConstraints { name fields { name } referencedTable referencedFields }
-      uniqueConstraints { name fields { name } }
-      relations {
-        belongsTo { fieldName isUnique type keys { name } references { name } }
-        hasMany { fieldName isUnique type keys { name } referencedBy { name } }
-        manyToMany { fieldName type rightTable { name } junctionTable { name } }
-      }
-    }
-  }
-}`;
-
-const res = await fetch('/graphql', {
+const res = await fetch(dataEndpoint, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-  body: JSON.stringify({ query: META_QUERY }),
+  body: JSON.stringify({ query: META_DOCUMENT.toString() }),
 });
 const { data } = await res.json();
-const tables = data._meta.tables.map(cleanTable); // → CleanTable[]
+assertMetaQuery(data);
+const tables = data._meta.tables.map(cleanTable);
 ```
 
-See `references/meta-introspection.md` for full `_meta` response types and the `cleanTable()` adapter.
+Run `META_CONTRACT_INTROSPECTION_DOCUMENT` and `assertMetaContract` before the full metadata query. See [query-meta-introspection.md](./query-meta-introspection.md) for the evidence model and current `2026-07` contract.
 
 ---
 
@@ -295,5 +280,5 @@ This avoids generated code depending directly on `@0no-co/graphql.web` or `@cons
 
 ## References
 
-- **`references/meta-introspection.md`** — Full `_meta` query structure, response types, `cleanTable()` adapter, and platform caveats
-- **`references/generators-api.md`** — Complete API reference for all generators, options, and generated output examples
+- [query-meta-introspection.md](./query-meta-introspection.md) — Current `_meta`, introspection, and authorization evidence model
+- [query-generators-api.md](./query-generators-api.md) — Generator options and output examples

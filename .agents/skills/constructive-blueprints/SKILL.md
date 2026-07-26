@@ -1,6 +1,6 @@
 ---
 name: constructive-blueprints
-description: "Declarative schema definition — blueprints, node type registry, presets, and the blueprint definition format. Use when asked to 'create a blueprint', 'blueprint template', 'construct blueprint', 'copy template', 'blueprint definition', 'definition hash', 'table hashes', 'schema marketplace', 'blueprint provisioning', 'module presets', 'what modules should I install', 'auth:email preset', 'b2b preset', or when working with blueprint JSONB definitions."
+description: "Define Constructive schemas declaratively with blueprints, templates, node types, definition hashes, and current backend module presets. Use when creating or copying a blueprint, choosing auth:hardened, b2b:storage, or full backend provisioning, or working with blueprint definitions and the node type registry."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -15,7 +15,7 @@ Declarative schema provisioning — define complete domain schemas as portable J
 Use this skill when:
 - Defining a blueprint (tables, fields, relations, policies, entity types)
 - Working with blueprint templates and the template marketplace
-- Choosing module presets (`minimal`, `auth:email`, `b2b`, `full`, etc.)
+- Choosing a current backend module preset (`auth:hardened`, `b2b:storage`, or `full`)
 - Understanding Merkle-style definition hashing for deduplication and provenance
 - Using `construct_blueprint()` or `copy_template_to_blueprint()`
 
@@ -60,20 +60,15 @@ blueprint.definition (JSONB)
 
 ### Module Presets
 
-Curated bundles of modules for common app shapes. Pass `preset.modules` into `db.databaseProvisionModule.create()` to install.
+Constructive DB owns the backend module arrays for three supported presets. Resolve the current preset through its provisioning mechanism; do not copy module closure into a skill or application brief.
 
 | Preset | Shape |
 |--------|-------|
-| `minimal` | No auth, bare tables |
-| `auth:email` | Email + password |
-| `auth:email+magic` | + magic links, email OTP |
-| `auth:sso` | + OAuth/SSO providers |
-| `auth:passkey` | + WebAuthn passkeys |
-| `auth:hardened` | + rate limits, device approval |
-| `b2b` | + orgs, invites, permissions, profiles, limits |
-| `full` | Everything including devices, crypto, advanced limits |
+| `auth:hardened` | Hardened authentication and app access |
+| `b2b:storage` | Hardened auth plus organizations and storage infrastructure |
+| `full` | Complete reference capability set |
 
-Lives in `@constructive-io/node-type-registry` — exported as `allModulePresets` and `getModulePreset(name)`.
+The canonical source lives in `constructive-db/packages/node-type-registry/src/module-presets/`. Blocks maps these backend profiles to frontend preset roots, but frontend installation remains a separate decision owned by [`constructive-blocks`](../constructive-blocks/SKILL.md).
 
 See [module-presets.md](./references/module-presets.md) for the full preset catalog.
 
@@ -86,8 +81,9 @@ The node type registry defines all node types available in blueprint definitions
 - **Process nodes** — `ProcessFileEmbedding`, `ProcessImageEmbedding`, `ProcessChunks`
 - **Job nodes** — `JobTrigger`
 - **Event nodes** — `EventTracker`, `EventReferral`
-- **Limit nodes** — `LimitCounter`, `LimitAggregate`, `LimitFeatureFlag`
-- **Security nodes** — all 19 registry-selectable Authz* policy types, incl. `AuthzSystemOnly` (see `constructive-security`)
+- **Guard nodes** — `GuardStepUp`
+- **Limit nodes** — eight enforce, track, and warning nodes, including `LimitEnforceCounter`, `LimitTrackUsage`, and `LimitWarningRate`
+- **Security nodes** — 25 registry-selectable Authz nodes, including the `AuthzColumnSecurity` write guard; the platform-applied `AuthzHumanOnly` mechanism is documented separately (see `constructive-security`)
 
 See [node-type-registry.md](./references/node-type-registry.md) for the full catalog.
 
@@ -108,3 +104,4 @@ See [node-type-registry.md](./references/node-type-registry.md) for the full cat
 - **Search nodes detail:** [`constructive-search`](../constructive-search/SKILL.md)
 - **Job nodes detail:** [`constructive-jobs`](../constructive-jobs/SKILL.md)
 - **Event nodes detail:** [`constructive-events`](../constructive-events/SKILL.md)
+- **Frontend preset and feature-pack installation:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

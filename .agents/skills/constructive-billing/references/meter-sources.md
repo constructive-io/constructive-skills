@@ -7,12 +7,14 @@ Configuration for how meters receive usage data.
 | Source | Description |
 |--------|-------------|
 | `manual` | Usage recorded explicitly via `record_usage()` |
-| `trigger` | Usage recorded automatically by database triggers (LimitCounter/LimitAggregate) |
+| `trigger` | Billing usage recorded automatically by a `LimitTrackUsage` table trigger |
 | `external` | Usage synced from external billing provider |
 
 ## Trigger-Based Sources
 
-When a `LimitCounter` or `LimitAggregate` node is attached to a table, it automatically creates triggers that increment usage on INSERT and decrement on DELETE. No manual `record_usage()` call is needed.
+Attach `LimitTrackUsage` to record a billing meter automatically. `meter_slug` is required; `entity_field` defaults to `entity_id`, `quantity` to `1`, and `events` to `INSERT` + `DELETE`. An `UPDATE` event reverses usage for the old entity and records it for the new entity when `entity_field` changes.
+
+`LimitEnforceCounter` and `LimitEnforceAggregate` maintain the limits subsystem's counters; they are enforcement nodes, not billing-meter source configuration.
 
 ## External Sources
 

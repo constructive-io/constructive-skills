@@ -10,6 +10,8 @@ metadata:
 
 Complete file upload pipeline using presigned S3 URLs â€” the client uploads directly to S3/MinIO, never routing file bytes through the GraphQL server.
 
+Use the Storage feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md) for tenant-facing bucket and object UI. Its standalone view renders host-supplied resources and actions. Its Console module becomes available only when an explicitly configured endpoint exposes compatible storage-tagged bucket and file tables plus executable operations; an object-store endpoint alone does not prove that contract.
+
 ## When to Apply
 
 Use this skill when:
@@ -67,3 +69,4 @@ Entity-scoped buckets are provisioned via `has_storage: true` on entity types â€
 - **Entity-scoped storage:** [`constructive-entities`](../constructive-entities/SKILL.md)
 - **Storage security policies:** [`constructive-security`](../constructive-security/SKILL.md)
 - **File embedding pipeline:** [`constructive-agents`](../constructive-agents/SKILL.md)
+- **Storage feature-pack UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

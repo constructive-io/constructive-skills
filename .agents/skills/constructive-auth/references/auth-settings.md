@@ -199,6 +199,6 @@ Creates the `user_secrets` table with columns:
 
 A trigger automatically hashes plaintext values with bcrypt on insert/update.
 
-**Gate:** `user_credentials_module` — included in all auth presets (`auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, `auth:hardened`, `b2b`, `b2b:storage`, `full`).
+**Gate:** `user_credentials_module` — resolve its presence from the current backend preset/module registry. It is part of the supported authentication-bearing presets (`auth:hardened`, `b2b:storage`, and `full`).
 
 This module is used internally by `sign_up`, `sign_in`, `set_password`, `reset_password`, and `verify_password` functions. Application code typically does not interact with `user_secrets` directly.

@@ -1,6 +1,6 @@
 ---
 name: constructive-billing
-description: "Billing, limits, plans, credits, feature flags, meters, and usage tracking. Use when asked to 'set up billing', 'create meters', 'grant credits', 'record usage', 'check quota', 'universal credits', 'billing provider', 'set up limits', 'feature flags', 'cap tables', 'LimitCounter', 'LimitAggregate', 'LimitFeatureFlag', 'apply plan', 'transfer quota', 'credit expiration', 'rollover credits', or when working with billing or limits in blueprints."
+description: "Billing, limits, plans, credits, feature flags, meters, usage tracking, rate enforcement, and threshold warnings. Use for billing setup, meters, quota checks, universal credits, cap tables, LimitEnforceCounter, LimitEnforceAggregate, LimitEnforceFeature, LimitEnforceRate, LimitTrackUsage, LimitWarningCounter, LimitWarningAggregate, LimitWarningRate, plan application, credit expiration, rollover credits, or billing and limits in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -10,9 +10,11 @@ metadata:
 
 Metered usage tracking, credit management, quota enforcement, and feature gating. Two systems compose together:
 
+Use the Billing feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md) for plans, subscriptions, usage, entitlements, credits, and activity UI. Its standalone view renders host-supplied billing resources and actions; its Console module discovers and adapts the explicit `billing` endpoint. This skill owns the billing and limits behavior underneath both surfaces.
+
 | System | Purpose |
 |--------|---------|
-| **Limits** | Blueprint-level nodes (`LimitCounter`, `LimitAggregate`, `LimitFeatureFlag`) for row-level enforcement |
+| **Limits** | Eight blueprint nodes for counter, aggregate, feature, and rate enforcement; billing usage tracking; and threshold warnings |
 | **Billing** | Meter-based usage tracking, credit grants, universal credits waterfall, billing provider bridge |
 
 ## When to Apply
@@ -28,39 +30,64 @@ Use this skill when:
 
 ## Limits (Blueprint Nodes)
 
-Three blueprint nodes cover all limit enforcement:
+The canonical registry exports eight `Limit*` nodes. Their names encode whether they enforce a limit, track billable usage, or emit a warning; do not use the removed `LimitCounter`, `LimitAggregate`, or `LimitFeatureFlag` names.
 
-### LimitCounter — Per-User Metered Limits
+### Enforcement
 
 ```json
-{ "$type": "LimitCounter", "data": {
+{ "$type": "LimitEnforceCounter", "data": {
   "limit_name": "projects_per_user",
-  "default_max": 10
-}}
+  "scope": "app",
+  "actor_field": "owner_id"
+} }
 ```
 
-Fires a trigger on INSERT that checks `user_limit_counter < max`. Rejects with `LIMIT_EXCEEDED` if over quota.
-
-### LimitAggregate — Per-Entity Aggregate Limits
+`LimitEnforceCounter` increments/decrements per-actor usage on configured events. `limit_name` is required; `scope` defaults to `app`, `actor_field` to `owner_id`, and `events` to `INSERT` + `DELETE`.
 
 ```json
-{ "$type": "LimitAggregate", "data": {
+{ "$type": "LimitEnforceAggregate", "data": {
   "limit_name": "seats",
-  "default_max": 50
-}}
+  "scope": "org",
+  "entity_field": "entity_id"
+} }
 ```
 
-Counts total rows per entity (e.g., "50 seats per org").
-
-### LimitFeatureFlag — Boolean Feature Gates
+`LimitEnforceAggregate` enforces a counter shared by an entity. `scope` defaults to `org`, `entity_field` to `entity_id`, and `events` to `INSERT` + `DELETE`.
 
 ```json
-{ "$type": "LimitFeatureFlag", "data": {
-  "limit_name": "analytics_enabled"
-}}
+{ "$type": "LimitEnforceFeature", "data": {
+  "feature_name": "analytics_enabled",
+  "scope": "org",
+  "entity_field": "entity_id"
+} }
 ```
 
-Gates access based on `limit_caps_defaults` (max=0 → disabled, max=1 → enabled).
+`LimitEnforceFeature` guards inserts using `COALESCE(per-entity cap, scope default, 0) > 0`. `feature_name` is required.
+
+```json
+{ "$type": "LimitEnforceRate", "data": {
+  "meter_slug": "api_requests",
+  "entity_field": "entity_id",
+  "actor_field": "owner_id",
+  "events": ["INSERT"]
+} }
+```
+
+`LimitEnforceRate` checks configured sliding-window meter limits before `INSERT` or `UPDATE`. `meter_slug` is required; it needs the billing and meter-rate-limit modules.
+
+### Usage tracking and warnings
+
+`LimitTrackUsage` records billing-meter usage and reversals from table events. `meter_slug` is required, `quantity` defaults to `1`, and `events` defaults to `INSERT` + `DELETE`.
+
+The warning nodes run after inserts and enqueue a job only when a configured threshold is crossed for the first time:
+
+| Node | Required key | Scope defaults |
+|---|---|---|
+| `LimitWarningCounter` | `limit_name` | `scope: app`, `actor_field: owner_id` |
+| `LimitWarningAggregate` | `limit_name` | `scope: org`, `entity_field: entity_id` |
+| `LimitWarningRate` | `meter_slug` | `scope: app`, `entity_field: entity_id`, `actor_field: owner_id` |
+
+All eight nodes accept the source-defined `entity_lookup` shape where entity resolution is relevant: `obj_table` and `obj_field` are required inside it, while `obj_schema` is optional.
 
 ## Billing Meters
 
@@ -137,3 +164,4 @@ A fallback pool shared across meters. A meter opts in by setting `credit_cost > 
 - **Events and achievement rewards:** [`constructive-events`](../constructive-events/SKILL.md)
 - **Entity types (per-entity limits):** [`constructive-entities`](../constructive-entities/SKILL.md)
 - **Blueprint definitions:** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
+- **Billing feature-pack UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

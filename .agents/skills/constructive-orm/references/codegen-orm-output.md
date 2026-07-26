@@ -74,13 +74,16 @@ Select types with const generics for type-narrowed queries:
 ```typescript
 import { createClient } from '@/generated/orm';
 
-const db = createClient({
-  endpoint: 'https://api.example.com/graphql',
-  headers: {
-    Authorization: `Bearer ${token}`,
-  },
-});
+function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 ```
+
+Create this binding per request or mounted tenant/session scope. Do not cache it
+across tenant or identity changes.
 
 ### Entity Models
 

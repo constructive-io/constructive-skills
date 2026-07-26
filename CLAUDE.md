@@ -10,12 +10,13 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 
 | Skill | Description |
 |-------|-------------|
-| **constructive-features** | Feature catalog — router mapping every app capability to the authoritative skill |
-| **constructive-builder** | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, and Chrome-verify a working CRUD app on Constructive in under 10 minutes (4 phases, 3 policy tiers) |
+| **constructive-features** | Intent router — maps capabilities to Blocks feature packs and authoritative domain skills |
+| **constructive-blocks** | Feature packs, Console Kit, registry installation, tenant descriptors, discovery, and runtime contracts |
+| **constructive-builder** | Agent-driven tenant frontend harness — assembles and acceptance-checks Blocks against an existing workspace and already-provisioned tenant |
 | **constructive-blueprints** | Declarative schema definition — blueprints, node type registry, module presets |
 | **constructive-auth** | Identity, login, sessions, MFA, devices, auth settings, service settings |
 | **constructive-principals** | Scoped sub-identities for API keys and agents — create/scope/revoke via the SDK ORM, read-only keys, org scoping |
-| **constructive-security** | Authorization — Safegres protocol, 23 Authz* policy types, RLS, grants, storage policies |
+| **constructive-security** | Authorization — 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, RLS, grants, storage policies |
 | **constructive-access-control** | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | Multi-tenancy — entity types, memberships, invites, entity-scoped storage, agent module |
 | **constructive-data-modeling** | Tables, fields, relations, constraints, indexes, database provisioning (SDK CRUD) |
@@ -29,10 +30,10 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-jobs** | Background jobs — JobTrigger, Process* wrappers, Knative worker, scheduling |
 | **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
-| **constructive-frontend** | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
-| **constructive-codegen** | Code generation pipeline — config, templates, AST transforms, introspection |
-| **constructive-orm** | Generated ORM — query patterns, mutations, relations, pagination, _meta |
-| **constructive-hooks** | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |
+| **constructive-frontend** | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| **constructive-codegen** | Optional generated clients for stable custom-domain schemas |
+| **constructive-orm** | Optional generated ORM patterns for stable custom-domain schemas |
+| **constructive-hooks** | Optional generated React Query hook patterns for fixed endpoints |
 | **constructive-platform** | Server config, services, domains, deployment, env, cloud functions, cnc CLI |
 
 ## Skill Structure

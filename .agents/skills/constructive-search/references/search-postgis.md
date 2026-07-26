@@ -386,6 +386,6 @@ const result = await db.restaurant.findMany({
 
 ## Cross-References
 
-- For database setup and Docker: See [pgpm skill](../../pgpm/SKILL.md) and [pgpm Docker reference](../../pgpm/references/docker.md)
+- For database setup and Docker, use the [`pgpm` skill in the Constructive repository](https://github.com/constructive-io/constructive/tree/main/.agents/skills/pgpm)
 - For plugin implementation details: See `graphile/graphile-postgis/` in `constructive-io/constructive`
-- For codegen and ORM patterns: See [codegen-orm-patterns.md](./codegen-orm-patterns.md)
+- For optional generated ORM patterns, see [codegen-orm-patterns.md](../../constructive-orm/references/codegen-orm-patterns.md)

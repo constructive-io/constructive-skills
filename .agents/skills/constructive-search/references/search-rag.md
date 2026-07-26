@@ -6,7 +6,7 @@ Use the codegen'd ORM to build Retrieval-Augmented Generation (RAG) pipelines. T
 
 1. **Vector column** provisioned on your table (via `@constructive-io/sdk` — see `constructive-agents` skill)
 2. **HNSW index** created on the embedding column
-3. **Codegen'd SDK** generated via `@constructive-io/graphql-codegen` (see `constructive-codegen` skill — [codegen.md](./codegen.md))
+3. **Optional generated SDK** for a stable custom-domain schema (see [`constructive-codegen`](../../constructive-codegen/SKILL.md))
 4. **Ollama** (or another provider) running for embeddings and chat
 
 ## Vector Search via ORM

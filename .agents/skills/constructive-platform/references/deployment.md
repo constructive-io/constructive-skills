@@ -201,6 +201,11 @@ The Constructive platform runs two API servers:
 - **Admin server** (`API_IS_PUBLIC=false`, port 3002) — uses header-based routing (`X-Api-Name`, `X-Database-Id`, `X-Meta-Schema`). Used internally by the Constructive admin UI.
 - **Public server** (`API_IS_PUBLIC=true`, port 3000) — uses domain-based routing. Serves external client applications.
 
+Tenant application UI, feature packs, and Console Kit use only the explicit
+public endpoints supplied by the host. They must not send admin routing headers
+or substitute the admin server when an RLS-protected public request returns no
+rows.
+
 ## Networking
 
 All Docker Compose services share the `constructive-net` network, allowing inter-service communication by container name (e.g., `postgres:5432` from within the `constructive-server` container).

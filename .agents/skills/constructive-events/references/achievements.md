@@ -73,7 +73,7 @@ EventTracker nodes record events → `record_event()` calls `upsert_achievement(
 
 ### Reward Types
 
-**`limit_credit`** — Grants credits to the limits module's `limit_credits` table. The `target_name` must match a limit provisioned by a `LimitCounter` node. These credits increase the user's effective limit cap.
+**`limit_credit`** — Grants credits to the limits module's `limit_credits` table. The `target_name` must match the named limit enforced by `LimitEnforceCounter` (or another compatible current limit node). These credits increase the user's effective limit cap.
 
 **`meter_credit`** — Grants credits to the billing module's `meter_credits` table. The `target_name` must match a meter slug from a provisioned `billing_module`. Requires both `events_module` and `billing_module` to be provisioned for the same database. These credits provide quota that is consumed by `record_usage()` calls.
 
@@ -166,7 +166,7 @@ Different entity types can have independent achievements. Use `entity_prefix` to
 
 ## Achievement + Limits Interaction
 
-Achievement rewards grant credits via the limits module. The `target_name` must match a limit provisioned by a `LimitCounter` or similar node:
+Achievement rewards grant credits via the limits module. The `target_name` must match a limit used by `LimitEnforceCounter` or another compatible current limit node:
 
 ```json
 {
@@ -174,7 +174,7 @@ Achievement rewards grant credits via the limits module. The `target_name` must 
     {
       "table_name": "projects",
       "nodes": [
-        { "$type": "LimitCounter", "data": { "limit_name": "projects" } },
+        { "$type": "LimitEnforceCounter", "data": { "limit_name": "projects" } },
         { "$type": "EventTracker", "data": { "event_name": "project_created", "events": ["INSERT"] } }
       ]
     }

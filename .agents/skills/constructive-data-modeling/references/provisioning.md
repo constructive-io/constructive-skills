@@ -1,82 +1,25 @@
-# Database Provisioning (End-to-End)
+# Database provisioning boundary
 
-## Client Setup
+Constructive DB owns backend presets, module closure, provisioning, endpoint creation, roles, grants, and RLS. Application skills must not copy those preset arrays, default to an “all modules” list, or patch the backend when frontend discovery reports an unavailable capability.
 
-```typescript
-import { createClient as createAuthClient }   from '@constructive-db/sdk/auth';
-import { createClient as createPublicClient } from '@constructive-db/sdk/public';
+## Inputs and outputs
 
-const authDb   = createAuthClient({ endpoint: 'http://auth.localhost:3000/graphql' });
-const publicDb = createPublicClient({ endpoint: 'http://api.localhost:3000/graphql' });
-```
+Choose the backend preset through the current Constructive DB mechanism. Keep that choice separate from the Blocks install root: a backend preset provisions capabilities, while a Blocks preset installs the supported frontend composition.
 
-## Step 1: Sign Up + Sign In
+Provisioning must return or be followed by a secret-free tenant descriptor containing:
 
-```typescript
-await authDb.mutation.signUp({ input: { email, password } }, { select: { ok: true, errors: true } }).execute();
+- the stable database ID;
+- an optional display name;
+- explicit semantic public GraphQL endpoints such as data, auth, admin, billing, storage, or notifications when those routes exist.
 
-const signIn = await authDb.mutation.signIn(
-  { input: { email, password } },
-  { select: { result: { select: { accessToken: true, userId: true } } } }
-).execute();
-const { accessToken, userId } = signIn.signIn.result;
-```
+Pass that descriptor to Console Kit. Do not derive `auth-*`, `app-public-*`, or any other sibling hostname from the database name. Do not pass private routing headers through application UI.
 
-## Step 2: Provision Database
+## After provisioning
 
-Always use `modules: ['all']` and `bootstrapUser: true`:
+1. Confirm the returned database identity and endpoint map belong to the same tenant.
+2. Model custom application tables through the supported SDK/metaschema surface.
+3. Apply and verify RLS through the security skill.
+4. Install the desired Blocks surface through [`constructive-blocks`](../../constructive-blocks/SKILL.md).
+5. Let Console Kit discover each installed capability from endpoint reachability, `_meta` where required, standard introspection, and authenticated runtime behavior.
 
-```typescript
-publicDb.setHeaders({ Authorization: `Bearer ${accessToken}` });
-
-const result = await publicDb.databaseProvisionModule.create({
-  data: {
-    databaseName: dbName,
-    ownerId: userId,
-    subdomain: dbName,
-    domain: 'localhost',
-    modules: ['all'],
-    bootstrapUser: true,
-  },
-  select: { id: true, databaseId: true, databaseName: true, status: true }
-}).execute();
-
-const dbId = result.createDatabaseProvisionModule?.databaseProvisionModule?.databaseId;
-```
-
-## Step 3: Apply Workarounds
-
-See `workarounds/fix-membership-defaults` and `workarounds/auto-verify-email`.
-
-## Step 4: Per-DB Sign In
-
-```typescript
-const dbAuth = createAuthClient({
-  endpoint: `http://auth-${dbName}.localhost:3000/graphql`
-});
-const dbSignIn = await dbAuth.mutation.signIn(
-  { input: { email, password } },
-  { select: { result: { select: { accessToken: true, userId: true } } } }
-).execute();
-const dbAccessToken = dbSignIn.signIn.result.accessToken;
-```
-
-## Step 5: Use Per-DB App API
-
-```typescript
-import { createClient } from './generated/<db-name>/sdk/orm';
-
-const db = createClient({
-  endpoint: `http://app-public-${dbName}.localhost:3000/graphql`,
-  headers: { Authorization: `Bearer ${dbAccessToken}` },
-});
-
-await db.notes.create({ data: { content: 'Hello' }, select: { id: true } }).execute();
-```
-
-## Module Reference
-
-| Modules | What it installs |
-|---|---|
-| `['all']` | Everything — always use this for demos and real apps |
-| `['uuid_module', 'users_module']` | Minimal — breaks app API auth |
+An installed pack may correctly remain partial or unavailable when the provisioned tenant does not expose its required public route. That is frontend compatibility state, not authorization to modify Constructive DB.

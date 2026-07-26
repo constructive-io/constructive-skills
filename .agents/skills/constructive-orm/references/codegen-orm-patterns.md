@@ -4,32 +4,28 @@ Advanced patterns for using the generated Prisma-like ORM client.
 
 ## Client Setup
 
-### Singleton Pattern
+### Per-Scope Client
 
 ```typescript
 // src/lib/db.ts
 import { createClient } from '@/generated/orm';
 
-let client: ReturnType<typeof createClient> | null = null;
-
-export function getDb() {
-  if (!client) {
-    client = createClient({
-      endpoint: process.env.GRAPHQL_URL!,
-      headers: {
-        Authorization: `Bearer ${process.env.API_TOKEN}`,
-      },
-    });
-  }
-  return client;
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 }
 
 // Usage
-import { getDb } from '@/lib/db';
+import { createDomainClient } from '@/lib/db';
 
-const db = getDb();
+const db = createDomainClient(dataEndpoint, accessToken);
 const users = await db.user.findMany({...}).execute();
 ```
+
+Never cache this client across tenant or identity scopes. In server code, create
+it per request; in a browser, bind it to one mounted tenant/session instance.
 
 ### Per-Request Client (Next.js Server Components)
 
@@ -38,19 +34,19 @@ const users = await db.user.findMany({...}).execute();
 import { createClient } from '@/generated/orm';
 import { cookies } from 'next/headers';
 
-export function createRequestClient() {
-  const cookieStore = cookies();
+export async function createRequestClient(endpoint: string) {
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth-token')?.value;
 
   return createClient({
-    endpoint: process.env.GRAPHQL_URL!,
+    endpoint,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 }
 
 // Usage in Server Component
 async function UserPage({ params }: { params: { id: string } }) {
-  const db = createRequestClient();
+  const db = await createRequestClient(dataEndpoint);
   const user = await db.user.findOne({
     id: params.id,
     select: { id: true, name: true },
@@ -102,9 +98,7 @@ const result = await db.user.findMany({
 
 ```typescript
 // Search with multiple conditions
-async function searchUsers(query: string, filters: UserFilters) {
-  const db = getDb();
-
+async function searchUsers(db: DomainClient, query: string, filters: UserFilters) {
   return db.user.findMany({
     select: { id: true, name: true, email: true, role: true },
     where: {
@@ -170,9 +164,7 @@ const users = await db.user.findMany({
 
 ```typescript
 // Get counts with filters
-async function getUserStats() {
-  const db = getDb();
-
+async function getUserStats(db: DomainClient) {
   const [totalResult, activeResult, adminResult] = await Promise.all([
     db.user.findMany({
       select: { id: true },
@@ -201,9 +193,7 @@ async function getUserStats() {
 
 ```typescript
 // Load user with all related data
-async function getUserWithDetails(id: string) {
-  const db = getDb();
-
+async function getUserWithDetails(db: DomainClient, id: string) {
   return db.user.findOne({
     id,
     select: {
@@ -286,9 +276,7 @@ const user = await db.user.create({
 ### Sequential Operations
 
 ```typescript
-async function transferCredits(fromId: string, toId: string, amount: number) {
-  const db = getDb();
-
+async function transferCredits(db: DomainClient, fromId: string, toId: string, amount: number) {
   // Verify source has enough credits
   const source = await db.user.findOne({
     id: fromId,
@@ -331,8 +319,7 @@ async function transferCredits(fromId: string, toId: string, amount: number) {
 
 ```typescript
 // Update multiple records
-async function deactivateInactiveUsers(daysSinceLogin: number) {
-  const db = getDb();
+async function deactivateInactiveUsers(db: DomainClient, daysSinceLogin: number) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysSinceLogin);
 
@@ -399,8 +386,13 @@ import { Redis } from 'ioredis';
 
 const redis = new Redis(process.env.REDIS_URL);
 
-async function getCachedUser(id: string) {
-  const cacheKey = `user:${id}`;
+async function getCachedUser(
+  db: DomainClient,
+  databaseId: string,
+  identityId: string,
+  id: string,
+) {
+  const cacheKey = `${databaseId}:${identityId}:user:${id}`;
 
   // Check cache
   const cached = await redis.get(cacheKey);
@@ -408,8 +400,7 @@ async function getCachedUser(id: string) {
     return JSON.parse(cached);
   }
 
-  // Fetch from database
-  const db = getDb();
+  // Fetch through the caller's scoped client
   const result = await db.user.findOne({
     id,
     select: { id: true, name: true, email: true, role: true },
@@ -424,8 +415,8 @@ async function getCachedUser(id: string) {
   return null;
 }
 
-async function invalidateUserCache(id: string) {
-  await redis.del(`user:${id}`);
+async function invalidateUserCache(databaseId: string, identityId: string, id: string) {
+  await redis.del(`${databaseId}:${identityId}:user:${id}`);
 }
 ```
 
@@ -473,116 +464,26 @@ const result = await executeWithLogging(
 ```typescript
 import { createClient } from '@/generated/orm';
 
-const db = createClient({
-  endpoint: 'https://api.example.com/graphql',
-  headers: { Authorization: 'Bearer your-token' },
-});
+function createScopedClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 
 // Use the client for requests
+const db = createScopedClient(dataEndpoint, accessToken);
 const users = await db.user.findMany({}).execute();
 ```
 
-### Creating Authenticated Client After Login
+### Identity changes
 
-```typescript
-// Create unauthenticated client for login
-const db = createClient({
-  endpoint: 'https://api.example.com/graphql',
-});
+When the tenant or identity changes, discard the old client and create a new
+binding from the host's explicit endpoint and session. Clear identity-scoped
+query caches before another user can inherit them. Authentication belongs to
+the Authentication feature-pack adapter or an explicit auth client; do not add
+an ad hoc session header to a domain ORM client.
 
-// Sign in
-const result = await db.mutation.signIn({
-  input: { email: 'user@example.com', password: 'password' },
-}, {
-  select: {
-    result: {
-      select: { sessionId: true },
-    },
-  },
-}).execute();
-
-if (result.ok && result.data.signIn.result?.sessionId) {
-  // Create new authenticated client with session
-  const authDb = createClient({
-    endpoint: 'https://api.example.com/graphql',
-    headers: {
-      'X-Session-Id': result.data.signIn.result.sessionId,
-    },
-  });
-  
-  // Use authenticated client for subsequent requests
-  const user = await authDb.query.currentUser({
-    select: { id: true, username: true },
-  }).execute();
-}
-```
-
-## Type-Safe Utilities
-
-### Repository Pattern
-
-```typescript
-// src/repositories/user.repository.ts
-import { getDb } from '@/lib/db';
-import type { User, CreateUserInput, UpdateUserInput } from '@/generated/orm';
-
-const defaultSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  createdAt: true,
-} as const;
-
-export const userRepository = {
-  async findById(id: string) {
-    const db = getDb();
-    return db.user.findOne({
-      id,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async findByEmail(email: string) {
-    const db = getDb();
-    const result = await db.user.findMany({
-      select: defaultSelect,
-      where: { email: { equalTo: email } },
-      first: 1,
-    }).execute();
-
-    if (result.ok && result.value.length > 0) {
-      return { ok: true, value: result.value[0] } as const;
-    }
-    return { ok: false, error: { message: 'User not found' } } as const;
-  },
-
-  async create(input: CreateUserInput) {
-    const db = getDb();
-    return db.user.create({
-      input,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async update(id: string, patch: UpdateUserInput) {
-    const db = getDb();
-    return db.user.update({
-      id,
-      patch,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async delete(id: string) {
-    const db = getDb();
-    return db.user.delete({ id }).execute();
-  },
-};
-
-// Usage
-const user = await userRepository.findById('123');
-if (user.ok) {
-  console.log(user.value.name);
-}
-```
+Repository helpers should accept that scoped client as an explicit dependency.
+This keeps endpoint, identity, and cache ownership visible at the call site and
+prevents a repository module from hiding a cross-tenant singleton.

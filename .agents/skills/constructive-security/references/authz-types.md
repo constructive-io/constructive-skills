@@ -1,10 +1,10 @@
 # Safegres Authz* Policy Types — Detailed Reference
 
-Complete documentation for all 22 leaf policy node types and the `AuthzComposite` meta-node.
+Complete documentation for the 25 Authz nodes exported by the canonical Constructive DB registry, plus the platform-applied `AuthzHumanOnly` guard. `AuthzComposite` composes registry nodes, while `AuthzColumnSecurity` generates write triggers instead of stored RLS policies.
 
-> **Registry note:** 21 of these (including `AuthzSystemOnly` and the three `AuthzValue*` nodes) are blueprint-selectable RLS nodes in the `node_type_registry`. `AuthzHumanOnly` is the exception — it is a platform-applied guard on credential/principal mutations rather than a user-selectable node, documented here for completeness.
+> **Source of truth:** use `packages/node-type-registry/src/authz/index.ts` and the registry's `allNodeTypes` assembly in `constructive-db`. The generated blueprint union currently contains 24 of the 25 registry Authz nodes and omits `AuthzColumnSecurity`; do not infer that the node is unavailable or hand-edit generated output. Regenerate it through the backend codegen workflow only when backend work is explicitly in scope.
 
-Each policy is described as:
+Each mechanism is described as:
 - **Intent**: what it's for
 - **Config**: JSON shape (keys)
 - **Semantics**: what it authorizes (in words)
@@ -12,7 +12,7 @@ Each policy is described as:
 
 ---
 
-## 1) `AuthzDirectOwner`
+## `AuthzDirectOwner`
 
 **Intent:** Direct personal ownership.
 
@@ -31,7 +31,7 @@ Each policy is described as:
 
 ---
 
-## 2) `AuthzDirectOwnerAny`
+## `AuthzDirectOwnerAny`
 
 **Intent:** Multi-owner OR logic.
 
@@ -47,7 +47,7 @@ Each policy is described as:
 
 ---
 
-## 3) `AuthzAppMembership`
+## `AuthzAppMembership`
 
 **Intent:** App-level membership gate (hardcoded to `membership_type=1`).
 
@@ -80,7 +80,36 @@ Optional keys:
 
 ---
 
-## 4) `AuthzEntityMembership`
+## `AuthzAppMemberOwner`
+
+**Intent:** Require both direct row ownership and active app membership.
+
+**Config (typical):**
+```json
+{
+  "owner_field": "owner_id",
+  "permission": "write_content"
+}
+```
+
+Required key:
+- `owner_field` — column containing the owning user's id.
+
+Optional keys:
+- `permission` / `permissions`
+- `is_admin` / `is_owner`
+
+**Semantics:** Authorize only when `{owner_field}` equals the actor's user id **and** the actor has app-level membership (`membership_type=1`) satisfying any configured permission or role flags.
+
+**Use when:**
+- A globally scoped row is author-owned, but authorship must stop granting access when the author loses app membership.
+
+**Avoid when:**
+- The row belongs to an organization or another entity. Use `AuthzMemberOwner` when the entity is directly on the row, or `AuthzRelatedMemberOwner` when it is reached through a related table.
+
+---
+
+## `AuthzEntityMembership`
 
 **Intent:** **Bound** membership-to-row.
 
@@ -90,6 +119,8 @@ Optional keys:
 ```
 
 Optional keys:
+- `sel_field` (default `entity_id`)
+- `membership_type` or `entity_type`
 - `permission` / `permissions`
 - `is_admin` / `is_owner`
 
@@ -101,7 +132,7 @@ Optional keys:
 
 ---
 
-## 5) `AuthzMemberOwner`
+## `AuthzMemberOwner`
 
 **Intent:** Compound policy requiring BOTH ownership AND entity membership. The actor must own the row (owner_field = current_user_id) AND be a member of the entity referenced by entity_field.
 
@@ -134,7 +165,7 @@ Optional keys:
 
 ---
 
-## 6) `AuthzRelatedEntityMembership`
+## `AuthzRelatedEntityMembership`
 
 **Intent:** Entity membership where the entity isn't directly on the protected row, but reachable via a join.
 
@@ -154,9 +185,52 @@ Optional keys:
 **Use when:**
 - Protected rows reference another table (FK), and that related table carries `entity_id` / org id.
 
+Required and lookup keys:
+- `entity_field` is required.
+- Select the membership scope with `membership_type` or `entity_type`.
+- Identify the related table with `obj_schema` + `obj_table`, or `obj_table_id`; identify its entity field with `obj_field`, or `obj_field_id`.
+- Optional membership filters are `permission` / `permissions`, `is_admin`, and `is_owner`; `sel_field` and `sprt_join_field` default to `entity_id`.
+
 ---
 
-## 7) `AuthzPeerOwnership`
+## `AuthzRelatedMemberOwner`
+
+**Intent:** Require direct row ownership and membership in an entity reached through a related table.
+
+**Config (typical):**
+```json
+{
+  "owner_field": "owner_id",
+  "entity_field": "post_id",
+  "membership_type": 2,
+  "obj_schema": "public",
+  "obj_table": "posts",
+  "obj_field": "organization_id"
+}
+```
+
+Required keys:
+- `owner_field` — column containing the owning user's id.
+- `entity_field` — column on the protected row referencing the related table.
+
+Related-table keys:
+- Identify the related table with `obj_schema` + `obj_table`, or with `obj_table_id`.
+- Identify its entity field with `obj_field`, or with `obj_field_id`.
+- `sel_field` and `sprt_join_field` default to `entity_id`.
+
+Membership filters may use `membership_type` or `entity_type`, plus `permission` / `permissions`, `is_admin`, and `is_owner`.
+
+**Semantics:** Authorize only when `{owner_field}` equals the actor's user id **and** the related row resolves to an entity in which the actor has the required membership. Ownership stops granting access when that membership is lost.
+
+**Use when:**
+- A child row is author-owned while its membership scope exists only on a parent or related object.
+
+**Avoid when:**
+- The entity id is already on the protected row. Use `AuthzMemberOwner` instead.
+
+---
+
+## `AuthzPeerOwnership`
 
 **Intent:** Peer visibility via shared entity membership (direct owner field on protected row).
 
@@ -182,7 +256,7 @@ Optional keys:
 
 ---
 
-## 8) `AuthzRelatedPeerOwnership`
+## `AuthzRelatedPeerOwnership`
 
 **Intent:** Peer visibility via shared entity membership **through a related table**.
 
@@ -196,6 +270,11 @@ Optional keys:
   "obj_field": "sender_id"
 }
 ```
+
+Required and lookup keys:
+- `entity_field` is required.
+- Select the membership scope with `membership_type` or `entity_type`.
+- Identify the related table with `obj_schema` + `obj_table`, or `obj_table_id`; identify its owner field with `obj_field`, or `obj_field_id`.
 
 Optional keys:
 - `obj_ref_field` (defaults to `id`)
@@ -212,7 +291,7 @@ Optional keys:
 
 ---
 
-## 9) `AuthzOrgHierarchy`
+## `AuthzOrgHierarchy`
 
 **Intent:** Visibility via org hierarchy (manager/subordinate relationships).
 
@@ -220,6 +299,14 @@ Optional keys:
 ```json
 { "direction": "down", "anchor_field": "owner_id", "entity_field": "entity_id" }
 ```
+
+Required keys:
+- `direction` — `down` lets managers see subordinate data; `up` lets subordinates see manager data.
+- `anchor_field` — user field that anchors hierarchy traversal.
+
+Optional keys:
+- `entity_field` (default `entity_id`)
+- `max_depth` — maximum hierarchy depth to traverse.
 
 **Semantics:** Authorize based on hierarchy closure relationships anchored at a user field (often `owner_id`).
 
@@ -229,7 +316,7 @@ Optional keys:
 
 ---
 
-## 10) `AuthzTemporal`
+## `AuthzTemporal`
 
 **Intent:** Time-window constraints.
 
@@ -262,7 +349,7 @@ Optional keys:
 
 ---
 
-## 11) `AuthzPublishable`
+## `AuthzPublishable`
 
 > **READ-only policy.** `AuthzPublishable` should only be applied to the `select` privilege. It controls who can *read* published content — it should **never** be used for `insert`, `update`, or `delete`. For write operations (authorship, editing, deletion), use an identity-based policy like `AuthzEntityMembership` or `AuthzDirectOwner`. A typical blog pattern is: `AuthzEntityMembership` for all CRUD privileges, plus a second `AuthzPublishable` policy **only for `select`** to open reads to the public.
 
@@ -296,7 +383,7 @@ Optional keys:
 
 ---
 
-## 12) `AuthzMemberList`
+## `AuthzMemberList`
 
 > **Not recommended.** This policy relies on a UUID array column rather than a proper foreign-key relationship. It does not scale well and bypasses normal relational integrity. Prefer `AuthzEntityMembership` or `AuthzPeerOwnership` with proper FK-based membership tables when possible.
 
@@ -314,7 +401,7 @@ Optional keys:
 
 ---
 
-## 13) `AuthzRelatedMemberList`
+## `AuthzRelatedMemberList`
 
 > **Not recommended.** Same concern as `AuthzMemberList` -- relies on a UUID array column in a related table rather than proper FK-based membership. Prefer FK-based policies when possible.
 
@@ -331,6 +418,8 @@ Optional keys:
 }
 ```
 
+Required keys are `owned_table_key`, `owned_table_ref_key`, and `this_object_key`. Identify the related table with `owned_schema` + `owned_table`, or with `owned_table_id`.
+
 **Semantics:** "Follow a reference to a related row that contains an array of member ids."
 
 **Use when:**
@@ -338,7 +427,7 @@ Optional keys:
 
 ---
 
-## 14) `AuthzAllowAll`
+## `AuthzAllowAll`
 
 > **WARNING: `AuthzAllowAll` is almost never what you want.** It grants unconditional access to every authenticated user for the specified privilege. Before using it, ask yourself: "Should literally every authenticated user be able to read/write this data?" If the answer is no (and it usually is), use a scoped policy like `AuthzDirectOwner` or `AuthzEntityMembership` instead.
 >
@@ -364,7 +453,7 @@ Optional keys:
 
 ---
 
-## 15) `AuthzDenyAll`
+## `AuthzDenyAll`
 
 **Intent:** Unconditional deny.
 
@@ -373,14 +462,15 @@ Optional keys:
 {}
 ```
 
-**Semantics:** Never authorizes.
+**Semantics:** Generates a `FALSE` expression. As the only permissive policy for a privilege it grants nothing, but another passing permissive policy can still authorize the row.
 
 **Use when:**
-- Explicitly blocking a privilege.
+- As a restrictive policy (`permissive: false`) when a privilege must remain denied even alongside other permissive policies.
+- As an explicit no-access placeholder when it is the only permissive policy for that privilege.
 
 ---
 
-## 16) `AuthzFilePath`
+## `AuthzFilePath`
 
 **Intent:** Path-scoped file sharing via ltree containment. Grants access when a `path_shares` row matches the current user, bucket, and an ancestor path with the required permission.
 
@@ -395,15 +485,13 @@ Optional keys:
 ```
 
 Required keys:
-- `shares_schema` — schema of the path_shares table
-- `shares_table` — name of the path_shares table
-- `files_table` — name of the files table (qualifies column refs in EXISTS subquery)
-- `permission_field` — boolean column on path_shares granting the required permission (e.g. `can_read`, `can_write`)
+- Identify the path-shares table with `shares_schema` + `shares_table`, or with `shares_table_id`.
+- `permission_field` — boolean column on path_shares granting the required permission (e.g. `can_read`, `can_write`).
 
 Optional keys:
-- `files_schema` — schema of the files table (defaults to same as shares_schema)
-- `bucket_field` — column on the files table referencing the bucket (default `"bucket_id"`)
-- `path_field` — ltree column on the files table representing the file path (default `"path"`)
+- Identify the files table with `files_schema` + `files_table`, or with `files_table_id`, when qualified outer-row references are needed.
+- `bucket_field` — column on the files table referencing the bucket (default `"bucket_id"`).
+- `path_field` — ltree column on the files table representing the file path (default `"path"`).
 
 **Semantics:** EXISTS subquery checks for a `path_shares` row where the actor matches, the bucket matches, the share's path is an ancestor of (or equal to) the file's path via ltree containment (`@>`), and the `permission_field` is true.
 
@@ -415,7 +503,7 @@ Optional keys:
 
 ---
 
-## 17) `AuthzNotReadOnly`
+## `AuthzNotReadOnly`
 
 > **Restrictive policy.** `AuthzNotReadOnly` should be used as a restrictive counterpart to a permissive identity policy (e.g. `AuthzEntityMembership`). It blocks write operations for members whose `is_read_only` flag is true on the SPRT.
 
@@ -450,7 +538,7 @@ Effective: org members can read; org members with is_read_only=true cannot inser
 
 ---
 
-## 18) `AuthzSystemOnly`
+## `AuthzSystemOnly`
 
 > **Restrictive, machine-only.** Restricts a privilege to system-initiated sessions (database triggers, background jobs). Normal API requests — even the owning human or an admin — are denied.
 
@@ -483,11 +571,11 @@ Effective: org members can read; only system sessions (triggers/jobs) can write
 
 ---
 
-## 19) `AuthzHumanOnly`
+## `AuthzHumanOnly`
 
 > **Guard-style, human-only.** Blocks principals (agents / API keys) from a sensitive mutation so that only the owning human can perform it. This is the counterpart to `AuthzSystemOnly`: `AuthzHumanOnly` blocks non-human principals, `AuthzSystemOnly` blocks everyone who is not the platform.
 >
-> **Note:** Unlike the other entries, `AuthzHumanOnly` is not a blueprint-selectable RLS node in the `node_type_registry`; it is applied by the platform as an inline guard inside SECURITY DEFINER credential/principal mutations. It is documented here for completeness. For the SQL-level details see the `constructive-db-principals` and `constructive-db-security` skills.
+> **Note:** `AuthzHumanOnly` is outside the `node_type_registry` and cannot be selected in a blueprint. The platform applies it as an inline guard inside SECURITY DEFINER credential/principal mutations. For the SQL-level details see the `constructive-db-principals` and `constructive-db-security` skills.
 
 **Intent:** Only a human session (not a delegated principal) may call the operation.
 
@@ -508,7 +596,7 @@ Effective: org members can read; only system sessions (triggers/jobs) can write
 
 ---
 
-## 20) `AuthzValueAllowed`
+## `AuthzValueAllowed`
 
 **Intent:** Check a local column against a set of allowed values.
 
@@ -544,7 +632,7 @@ Required keys:
 
 ---
 
-## 21) `AuthzValueExists`
+## `AuthzValueExists`
 
 **Intent:** `EXISTS` in a referenced table, joined to the protected row.
 
@@ -564,8 +652,8 @@ Required keys:
 ```
 
 Required keys:
-- `ref_schema` / `ref_table` — target table to check
-- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the ref table
+- Identify the referenced table with `ref_schema` + `ref_table`, or with `ref_table_id`.
+- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the referenced table; each entry requires both columns and defaults `operator` to `=`.
 
 Optional keys:
 - `conditions` — array of `build_condition_expr` conditions evaluated against the ref table (alias `d` by default)
@@ -583,7 +671,7 @@ Optional keys:
 
 ---
 
-## 22) `AuthzValueMatch`
+## `AuthzValueMatch`
 
 **Intent:** `EXISTS` in a referenced table where a ref column matches an allowed set.
 
@@ -608,8 +696,8 @@ Optional keys:
 ```
 
 Required keys:
-- `ref_schema` / `ref_table` — target table
-- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the ref table
+- Identify the referenced table with `ref_schema` + `ref_table`, or with `ref_table_id`.
+- `join` — array of `{ local_column, ref_column, operator }` linking the protected row to the referenced table; each entry requires both columns and defaults `operator` to `=`.
 - `match` — `{ ref_column, allowed, operator }` (same operator set as `AuthzValueAllowed`)
 
 Optional keys:
@@ -625,6 +713,49 @@ Optional keys:
 
 > **Warning: `join` is currently intended for `INSERT` (`WITH CHECK`) policies only.**
 > Same caveat as `AuthzValueExists`: the `join` references the protected row by the protected table name and is designed for `INSERT` (`WITH CHECK`). Using it for `UPDATE`/`DELETE`/`SELECT` can reference the wrong row alias.
+
+---
+
+## `AuthzColumnSecurity` (write-trigger node)
+
+`AuthzColumnSecurity` is a registry Authz node, but it does not create a stored RLS policy. It generates `BEFORE INSERT` / `BEFORE UPDATE` triggers that authorize writes to guarded columns; the nested Authz expression uses the normal authorization compiler with protected-row references rebound to `NEW`.
+
+**Config (transition guard):**
+```json
+{
+  "columns": ["role"],
+  "rule": "transition",
+  "allowed": ["member->admin"],
+  "authz": {
+    "AuthzAppMembership": {
+      "is_admin": true
+    }
+  },
+  "allow_system": true,
+  "error_code": "ROLE_TRANSITION_FORBIDDEN",
+  "error_message": "Only an app admin may promote a member."
+}
+```
+
+Required keys:
+- `columns` — columns sharing the same guard.
+- `rule` — one of `set_true`, `set_false`, `set_values`, `writable_when`, `transition`, or `immutable`.
+
+Rule-specific keys:
+- `authz` — any normal Authz node; required for every rule except `immutable`.
+- `values` — values that arm a `set_values` guard.
+- `allowed` — guarded `"from->to"` pairs for a `transition` rule.
+- `allow_system` — permit system-role provisioning or seed writes to bypass the guard; defaults to `false`.
+- `error_code` / `error_message` — stable machine and human denial details.
+
+**Semantics:** The trigger evaluates the nested Authz expression only when the configured write pattern occurs. `immutable` delegates to the native immutable-fields generator and does not take a nested `authz` expression.
+
+**Use when:**
+- Writing a sensitive field is a privilege escalation, such as publishing a row, changing a role, or editing a managed field.
+- Row visibility and row mutation are otherwise valid, but a subset of column changes needs stronger authorization.
+
+**Avoid when:**
+- Access depends only on which rows an actor may select or mutate. Use an RLS Authz node instead.
 
 ---
 

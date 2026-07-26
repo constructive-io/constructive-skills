@@ -10,6 +10,8 @@ metadata:
 
 The access control model — how users get permissions, how roles and profiles organize them, and how access composes across scopes. This skill covers the semantic layer: what access means in a Constructive app, how to configure it via blueprints and the ORM, and how the different layers (roles, profiles, grants, defaults) compose into effective permissions.
 
+For application UI, the App access and Organizations feature packs expose the corresponding membership, invitation, profile, permission, and default-management surfaces. Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for installation, standalone host contracts, and Console module discovery and adapters; this skill remains the authority for access semantics.
+
 ## When to Apply
 
 Use this skill when:
@@ -94,3 +96,4 @@ Every entity type automatically gets a `permissions_module` and `memberships_mod
 - **Invite system:** [`constructive-entities` → invites.md](../constructive-entities/references/invites.md) — profile assignment on invite
 - **Read-only access:** [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md) — `isReadOnly` membership field and read-only API keys
 - **Billing/limits:** [`constructive-billing`](../constructive-billing/SKILL.md) — quota enforcement (separate from permission enforcement)
+- **App access and Organizations UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md) — standalone host contracts plus Console module discovery and adapters
