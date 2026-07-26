@@ -1,0 +1,556 @@
+{
+  "schemaVersion": 2,
+  "kind": "constructive.tenant-frontend-brief",
+  "app": {
+    "id": "project-console",
+    "name": "Project Console",
+    "workspace": "."
+  },
+  "tenant": {
+    "descriptorPath": "./tenant-database.template.json",
+    "provenance": {
+      "kind": "preset",
+      "preset": "auth:hardened"
+    }
+  },
+  "frontend": {
+    "composition": {
+      "kind": "console-preset",
+      "surfaceId": "console",
+      "root": "preset-auth-hardened",
+      "mountPath": "/console",
+      "session": {
+        "kind": "internal-auth-endpoint",
+        "authEndpointKind": "auth",
+        "csrf": {
+          "owner": "console"
+        },
+        "callback": {
+          "owner": "console"
+        }
+      }
+    }
+  },
+  "domain": {
+    "routes": [
+      {
+        "id": "projects",
+        "path": "/projects",
+        "label": "Projects",
+        "resource": "Project",
+        "mode": "crud"
+      }
+    ]
+  },
+  "acceptance": {
+    "capabilities": [
+      {
+        "surfaceId": "console",
+        "featurePack": "data",
+        "expected": "ready",
+        "binding": {
+          "kind": "first-party",
+          "verificationProfileId": "tenant-runtime",
+          "routes": [
+            {
+              "capability": "data.meta",
+              "alternativeId": "data.meta.path-1",
+              "endpointKind": "data"
+            },
+            {
+              "capability": "data.introspection",
+              "alternativeId": "data.introspection.path-1",
+              "endpointKind": "data"
+            }
+          ]
+        }
+      },
+      {
+        "surfaceId": "console",
+        "featurePack": "auth",
+        "expected": "ready",
+        "binding": {
+          "kind": "first-party",
+          "verificationProfileId": "tenant-runtime",
+          "routes": [
+            {
+              "capability": "auth.credentials",
+              "alternativeId": "auth.credentials.path-1",
+              "endpointKind": "auth"
+            },
+            {
+              "capability": "auth.sessions",
+              "alternativeId": "auth.sessions.path-1",
+              "endpointKind": "auth"
+            },
+            {
+              "capability": "auth.password",
+              "alternativeId": "auth.password.path-1",
+              "endpointKind": "auth"
+            }
+          ]
+        }
+      },
+      {
+        "surfaceId": "console",
+        "featurePack": "users",
+        "expected": "ready",
+        "binding": {
+          "kind": "first-party",
+          "verificationProfileId": "tenant-runtime",
+          "routes": [
+            {
+              "capability": "users.directory",
+              "alternativeId": "users.directory.path-1",
+              "endpointKind": "auth"
+            },
+            {
+              "capability": "users.memberships",
+              "alternativeId": "users.memberships.path-1",
+              "endpointKind": "admin"
+            }
+          ]
+        }
+      }
+    ],
+    "isolationTenants": [
+      {
+        "id": "other-tenant",
+        "descriptorPath": "./tenant-database.isolation.template.json",
+        "sessionRef": "qa.otherTenantSession"
+      }
+    ],
+    "actors": [
+      {
+        "id": "owner",
+        "kind": "account",
+        "accountRef": "qa.owner",
+        "tenantScope": {
+          "kind": "primary",
+          "databaseId": "tenant_database_id"
+        },
+        "sessionState": "active"
+      },
+      {
+        "id": "peer",
+        "kind": "account",
+        "accountRef": "qa.peer",
+        "tenantScope": {
+          "kind": "primary",
+          "databaseId": "tenant_database_id"
+        },
+        "sessionState": "active"
+      },
+      {
+        "id": "revoked",
+        "kind": "account",
+        "accountRef": "qa.revoked",
+        "tenantScope": {
+          "kind": "primary",
+          "databaseId": "tenant_database_id"
+        },
+        "sessionState": "revoked"
+      },
+      {
+        "id": "anonymous",
+        "kind": "anonymous",
+        "tenantScope": {
+          "kind": "primary",
+          "databaseId": "tenant_database_id"
+        }
+      },
+      {
+        "id": "cross-tenant-account",
+        "kind": "account",
+        "accountRef": "qa.otherTenantAccount",
+        "tenantScope": {
+          "kind": "isolation",
+          "tenantRef": "other-tenant",
+          "databaseId": "isolation_tenant_database_id"
+        },
+        "sessionState": "active"
+      }
+    ],
+    "scenarios": [
+      {
+        "id": "auth-lifecycle",
+        "kind": "auth",
+        "target": {
+          "kind": "surface",
+          "surfaceId": "console",
+          "featurePack": "auth"
+        },
+        "actors": [
+          "owner",
+          "revoked"
+        ],
+        "checks": [
+          {
+            "id": "sign-up",
+            "expected": "ready"
+          },
+          {
+            "id": "sign-in",
+            "expected": "ready"
+          },
+          {
+            "id": "session-restore",
+            "expected": "ready"
+          },
+          {
+            "id": "sign-out",
+            "expected": "ready"
+          },
+          {
+            "id": "forgot-password",
+            "expected": "ready"
+          },
+          {
+            "id": "reset-password",
+            "expected": "ready"
+          },
+          {
+            "id": "revoked-session-denied",
+            "expected": "ready"
+          }
+        ]
+      },
+      {
+        "id": "data-explorer",
+        "kind": "feature",
+        "target": {
+          "kind": "surface",
+          "surfaceId": "console",
+          "featurePack": "data"
+        },
+        "actors": [
+          "owner"
+        ],
+        "capabilityChecks": [
+          {
+            "capability": "data.meta",
+            "expected": "ready"
+          },
+          {
+            "capability": "data.introspection",
+            "expected": "ready"
+          }
+        ],
+        "observations": [
+          "The actor can inspect available tables and open an executable table view."
+        ]
+      },
+      {
+        "id": "user-management",
+        "kind": "feature",
+        "target": {
+          "kind": "surface",
+          "surfaceId": "console",
+          "featurePack": "users"
+        },
+        "actors": [
+          "owner"
+        ],
+        "capabilityChecks": [
+          {
+            "capability": "users.directory",
+            "expected": "ready"
+          },
+          {
+            "capability": "users.memberships",
+            "expected": "ready"
+          }
+        ],
+        "observations": [
+          "The actor can inspect users and application memberships without operator authority."
+        ]
+      },
+      {
+        "id": "project-crud",
+        "kind": "crud",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner"
+        ],
+        "operations": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ],
+        "reloadPersistence": true
+      },
+      {
+        "id": "project-owner-policy",
+        "kind": "rls",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner"
+        ],
+        "semantics": "same-tenant-owner",
+        "expectations": [
+          {
+            "operation": "create",
+            "outcome": "allow"
+          },
+          {
+            "operation": "read",
+            "outcome": "allow"
+          },
+          {
+            "operation": "update",
+            "outcome": "allow"
+          },
+          {
+            "operation": "delete",
+            "outcome": "allow"
+          }
+        ],
+        "unchangedAfterDeniedMutation": false
+      },
+      {
+        "id": "project-peer-policy",
+        "kind": "rls",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner",
+          "peer"
+        ],
+        "semantics": "same-tenant-peer",
+        "expectations": [
+          {
+            "operation": "create",
+            "outcome": "deny"
+          },
+          {
+            "operation": "read",
+            "outcome": "deny"
+          },
+          {
+            "operation": "update",
+            "outcome": "deny"
+          },
+          {
+            "operation": "delete",
+            "outcome": "deny"
+          }
+        ],
+        "unchangedAfterDeniedMutation": true
+      },
+      {
+        "id": "project-anonymous-policy",
+        "kind": "rls",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner",
+          "anonymous"
+        ],
+        "semantics": "anonymous",
+        "expectations": [
+          {
+            "operation": "create",
+            "outcome": "deny"
+          },
+          {
+            "operation": "read",
+            "outcome": "deny"
+          },
+          {
+            "operation": "update",
+            "outcome": "deny"
+          },
+          {
+            "operation": "delete",
+            "outcome": "deny"
+          }
+        ],
+        "unchangedAfterDeniedMutation": true
+      },
+      {
+        "id": "project-revoked-session-policy",
+        "kind": "rls",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner",
+          "revoked"
+        ],
+        "semantics": "revoked-session",
+        "expectations": [
+          {
+            "operation": "create",
+            "outcome": "deny"
+          },
+          {
+            "operation": "read",
+            "outcome": "deny"
+          },
+          {
+            "operation": "update",
+            "outcome": "deny"
+          },
+          {
+            "operation": "delete",
+            "outcome": "deny"
+          }
+        ],
+        "unchangedAfterDeniedMutation": true
+      },
+      {
+        "id": "project-cross-tenant-policy",
+        "kind": "rls",
+        "target": {
+          "kind": "domain-route",
+          "routeId": "projects",
+          "resource": "Project"
+        },
+        "actors": [
+          "owner",
+          "cross-tenant-account"
+        ],
+        "semantics": "cross-tenant",
+        "expectations": [
+          {
+            "operation": "create",
+            "outcome": "deny"
+          },
+          {
+            "operation": "read",
+            "outcome": "deny"
+          },
+          {
+            "operation": "update",
+            "outcome": "deny"
+          },
+          {
+            "operation": "delete",
+            "outcome": "deny"
+          }
+        ],
+        "unchangedAfterDeniedMutation": true
+      }
+    ],
+    "visual": {
+      "viewports": {
+        "desktop": {
+          "width": 1440,
+          "height": 1000,
+          "deviceScaleFactor": 1,
+          "colorScheme": "light"
+        },
+        "mobile": {
+          "width": 390,
+          "height": 844,
+          "deviceScaleFactor": 1,
+          "colorScheme": "light"
+        }
+      },
+      "targets": [
+        {
+          "target": {
+            "kind": "shell",
+            "surfaceId": "console"
+          },
+          "viewports": [
+            "desktop",
+            "mobile"
+          ],
+          "states": [
+            "ready"
+          ]
+        },
+        {
+          "target": {
+            "kind": "surface",
+            "surfaceId": "console",
+            "featurePack": "data"
+          },
+          "viewports": [
+            "desktop",
+            "mobile"
+          ],
+          "states": [
+            "loading",
+            "ready",
+            "empty",
+            "populated",
+            "error"
+          ]
+        },
+        {
+          "target": {
+            "kind": "surface",
+            "surfaceId": "console",
+            "featurePack": "auth"
+          },
+          "viewports": [
+            "desktop",
+            "mobile"
+          ],
+          "states": [
+            "loading",
+            "ready",
+            "unauthorized",
+            "validation-error"
+          ]
+        },
+        {
+          "target": {
+            "kind": "surface",
+            "surfaceId": "console",
+            "featurePack": "users"
+          },
+          "viewports": [
+            "desktop",
+            "mobile"
+          ],
+          "states": [
+            "loading",
+            "ready",
+            "empty",
+            "populated",
+            "unauthorized"
+          ]
+        },
+        {
+          "target": {
+            "kind": "domain-route",
+            "routeId": "projects",
+            "resource": "Project"
+          },
+          "viewports": [
+            "desktop",
+            "mobile"
+          ],
+          "states": [
+            "loading",
+            "empty",
+            "populated",
+            "unauthorized",
+            "validation-error",
+            "error"
+          ]
+        }
+      ]
+    }
+  }
+}

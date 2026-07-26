@@ -1,5 +1,4 @@
-# Runtime / per-app scratch the skill's scripts write at build time — never shipped.
-build/
-.scratch*/
-*.bak
 node_modules/
+.pnpm-store/
+npm-debug.log*
+pnpm-debug.log*
