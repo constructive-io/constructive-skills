@@ -1,6 +1,6 @@
 # Node Type Registry
 
-The canonical registry currently exports 87 node types across the families below. Table-compatible nodes can use string shorthand (`'DataId'`) or an object with `$type` and `data` (`{ $type: 'SearchUnified', data: {...} }`); policy, relation, and view nodes belong in their corresponding blueprint sections.
+The canonical registry currently exports 87 node types across the families below. Table-compatible nodes can use string shorthand (`'DataId'`) or an object with `$type` plus its node-specific `data`; policy, relation, and view nodes belong in their corresponding blueprint sections.
 
 Source: `constructive-db/packages/node-type-registry/src/`
 
