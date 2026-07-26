@@ -55,19 +55,20 @@ Keep the token in the host session or server request boundary and create/dispose
 ```ts
 const db = createDomainClient(dataEndpoint, accessToken);
 
-const projects = await db.project.findMany({
+const projectsResult = await db.project.findMany({
   select: { id: true, name: true, completed: true },
   first: 20
-}).execute().unwrap();
+}).unwrap();
+const projects = projectsResult.projects.nodes;
 
 await db.project.update({
   where: { id: projectId },
   data: { completed: true },
   select: { id: true, completed: true }
-}).execute().unwrap();
+}).unwrap();
 ```
 
-`.execute()` returns the generated result shape; use the generator's explicit unwrap/error helper where the caller wants thrown errors. Never interpret an empty collection as proof that the schema lacks rows—the active identity's RLS policy may be filtering them.
+Every model method returns a `QueryBuilder`. Use `.execute()` for the `QueryResult` discriminated union or call `.unwrap()`, `.unwrapOr()`, or `.unwrapOrElse()` directly on the builder. List data remains under the generated GraphQL field, such as `projectsResult.projects.nodes`. Never interpret an empty collection as proof that the schema lacks rows—the active identity's RLS policy may be filtering them.
 
 ## Pagination
 

@@ -156,4 +156,4 @@ await authDb.mutation.approveDevice(
 
 ## Module Installation
 
-The `devices_module` is included in the current `full` backend profile. For a custom composition, add it through the supported Constructive DB provisioning mechanism; do not copy and extend a preset array in application code.
+The `devices_module` is included in all three current backend profiles: `auth:hardened`, `b2b:storage`, and `full`. For a custom composition, add it through the supported Constructive DB provisioning mechanism; do not copy or extend a preset array in application code.

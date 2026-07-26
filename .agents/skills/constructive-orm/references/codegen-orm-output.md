@@ -125,9 +125,18 @@ Junction tables get full CRUD models with composite PK support:
 
 ```typescript
 // Standard CRUD on junction table
-db.postTag.create({ data: { postId, tagId } })
-db.postTag.findMany({ where: { postId: { equalTo: id } } })
-db.postTag.delete({ where: { postId, tagId } })  // Composite PK delete
+db.postTag.create({
+  data: { postId, tagId },
+  select: { postId: true, tagId: true },
+})
+db.postTag.findMany({
+  where: { postId: { equalTo: id } },
+  select: { postId: true, tagId: true },
+})
+db.postTag.delete({
+  where: { postId, tagId },
+  select: { postId: true, tagId: true },
+})
 ```
 
 ## Query Methods
@@ -143,12 +152,10 @@ const result = await db.user.findMany({
     username: true,
     email: true,
   },
-  filter: {
-    role: { eq: 'ADMIN' },
+  where: {
+    role: { equalTo: 'ADMIN' },
   },
-  orderBy: {
-    createdAt: 'DESC',
-  },
+  orderBy: ['CREATED_AT_DESC'],
   first: 10,
   offset: 0,
 }).execute();
@@ -159,8 +166,8 @@ const result = await db.user.findMany({
 | Option | Type | Description |
 |--------|------|-------------|
 | `select` | SelectObject | Fields to return (type-narrowed) |
-| `filter` | FilterObject | Where conditions |
-| `orderBy` | OrderByObject | Sort order |
+| `where` | FilterObject | Rich filter conditions |
+| `orderBy` | OrderBy[] | Generated enum values such as `CREATED_AT_DESC` |
 | `first` | number | Limit results |
 | `last` | number | Last N results |
 | `offset` | number | Skip N results |
@@ -192,7 +199,7 @@ Create new item:
 
 ```typescript
 const result = await db.user.create({
-  input: {
+  data: {
     username: 'john',
     email: 'john@example.com',
   },
@@ -209,8 +216,8 @@ Update existing item:
 
 ```typescript
 const result = await db.user.update({
-  id: '123',
-  patch: {
+  where: { id: '123' },
+  data: {
     username: 'jane',
   },
   select: {
@@ -227,12 +234,14 @@ Delete item:
 ```typescript
 // Single PK
 const result = await db.user.delete({
-  id: '123',
+  where: { id: '123' },
+  select: { id: true },
 }).execute();
 
 // Composite PK (junction table)
 const result = await db.postTag.delete({
   where: { postId: POST_1, tagId: TAG_TECH },
+  select: { postId: true, tagId: true },
 }).execute();
 ```
 
@@ -241,19 +250,21 @@ const result = await db.postTag.delete({
 The ORM uses const generics for type-safe selects. Only selected fields appear in the return type:
 
 ```typescript
-// Return type: { id: string; username: string }[]
-const users = await db.user.findMany({
+// Return type: { users: ConnectionResult<{ id: string; username: string }> }
+const usersResult = await db.user.findMany({
   select: { id: true, username: true },
-}).execute().unwrap();
+}).unwrap();
+const users = usersResult.users.nodes;
 
-// Return type: { id: string; email: string; posts: { title: string }[] }[]
-const usersWithPosts = await db.user.findMany({
+// Nested list relations are ConnectionResult values too.
+const usersWithPostsResult = await db.user.findMany({
   select: {
     id: true,
     email: true,
     posts: { select: { title: true } },
   },
-}).execute().unwrap();
+}).unwrap();
+const usersWithPosts = usersWithPostsResult.users.nodes;
 ```
 
 ## Relations
@@ -261,7 +272,7 @@ const usersWithPosts = await db.user.findMany({
 ### BelongsTo (Single Entity)
 
 ```typescript
-const posts = await db.post.findMany({
+const result = await db.post.findMany({
   select: {
     id: true,
     title: true,
@@ -271,31 +282,31 @@ const posts = await db.post.findMany({
   },
 }).execute();
 
-// posts[0].author.name is typed
+// On success, result.data.posts.nodes[0].author.name is typed.
 ```
 
 ### HasMany (Collection)
 
 ```typescript
-const users = await db.user.findMany({
+const result = await db.user.findMany({
   select: {
     id: true,
     posts: {
       select: { id: true, title: true },
-      filter: { published: { eq: true } },
+      filter: { published: { equalTo: true } },
       first: 5,
     },
   },
 }).execute();
 
-// users[0].posts is typed array
+// On success, result.data.users.nodes[0].posts is a typed ConnectionResult.
 ```
 
 ### ManyToMany
 
 ```typescript
 // Query through M:N shortcut (when expose_in_api = true)
-const posts = await db.post.findMany({
+const result = await db.post.findMany({
   select: {
     id: true,
     tags: {
@@ -304,13 +315,21 @@ const posts = await db.post.findMany({
   },
 }).execute();
 
+// On success, result.data.posts.nodes contains the selected posts.
+
 // Mutate via convenience methods
 await db.post.addTag(postId, tagId).execute();
 await db.post.removeTag(postId, tagId).execute();
 
 // Or via junction table directly
-await db.postTag.create({ data: { postId, tagId } }).execute();
-await db.postTag.delete({ where: { postId, tagId } }).execute();
+await db.postTag.create({
+  data: { postId, tagId },
+  select: { postId: true, tagId: true },
+}).execute();
+await db.postTag.delete({
+  where: { postId, tagId },
+  select: { postId: true, tagId: true },
+}).execute();
 ```
 
 ### Deeply Nested
@@ -336,46 +355,46 @@ const users = await db.user.findMany({
 ### Comparison Operators
 
 ```typescript
-filter: { age: { eq: 25 } }       // Equal
-filter: { age: { neq: 25 } }      // Not equal
-filter: { age: { gt: 18 } }       // Greater than
-filter: { age: { gte: 18 } }      // Greater than or equal
-filter: { age: { lt: 65 } }       // Less than
-filter: { age: { lte: 65 } }      // Less than or equal
-filter: { age: { in: [18, 21] } } // In array
-filter: { age: { nin: [0, 1] } }  // Not in array
+where: { age: { equalTo: 25 } }              // Equal
+where: { age: { notEqualTo: 25 } }           // Not equal
+where: { age: { greaterThan: 18 } }          // Greater than
+where: { age: { greaterThanOrEqualTo: 18 } } // Greater than or equal
+where: { age: { lessThan: 65 } }             // Less than
+where: { age: { lessThanOrEqualTo: 65 } }    // Less than or equal
+where: { age: { in: [18, 21] } }             // In array
+where: { age: { notIn: [0, 1] } }            // Not in array
 ```
 
 ### String Operators
 
 ```typescript
-filter: { name: { contains: 'john' } }
-filter: { name: { startsWith: 'J' } }
-filter: { name: { endsWith: 'son' } }
+where: { name: { includes: 'john' } }
+where: { name: { startsWith: 'J' } }
+where: { name: { endsWith: 'son' } }
 ```
 
 ### Logical Operators
 
 ```typescript
 // AND (implicit)
-filter: {
-  role: { eq: 'ADMIN' },
-  active: { eq: true },
+where: {
+  role: { equalTo: 'ADMIN' },
+  active: { equalTo: true },
 }
 
 // AND (explicit)
-filter: {
-  AND: [
-    { role: { eq: 'ADMIN' } },
-    { createdAt: { gte: '2024-01-01' } },
+where: {
+  and: [
+    { role: { equalTo: 'ADMIN' } },
+    { createdAt: { greaterThanOrEqualTo: '2024-01-01' } },
   ],
 }
 
 // OR
-filter: {
-  OR: [
-    { role: { eq: 'ADMIN' } },
-    { role: { eq: 'MODERATOR' } },
+where: {
+  or: [
+    { role: { equalTo: 'ADMIN' } },
+    { role: { equalTo: 'MODERATOR' } },
   ],
 }
 ```
@@ -385,14 +404,15 @@ filter: {
 ### Discriminated Union (Recommended)
 
 ```typescript
-const result = await db.user.findOne({ id: '123' }).execute();
+const result = await db.user.findOne({
+  id: '123',
+  select: { id: true, username: true },
+}).execute();
 
 if (result.ok) {
-  // result.value is typed
-  console.log(result.value.username);
+  console.log(result.data.user?.username);
 } else {
-  // result.error contains error details
-  console.error(result.error.message);
+  console.error(result.errors.map((error) => error.message).join('; '));
 }
 ```
 
@@ -400,45 +420,40 @@ if (result.ok) {
 
 ```typescript
 // Throw on error
-const user = await db.user.findOne({ id: '123' })
-  .execute()
-  .unwrap();
+const userResult = await db.user.findOne({
+  id: '123',
+  select: { id: true, username: true },
+}).unwrap();
 
 // Return default on error
-const user = await db.user.findOne({ id: '123' })
-  .execute()
-  .unwrapOr({ id: '', username: 'Unknown' });
+const fallbackResult = await db.user.findOne({
+  id: '123',
+  select: { id: true, username: true },
+}).unwrapOr({ user: { id: '', username: 'Unknown' } });
 
 // Call function on error
-const user = await db.user.findOne({ id: '123' })
-  .execute()
-  .unwrapOrElse((error) => {
-    logger.error(error);
-    return { id: '', username: 'Fallback' };
-  });
+const recoveredResult = await db.user.findOne({
+  id: '123',
+  select: { id: true, username: true },
+}).unwrapOrElse((errors) => {
+  logger.error(errors);
+  return { user: { id: '', username: 'Fallback' } };
+});
 ```
 
 ### Error Types
 
 ```typescript
 interface GraphQLError {
-  type: 'graphql';
   message: string;
-  locations?: { line: number; column: number }[];
-  path?: string[];
+  locations?: Array<{ line: number; column: number }>;
+  path?: Array<string | number>;
+  extensions?: Record<string, unknown>;
 }
 
-interface NetworkError {
-  type: 'network';
-  message: string;
-  status?: number;
-}
-
-interface ValidationError {
-  type: 'validation';
-  message: string;
-  field?: string;
-}
+type QueryResult<T> =
+  | { ok: true; data: T; errors: undefined }
+  | { ok: false; data: null; errors: GraphQLError[] };
 ```
 
 ## Custom Operations

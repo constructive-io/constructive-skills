@@ -21,7 +21,9 @@ export function createDomainClient(endpoint: string, accessToken: string) {
 import { createDomainClient } from '@/lib/db';
 
 const db = createDomainClient(dataEndpoint, accessToken);
-const users = await db.user.findMany({...}).execute();
+const users = await db.user.findMany({
+  select: { id: true, name: true },
+}).execute();
 ```
 
 Never cache this client across tenant or identity scopes. In server code, create
@@ -47,10 +49,13 @@ export async function createRequestClient(endpoint: string) {
 // Usage in Server Component
 async function UserPage({ params }: { params: { id: string } }) {
   const db = await createRequestClient(dataEndpoint);
-  const user = await db.user.findOne({
+  const result = await db.user.findOne({
     id: params.id,
     select: { id: true, name: true },
-  }).execute().unwrap();
+  }).unwrap();
+  const user = result.user;
+
+  if (!user) return null;
 
   return <UserProfile user={user} />;
 }
@@ -70,27 +75,27 @@ const result = await db.user.findFirst({
 
 // Handle result with Result pattern
 if (result.ok) {
-  const user = result.data.users.nodes[0];
+  const user = result.data.user;
   if (user) {
     console.log('Found admin:', user.name);
   }
 }
 
 // Or use unwrap() to throw on error
-const user = await db.user.findFirst({
+const userResult = await db.user.findFirst({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
-}).execute().unwrap();
+}).unwrap();
+const user = userResult.user;
 ```
 
-**Note:** `findFirst()` does NOT support `orderBy`. If you need ordering, use `findMany()` with `first: 1`:
+`findFirst()` accepts `orderBy` and returns a `{ user: row | null }` envelope:
 
 ```typescript
-const result = await db.user.findMany({
+const result = await db.user.findFirst({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
   orderBy: ['CREATED_AT_DESC'],
-  first: 1,
 }).execute();
 ```
 
@@ -99,27 +104,28 @@ const result = await db.user.findMany({
 ```typescript
 // Search with multiple conditions
 async function searchUsers(db: DomainClient, query: string, filters: UserFilters) {
-  return db.user.findMany({
-    select: { id: true, name: true, email: true, role: true },
-    where: {
-      and: [
-        // Text search across multiple fields
-        {
-          or: [
-            { name: { includes: query } },
-            { email: { includes: query } },
-          ],
-        },
-        // Additional filters
-        ...(filters.role ? [{ role: { equalTo: filters.role } }] : []),
-        ...(filters.active !== undefined
-          ? [{ active: { equalTo: filters.active } }]
-          : []),
-        ...(filters.createdAfter
-          ? [{ createdAt: { greaterThanOrEqualTo: filters.createdAfter } }]
-          : []),
+  const and: UserFilter[] = [
+    {
+      or: [
+        { name: { includes: query } },
+        { email: { includes: query } },
       ],
     },
+  ];
+
+  if (filters.role) {
+    and.push({ role: { equalTo: filters.role } });
+  }
+  if (filters.active !== undefined) {
+    and.push({ active: { equalTo: filters.active } });
+  }
+  if (filters.createdAfter) {
+    and.push({ createdAt: { greaterThanOrEqualTo: filters.createdAfter } });
+  }
+
+  return db.user.findMany({
+    select: { id: true, name: true, email: true, role: true },
+    where: { and },
     orderBy: ['CREATED_AT_DESC'],
     first: filters.limit ?? 20,
     offset: filters.offset ?? 0,
@@ -140,7 +146,9 @@ function buildUserSelect(includeDetails: boolean) {
 
   if (includeDetails) {
     return {
-      ...baseSelect,
+      id: true,
+      name: true,
+      email: true,
       bio: true,
       avatar: true,
       createdAt: true,
@@ -180,9 +188,9 @@ async function getUserStats(db: DomainClient) {
   ]);
 
   return {
-    total: totalResult.ok ? totalResult.value.length : 0,
-    active: activeResult.ok ? activeResult.value.length : 0,
-    admins: adminResult.ok ? adminResult.value.length : 0,
+    total: totalResult.ok ? totalResult.data.users.totalCount : 0,
+    active: activeResult.ok ? activeResult.data.users.totalCount : 0,
+    admins: adminResult.ok ? adminResult.data.users.totalCount : 0,
   };
 }
 ```
@@ -213,7 +221,7 @@ async function getUserWithDetails(db: DomainClient, id: string) {
             first: 3,
           },
         },
-        where: { published: { equalTo: true } },
+        filter: { published: { equalTo: true } },
         orderBy: ['PUBLISHED_AT_DESC'],
         first: 10,
       },
@@ -236,7 +244,7 @@ const users = await db.user.findMany({
     name: true,
     posts: {
       select: { id: true, title: true },
-      where: {
+      filter: {
         and: [
           { published: { equalTo: true } },
           { publishedAt: { greaterThanOrEqualTo: '2024-01-01' } },
@@ -248,27 +256,28 @@ const users = await db.user.findMany({
 }).execute();
 ```
 
-### Nested Mutations
+### Related Creates
 
 ```typescript
-// Create user with related records
-const user = await db.user.create({
-  input: {
+// Generated CRUD methods use explicit operations for each table.
+const userResult = await db.user.create({
+  data: {
     name: 'John Doe',
     email: 'john@example.com',
-    profile: {
-      create: {
-        bio: 'Software developer',
-        website: 'https://johndoe.com',
-      },
-    },
   },
-  select: {
-    id: true,
-    name: true,
-    profile: { select: { bio: true } },
+  select: { id: true, name: true },
+}).unwrap();
+const user = userResult.createUser.user;
+
+const profileResult = await db.profile.create({
+  data: {
+    userId: user.id,
+    bio: 'Software developer',
+    website: 'https://johndoe.com',
   },
-}).execute();
+  select: { id: true, userId: true, bio: true },
+}).unwrap();
+const profile = profileResult.createProfile.profile;
 ```
 
 ## Transaction-Like Patterns
@@ -278,10 +287,13 @@ const user = await db.user.create({
 ```typescript
 async function transferCredits(db: DomainClient, fromId: string, toId: string, amount: number) {
   // Verify source has enough credits
-  const source = await db.user.findOne({
+  const sourceResult = await db.user.findOne({
     id: fromId,
     select: { id: true, credits: true },
-  }).execute().unwrap();
+  }).unwrap();
+  const source = sourceResult.user;
+
+  if (!source) throw new Error('Source user not found');
 
   if (source.credits < amount) {
     throw new Error('Insufficient credits');
@@ -289,29 +301,35 @@ async function transferCredits(db: DomainClient, fromId: string, toId: string, a
 
   // Perform updates sequentially
   await db.user.update({
-    id: fromId,
-    patch: { credits: source.credits - amount },
-  }).execute().unwrap();
+    where: { id: fromId },
+    data: { credits: source.credits - amount },
+    select: { id: true, credits: true },
+  }).unwrap();
 
-  const target = await db.user.findOne({
+  const targetResult = await db.user.findOne({
     id: toId,
-    select: { credits: true },
-  }).execute().unwrap();
+    select: { id: true, credits: true },
+  }).unwrap();
+  const target = targetResult.user;
+
+  if (!target) throw new Error('Target user not found');
 
   await db.user.update({
-    id: toId,
-    patch: { credits: target.credits + amount },
-  }).execute().unwrap();
+    where: { id: toId },
+    data: { credits: target.credits + amount },
+    select: { id: true, credits: true },
+  }).unwrap();
 
   // Create transaction record
   await db.transaction.create({
-    input: {
+    data: {
       fromUserId: fromId,
       toUserId: toId,
       amount,
       type: 'TRANSFER',
     },
-  }).execute().unwrap();
+    select: { id: true },
+  }).unwrap();
 }
 ```
 
@@ -324,7 +342,7 @@ async function deactivateInactiveUsers(db: DomainClient, daysSinceLogin: number)
   cutoffDate.setDate(cutoffDate.getDate() - daysSinceLogin);
 
   // Find inactive users
-  const inactiveUsers = await db.user.findMany({
+  const inactiveUsersResult = await db.user.findMany({
     select: { id: true },
     where: {
       and: [
@@ -332,15 +350,17 @@ async function deactivateInactiveUsers(db: DomainClient, daysSinceLogin: number)
         { lastLoginAt: { lessThan: cutoffDate.toISOString() } },
       ],
     },
-  }).execute().unwrap();
+  }).unwrap();
+  const inactiveUsers = inactiveUsersResult.users.nodes;
 
   // Update each user
   const results = await Promise.allSettled(
     inactiveUsers.map((user) =>
       db.user.update({
-        id: user.id,
-        patch: { active: false },
-      }).execute()
+        where: { id: user.id },
+        data: { active: false },
+        select: { id: true, active: true },
+      }).unwrap()
     )
   );
 
@@ -360,7 +380,7 @@ import { cache } from 'react';
 
 // Cache per-request in React Server Components
 export const getUser = cache(async (id: string) => {
-  const db = createRequestClient();
+  const db = await createRequestClient(dataEndpoint);
   return db.user.findOne({
     id,
     select: { id: true, name: true, email: true },
@@ -408,8 +428,8 @@ async function getCachedUser(
 
   if (result.ok) {
     // Cache for 5 minutes
-    await redis.setex(cacheKey, 300, JSON.stringify(result.value));
-    return result.value;
+    await redis.setex(cacheKey, 300, JSON.stringify(result.data.user));
+    return result.data.user;
   }
 
   return null;
@@ -431,8 +451,8 @@ const query = db.user.findMany({
   first: 10,
 });
 
-// Note: Inspect methods may not be available in all generated ORMs
-// Check your generated QueryBuilder for available debugging methods
+console.log(query.toGraphQL());
+console.log(query.getVariables());
 
 // Execute when ready
 const result = await query.execute();
@@ -444,9 +464,7 @@ const result = await query.execute();
 // Log all queries in development
 async function executeWithLogging<T>(query: any) {
   if (process.env.NODE_ENV === 'development') {
-    // Note: toGraphQL() and getVariables() methods may not be available
-    // Check your generated ORM for available debugging methods
-    console.log('Executing query...');
+    console.log(query.toGraphQL(), query.getVariables());
   }
   return query.execute();
 }
@@ -473,7 +491,9 @@ function createScopedClient(endpoint: string, accessToken: string) {
 
 // Use the client for requests
 const db = createScopedClient(dataEndpoint, accessToken);
-const users = await db.user.findMany({}).execute();
+const users = await db.user.findMany({
+  select: { id: true, name: true },
+}).execute();
 ```
 
 ### Identity changes

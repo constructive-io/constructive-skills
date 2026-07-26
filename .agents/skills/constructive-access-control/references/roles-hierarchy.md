@@ -29,17 +29,7 @@ The hierarchy module is installed per entity type. The current `b2b:storage` and
 ['hierarchy_module', { scope: 'org' }]
 ```
 
-Or install it directly via the modules API:
-
-```typescript
-await db.query.installModule({
-  input: {
-    databaseId: dbId,
-    moduleName: 'hierarchy_module',
-    scope: 'org'
-  }
-}).execute();
-```
+For a new database, select `b2b:storage` or `full`, or pass an explicit custom module composition through the backend `requestDatabase` mutation. The current API has no `db.query.installModule` operation, so module selection belongs to database provisioning rather than application runtime code.
 
 ## Building the Org Chart
 

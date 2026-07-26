@@ -1,162 +1,119 @@
 # Error Handling
 
-Comprehensive guide to handling errors with generated code.
+The generated ORM returns a precise `QueryResult` from `.execute()` and exposes error helpers directly on each `QueryBuilder`.
 
-## CRITICAL: `execute()` Does NOT Throw
+## `execute()` Result Contract
 
-**The most common mistake** when using the Constructive ORM is wrapping `.execute()` in a bare `try/catch` and assuming errors will be caught. **They will not.**
-
-`.execute()` returns a **discriminated union** — it **never throws an exception** on GraphQL or HTTP errors. Instead, it returns `{ ok: false, ... }`. A `try/catch` around `.execute()` will silently swallow errors because no exception is raised.
+For a GraphQL error or a non-successful HTTP response, `.execute()` resolves to the failure branch instead of throwing. A rejected fetch or response-decoding failure can still reject the promise, so code that must handle both classes needs an `ok` check and a `try/catch` boundary.
 
 ```typescript
-// BUG: Silent error swallowing — errors are NEVER caught here
 try {
   const result = await db.user.findMany({ select: { id: true } }).execute();
-  // result may be { ok: false, error: {...} }
-  // but no exception is thrown, so the catch block is skipped entirely
-  const users = result.value; // users is undefined — silent failure!
-} catch (error) {
-  // This NEVER runs for GraphQL/HTTP errors
-  console.error(error);
-}
-```
 
-**The fix:** Use `.execute().unwrap()` to get throw-on-error behavior, or check `.ok` explicitly:
+  if (!result.ok) {
+    console.error(result.errors.map((error) => error.message).join('; '));
+    return [];
+  }
 
-```typescript
-// Option A — .execute().unwrap() throws on error (recommended):
-const users = await db.user.findMany({ select: { id: true } }).execute().unwrap();
-
-// Option B — check .ok for control flow:
-const result = await db.user.findMany({ select: { id: true } }).execute();
-if (!result.ok) {
-  console.error(result.error.message);
+  return result.data.users.nodes;
+} catch (cause) {
+  console.error(cause instanceof Error ? cause.message : 'The request failed');
   return [];
 }
-return result.value;
 ```
 
-## Discriminated Unions
-
-The ORM returns discriminated union results for type-safe error handling:
+Use `.unwrap()` when a failed result should become an exception:
 
 ```typescript
-interface SuccessResult<T> {
-  ok: true;
-  value: T;
-}
-
-interface ErrorResult {
-  ok: false;
-  error: {
-    type: 'graphql' | 'network' | 'validation';
-    message: string;
-    // Additional fields based on type
-  };
-}
-
-type Result<T> = SuccessResult<T> | ErrorResult;
+const result = await db.user.findMany({ select: { id: true } }).unwrap();
+const users = result.users.nodes;
 ```
 
-### Basic Pattern
+## Discriminated Union
+
+The current generated contract is:
 
 ```typescript
-const result = await db.user.findOne({ id: '123' }).execute();
+interface GraphQLError {
+  message: string;
+  locations?: Array<{ line: number; column: number }>;
+  path?: Array<string | number>;
+  extensions?: Record<string, unknown>;
+}
+
+type QueryResult<T> =
+  | { ok: true; data: T; errors: undefined }
+  | { ok: false; data: null; errors: GraphQLError[] };
+```
+
+The failure branch does not define a synthetic `graphql`, `network`, or `validation` discriminator. Inspect a server-provided `extensions` object only when that endpoint documents its shape.
+
+```typescript
+const result = await db.user.findOne({
+  id: '123',
+  select: { id: true, name: true },
+}).execute();
 
 if (result.ok) {
-  // TypeScript knows result.value exists and is typed
-  console.log(result.value.name);
+  console.log(result.data.user?.name);
 } else {
-  // TypeScript knows result.error exists
-  console.error(result.error.message);
-}
-```
-
-### Exhaustive Handling
-
-```typescript
-const result = await db.user.findOne({ id }).execute();
-
-if (!result.ok) {
-  switch (result.error.type) {
-    case 'graphql':
-      // GraphQL execution error (invalid query, resolver error)
-      console.error('GraphQL error:', result.error.message);
-      break;
-    case 'network':
-      // Network failure (timeout, connection refused)
-      console.error('Network error:', result.error.message);
-      break;
-    case 'validation':
-      // Input validation error
-      console.error('Validation error:', result.error.message);
-      break;
+  for (const error of result.errors) {
+    console.error(error.message);
   }
-  return null;
 }
-
-return result.value;
 ```
 
 ## Helper Methods
 
 ### `.unwrap()`
 
-Throws on error, returns value on success:
+`.unwrap()` executes the builder and returns its typed data. A failed `QueryResult` becomes `GraphQLRequestError`; transport rejections continue to propagate.
 
 ```typescript
 try {
-  const user = await db.user.findOne({ id }).execute().unwrap();
-  // user is typed, no null check needed
-  console.log(user.name);
-} catch (error) {
-  // Error thrown with message from result.error
-  console.error('Failed:', error.message);
+  const result = await db.user.findOne({
+    id,
+    select: { id: true, name: true },
+  }).unwrap();
+  console.log(result.user?.name);
+} catch (cause) {
+  console.error(cause instanceof Error ? cause.message : 'Failed to fetch user');
 }
 ```
 
-Use when:
-- Errors should propagate up
-- In try/catch blocks
-- When error is truly exceptional
-
 ### `.unwrapOr(defaultValue)`
 
-Returns default value on error:
+`.unwrapOr()` returns the supplied value for a failed `QueryResult`:
 
 ```typescript
-const user = await db.user.findOne({ id }).execute()
-  .unwrapOr({ id: '', name: 'Unknown User', email: '' });
+const result = await db.user
+  .findOne({ id, select: { id: true, name: true, email: true } })
+  .unwrapOr({
+    user: { id: '', name: 'Unknown User', email: '' },
+  });
 
-// user is always defined, uses default if fetch failed
-console.log(user.name);
+console.log(result.user?.name);
 ```
 
-Use when:
-- You have a sensible default
-- UI should show placeholder on error
-- Operation is non-critical
+It does not convert a rejected fetch into the default value.
 
 ### `.unwrapOrElse(callback)`
 
-Calls callback on error:
+`.unwrapOrElse()` passes the complete `GraphQLError[]` to the callback:
 
 ```typescript
-const user = await db.user.findOne({ id }).execute()
-  .unwrapOrElse((error) => {
-    // Log error, report to monitoring
-    logger.error('Failed to fetch user', { id, error });
-    Sentry.captureException(error);
-
-    // Return fallback
-    return { id, name: 'Error loading user', email: '' };
-  });
+const result = await db.user.findOne({
+  id,
+  select: { id: true, name: true, email: true },
+}).unwrapOrElse((errors) => {
+  logger.error({ userId: id, errors }, 'Failed to fetch user');
+  return {
+    user: { id, name: 'Error loading user', email: '' },
+  };
+});
 ```
 
-Use when:
-- Need to log/report errors
-- Want custom fallback logic
-- Need access to error details
+Use it when a failed result needs logging or a computed fallback. Transport rejections still propagate.
 
 ## React Query Error Handling
 
@@ -165,18 +122,19 @@ Use when:
 ```typescript
 function UserProfile({ userId }: { userId: string }) {
   const { data, error, isError, refetch } = useUserQuery(
-    { id: userId },
     {
+      id: userId,
+      selection: { fields: { id: true, name: true } },
       retry: (failureCount, error) => {
-        // Don't retry on 404
         if (error.message.includes('not found')) return false;
         return failureCount < 3;
       },
-      onError: (error) => {
-        toast.error(`Failed to load user: ${error.message}`);
-      },
     }
   );
+
+  React.useEffect(() => {
+    if (error) toast.error(`Failed to load user: ${error.message}`);
+  }, [error]);
 
   if (isError) {
     return (
@@ -196,6 +154,7 @@ function UserProfile({ userId }: { userId: string }) {
 ```typescript
 function CreateUserForm() {
   const createUser = useCreateUserMutation({
+    selection: { fields: { id: true, name: true, email: true } },
     onError: (error) => {
       // Handle specific error types
       if (error.message.includes('duplicate')) {
@@ -214,10 +173,8 @@ function CreateUserForm() {
   const handleSubmit = async (data: FormData) => {
     try {
       await createUser.mutateAsync({
-        input: {
-          name: data.get('name') as string,
-          email: data.get('email') as string,
-        },
+        name: data.get('name') as string,
+        email: data.get('email') as string,
       });
     } catch (error) {
       // Error already handled by onError
@@ -302,19 +259,14 @@ export async function GET(
   }).execute();
 
   if (!result.ok) {
-    if (result.error.type === 'graphql') {
-      return NextResponse.json(
-        { error: 'User not found' },
-        { status: 404 }
-      );
-    }
+    console.error(result.errors);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
     );
   }
 
-  return NextResponse.json(result.value);
+  return NextResponse.json(result.data.user);
 }
 ```
 
@@ -330,25 +282,26 @@ import { revalidatePath } from 'next/cache';
 export async function updateUser(id: string, data: { name: string }) {
   const db = await createRequestDomainClient();
   const result = await db.user.update({
-    id,
-    patch: { name: data.name },
+    where: { id },
+    data: { name: data.name },
+    select: { id: true, name: true },
   }).execute();
 
   if (!result.ok) {
-    // Return error to client
-    return { success: false, error: result.error.message };
+    console.error(result.errors);
+    return { success: false, error: 'The user could not be updated.' };
   }
 
   // Revalidate cached data
   revalidatePath(`/users/${id}`);
 
-  return { success: true, user: result.value };
+  return { success: true, user: result.data.updateUser.user };
 }
 
 // Usage in client component
-const result = await updateUser(userId, { name: newName });
-if (!result.success) {
-  toast.error(result.error);
+const actionResult = await updateUser(userId, { name: newName });
+if (!actionResult.success) {
+  toast.error(actionResult.error);
 } else {
   toast.success('Updated!');
 }
@@ -364,21 +317,23 @@ import pino from 'pino';
 const logger = pino();
 
 async function fetchUser(db: DomainClient, id: string) {
-  const result = await db.user.findOne({ id }).execute();
+  const result = await db.user.findOne({
+    id,
+    select: { id: true, name: true, email: true },
+  }).execute();
 
   if (!result.ok) {
     logger.error({
       operation: 'fetchUser',
       userId: id,
-      errorType: result.error.type,
-      errorMessage: result.error.message,
+      errors: result.errors,
     }, 'Failed to fetch user');
 
     return null;
   }
 
   logger.info({ operation: 'fetchUser', userId: id }, 'User fetched');
-  return result.value;
+  return result.data.user;
 }
 ```
 
@@ -389,24 +344,25 @@ import * as Sentry from '@sentry/nextjs';
 
 async function criticalOperation() {
   const result = await db.payment.create({
-    input: { amount: 100, userId: '123' },
+    data: { amount: 100, userId: '123' },
+    select: { id: true, amount: true },
   }).execute();
 
   if (!result.ok) {
-    Sentry.captureException(new Error(result.error.message), {
+    const message = result.errors.map((error) => error.message).join('; ');
+    Sentry.captureException(new Error(message), {
       tags: {
-        errorType: result.error.type,
         operation: 'payment.create',
       },
       extra: {
-        errorDetails: result.error,
+        errors: result.errors,
       },
     });
 
     throw new Error('Payment failed');
   }
 
-  return result.value;
+  return result.data.createPayment.payment;
 }
 ```
 

@@ -48,8 +48,9 @@ The popup panel containing menu items.
 **Props:**
 - `side?: 'top' | 'right' | 'bottom' | 'left'` -- placement relative to trigger (default: `'bottom'`)
 - `sideOffset?: number` -- distance from trigger in pixels (default: `4`)
-- `align?: 'start' | 'center' | 'end'` -- alignment along the side axis (default: `'center'`)
-- `alignOffset?: number` -- offset along the alignment axis
+- `align?: 'start' | 'center' | 'end'` -- alignment along the side axis (default: `'start'`)
+
+The wrapper accepts Base UI popup props plus these three positioning props. It does not expose the Positioner's `alignOffset` prop.
 
 ```tsx
 <DropdownMenuContent align="end" sideOffset={8}>
@@ -149,7 +150,7 @@ Visual divider between groups of items.
 
 ## DropdownMenuShortcut
 
-Keyboard shortcut display. Renders as `<span>` with muted, right-aligned styling.
+Keyboard shortcut display. Renders as `<kbd>` with muted, right-aligned styling.
 
 ```tsx
 <DropdownMenuItem>
@@ -180,7 +181,7 @@ Opens the sub-menu on hover/focus. Renders a chevron indicator.
 
 ## DropdownMenuSubContent
 
-Sub-menu popup panel. Accepts the same positioning props as `DropdownMenuContent`.
+Sub-menu popup panel. It accepts Base UI popup props only; the wrapper fixes its Positioner to `side="right"` and `sideOffset={-4}`.
 
 ## Z-Index Handling
 

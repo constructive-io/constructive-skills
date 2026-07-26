@@ -417,7 +417,7 @@ Each translation row is stemmed in its own language — insert with `lang_code =
 |-----------|---------|----------------|
 | `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. | `operations` (default `['INSERT', 'UPDATE', 'DELETE']` — which DML operations to track), `subscriber_table_name` (default `'{source_table}_subscriber'`) |
 
-**Prerequisites:** Requires `realtime_module` to be provisioned. Use the current `full` backend profile or add the module through an explicit custom backend composition.
+**Provisioning:** Add `DataRealtime` to the table's `nodes[]`. No current official backend preset contains `realtime_module`; the `DataRealtime` provisioner creates the shared module when it is absent. Do not copy or extend a preset module array.
 
 **Example — enable realtime on a messages table:**
 ```json

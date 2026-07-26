@@ -47,9 +47,10 @@ export function FrameworkPicker() {
 ```
 
 `ComboboxInput` supports `showTrigger`, `showClear`, `startAddon`, and `size`.
-`ComboboxPopup` and its `ComboboxContent` alias accept side/alignment and
-`sideOffset` positioning. Put `ComboboxEmpty` and `ComboboxList` inside the
-popup.
+`ComboboxPopup` and its `ComboboxContent` alias accept Base UI popup props plus
+`sideOffset`, which defaults to `4`. This wrapper does not expose the
+Positioner's `side` or `align` props. Put `ComboboxEmpty` and `ComboboxList`
+inside the popup.
 
 ## Multiple selection
 

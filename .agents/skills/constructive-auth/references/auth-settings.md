@@ -155,7 +155,7 @@ await db.appSettingsAuth.update({
 
 ## rate_limit_meters_module
 
-Billing-aware rate limit meters, distinct from the basic `rate_limits_module`. Provisioned by `sessions_module` in the `full` preset.
+Billing-aware rate limit meters, distinct from the basic `rate_limits_module`. `rate_limit_meters_module` is a separate module included in the `full` preset; `sessions_module` does not provision it.
 
 Creates three tables:
 - `rate_limit_state` (private) — sliding window tracking per entity/actor/meter/window with three enforcement scopes
