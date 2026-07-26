@@ -432,6 +432,42 @@ default to `['ID_ASC']`.
 
 ---
 
+## S7.5 — AUTHOR the presentation from the app's design.md (always — this is where the app gets its design)
+
+The `design.md` is the **full design spec** and **you author the whole frontend from it** — the shell,
+each entity page's composition, the type (fonts/scale/weights), the spacing rhythm, the surfaces, the
+intentional ornament, the copy, **and** the shadcn token values in `<app>/src/app/globals.css` (so the
+template UI and every installed Block render in the app's voice — they all read the `var(--…)` shadcn
+tokens). **There is no compiler / codemod / theme step — you write the CSS and compose the components
+yourself.**
+
+Two rails frame the work. **Rail 1 is functional:** the CRUD body's behavior contract — the `<entity>-*`
+testids, row-scoping, hooks/selection/refetch, the RLS scoping consts, the route/block/flow surfaces —
+must survive your restyle. **Rail 2 is the token contract:** the built `globals.css` must still define the
+shadcn token **names** + the Tailwind-v4 wiring so Blocks render. Rail 2 is the **only** machine check, and
+it is FUNCTIONAL (it never judges taste):
+
+```bash
+node scripts/check-design.mjs --app <app>     # <app> = the WORKSPACE ROOT (resolves packages/app)
+```
+
+- **Default = author a domain-fitting look.** With **no `design:` block** in the brief, propose and
+  author a `design.md` for the app, then realize it in `globals.css` + the components. A generated app
+  should not ship the stock boilerplate look unless asked.
+- **Opt-out = keep today's look.** `design: { preset: constructive }` ⇒ leave the boilerplate
+  `globals.css` as-is and skip the authoring pass (it already satisfies Rail 2).
+- **Token contract is the rail.** Whatever you author, `globals.css` MUST keep defining the full shadcn
+  token name set (background, foreground, primary, …, radius) under `:root`/`.dark` + the `@theme inline`
+  Tailwind-v4 wiring — that is exactly what `check-design.mjs` asserts and what keeps Blocks rendering.
+- **Brief control.** The optional `design:` block (`brief`/`preset`/`density`/`colors`/`font`/`radius`)
+  guides the look — see [brief-grammar.md](./brief-grammar.md) "design (optional)".
+
+> **The full authoring methodology — the design.md format, the token contract, the words→look guidance,
+> and the preserve list — is in [design-guide.md](./design-guide.md).** Read it when authoring/adapting an
+> app's look or when `check-design.mjs` flags a missing token.
+
+---
+
 ## S8 — Build + the two TS gates
 
 ```bash
@@ -465,7 +501,7 @@ there** in the browser and assert the mutation fired **2xx** and the row **persi
 > **Stuck on a step?** Drop into the matching detailed phase reference (S1→[phase-2-data-model.md](./phase-2-data-model.md)
 > §2.1, S2→[phase-2-data-model.md](./phase-2-data-model.md), S3/S4→[phase-3-frontend-sdk.md](./phase-3-frontend-sdk.md),
 > S5/S6→[phase-4-blocks.md](./phase-4-blocks.md) Branch A / [blocks-onramp.md](./blocks-onramp.md),
-> S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body) and consult [troubleshooting.md](./troubleshooting.md)
+> S7→[phase-4-blocks.md](./phase-4-blocks.md) CRUD body, S7.5→[design-guide.md](./design-guide.md)) and consult [troubleshooting.md](./troubleshooting.md)
 > / [gotchas.md](./gotchas.md) / [error-index.md](./error-index.md) for that step. The detailed sections are
 > the fallback; the speedrun is the path.
 

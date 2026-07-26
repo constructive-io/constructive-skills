@@ -200,7 +200,104 @@ export function validateBrief(brief, where = 'brief') {
   if (needsB2b && !b2bPresets.has(preset)) {
     throw new BriefError(`${where}: a table uses an org-scoped policy (org-membership / member-owner / org-hierarchy / related-membership / restrict: read-only) but modules.preset is "${preset}". Org policies REQUIRE a b2b preset (b2b | b2b:storage | full) — the memberships/hierarchy modules back them.`);
   }
+  // OPTIONAL design-block strictness (additive; gated on brief.design being present). The `design:`
+  // key is already non-breaking — there is no top-level allowlist above — so this only catches a
+  // MALFORMED design block with a legible message before it reaches the compiler. Unknown keys are
+  // TOLERATED (forward-compatible). Deeper invariants (≤1 accent, chroma cap, AI-purple ban, WCAG
+  // contrast) are enforced by the deterministic linter (check-design.mjs), NOT here — this is
+  // shape-validation only. See references/design-guide.md + brief-grammar.md "design (optional)".
+  if (brief.design != null) validateDesign(brief.design, where);
   return brief;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 2b. OPTIONAL DESIGN-BLOCK VALIDATION (shape only; unknown keys tolerated)
+// ════════════════════════════════════════════════════════════════════════════
+// GENERIC BY CONSTRUCTION — nothing here references an app/entity/domain; it validates only the
+// additive look-and-feel `design:` block's SHAPE. The block has NO required keys (absent ⇒
+// auto-propose; `{ preset: constructive }` ⇒ keep today's look), so this is purely "if a key is
+// present, is it well-formed?" — never a gate that would reject a valid/absent design block.
+
+// The named preset anchors documented in references/design-guide.md / brief-grammar.md
+// "design (optional)". `constructive` is the explicit no-op opt-out. Kept in sync with the doc.
+const KNOWN_DESIGN_PRESETS = new Set([
+  'constructive', 'minimalist', 'trust-first', 'editorial', 'soft', 'brutalist', 'playful',
+]);
+const DESIGN_DIALS = ['variance', 'motion', 'density'];
+
+const isPlainObject = (v) => v != null && typeof v === 'object' && !Array.isArray(v);
+
+/**
+ * Validate the OPTIONAL `design:` block's shape, throwing a BriefError with a legible message on a
+ * malformed value. Called only when `brief.design` is present. Tolerates unknown keys (so a future
+ * field never trips an older validator); validates only the keys it knows. Color-token *values*
+ * (oklch/hex/rgb) and the semantic invariants are the deterministic linter's job — here we only
+ * assert the right JS shape (mapping vs scalar vs list, int range, allowed enum).
+ */
+function validateDesign(design, where = 'brief') {
+  const at = `${where}: design`;
+  if (!isPlainObject(design)) {
+    throw new BriefError(`${at} must be a mapping (e.g. design: { preset: minimalist }) — got ${Array.isArray(design) ? 'a list' : typeof design}. OMIT it entirely to auto-propose a theme, or use { preset: constructive } to keep today's look.`);
+  }
+  // preset (optional): a known anchor name.
+  if (design.preset != null) {
+    if (typeof design.preset !== 'string' || !KNOWN_DESIGN_PRESETS.has(design.preset)) {
+      throw new BriefError(`${at}.preset "${design.preset}" is not a known preset. Known: ${[...KNOWN_DESIGN_PRESETS].join(', ')} (constructive = keep today's look).`);
+    }
+  }
+  // brief (optional): natural-language style words.
+  if (design.brief != null && typeof design.brief !== 'string') {
+    throw new BriefError(`${at}.brief must be a string (the natural-language style words), e.g. "calm, trustworthy, dense"; got ${typeof design.brief}.`);
+  }
+  // dials (optional): a mapping; each present dial an integer 1–10.
+  if (design.dials != null) {
+    if (!isPlainObject(design.dials)) {
+      throw new BriefError(`${at}.dials must be a mapping { variance, motion, density } of integers 1–10; got ${Array.isArray(design.dials) ? 'a list' : typeof design.dials}.`);
+    }
+    for (const d of DESIGN_DIALS) {
+      const v = design.dials[d];
+      if (v == null) continue; // each dial is optional
+      if (!Number.isInteger(v) || v < 1 || v > 10) {
+        throw new BriefError(`${at}.dials.${d} must be an integer 1–10; got ${JSON.stringify(v)}.`);
+      }
+    }
+  }
+  // colors (optional): a mapping of role → color-token STRING (token validity is the linter's job).
+  if (design.colors != null) {
+    if (!isPlainObject(design.colors)) {
+      throw new BriefError(`${at}.colors must be a mapping of role → color (e.g. { primary: "oklch(0.55 0.11 162)" }); got ${Array.isArray(design.colors) ? 'a list' : typeof design.colors}.`);
+    }
+    for (const [role, val] of Object.entries(design.colors)) {
+      if (typeof val !== 'string') {
+        throw new BriefError(`${at}.colors.${role} must be a color string (oklch()/#hex/rgb()); got ${typeof val}.`);
+      }
+    }
+  }
+  // font (optional): a mapping (sans/mono family-name strings).
+  if (design.font != null) {
+    if (!isPlainObject(design.font)) {
+      throw new BriefError(`${at}.font must be a mapping { sans, mono } of next/font/google family names; got ${Array.isArray(design.font) ? 'a list' : typeof design.font}.`);
+    }
+    for (const slot of ['sans', 'mono', 'serif']) {
+      if (design.font[slot] != null && typeof design.font[slot] !== 'string') {
+        throw new BriefError(`${at}.font.${slot} must be a font-family name string; got ${typeof design.font[slot]}.`);
+      }
+    }
+  }
+  // radius (optional): a px/em/rem string.
+  if (design.radius != null && typeof design.radius !== 'string') {
+    throw new BriefError(`${at}.radius must be a string (px/em/rem), e.g. "0.5rem"; got ${typeof design.radius}.`);
+  }
+  // default_mode (optional): light | dark.
+  if (design.default_mode != null && design.default_mode !== 'light' && design.default_mode !== 'dark') {
+    throw new BriefError(`${at}.default_mode must be 'light' or 'dark' (which theme loads first); got ${JSON.stringify(design.default_mode)}.`);
+  }
+  // allow_brand_hue (optional): boolean.
+  if (design.allow_brand_hue != null && typeof design.allow_brand_hue !== 'boolean') {
+    throw new BriefError(`${at}.allow_brand_hue must be a boolean (opt out of the AI-purple-band warning for a deliberate brand hue); got ${typeof design.allow_brand_hue}.`);
+  }
+  // Unknown keys are intentionally NOT rejected (forward-compatible).
+  return design;
 }
 
 // ════════════════════════════════════════════════════════════════════════════

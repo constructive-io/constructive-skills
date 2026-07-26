@@ -23,6 +23,10 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 > scalars (bare / "double" / 'single' / int / float / true|false|null), full-line and trailing comments,
 > and bare tokens with internal `+` / `/` / `:` (so `public-read+owner-write` parses). If a brief needs a
 > construct beyond this, add to the grammar in that one module — don't reach for a dep.
+>
+> **Not supported: folded/literal block scalars** (`>-`, `>`, `|`, `|-`). Write every multi-word string
+> value (e.g. `app.description`, `design.brief`) as a **single-line quoted string** — never spread it
+> across following indented lines with a `>`/`|` indicator (it would be mis-parsed as a nested block).
 
 ---
 
@@ -41,6 +45,7 @@ The brief is **intent-level**: you pick WHAT (a `modules.preset`, a set of `flow
 | `data_model` | `data_model.tables` non-empty | your domain tables + relations — see [Data model](#data-model-tables) |
 | `ui` | optional | one route per surface (`ui.routes[]`); `kind` selects how the page is emitted — see [UI routes](#ui-routes) |
 | `acceptance` | optional | `required_flows[]` the live-QA gate verifies end-to-end (the SAME flow ids as `flows`) |
+| `design` | optional | look-and-feel intent. **ABSENT ⇒ auto-propose a RICH `design.md`** + AUTHOR the frontend from it; `{ preset: <alias> }` ⇒ start from that named exemplar (`references/examples/<alias>.md`) and adapt. The design.md is the AUTHORED spec — there is no compile step; the only machine check is the functional Rail-2 gate (`node scripts/check-design.mjs --app <app>`). See [design (optional)](#design-optional) + [design-guide.md](./design-guide.md) |
 | `assumptions` | optional | free-text notes |
 
 > **App-id / per-app state.** The build-state id (`APP_ID`) is derived from `naming.db_name`, sanitized to
@@ -553,3 +558,54 @@ non-b2b preset **fails validation**. Full file: `fixtures/test-memberowner-brief
 For access models beyond the seven intents (peer ownership, composite, related-member-list, …), drop to
 `nodes_raw` / `policies_raw` and the **`constructive-security`** skill. See also `fixtures/test-childfk-brief.yaml`
 for a multi-table FK shape.
+
+---
+
+## design (optional)
+
+`design:` is an **additive, optional** top-level block that constrains the generated app's **look and
+feel**. It is purely additive: a brief **without** a `design:` block is fully valid. There is **no
+compile step** — the `design.md` is the AUTHORED design spec and **you (the agent) hand-author the whole
+frontend from it**, guided by **[design-guide.md](./design-guide.md)** + the worked exemplars in
+**[references/examples/](./examples/)**. Blocks (auth / account / org) compose into that frontend. The
+only machine check is the FUNCTIONAL Rail-2 gate — `node scripts/check-design.mjs --app <app>` — which
+asserts the built `globals.css` still defines the shadcn token NAMES + Tailwind-v4 wiring so Blocks
+render. It never judges taste.
+
+> **Default = auto-propose a RICH design.md, then author from it.** When `design:` is **absent**, the
+> build **proposes a full, opinionated `design.md`** (a generated app should not ship a stock theme nor a
+> token-swapped generic template) and then **authors the whole frontend from it** — the shell, every
+> page's composition, the type, spacing, surfaces, ornament, copy, and `globals.css`. **The quality of
+> the `design.md` is the quality ceiling of the app.**
+
+> **`{ preset: <alias> }` = start from a named exemplar and adapt.** Each alias names a worked exemplar
+> under `references/examples/<alias>.md`; the build opens it as the starting point and adapts it for this
+> app. Use this block only to *constrain* the auto-proposal at intent level — you may also pin a few
+> palette **roles** (semantic role names, NOT shadcn var names) or a one-line `brief:` sentence; the
+> agent authors everything else richly. None of it is required to get a theme.
+
+### Shape (every field optional)
+
+```yaml
+design:
+  brief: "warm, calm, high-end print feel"   # one-line style sentence that steers the auto-proposal
+  preset: <alias>                            # start from references/examples/<alias>.md and adapt
+  density: compact                           # comfortable | cozy | compact — seeds the scaffold skeleton's spacing
+  colors:                                    # a FEW role-level pins (semantic ROLES, never shadcn var names)
+    primary: "oklch(0.55 0.11 162)"         # the one brand/action color
+    accent:  "oklch(0.70 0.12 250)"         # at most one accent
+    neutral: "oklch(0.55 0.01 250)"         # one gray temperature
+  font:   { sans: <family>, mono: <family> } # type-family hints the authored frontend honors
+  radius: "0.5rem"                           # radius scalar hint (px / em / rem)
+```
+
+> **`density` seeds the skeleton.** The `density` dial is the one design key the scaffold skeleton reads —
+> it sets the generated entity pages' starting spacing tier (`comfortable | cozy | compact`, default
+> `cozy`). Everything else here is intent the AUTHORED `design.md` + frontend honor; pin only what you
+> want to constrain and author the rest. The full authoring playbook — intent + signature, palette,
+> type, spacing, surfaces, ornament, copy, and the two hard rails — is in
+> **[design-guide.md](./design-guide.md)**.
+
+> **All design strings must be single-line quoted strings.** The zero-dep brief YAML reader does **not**
+> support folded/literal block scalars (`>-`, `>`, `|`, `|-`). Write `brief:` (and every other string
+> value) on one line — never spread across following indented lines with a `>`/`|` indicator.

@@ -23,6 +23,12 @@
  * Lists with NO generated hook (sessions, api-keys, connected-accounts) are mounted
  * with an empty data prop + a // TODO seam — wire their data source per the block's
  * documented adapter prop. See references/flows.json for each flow's usage.
+ *
+ * AUTHOR THE PRESENTATION. The blocks are INGREDIENTS; this wrapper is a neutral default —
+ * author the /account surface from the app's design.md (the section rhythm, headings,
+ * grouping, type), per references/design-guide.md. PRESERVE the contract: the /account path,
+ * data-testid="account-page", the mounted blocks, and each block's own ACTION testids.
+ * Restyle and re-group freely; don't drop a section or hide a control.
  * ──────────────────────────────────────────────────────────────────────────
  */
 'use client';
