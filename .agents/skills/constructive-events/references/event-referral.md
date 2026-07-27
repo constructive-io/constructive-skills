@@ -110,7 +110,7 @@ A complete blueprint showing 5-level referral rewards with tiered achievements:
           "actor_field": "owner_id",
           "max_depth": 5
         }},
-        { "$type": "LimitCounter", "data": { "limit_name": "databases" } }
+        { "$type": "LimitEnforceCounter", "data": { "limit_name": "databases" } }
       ]
     }
   ],

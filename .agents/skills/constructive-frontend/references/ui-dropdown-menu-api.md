@@ -1,6 +1,8 @@
 # DropdownMenu API Reference
 
-Complete sub-component API for the @constructive-io/ui dropdown menu system. Built on `@base-ui/react/menu`.
+Current sub-component API for the Constructive dropdown menu, built on
+`@base-ui/react/menu`. Install it through the pinned Blocks local-consumption
+workflow before using the source or package import.
 
 ## DropdownMenu
 
@@ -11,25 +13,27 @@ Root component. Manages open/close state.
 - `onOpenChange?: (open: boolean) => void` -- state change handler
 
 ```tsx
-// Uncontrolled
-<DropdownMenu>...</DropdownMenu>
+<>
+  {/* Uncontrolled */}
+  <DropdownMenu>{/* Items */}</DropdownMenu>
 
-// Controlled
-<DropdownMenu open={isOpen} onOpenChange={setIsOpen}>...</DropdownMenu>
+  {/* Controlled */}
+  <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+    {/* Items */}
+  </DropdownMenu>
+</>
 ```
 
 ## DropdownMenuTrigger
 
 Element that toggles the menu.
 
-**Props:**
-- `asChild?: boolean` -- merge props into child element instead of rendering a wrapper
+Compose the trigger with Base UI's `render` prop:
 
 ```tsx
-<DropdownMenuTrigger asChild>
-  <Button variant="ghost" size="icon">
-    <MoreHorizontal className="size-4" />
-  </Button>
+<DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+  <MoreHorizontal aria-hidden="true" />
+  <span className="sr-only">Open actions</span>
 </DropdownMenuTrigger>
 ```
 
@@ -44,8 +48,9 @@ The popup panel containing menu items.
 **Props:**
 - `side?: 'top' | 'right' | 'bottom' | 'left'` -- placement relative to trigger (default: `'bottom'`)
 - `sideOffset?: number` -- distance from trigger in pixels (default: `4`)
-- `align?: 'start' | 'center' | 'end'` -- alignment along the side axis (default: `'center'`)
-- `alignOffset?: number` -- offset along the alignment axis
+- `align?: 'start' | 'center' | 'end'` -- alignment along the side axis (default: `'start'`)
+
+The wrapper accepts Base UI popup props plus these three positioning props. It does not expose the Positioner's `alignOffset` prop.
 
 ```tsx
 <DropdownMenuContent align="end" sideOffset={8}>
@@ -72,12 +77,16 @@ Clickable menu item.
 **Props:**
 - `variant?: 'default' | 'destructive'` -- visual style
 - `disabled?: boolean` -- prevents interaction
-- `onSelect?: () => void` -- called when item is selected
+- `onClick?: () => void` -- called when the item is activated
 
 ```tsx
-<DropdownMenuItem onSelect={handleEdit}>Edit</DropdownMenuItem>
-<DropdownMenuItem disabled>Archive</DropdownMenuItem>
-<DropdownMenuItem variant="destructive" onSelect={handleDelete}>Delete</DropdownMenuItem>
+<DropdownMenuGroup>
+  <DropdownMenuItem onClick={handleEdit}>Edit</DropdownMenuItem>
+  <DropdownMenuItem disabled>Archive</DropdownMenuItem>
+  <DropdownMenuItem variant="destructive" onClick={handleDelete}>
+    Delete
+  </DropdownMenuItem>
+</DropdownMenuGroup>
 ```
 
 ## DropdownMenuCheckboxItem
@@ -125,8 +134,10 @@ Non-interactive group label.
 - `inset?: boolean` -- adds left padding to align with items that have icons
 
 ```tsx
-<DropdownMenuLabel>Actions</DropdownMenuLabel>
-<DropdownMenuLabel inset>More Actions</DropdownMenuLabel>
+<DropdownMenuGroup>
+  <DropdownMenuLabel>Actions</DropdownMenuLabel>
+  <DropdownMenuLabel inset>More actions</DropdownMenuLabel>
+</DropdownMenuGroup>
 ```
 
 ## DropdownMenuSeparator
@@ -139,7 +150,7 @@ Visual divider between groups of items.
 
 ## DropdownMenuShortcut
 
-Keyboard shortcut display. Renders as `<span>` with muted, right-aligned styling.
+Keyboard shortcut display. Renders as `<kbd>` with muted, right-aligned styling.
 
 ```tsx
 <DropdownMenuItem>
@@ -170,7 +181,7 @@ Opens the sub-menu on hover/focus. Renders a chevron indicator.
 
 ## DropdownMenuSubContent
 
-Sub-menu popup panel. Accepts the same positioning props as `DropdownMenuContent`.
+Sub-menu popup panel. It accepts Base UI popup props only; the wrapper fixes its Positioner to `side="right"` and `sideOffset={-4}`.
 
 ## Z-Index Handling
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Constructive Builder"
+  short_description: "Build and verify a Blocks-powered app"
+  default_prompt: "Use $constructive-builder to build and verify this Constructive frontend from a feature-pack brief."

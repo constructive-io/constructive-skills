@@ -74,8 +74,8 @@ await generate({
 
 ```
 hooks/
-├── index.ts              # Barrel export (all hooks, types, configure)
-├── client.ts             # configure() function and execute()
+├── index.ts              # Barrel export (hooks and types)
+├── client.ts             # Generated transport helpers, when enabled
 ├── types.ts              # Entity interfaces, filter types, input types
 ├── queryKeys.ts          # Centralized query key management
 ├── queries/
@@ -104,16 +104,13 @@ orm/
 
 ## Using Generated Hooks
 
-### Configure Client (once at app startup)
+### Bind transport safely
 
-```typescript
-import { configure } from '@/generated/hooks';
-
-configure({
-  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${getToken()}` },
-});
-```
+Generated hooks are intended for a stable custom-domain endpoint. Audit the
+generated transport before use: mutable module-global endpoint or header state
+must not be shared across server requests, tenant switches, or identity
+switches. For those cases, use an instance-scoped request layer or the Blocks
+runtime instead.
 
 ### Query Data
 
@@ -122,8 +119,11 @@ import { useUsersQuery } from '@/generated/hooks';
 
 function UserList() {
   const { data, isLoading } = useUsersQuery({
-    first: 10,
-    filter: { role: { eq: 'ADMIN' } },
+    selection: {
+      fields: { id: true, name: true },
+      first: 10,
+      where: { role: { equalTo: 'ADMIN' } },
+    },
   });
 
   if (isLoading) return <Spinner />;
@@ -137,10 +137,12 @@ function UserList() {
 import { useCreateUserMutation } from '@/generated/hooks';
 
 function CreateUser() {
-  const createUser = useCreateUserMutation();
+  const createUser = useCreateUserMutation({
+    selection: { fields: { id: true, name: true } },
+  });
 
   return (
-    <button onClick={() => createUser.mutate({ input: { name: 'John' } })}>
+    <button onClick={() => createUser.mutate({ name: 'John' })}>
       Create
     </button>
   );
@@ -172,50 +174,65 @@ For query key factory details, see `query-keys.md`.
 ```typescript
 import { createClient } from '@/generated/orm';
 
-export const db = createClient({
-  endpoint: process.env.GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
-});
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 ```
 
 ### Query Data
 
 ```typescript
-const users = await db.user.findMany({
+const db = createDomainClient(dataEndpoint, accessToken);
+const usersResult = await db.user.findMany({
   select: { id: true, name: true, email: true },
-  filter: { role: { eq: 'ADMIN' } },
+  where: { role: { equalTo: 'ADMIN' } },
   first: 10,
-}).execute().unwrap();
+}).unwrap();
+const users = usersResult.users.nodes;
 ```
 
 ### Relations
 
 ```typescript
-const posts = await db.post.findMany({
+const postsResult = await db.post.findMany({
   select: {
     id: true,
     title: true,
     author: { select: { id: true, name: true } },
   },
-}).execute().unwrap();
+}).unwrap();
+const posts = postsResult.posts.nodes;
 
-// posts[0].author.name is fully typed
+// Belongs-to relations preserve database nullability.
+const firstAuthorName = posts[0]?.author?.name;
 ```
 
 ### Error Handling
 
 ```typescript
-const result = await db.user.findOne({ id: '123' }).execute();
+const result = await db.user.findOne({
+  id: '123',
+  select: { id: true, name: true },
+}).execute();
 
 if (result.ok) {
-  console.log(result.value.name);
+  console.log(result.data.user?.name);
 } else {
-  console.error(result.error.message);
+  console.error(result.errors.map((error) => error.message).join('; '));
 }
 
 // Or use helpers
-const user = await db.user.findOne({ id }).execute().unwrap();         // throws on error
-const user = await db.user.findOne({ id }).execute().unwrapOr(default); // fallback value
+const userResult = await db.user.findOne({
+  id,
+  select: { id: true, name: true },
+}).unwrap(); // throws on error
+const fallbackResult = await db.user.findOne({
+  id,
+  select: { id: true, name: true },
+}).unwrapOr({ user: defaultUser });
 ```
 
 For advanced ORM patterns (singleton, per-request client, repository pattern, batch operations), see `orm-patterns.md`.
@@ -316,20 +333,20 @@ main();
 ## Filter Syntax
 
 ```typescript
-// Comparison
-filter: { age: { eq: 25 } }
-filter: { age: { gte: 18, lt: 65 } }
-filter: { status: { in: ['ACTIVE', 'PENDING'] } }
+// Root list filters use `where` in ORM and hook selection arguments.
+where: { age: { equalTo: 25 } }
+where: { age: { greaterThanOrEqualTo: 18, lessThan: 65 } }
+where: { status: { in: ['ACTIVE', 'PENDING'] } }
 
 // String
-filter: { name: { contains: 'john' } }
-filter: { email: { endsWith: '.com' } }
+where: { name: { includes: 'john' } }
+where: { email: { endsWith: '.com' } }
 
 // Logical
-filter: {
-  OR: [
-    { role: { eq: 'ADMIN' } },
-    { role: { eq: 'MODERATOR' } },
+where: {
+  or: [
+    { role: { equalTo: 'ADMIN' } },
+    { role: { equalTo: 'MODERATOR' } },
   ],
 }
 ```
@@ -343,5 +360,5 @@ filter: {
 | Missing custom queries/mutations | Check `queries.include` / `mutations.include` filters |
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match `output` |
-| Auth errors at runtime | Check `configure()` headers (hooks) or `createClient()` headers (ORM) |
+| Auth errors at runtime | Verify the request-scoped endpoint, tenant identity, and credential binding |
 | No docs generated | Set `docs: true` or `docs: { readme: true, agents: true }` |

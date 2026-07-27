@@ -9,7 +9,7 @@ Guards are a distinct category from Authz* policies:
 | Failure mode | Silent filtering (no rows returned) | Explicit error (`STEP_UP_REQUIRED`) |
 | Composition | Multiple policies are OR'd (permissive) | Guards run sequentially, any can block |
 
-Execution order: **RLS (Authz) → Guard* → DML → LimitTrack → EventTracker → JobTrigger**
+Execution order: **RLS (Authz) → Guard* → DML → LimitTrackUsage → EventTracker → JobTrigger**
 
 ## GuardStepUp
 
@@ -149,4 +149,4 @@ type Condition =
 - `sessions_module` must be provisioned (provides session lookup)
 - `user_auth_module` must be provisioned (provides `require_step_up()` in auth_public schema)
 - `app_settings_auth` singleton must exist (provides `step_up_window` config)
-- The `AUTH_EMAIL` blueprint preset includes all of these automatically
+- Resolve required auth modules from the current backend preset registry; do not depend on the removed `AUTH_EMAIL` preset alias

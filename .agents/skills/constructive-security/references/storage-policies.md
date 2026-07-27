@@ -329,15 +329,15 @@ Any `Authz*` node type from the registry can be used. The most relevant ones for
 | `AuthzPublishable` | Published files are publicly readable (SELECT only) | `is_public` | `["buckets", "files"]` |
 | `AuthzAppMembership` | App-level membership gate (hardcoded type=1) | — | All three |
 | `AuthzAllowAll` | No restrictions (use sparingly) | — | All three |
-| `AuthzDenyAll` | Lock down completely (admin override only) | — | All three |
+| `AuthzDenyAll` | Explicit `FALSE`; does not override another passing permissive policy | — | All three |
 
-See the [`constructive-security`](../../constructive-security/SKILL.md) skill for the full list of 14 Authz* types and their config shapes.
+See the [`constructive-security`](../../constructive-security/SKILL.md) skill for all 25 registry Authz nodes and the separately platform-applied `AuthzHumanOnly` guard. `AuthzColumnSecurity` is registry-selectable but generates a column write guard rather than a stored storage RLS policy.
 
 ## Cross-references
 
 - **Safegres protocol (Authz* types):** [`constructive-security`](../../constructive-security/SKILL.md)
 - **Custom entities & provisioning:** [`constructive-entities`](../../constructive-entities/SKILL.md)
-- **Blueprint definition format:** [blueprint-definition-format.md](./blueprint-definition-format.md)
+- **Blueprint definition format:** [blueprint-definition-format.md](../../constructive-blueprints/references/blueprint-definition-format.md)
 - **Upload flow (GraphQL mutations, client library):** [`constructive-storage`](../../constructive-storage/SKILL.md)
 - **Multi-scope bucket resolution:** `multi-scope-bucket-resolution` skill in `constructive-db`
 - **SQL-level security details:** `constructive-db-security-sql` skill in `constructive-db`

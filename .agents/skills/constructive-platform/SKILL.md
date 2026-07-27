@@ -11,9 +11,12 @@ metadata:
 
 Server configuration, services/schemas, deployment, cloud functions, environment configuration, and the cnc CLI execution engine.
 
+This is an operator/platform skill. Tenant application UI receives explicit public endpoints from its host; it must not use admin routing headers, derive sibling hosts, or fall through to operator APIs when RLS hides data. Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for the tenant Console runtime.
+
 ## When to Apply
 
 Use this skill when:
+
 - Starting the Constructive GraphQL server or GraphiQL explorer
 - Configuring services, APIs, domains, and schema grants
 - Deploying with Docker Compose or building Docker images
@@ -41,8 +44,8 @@ See [deployment.md](./references/deployment.md) for details.
 ## Server Configuration
 
 - Running the Constructive GraphQL server (`cnc server`), GraphiQL explorer (`cnc explorer`), and code generation (`cnc codegen`)
-- API routing modes: public (domain-based) vs admin (header-based), Services API routing
-- The schema-to-GraphQL pipeline: PostgreSQL schemas > PostGraphile introspection > GraphQL API > codegen > typed client
+- Operator API routing modes: public (domain-based) vs private admin (header-based), Services API routing
+- The schema-to-GraphQL pipeline: PostgreSQL schemas > PostGraphile introspection > GraphQL API, with codegen available as an optional custom-domain step
 
 See [server-config.md](./references/server-config.md) for details.
 
@@ -63,6 +66,7 @@ See [cloud-functions.md](./references/cloud-functions.md) for details.
 See [env-config.md](./references/env-config.md) for details.
 
 Sub-references:
+
 - [env-defaults.md](./references/env-defaults.md) — Default values for all configuration options
 - [env-vars.md](./references/env-vars.md) — Source file locations for env vars and types
 - [env-config-file.md](./references/env-config-file.md) — Config file reference (`pgpm.json`)
@@ -97,3 +101,4 @@ See [cnc-cli.md](./references/cnc-cli.md) for details.
 - **Security (Safegres, Authz*, RLS, storage policies):** [`constructive-security`](../constructive-security/SKILL.md)
 - **Background jobs:** [`constructive-jobs`](../constructive-jobs/SKILL.md)
 - **Code generation:** [`constructive-codegen`](../constructive-codegen/SKILL.md)
+- **Tenant application registry/runtime:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

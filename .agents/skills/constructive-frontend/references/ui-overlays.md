@@ -1,14 +1,25 @@
-Build overlay and modal UIs with @constructive-io/ui components.
+# Constructive overlays
 
-## Portal System Setup
+Install overlay primitives through the pinned Blocks local-consumption workflow
+and use the consumer's source aliases below. All trigger and close composition
+uses Base UI's `render` prop.
+
+## Portal root
+
+Mount one portal root so modal and floating layers share Constructive's z-index
+policy. The hooks fall back to `document.body` while the root is unavailable,
+but the explicit root is the stable application target.
 
 ```tsx
-// Root layout -- required for all overlay components
-import { PortalRoot } from '@constructive-io/ui/portal';
+import { PortalRoot } from '@/components/ui/portal';
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
   return (
-    <html>
+    <html lang="en">
       <body>
         {children}
         <PortalRoot />
@@ -18,54 +29,48 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-Portal constants and hooks:
-- `PORTAL_ROOT_ID = 'portal-root'` -- the fixed-position container div
-- `ModalPortalScope` -- wraps modal content; increments depth for nested modals
-- `usePortalContext()` -- access `{ layer, depth, floatingPortalStrategy, floatingZIndex }`
-- `useInModalOverlay()` -- boolean, true inside a modal
-- `useRootPortalContainer()` -- returns `#portal-root` HTMLElement
-- `useFloatingOverlayPortalProps()` -- returns `{ container?, zIndexClass }` for floating elements
-
-### Z-Index Layers
-
-```
---z-layer-floating: 1000          Tooltips, popovers, dropdowns
---z-layer-modal-backdrop: 2000    Modal backdrop overlay
---z-layer-modal-content: 2001     Modal content
---z-layer-floating-elevated: 3000 Floating elements inside modals
---z-layer-toast: 4000             Toast notifications
---z-layer-portal-root: 9999       Portal root container
-```
+Modal content owns `ModalPortalScope`; floating overlays inside it select the
+elevated floating layer automatically. Keep titles and descriptions in every
+modal, using `sr-only` when the accessible name should be visually hidden.
 
 ## Dialog
 
+Use Dialog for focused content or a modal form. Use `DialogPanel` for the
+scrollable body and `DialogFooter` with `default` or `bare` presentation.
+
 ```tsx
 'use client';
-import {
-  Dialog, DialogTrigger, DialogPopup, DialogHeader, DialogFooter,
-  DialogTitle, DialogDescription, DialogClose, DialogPanel,
-} from '@constructive-io/ui/dialog';
-import { Button } from '@constructive-io/ui/button';
 
-function EditProfileDialog() {
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogPanel,
+  DialogPopup,
+  DialogTitle,
+  DialogTrigger
+} from '@/components/ui/dialog';
+
+export function EditProfileDialog() {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="outline">Edit Profile</Button>
+      <DialogTrigger render={<Button variant="outline" />}>
+        Edit profile
       </DialogTrigger>
       <DialogPopup>
         <DialogHeader>
-          <DialogTitle>Edit Profile</DialogTitle>
-          <DialogDescription>Make changes to your profile.</DialogDescription>
+          <DialogTitle>Edit profile</DialogTitle>
+          <DialogDescription>Update the visible account details.</DialogDescription>
         </DialogHeader>
-        <DialogPanel>
-          {/* Form content */}
-        </DialogPanel>
+        <DialogPanel>{/* Form fields */}</DialogPanel>
         <DialogFooter>
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
+          <DialogClose render={<Button variant="outline" />}>
+            Cancel
           </DialogClose>
-          <Button>Save changes</Button>
+          <Button type="submit">Save changes</Button>
         </DialogFooter>
       </DialogPopup>
     </Dialog>
@@ -73,63 +78,36 @@ function EditProfileDialog() {
 }
 ```
 
-**Key sub-components:**
-- `Dialog` -- root (controlled via `open`/`onOpenChange`)
-- `DialogTrigger` -- click to open
-- `DialogPopup` / `DialogContent` (alias) -- the modal content
-- `DialogHeader`, `DialogTitle`, `DialogDescription` -- header section
-- `DialogPanel` / `DialogViewport` -- scrollable content area
-- `DialogFooter` -- action buttons (has `variant?: 'default' | 'sticky'`)
-- `DialogClose` -- close button
-- `DialogBackdrop` / `DialogOverlay` -- backdrop
-- `bottomStickOnMobile` prop -- renders as bottom sheet on mobile
-
-### Controlled Dialog
-
-```tsx
-'use client';
-import { useState } from 'react';
-import { Dialog, DialogPopup, DialogHeader, DialogTitle, DialogFooter } from '@constructive-io/ui/dialog';
-import { Button } from '@constructive-io/ui/button';
-
-function ControlledDialog() {
-  const [open, setOpen] = useState(false);
-
-  return (
-    <>
-      <Button onClick={() => setOpen(true)}>Open</Button>
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogPopup>
-          <DialogHeader>
-            <DialogTitle>Controlled Dialog</DialogTitle>
-          </DialogHeader>
-          <DialogFooter>
-            <Button onClick={() => setOpen(false)}>Close</Button>
-          </DialogFooter>
-        </DialogPopup>
-      </Dialog>
-    </>
-  );
-}
-```
+For programmatic control, pass `open` and `onOpenChange` to `Dialog`. Keep one
+source of truth; do not mix a controlled root with an independent trigger
+state.
 
 ## AlertDialog
 
+Use AlertDialog for a destructive action that requires an explicit decision.
+Its action and cancel exports already carry their button treatments.
+
 ```tsx
 import {
-  AlertDialog, AlertDialogTrigger, AlertDialogContent, AlertDialogHeader,
-  AlertDialogTitle, AlertDialogDescription, AlertDialogFooter,
-  AlertDialogCancel, AlertDialogAction,
-} from '@constructive-io/ui/alert-dialog';
-import { Button } from '@constructive-io/ui/button';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger
+} from '@/components/ui/alert-dialog';
+import { Button } from '@/components/ui/button';
 
 <AlertDialog>
-  <AlertDialogTrigger asChild>
-    <Button variant="destructive">Delete Account</Button>
+  <AlertDialogTrigger render={<Button variant="destructive" />}>
+    Delete account
   </AlertDialogTrigger>
   <AlertDialogContent>
     <AlertDialogHeader>
-      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+      <AlertDialogTitle>Delete this account?</AlertDialogTitle>
       <AlertDialogDescription>
         This action cannot be undone.
       </AlertDialogDescription>
@@ -142,240 +120,138 @@ import { Button } from '@constructive-io/ui/button';
 </AlertDialog>
 ```
 
-Use AlertDialog (not Dialog) for destructive confirmations -- it blocks interaction and requires explicit dismiss.
+## Sheet
 
-## Sheet (Slide-Out Panel)
+Use Sheet for secondary navigation, details, or editing that should retain page
+context. `side` accepts `left`, `right`, `top`, or `bottom`.
 
 ```tsx
-'use client';
+import { Button } from '@/components/ui/button';
 import {
-  Sheet, SheetTrigger, SheetContent, SheetHeader,
-  SheetTitle, SheetDescription, SheetFooter, SheetClose,
-} from '@constructive-io/ui/sheet';
-import { Button } from '@constructive-io/ui/button';
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger
+} from '@/components/ui/sheet';
 
 <Sheet>
-  <SheetTrigger asChild>
-    <Button>Open Panel</Button>
-  </SheetTrigger>
-  <SheetContent side="right"> {/* 'left' | 'right' | 'top' | 'bottom' */}
+  <SheetTrigger render={<Button />}>Open details</SheetTrigger>
+  <SheetContent side="right">
     <SheetHeader>
-      <SheetTitle>Panel Title</SheetTitle>
-      <SheetDescription>Panel description</SheetDescription>
+      <SheetTitle>Record details</SheetTitle>
+      <SheetDescription>Review this record without leaving the list.</SheetDescription>
     </SheetHeader>
-    <div className="py-4">{/* Content */}</div>
+    <div className="flex flex-col gap-4 py-4">{/* Content */}</div>
     <SheetFooter>
-      <SheetClose asChild><Button variant="outline">Close</Button></SheetClose>
+      <SheetClose render={<Button variant="outline" />}>Close</SheetClose>
       <Button>Save</Button>
     </SheetFooter>
   </SheetContent>
 </Sheet>
 ```
 
-Side variants: `left`, `right` (default), `top`, `bottom`. Uses motion/react for GPU-accelerated transform animations with `springs.panel`.
+For nested sheets, wrap the owning region in `SheetStackProvider` and follow
+[ui-sheet-stacking.md](./ui-sheet-stacking.md).
 
-### Sheet with Form
+## Popover and Tooltip
 
-```tsx
-<Sheet>
-  <SheetTrigger asChild>
-    <Button>Edit Item</Button>
-  </SheetTrigger>
-  <SheetContent side="right" className="w-[400px] sm:w-[540px]">
-    <SheetHeader>
-      <SheetTitle>Edit Item</SheetTitle>
-    </SheetHeader>
-    <div className="space-y-4 py-4">
-      <Field label="Name" required>
-        <Input value={name} onChange={(e) => setName(e.target.value)} />
-      </Field>
-      <Field label="Description">
-        <Textarea value={desc} onChange={(e) => setDesc(e.target.value)} />
-      </Field>
-    </div>
-    <SheetFooter>
-      <SheetClose asChild><Button variant="outline">Cancel</Button></SheetClose>
-      <Button onClick={handleSave}>Save</Button>
-    </SheetFooter>
-  </SheetContent>
-</Sheet>
-```
-
-## Popover
+Use Popover for interactive contextual content and Tooltip for a short label or
+hint. Reuse one `TooltipProvider` for a region with several tooltips.
 
 ```tsx
-import { Popover, PopoverTrigger, PopoverContent, PopoverAnchor } from '@constructive-io/ui/popover';
-import { Button } from '@constructive-io/ui/button';
+import { InfoIcon } from 'lucide-react';
 
-<Popover>
-  <PopoverTrigger asChild>
-    <Button variant="outline">Open</Button>
-  </PopoverTrigger>
-  <PopoverContent className="w-80">
-    <div className="grid gap-4">
-      <h4 className="font-medium">Popover content</h4>
-      <p className="text-sm text-muted-foreground">Configure settings here.</p>
-    </div>
-  </PopoverContent>
-</Popover>
-```
+import { Button } from '@/components/ui/button';
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverTitle,
+  PopoverTrigger
+} from '@/components/ui/popover';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger
+} from '@/components/ui/tooltip';
 
-`PopoverAnchor` -- alternative positioning reference (instead of trigger). Supports `showArrow` prop and `side` prop (top/right/bottom/left).
+<>
+  <Popover>
+    <PopoverTrigger render={<Button variant="outline" />}>Filters</PopoverTrigger>
+    <PopoverContent align="end">
+      <PopoverTitle>Filters</PopoverTitle>
+      <PopoverDescription>Narrow the visible records.</PopoverDescription>
+    </PopoverContent>
+  </Popover>
 
-## Tooltip
-
-```tsx
-import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@constructive-io/ui/tooltip';
-import { Button } from '@constructive-io/ui/button';
-import { Info } from 'lucide-react';
-
-// Wrap app/section in TooltipProvider (controls delay)
-<TooltipProvider>
-  <Tooltip>
-    <TooltipTrigger asChild>
-      <Button variant="icon" size="icon"><Info className="size-4" /></Button>
-    </TooltipTrigger>
-    <TooltipContent side="top" showArrow>
-      <p>Helpful information</p>
-    </TooltipContent>
-  </Tooltip>
-</TooltipProvider>
+  <TooltipProvider>
+    <Tooltip>
+      <TooltipTrigger render={<Button variant="ghost" size="icon" />}>
+        <InfoIcon aria-hidden="true" />
+        <span className="sr-only">About retention</span>
+      </TooltipTrigger>
+      <TooltipContent side="top" showArrow>
+        Records are retained for 30 days.
+      </TooltipContent>
+    </Tooltip>
+  </TooltipProvider>
+</>
 ```
 
 ## DropdownMenu
 
+Put items inside a group, use separators between semantic groups, and keep
+destructive actions visibly distinct.
+
 ```tsx
+import { MoreHorizontalIcon } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
-  DropdownMenuItem, DropdownMenuSeparator, DropdownMenuLabel,
-  DropdownMenuGroup, DropdownMenuShortcut, DropdownMenuCheckboxItem,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem,
-  DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent,
-} from '@constructive-io/ui/dropdown-menu';
-import { Button } from '@constructive-io/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
+} from '@/components/ui/dropdown-menu';
 
 <DropdownMenu>
-  <DropdownMenuTrigger asChild>
-    <Button variant="ghost" size="icon"><MoreHorizontal className="size-4" /></Button>
+  <DropdownMenuTrigger render={<Button variant="ghost" size="icon" />}>
+    <MoreHorizontalIcon aria-hidden="true" />
+    <span className="sr-only">Record actions</span>
   </DropdownMenuTrigger>
   <DropdownMenuContent align="end">
-    <DropdownMenuLabel>Actions</DropdownMenuLabel>
-    <DropdownMenuSeparator />
     <DropdownMenuGroup>
-      <DropdownMenuItem>
-        Edit <DropdownMenuShortcut>&#8984;E</DropdownMenuShortcut>
-      </DropdownMenuItem>
+      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+      <DropdownMenuItem>Edit</DropdownMenuItem>
       <DropdownMenuItem>Duplicate</DropdownMenuItem>
     </DropdownMenuGroup>
     <DropdownMenuSeparator />
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>Share</DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-        <DropdownMenuItem>Email</DropdownMenuItem>
-        <DropdownMenuItem>Link</DropdownMenuItem>
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-    <DropdownMenuSeparator />
-    <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+    <DropdownMenuGroup>
+      <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
+    </DropdownMenuGroup>
   </DropdownMenuContent>
 </DropdownMenu>
 ```
 
-### Checkbox and Radio Menu Items
+## Selection guide
 
-```tsx
-<DropdownMenuContent>
-  <DropdownMenuLabel>View</DropdownMenuLabel>
-  <DropdownMenuCheckboxItem checked={showGrid} onCheckedChange={setShowGrid}>
-    Show Grid
-  </DropdownMenuCheckboxItem>
-  <DropdownMenuCheckboxItem checked={showRulers} onCheckedChange={setShowRulers}>
-    Show Rulers
-  </DropdownMenuCheckboxItem>
-  <DropdownMenuSeparator />
-  <DropdownMenuLabel>Density</DropdownMenuLabel>
-  <DropdownMenuRadioGroup value={density} onValueChange={setDensity}>
-    <DropdownMenuRadioItem value="compact">Compact</DropdownMenuRadioItem>
-    <DropdownMenuRadioItem value="normal">Normal</DropdownMenuRadioItem>
-    <DropdownMenuRadioItem value="relaxed">Relaxed</DropdownMenuRadioItem>
-  </DropdownMenuRadioGroup>
-</DropdownMenuContent>
-```
+| Need | Component |
+|---|---|
+| Focused form or content | Dialog |
+| Destructive confirmation | AlertDialog |
+| Context-preserving panel | Sheet |
+| Small interactive surface | Popover |
+| Short hover/focus hint | Tooltip |
+| Compact action list | DropdownMenu |
 
-## Decision Guide
-
-| Component | Use When |
-|-----------|----------|
-| **Dialog** | Modal form, confirmation, content that needs full attention |
-| **AlertDialog** | Destructive confirmation (blocks interaction, requires explicit dismiss) |
-| **Sheet** | Side panel for details, editing, secondary navigation |
-| **Drawer** | Bottom sheet (mobile), content tray (uses Vaul) |
-| **Popover** | Contextual info/controls, filter panels, small forms |
-| **Tooltip** | Brief hints on hover/focus, icon labels |
-| **DropdownMenu** | Action menus, context menus, option lists |
-
-## Overlay-Inside-Overlay Rules
-
-- Floating elements (Tooltip, Popover, Dropdown) inside modals automatically get `z-[var(--z-layer-floating-elevated)]`
-- The `ModalPortalScope` tracks nesting depth
-- `useFloatingOverlayPortalProps()` returns correct z-index class based on context
-- Sheets support stacking via `SheetStackProvider` (see `references/sheet-stacking.md`)
-
-### Tooltip Inside Dialog
-
-```tsx
-<Dialog>
-  <DialogTrigger asChild><Button>Open</Button></DialogTrigger>
-  <DialogPopup>
-    <DialogHeader><DialogTitle>Settings</DialogTitle></DialogHeader>
-    <DialogPanel>
-      <TooltipProvider>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="icon" size="icon"><Info className="size-4" /></Button>
-          </TooltipTrigger>
-          <TooltipContent>
-            {/* Automatically elevated z-index inside modal */}
-            <p>This tooltip renders above the dialog</p>
-          </TooltipContent>
-        </Tooltip>
-      </TooltipProvider>
-    </DialogPanel>
-  </DialogPopup>
-</Dialog>
-```
-
-### Dropdown Inside Sheet
-
-```tsx
-<Sheet>
-  <SheetTrigger asChild><Button>Details</Button></SheetTrigger>
-  <SheetContent>
-    <SheetHeader><SheetTitle>Item Details</SheetTitle></SheetHeader>
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon"><MoreHorizontal className="size-4" /></Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent>
-        {/* Automatically elevated z-index inside sheet */}
-        <DropdownMenuItem>Edit</DropdownMenuItem>
-        <DropdownMenuItem variant="destructive">Delete</DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
-  </SheetContent>
-</Sheet>
-```
-
-## Best Practices
-
-- Always use `asChild` on triggers to preserve semantic HTML
-- Set up `PortalRoot` once in root layout -- all overlays require it
-- Use `DialogPopup` (not `DialogContent`) as the primary popup component name
-- Sheet `side` defaults to `right`; use `left` for navigation panels
-- Wrap areas with many tooltips in a single `TooltipProvider` to share delay settings
-- Use AlertDialog (not Dialog) for destructive confirmations -- it blocks interaction
-- Use controlled mode (`open`/`onOpenChange`) when you need programmatic open/close
-- Prefer `align="end"` on dropdown menus triggered by icon buttons
-- Set explicit width on SheetContent for consistent panel sizing
-- DialogFooter `variant="sticky"` keeps actions visible during scroll
+Use controlled `open`/`onOpenChange` only when the host needs programmatic
+control. Respect reduced motion, keep focus behavior from the primitive, and
+avoid hand-authored z-index values for nested overlays.

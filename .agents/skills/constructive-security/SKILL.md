@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization — Safegres protocol, 23 Authz* policy types, RLS, grants, permissions, permission defaults, GuardStepUp, read-only access, storage policies, and the secureTableProvision workflow. Use when asked to 'add security', 'RLS', 'grants', 'policies', 'Safegres', 'Authz*', 'AuthzEntityMembership', 'AuthzDirectOwner', 'AuthzMemberOwner', 'AuthzComposite', 'AuthzSystemOnly', 'AuthzHumanOnly', 'AuthzValueAllowed', 'AuthzValueExists', 'AuthzValueMatch', 'system-only policy', 'system-only writes', 'human-only mutation', 'block agents from writing', 'read-only mode', 'secure table provision', 'storage policies', 'bucket security', 'permission model', 'permission defaults', 'default_permissions', 'GuardStepUp', 'step-up auth', 'guard step-up', 'require step-up', 'MFA guard', 'named permissions', or when working with authorization in blueprints or the ORM."
+description: "Authorization with Safegres, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, permissions, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, permission defaults, step-up auth, or authorization in blueprints and the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -34,33 +34,38 @@ Use this skill when:
 
 Every user has an "org identity" — a personal org with org-level membership. This unifies "user owns it personally" and "org owns it and user is a member" under a single `AuthzEntityMembership` policy.
 
-## The 23 Authz* Policy Types
+## Authz mechanisms
+
+The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` composes other nodes, while `AuthzColumnSecurity` generates a column-level write guard instead of a stored RLS policy. The platform also applies `AuthzHumanOnly` outside the registry, so this skill documents 26 distinct authorization mechanisms without pretending they share one execution model.
 
 | # | Type | Intent | Key Config |
 |---|------|--------|------------|
 | 1 | `AuthzDirectOwner` | Direct personal ownership | `entity_field` |
 | 2 | `AuthzDirectOwnerAny` | Multi-owner OR logic | `entity_fields` (array) |
 | 3 | `AuthzAppMembership` | App-level membership (hardcoded type=1) | optional `permission`/`is_admin` |
-| 4 | `AuthzEntityMembership` | Bound membership-to-row | `entity_field`, `membership_type` |
-| 5 | `AuthzMemberOwner` | Ownership AND entity membership | `owner_field`, `entity_field`, `membership_type` |
-| 6 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
-| 7 | `AuthzPeerOwnership` | Peer visibility (direct) | `owner_field`, `membership_type` |
-| 8 | `AuthzRelatedPeerOwnership` | Peer visibility via join | `entity_field`, `obj_*` |
-| 9 | `AuthzOrgHierarchy` | Hierarchy (manager/subordinate) | `direction`, `anchor_field`, `entity_field` |
-| 10 | `AuthzTemporal` | Time-window constraints | `valid_from_field`, `valid_until_field` |
-| 11 | `AuthzPublishable` | Draft/published gating (READ-only) | `is_published_field` |
-| 12 | `AuthzMemberList` | Actor in UUID array | `array_field` |
-| 13 | `AuthzRelatedMemberList` | Actor in related UUID array | `owned_schema`/`owned_table`/`owned_table_key` |
-| 14 | `AuthzAllowAll` | Unconditional allow | `{}` |
-| 15 | `AuthzDenyAll` | Unconditional deny | `{}` |
-| 16 | `AuthzFilePath` | Path-scoped file sharing (ltree) | `shares_schema`, `shares_table`, `files_table` |
-| 17 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
-| 18 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or legacy `BoolExpr` AST) |
-| 19 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
-| 20 | `AuthzHumanOnly` | Block principals (agents/API keys) from a mutation — human sessions only (guard, not a registry node) | `{}` |
-| 21 | `AuthzValueAllowed` | Check local column against allowed values | `column`, `allowed`, `operator` |
-| 22 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row | `ref_schema`/`ref_table`, `join`, `conditions` |
-| 23 | `AuthzValueMatch` | `EXISTS` in a related table with a value match on the ref row | `ref_schema`/`ref_table`, `join`, `match`, `conditions` |
+| 4 | `AuthzAppMemberOwner` | Ownership AND current app membership | `owner_field`, optional permission/admin/owner checks |
+| 5 | `AuthzEntityMembership` | Bound membership-to-row | `entity_field`, `membership_type` |
+| 6 | `AuthzMemberOwner` | Ownership AND entity membership | `owner_field`, `entity_field`, `membership_type` |
+| 7 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
+| 8 | `AuthzRelatedMemberOwner` | Ownership AND related-entity membership | `owner_field`, `entity_field`, `obj_*` |
+| 9 | `AuthzPeerOwnership` | Peer visibility (direct) | `owner_field`, `membership_type` |
+| 10 | `AuthzRelatedPeerOwnership` | Peer visibility via join | `entity_field`, `obj_*` |
+| 11 | `AuthzOrgHierarchy` | Hierarchy (manager/subordinate) | `direction`, `anchor_field`; optional `entity_field`, `max_depth` |
+| 12 | `AuthzTemporal` | Time-window constraints | `valid_from_field`, `valid_until_field` |
+| 13 | `AuthzPublishable` | Draft/published gating (READ-only) | `is_published_field` |
+| 14 | `AuthzMemberList` | Actor in UUID array | `array_field` |
+| 15 | `AuthzRelatedMemberList` | Actor in related UUID array | related table ref, `owned_table_key`, `owned_table_ref_key`, `this_object_key` |
+| 16 | `AuthzAllowAll` | Unconditional allow | `{}` |
+| 17 | `AuthzDenyAll` | Generates `FALSE`; use a restrictive policy for a hard deny alongside other policies | `{}` |
+| 18 | `AuthzFilePath` | Path-scoped file sharing (ltree) | path-shares table ref, `permission_field`; optional files table ref |
+| 19 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
+| 20 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or legacy `BoolExpr` AST) |
+| 21 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
+| 22 | `AuthzValueAllowed` | Check local column against allowed values | `column`, `allowed`, `operator` |
+| 23 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row | referenced table ref, `join`; optional `conditions` |
+| 24 | `AuthzValueMatch` | `EXISTS` in a related table with a value match on the ref row | referenced table ref, `join`, `match`; optional `conditions` |
+| 25 | `AuthzColumnSecurity` | Guard selected INSERT/UPDATE column writes with a nested Authz node or immutability rule | `columns`, `rule`, `authz`/`values`/`allowed` |
+| — | `AuthzHumanOnly` | Platform-applied guard that blocks principals from sensitive mutations | Not registry-selectable |
 
 See [authz-types.md](./references/authz-types.md) for full config shapes, semantics, and examples.
 
@@ -292,12 +297,12 @@ See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the 
 
 | File | Content |
 |------|---------|
-| [authz-types.md](./references/authz-types.md) | All 20 Authz* types with config shapes and examples |
+| [authz-types.md](./references/authz-types.md) | All 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, with config shapes and examples |
 | [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 | [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers |
-|| [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
+| [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
 
 ## Cross-References
 

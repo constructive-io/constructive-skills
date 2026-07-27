@@ -50,20 +50,22 @@ Skip N rows, take M. Simple, supports random page access ("page 3 of 12").
 
 ```typescript
 // Page 1
-const page1 = await db.user.findMany({
+const page1Result = await db.user.findMany({
   select: { id: true, name: true, email: true },
   first: 20,
   offset: 0,
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const page1 = page1Result.users;
 
 // Page 3
-const page3 = await db.user.findMany({
+const page3Result = await db.user.findMany({
   select: { id: true, name: true, email: true },
   first: 20,
   offset: 40,   // (page - 1) * pageSize
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const page3 = page3Result.users;
 ```
 
 ### React Query Hooks
@@ -71,9 +73,12 @@ const page3 = await db.user.findMany({
 ```typescript
 function UserTable({ page, pageSize }: { page: number; pageSize: number }) {
   const { data, isLoading } = useUsersQuery({
-    first: pageSize,
-    offset: (page - 1) * pageSize,
-    orderBy: ['CREATED_AT_DESC'],
+    selection: {
+      fields: { id: true, name: true, email: true },
+      first: pageSize,
+      offset: (page - 1) * pageSize,
+      orderBy: ['CREATED_AT_DESC'],
+    },
   });
 
   const users = data?.users?.nodes ?? [];
@@ -101,17 +106,6 @@ const query = buildSelect(userTable, tables, {
 // Generated query includes $first: Int, $offset: Int variables
 ```
 
-### Legacy QueryBuilder (graphql-query)
-
-```typescript
-const result = builder
-  .query('User')
-  .getMany()
-  .select()
-  .print();
-// Pass { first: 20, offset: 40 } as variables at execution time
-```
-
 **Trade-offs:**
 - Random page access (jump to page N)
 - Performance degrades at high offsets — database must scan all skipped rows
@@ -127,7 +121,7 @@ Resume from an opaque position marker. Stable, performant, ideal for infinite sc
 
 ```typescript
 // Page 1 — request pageInfo to get cursors
-const page1 = await db.user.findMany({
+const page1Result = await db.user.findMany({
   select: {
     id: true,
     name: true,
@@ -135,68 +129,70 @@ const page1 = await db.user.findMany({
   },
   first: 20,
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const page1 = page1Result.users;
 // page1 is ConnectionResult: { nodes, totalCount, pageInfo }
 // pageInfo.endCursor and pageInfo.hasNextPage are always included
 
 // Page 2 — pass endCursor from page 1
-const page2 = await db.user.findMany({
+const nextCursor = page1.pageInfo.endCursor;
+if (!nextCursor) throw new Error('The first page has no next cursor.');
+const page2Result = await db.user.findMany({
   select: {
     id: true,
     name: true,
     email: true,
   },
   first: 20,
-  after: page1.pageInfo.endCursor,
+  after: nextCursor,
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const page2 = page2Result.users;
 ```
 
 ### ORM — Backward Pagination
 
 ```typescript
 // Last 20 items
-const lastPage = await db.user.findMany({
+const lastPageResult = await db.user.findMany({
   select: { id: true, name: true },
   last: 20,
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const lastPage = lastPageResult.users;
 
 // Previous page — use startCursor + before
-const prevPage = await db.user.findMany({
+const previousCursor = lastPage.pageInfo.startCursor;
+if (!previousCursor) throw new Error('The last page has no previous cursor.');
+const prevPageResult = await db.user.findMany({
   select: { id: true, name: true },
   last: 20,
-  before: lastPage.pageInfo.startCursor,
+  before: previousCursor,
   orderBy: ['CREATED_AT_DESC'],
-}).execute().unwrap();
+}).unwrap();
+const prevPage = prevPageResult.users;
 ```
 
 ### React Query Hooks — Infinite Scroll
 
 ```typescript
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { createClient } from '@/generated/orm';
-
-const db = createClient({
-  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${getToken()}` },
-});
-
-function InfiniteUserList() {
+function InfiniteUserList({ db, databaseId, identityId }) {
   const {
     data,
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['users', 'infinite'],
+    queryKey: [databaseId, identityId, 'users', 'infinite'],
     queryFn: async ({ pageParam }) => {
-      return db.user.findMany({
+      const result = await db.user.findMany({
         select: { id: true, name: true, email: true },
         first: 20,
         after: pageParam,
         orderBy: ['CREATED_AT_DESC'],
-      }).execute().unwrap();
+      }).unwrap();
+      return result.users;
     },
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) =>
@@ -256,7 +252,8 @@ const result = await db.user.findMany({
   first: 10,
   after: someCursor,
   offset: 5,
-}).execute().unwrap();
+}).unwrap();
+const users = result.users;
 ```
 
 ---
@@ -294,7 +291,9 @@ const user = await db.user.findOne({
 }).execute();
 ```
 
-In the ORM codegen, nested connections use a default `first: 20` limit unless you specify otherwise. The runtime `buildSelect` generator uses `first: 20` for nested hasMany/manyToMany relations.
+Nested relation selections accept `first`, `filter`, and `orderBy`. They do not
+apply an implicit page-size default or expose top-level cursor/offset arguments;
+query the related entity model directly when it needs independent pagination.
 
 ---
 
@@ -320,10 +319,9 @@ interface PageInfo {
 }
 
 // findMany arguments — includes all pagination params
-interface FindManyArgs<TSelect, TWhere, TCondition, TOrderBy> {
+interface FindManyArgs<TSelect, TWhere, TOrderBy> {
   select?: TSelect;
   where?: TWhere;
-  condition?: TCondition;
   orderBy?: TOrderBy[];
   first?: number;
   last?: number;
@@ -379,9 +377,8 @@ interface ConnectionResult<T = unknown> {
 ### Paginated Admin Table with Total Count
 
 ```typescript
-async function getUsers(page: number, pageSize: number, search?: string) {
-  const db = getDb();
-  return db.user.findMany({
+async function getUsers(db: DomainClient, page: number, pageSize: number, search?: string) {
+  const result = await db.user.findMany({
     select: { id: true, name: true, email: true, role: true, createdAt: true },
     where: search
       ? { or: [
@@ -392,18 +389,17 @@ async function getUsers(page: number, pageSize: number, search?: string) {
     orderBy: ['CREATED_AT_DESC'],
     first: pageSize,
     offset: (page - 1) * pageSize,
-  }).execute().unwrap();
-  // result.totalCount gives you total for pagination UI
-  // result.nodes gives you the page data
+  }).unwrap();
+  // The connection exposes totalCount, nodes, and pageInfo.
+  return result.users;
 }
 ```
 
 ### Cursor-Based Feed with "Load More"
 
 ```typescript
-async function loadFeed(cursor?: string) {
-  const db = getDb();
-  return db.post.findMany({
+async function loadFeed(db: DomainClient, cursor?: string) {
+  const result = await db.post.findMany({
     select: {
       id: true,
       title: true,
@@ -415,9 +411,9 @@ async function loadFeed(cursor?: string) {
     orderBy: ['CREATED_AT_DESC'],
     first: 20,
     after: cursor,
-  }).execute().unwrap();
-  // result.pageInfo.hasNextPage — show "Load More" button
-  // result.pageInfo.endCursor — pass to next loadFeed() call
+  }).unwrap();
+  // The connection exposes pageInfo for the next loadFeed() call.
+  return result.posts;
 }
 ```
 
@@ -428,9 +424,10 @@ async function loadFeed(cursor?: string) {
 const result = await db.user.findMany({
   select: { id: true },
   where: { role: { equalTo: 'ADMIN' } },
-}).execute().unwrap();
-// result.totalCount — the count you need
-// result.nodes — minimal, just IDs (can't avoid selecting at least one field)
+}).unwrap();
+const users = result.users;
+// users.totalCount — the count you need
+// users.nodes — minimal, just IDs (can't avoid selecting at least one field)
 ```
 
 ---
@@ -443,5 +440,3 @@ const result = await db.user.findMany({
 | **ORM codegen** `ConnectionResult` | `codegen/templates/select-types.ts:11-22` | `{ nodes: T[], totalCount, pageInfo }` |
 | **ORM runtime** `buildFindManyDocument` | `codegen/templates/query-builder.ts:204-320` | Builds connection query with `nodes`, `totalCount`, `pageInfo` |
 | **Runtime** `buildSelect` | `query/generators/select.ts:351-526` | `nodes` always; `pageInfo` conditional on cursor args or `includePageInfo` |
-| **Legacy QueryBuilder** | `query/query-builder.ts` | Pagination via variables at execution time |
-| **Legacy AST** `getMany` | `query/ast.ts:183-302` | Builds `nodes`-based connection queries |

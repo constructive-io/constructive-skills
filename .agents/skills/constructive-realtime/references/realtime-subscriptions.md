@@ -4,34 +4,24 @@ Constructive provides built-in realtime subscription support through the `DataRe
 
 ## How It Works (SDK Perspective)
 
-1. **Include `realtime_module`** in your database modules (included in `full` preset, or add `'realtime_module'` to your module list).
-2. **Add `DataRealtime`** to any table's `nodes[]` in its blueprint definition.
+1. **Add `DataRealtime`** to any table's `nodes[]` in its blueprint definition.
+2. The `DataRealtime` provisioner creates the shared `realtime_module` when the database does not have one yet.
 3. The platform creates a **subscriber table** in `subscriptions_public` for that source table.
 4. **SELECT policies** on the source table are analyzed and used to derive RLS policies on the subscriber table — subscribers can only see changes they're authorized to read.
 5. **Statement-level triggers** (`emit_change()`) fire on INSERT/UPDATE/DELETE and write events to a partitioned change log, plus emit per-table NOTIFY signals for low-latency delivery.
 
 ## Enabling Realtime
 
-### Step 1: Install the realtime module
+### Step 1: Add `DataRealtime`
 
-Include `realtime_module` in your module list when provisioning a database. The `full` preset includes it automatically.
-
-```ts
-import { getModulePreset } from '@constructive-io/node-type-registry';
-
-// Option A: use a preset that includes it
-const preset = getModulePreset('full');
-
-// Option B: add it to a custom module list
-const modules = [...baseModules, 'realtime_module'];
-```
+No current official backend preset contains `realtime_module`. Add `DataRealtime` to the table definition instead: the backend provisioner checks for the shared module and creates it when absent. Do not copy or extend a preset module array for this capability.
 
 The `realtime_module` provisions shared infrastructure:
 - A `subscriptions_public` schema for subscriber tables
 - A partitioned `change_log` table for durable event storage
 - Partition lifecycle management (automatic creation and rotation)
 
-### Step 2: Add DataRealtime to a table
+### Step 2: Configure the table node
 
 In your blueprint definition, add `DataRealtime` to the table's `nodes[]`:
 

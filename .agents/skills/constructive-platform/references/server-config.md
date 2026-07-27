@@ -145,6 +145,10 @@ X-Meta-Schema: metaschema_public
 - `API_ANON_ROLE=administrator` — admin users get full schema access
 - `API_ENABLE_SERVICES=true` — exposes the services schema for site/API management
 
+This mode is operator-only. Console Kit and feature packs receive explicit
+public tenant endpoints and must never send these private routing headers or use
+the admin server as an RLS fallback.
+
 ### Services API mode
 
 When `--servicesApi` is `true` (default), the server enables the Constructive services routing layer, which routes requests based on the `Host` header subdomain to the correct schema/role combination. When `false`, it falls back to exposing raw PostgreSQL schemas.
@@ -193,9 +197,9 @@ PostgreSQL schemas (app_public, etc.)
         ↓
     cnc server (serves the API)
         ↓
-    graphql-codegen (generates typed client)
+    optional custom-domain codegen
         ↓
-    React Query hooks / ORM / CLI
+    optional React Query hooks / ORM / CLI
 ```
 
 ### Key Concepts
@@ -325,7 +329,7 @@ The server resolves per-database and per-API feature toggles from `database_sett
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `enable_realtime` | `false` | Enable GraphQL subscription fields for `@realtime`-tagged tables. See [`realtime-subscriptions.md`](./realtime-subscriptions.md) |
+| `enable_realtime` | `false` | Enable GraphQL subscription fields for `@realtime`-tagged tables. See [`realtime-subscriptions.md`](../../constructive-realtime/references/realtime-subscriptions.md) |
 | `enable_aggregates` | `false` | Enable aggregate query fields (sum, avg, count, etc.) |
 | `enable_bulk` | `false` | Enable bulk mutation operations |
 | `enable_connection_filter` | `true` | Enable connection-level filtering |

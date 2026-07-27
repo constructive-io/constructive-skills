@@ -4,7 +4,7 @@
   <img height="150" src="https://raw.githubusercontent.com/constructive-io/constructive/refs/heads/main/assets/logo.svg" />
 </p>
 
-A collection of skills for AI coding agents working with [Constructive](https://constructive.io) tooling. Skills are packaged instructions that extend agent capabilities for PostgreSQL development, authorization, GraphQL workflows, and monorepo management.
+A collection of skills for AI coding agents working with [Constructive](https://constructive.io) tooling. Skills cover application feature packs, Console Kit, PostgreSQL development, authorization, GraphQL workflows, and platform operations.
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
 
@@ -22,15 +22,18 @@ npx skills add constructive-io/constructive-skills --skill constructive-security
 
 ## Available Skills
 
-Skills are organized into 21 umbrella skills. Each has a `SKILL.md` and a `references/` directory with detailed documentation.
+Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; references and executable helpers are included only where they add value.
 
 | Skill | Description |
 |-------|-------------|
-| `constructive-features` | Feature catalog — router mapping every capability to the authoritative skill |
-| `constructive-builder` | End-to-end app builder — scaffold, provision (data model + RLS), wire Blocks + auth flows, and Chrome-verify a working CRUD app on Constructive in under 10 minutes (4 phases, 3 policy tiers) |
+| `constructive-features` | Intent router — maps application capabilities to Blocks feature packs and the domain skill that explains the underlying behavior |
+| `constructive-blocks` | Constructive Blocks — feature packs, Console Kit, registry installation, tenant descriptors, capability discovery, and runtime contracts |
+| `constructive-builder` | Agent-driven tenant frontend harness — assembles and acceptance-checks Blocks against an existing app workspace and already-provisioned tenant |
 | `constructive-blueprints` | Declarative schema definition — blueprints, node type registry, presets |
 | `constructive-auth` | Identity, login, sessions, MFA, devices, auth settings |
-| `constructive-security` | Authorization — Safegres protocol, Authz* types, RLS, grants, storage policies. See [safegres.com](https://safegres.com) |
+| `constructive-principals` | Scoped identities for API keys, agents, and service accounts |
+| `constructive-security` | Authorization — 25 registry Authz nodes, platform-applied `AuthzHumanOnly`, RLS, grants, and storage policies. See [safegres.com](https://safegres.com) |
+| `constructive-access-control` | Roles, permissions, profiles, grants, memberships, and hierarchy |
 | `constructive-entities` | Multi-tenancy — entity types, memberships, invites, entity-scoped storage |
 | `constructive-data-modeling` | Tables, fields, relations, constraints, indexes, database provisioning |
 | `constructive-billing` | Billing, limits, plans, credits, feature flags, meters |
@@ -38,14 +41,15 @@ Skills are organized into 21 umbrella skills. Each has a `SKILL.md` and a `refer
 | `constructive-search` | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified composite |
 | `constructive-agents` | AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit |
 | `constructive-events` | EventTracker, achievements, referrals, invite virality, gamification |
-| `constructive-realtime` | Subscriptions, notifications, change_log, CursorTracker |
+| `constructive-notifications` | Inbox, delivery, channels, preferences, suppression, and message lifecycle |
+| `constructive-realtime` | Subscriptions, change_log, CursorTracker |
 | `constructive-jobs` | Background jobs — JobTrigger, Process* wrappers, Knative worker, scheduling |
 | `constructive-flow-graphs` | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | `constructive-i18n` | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
-| `constructive-frontend` | UI components (50+ on Base UI + Tailwind v4), CRUD Stack cards, meta-forms |
-| `constructive-codegen` | Code generation pipeline — config, templates, AST transforms, introspection |
-| `constructive-orm` | Generated ORM — query patterns, mutations, relations, pagination, _meta |
-| `constructive-hooks` | Generated React Query hooks — query/mutation hooks, cache, optimistic updates |
+| `constructive-frontend` | Constructive UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| `constructive-codegen` | Optional generated clients for stable, custom domain UI and server workflows |
+| `constructive-orm` | Optional generated ORM patterns for stable custom-domain schemas |
+| `constructive-hooks` | Optional generated React Query hook patterns for fixed endpoints |
 | `constructive-platform` | Server config, services, domains, deployment, env, cloud functions, cnc CLI |
 
 ### Skills in Other Repos
@@ -70,14 +74,13 @@ Skills are automatically available to AI agents once installed. The agent will u
 **Examples:**
 ```
 Deploy my database changes with pgpm
-```
-```
+
 Write a test for my RLS policy
-```
-```
+
 Generate GraphQL hooks for my PostGraphile endpoint
-```
-```
+
+Install the b2b-storage Console Kit preset for this tenant
+
 Set up authorization with Safegres
 ```
 
@@ -85,9 +88,7 @@ Set up authorization with Safegres
 
 Skills are located at `.agents/skills/` following the [Agent Skills](https://agentskills.io/) standard, making them auto-discoverable by Devin, Claude Code, Cursor, Copilot, and other compatible agents.
 
-Each skill contains:
-- `SKILL.md` - Instructions for the agent following the Agent Skills format
-- `references/` - Supporting documentation loaded on-demand (optional)
+Each skill contains a `SKILL.md` following the Agent Skills format. A skill may also include focused `references/` and deterministic `scripts/` loaded only when needed.
 
 ## Development
 

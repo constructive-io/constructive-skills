@@ -4,32 +4,30 @@ Advanced patterns for using the generated Prisma-like ORM client.
 
 ## Client Setup
 
-### Singleton Pattern
+### Per-Scope Client
 
 ```typescript
 // src/lib/db.ts
 import { createClient } from '@/generated/orm';
 
-let client: ReturnType<typeof createClient> | null = null;
-
-export function getDb() {
-  if (!client) {
-    client = createClient({
-      endpoint: process.env.GRAPHQL_URL!,
-      headers: {
-        Authorization: `Bearer ${process.env.API_TOKEN}`,
-      },
-    });
-  }
-  return client;
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
 }
 
 // Usage
-import { getDb } from '@/lib/db';
+import { createDomainClient } from '@/lib/db';
 
-const db = getDb();
-const users = await db.user.findMany({...}).execute();
+const db = createDomainClient(dataEndpoint, accessToken);
+const users = await db.user.findMany({
+  select: { id: true, name: true },
+}).execute();
 ```
+
+Never cache this client across tenant or identity scopes. In server code, create
+it per request; in a browser, bind it to one mounted tenant/session instance.
 
 ### Per-Request Client (Next.js Server Components)
 
@@ -38,23 +36,26 @@ const users = await db.user.findMany({...}).execute();
 import { createClient } from '@/generated/orm';
 import { cookies } from 'next/headers';
 
-export function createRequestClient() {
-  const cookieStore = cookies();
+export async function createRequestClient(endpoint: string) {
+  const cookieStore = await cookies();
   const token = cookieStore.get('auth-token')?.value;
 
   return createClient({
-    endpoint: process.env.GRAPHQL_URL!,
+    endpoint,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   });
 }
 
 // Usage in Server Component
 async function UserPage({ params }: { params: { id: string } }) {
-  const db = createRequestClient();
-  const user = await db.user.findOne({
+  const db = await createRequestClient(dataEndpoint);
+  const result = await db.user.findOne({
     id: params.id,
     select: { id: true, name: true },
-  }).execute().unwrap();
+  }).unwrap();
+  const user = result.user;
+
+  if (!user) return null;
 
   return <UserProfile user={user} />;
 }
@@ -74,27 +75,27 @@ const result = await db.user.findFirst({
 
 // Handle result with Result pattern
 if (result.ok) {
-  const user = result.data.users.nodes[0];
+  const user = result.data.user;
   if (user) {
     console.log('Found admin:', user.name);
   }
 }
 
 // Or use unwrap() to throw on error
-const user = await db.user.findFirst({
+const userResult = await db.user.findFirst({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
-}).execute().unwrap();
+}).unwrap();
+const user = userResult.user;
 ```
 
-**Note:** `findFirst()` does NOT support `orderBy`. If you need ordering, use `findMany()` with `first: 1`:
+`findFirst()` accepts `orderBy` and returns a `{ user: row | null }` envelope:
 
 ```typescript
-const result = await db.user.findMany({
+const result = await db.user.findFirst({
   select: { id: true, name: true, email: true },
   where: { role: { equalTo: 'ADMIN' } },
   orderBy: ['CREATED_AT_DESC'],
-  first: 1,
 }).execute();
 ```
 
@@ -102,30 +103,29 @@ const result = await db.user.findMany({
 
 ```typescript
 // Search with multiple conditions
-async function searchUsers(query: string, filters: UserFilters) {
-  const db = getDb();
+async function searchUsers(db: DomainClient, query: string, filters: UserFilters) {
+  const and: UserFilter[] = [
+    {
+      or: [
+        { name: { includes: query } },
+        { email: { includes: query } },
+      ],
+    },
+  ];
+
+  if (filters.role) {
+    and.push({ role: { equalTo: filters.role } });
+  }
+  if (filters.active !== undefined) {
+    and.push({ active: { equalTo: filters.active } });
+  }
+  if (filters.createdAfter) {
+    and.push({ createdAt: { greaterThanOrEqualTo: filters.createdAfter } });
+  }
 
   return db.user.findMany({
     select: { id: true, name: true, email: true, role: true },
-    where: {
-      and: [
-        // Text search across multiple fields
-        {
-          or: [
-            { name: { includes: query } },
-            { email: { includes: query } },
-          ],
-        },
-        // Additional filters
-        ...(filters.role ? [{ role: { equalTo: filters.role } }] : []),
-        ...(filters.active !== undefined
-          ? [{ active: { equalTo: filters.active } }]
-          : []),
-        ...(filters.createdAfter
-          ? [{ createdAt: { greaterThanOrEqualTo: filters.createdAfter } }]
-          : []),
-      ],
-    },
+    where: { and },
     orderBy: ['CREATED_AT_DESC'],
     first: filters.limit ?? 20,
     offset: filters.offset ?? 0,
@@ -146,7 +146,9 @@ function buildUserSelect(includeDetails: boolean) {
 
   if (includeDetails) {
     return {
-      ...baseSelect,
+      id: true,
+      name: true,
+      email: true,
       bio: true,
       avatar: true,
       createdAt: true,
@@ -170,9 +172,7 @@ const users = await db.user.findMany({
 
 ```typescript
 // Get counts with filters
-async function getUserStats() {
-  const db = getDb();
-
+async function getUserStats(db: DomainClient) {
   const [totalResult, activeResult, adminResult] = await Promise.all([
     db.user.findMany({
       select: { id: true },
@@ -188,9 +188,9 @@ async function getUserStats() {
   ]);
 
   return {
-    total: totalResult.ok ? totalResult.value.length : 0,
-    active: activeResult.ok ? activeResult.value.length : 0,
-    admins: adminResult.ok ? adminResult.value.length : 0,
+    total: totalResult.ok ? totalResult.data.users.totalCount : 0,
+    active: activeResult.ok ? activeResult.data.users.totalCount : 0,
+    admins: adminResult.ok ? adminResult.data.users.totalCount : 0,
   };
 }
 ```
@@ -201,9 +201,7 @@ async function getUserStats() {
 
 ```typescript
 // Load user with all related data
-async function getUserWithDetails(id: string) {
-  const db = getDb();
-
+async function getUserWithDetails(db: DomainClient, id: string) {
   return db.user.findOne({
     id,
     select: {
@@ -223,7 +221,7 @@ async function getUserWithDetails(id: string) {
             first: 3,
           },
         },
-        where: { published: { equalTo: true } },
+        filter: { published: { equalTo: true } },
         orderBy: ['PUBLISHED_AT_DESC'],
         first: 10,
       },
@@ -246,7 +244,7 @@ const users = await db.user.findMany({
     name: true,
     posts: {
       select: { id: true, title: true },
-      where: {
+      filter: {
         and: [
           { published: { equalTo: true } },
           { publishedAt: { greaterThanOrEqualTo: '2024-01-01' } },
@@ -258,27 +256,28 @@ const users = await db.user.findMany({
 }).execute();
 ```
 
-### Nested Mutations
+### Related Creates
 
 ```typescript
-// Create user with related records
-const user = await db.user.create({
-  input: {
+// Generated CRUD methods use explicit operations for each table.
+const userResult = await db.user.create({
+  data: {
     name: 'John Doe',
     email: 'john@example.com',
-    profile: {
-      create: {
-        bio: 'Software developer',
-        website: 'https://johndoe.com',
-      },
-    },
   },
-  select: {
-    id: true,
-    name: true,
-    profile: { select: { bio: true } },
+  select: { id: true, name: true },
+}).unwrap();
+const user = userResult.createUser.user;
+
+const profileResult = await db.profile.create({
+  data: {
+    userId: user.id,
+    bio: 'Software developer',
+    website: 'https://johndoe.com',
   },
-}).execute();
+  select: { id: true, userId: true, bio: true },
+}).unwrap();
+const profile = profileResult.createProfile.profile;
 ```
 
 ## Transaction-Like Patterns
@@ -286,14 +285,15 @@ const user = await db.user.create({
 ### Sequential Operations
 
 ```typescript
-async function transferCredits(fromId: string, toId: string, amount: number) {
-  const db = getDb();
-
+async function transferCredits(db: DomainClient, fromId: string, toId: string, amount: number) {
   // Verify source has enough credits
-  const source = await db.user.findOne({
+  const sourceResult = await db.user.findOne({
     id: fromId,
     select: { id: true, credits: true },
-  }).execute().unwrap();
+  }).unwrap();
+  const source = sourceResult.user;
+
+  if (!source) throw new Error('Source user not found');
 
   if (source.credits < amount) {
     throw new Error('Insufficient credits');
@@ -301,29 +301,35 @@ async function transferCredits(fromId: string, toId: string, amount: number) {
 
   // Perform updates sequentially
   await db.user.update({
-    id: fromId,
-    patch: { credits: source.credits - amount },
-  }).execute().unwrap();
+    where: { id: fromId },
+    data: { credits: source.credits - amount },
+    select: { id: true, credits: true },
+  }).unwrap();
 
-  const target = await db.user.findOne({
+  const targetResult = await db.user.findOne({
     id: toId,
-    select: { credits: true },
-  }).execute().unwrap();
+    select: { id: true, credits: true },
+  }).unwrap();
+  const target = targetResult.user;
+
+  if (!target) throw new Error('Target user not found');
 
   await db.user.update({
-    id: toId,
-    patch: { credits: target.credits + amount },
-  }).execute().unwrap();
+    where: { id: toId },
+    data: { credits: target.credits + amount },
+    select: { id: true, credits: true },
+  }).unwrap();
 
   // Create transaction record
   await db.transaction.create({
-    input: {
+    data: {
       fromUserId: fromId,
       toUserId: toId,
       amount,
       type: 'TRANSFER',
     },
-  }).execute().unwrap();
+    select: { id: true },
+  }).unwrap();
 }
 ```
 
@@ -331,13 +337,12 @@ async function transferCredits(fromId: string, toId: string, amount: number) {
 
 ```typescript
 // Update multiple records
-async function deactivateInactiveUsers(daysSinceLogin: number) {
-  const db = getDb();
+async function deactivateInactiveUsers(db: DomainClient, daysSinceLogin: number) {
   const cutoffDate = new Date();
   cutoffDate.setDate(cutoffDate.getDate() - daysSinceLogin);
 
   // Find inactive users
-  const inactiveUsers = await db.user.findMany({
+  const inactiveUsersResult = await db.user.findMany({
     select: { id: true },
     where: {
       and: [
@@ -345,15 +350,17 @@ async function deactivateInactiveUsers(daysSinceLogin: number) {
         { lastLoginAt: { lessThan: cutoffDate.toISOString() } },
       ],
     },
-  }).execute().unwrap();
+  }).unwrap();
+  const inactiveUsers = inactiveUsersResult.users.nodes;
 
   // Update each user
   const results = await Promise.allSettled(
     inactiveUsers.map((user) =>
       db.user.update({
-        id: user.id,
-        patch: { active: false },
-      }).execute()
+        where: { id: user.id },
+        data: { active: false },
+        select: { id: true, active: true },
+      }).unwrap()
     )
   );
 
@@ -373,7 +380,7 @@ import { cache } from 'react';
 
 // Cache per-request in React Server Components
 export const getUser = cache(async (id: string) => {
-  const db = createRequestClient();
+  const db = await createRequestClient(dataEndpoint);
   return db.user.findOne({
     id,
     select: { id: true, name: true, email: true },
@@ -399,8 +406,13 @@ import { Redis } from 'ioredis';
 
 const redis = new Redis(process.env.REDIS_URL);
 
-async function getCachedUser(id: string) {
-  const cacheKey = `user:${id}`;
+async function getCachedUser(
+  db: DomainClient,
+  databaseId: string,
+  identityId: string,
+  id: string,
+) {
+  const cacheKey = `${databaseId}:${identityId}:user:${id}`;
 
   // Check cache
   const cached = await redis.get(cacheKey);
@@ -408,8 +420,7 @@ async function getCachedUser(id: string) {
     return JSON.parse(cached);
   }
 
-  // Fetch from database
-  const db = getDb();
+  // Fetch through the caller's scoped client
   const result = await db.user.findOne({
     id,
     select: { id: true, name: true, email: true, role: true },
@@ -417,15 +428,15 @@ async function getCachedUser(id: string) {
 
   if (result.ok) {
     // Cache for 5 minutes
-    await redis.setex(cacheKey, 300, JSON.stringify(result.value));
-    return result.value;
+    await redis.setex(cacheKey, 300, JSON.stringify(result.data.user));
+    return result.data.user;
   }
 
   return null;
 }
 
-async function invalidateUserCache(id: string) {
-  await redis.del(`user:${id}`);
+async function invalidateUserCache(databaseId: string, identityId: string, id: string) {
+  await redis.del(`${databaseId}:${identityId}:user:${id}`);
 }
 ```
 
@@ -440,8 +451,8 @@ const query = db.user.findMany({
   first: 10,
 });
 
-// Note: Inspect methods may not be available in all generated ORMs
-// Check your generated QueryBuilder for available debugging methods
+console.log(query.toGraphQL());
+console.log(query.getVariables());
 
 // Execute when ready
 const result = await query.execute();
@@ -453,9 +464,7 @@ const result = await query.execute();
 // Log all queries in development
 async function executeWithLogging<T>(query: any) {
   if (process.env.NODE_ENV === 'development') {
-    // Note: toGraphQL() and getVariables() methods may not be available
-    // Check your generated ORM for available debugging methods
-    console.log('Executing query...');
+    console.log(query.toGraphQL(), query.getVariables());
   }
   return query.execute();
 }
@@ -473,116 +482,28 @@ const result = await executeWithLogging(
 ```typescript
 import { createClient } from '@/generated/orm';
 
-const db = createClient({
-  endpoint: 'https://api.example.com/graphql',
-  headers: { Authorization: 'Bearer your-token' },
-});
+function createScopedClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 
 // Use the client for requests
-const users = await db.user.findMany({}).execute();
-```
-
-### Creating Authenticated Client After Login
-
-```typescript
-// Create unauthenticated client for login
-const db = createClient({
-  endpoint: 'https://api.example.com/graphql',
-});
-
-// Sign in
-const result = await db.mutation.signIn({
-  input: { email: 'user@example.com', password: 'password' },
-}, {
-  select: {
-    result: {
-      select: { sessionId: true },
-    },
-  },
+const db = createScopedClient(dataEndpoint, accessToken);
+const users = await db.user.findMany({
+  select: { id: true, name: true },
 }).execute();
-
-if (result.ok && result.data.signIn.result?.sessionId) {
-  // Create new authenticated client with session
-  const authDb = createClient({
-    endpoint: 'https://api.example.com/graphql',
-    headers: {
-      'X-Session-Id': result.data.signIn.result.sessionId,
-    },
-  });
-  
-  // Use authenticated client for subsequent requests
-  const user = await authDb.query.currentUser({
-    select: { id: true, username: true },
-  }).execute();
-}
 ```
 
-## Type-Safe Utilities
+### Identity changes
 
-### Repository Pattern
+When the tenant or identity changes, discard the old client and create a new
+binding from the host's explicit endpoint and session. Clear identity-scoped
+query caches before another user can inherit them. Authentication belongs to
+the Authentication feature-pack adapter or an explicit auth client; do not add
+an ad hoc session header to a domain ORM client.
 
-```typescript
-// src/repositories/user.repository.ts
-import { getDb } from '@/lib/db';
-import type { User, CreateUserInput, UpdateUserInput } from '@/generated/orm';
-
-const defaultSelect = {
-  id: true,
-  name: true,
-  email: true,
-  role: true,
-  createdAt: true,
-} as const;
-
-export const userRepository = {
-  async findById(id: string) {
-    const db = getDb();
-    return db.user.findOne({
-      id,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async findByEmail(email: string) {
-    const db = getDb();
-    const result = await db.user.findMany({
-      select: defaultSelect,
-      where: { email: { equalTo: email } },
-      first: 1,
-    }).execute();
-
-    if (result.ok && result.value.length > 0) {
-      return { ok: true, value: result.value[0] } as const;
-    }
-    return { ok: false, error: { message: 'User not found' } } as const;
-  },
-
-  async create(input: CreateUserInput) {
-    const db = getDb();
-    return db.user.create({
-      input,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async update(id: string, patch: UpdateUserInput) {
-    const db = getDb();
-    return db.user.update({
-      id,
-      patch,
-      select: defaultSelect,
-    }).execute();
-  },
-
-  async delete(id: string) {
-    const db = getDb();
-    return db.user.delete({ id }).execute();
-  },
-};
-
-// Usage
-const user = await userRepository.findById('123');
-if (user.ok) {
-  console.log(user.value.name);
-}
-```
+Repository helpers should accept that scoped client as an explicit dependency.
+This keeps endpoint, identity, and cache ownership visible at the call site and
+prevents a repository module from hiding a cross-tenant singleton.

@@ -1,0 +1,15 @@
+{
+  "id": "isolation_tenant_database_id",
+  "name": "Project Console isolation tenant",
+  "authPolicy": {
+    "requireCsrfForAuth": true
+  },
+  "endpoints": {
+    "data": "https://isolation-data.example.com/graphql",
+    "auth": "https://isolation-auth.example.com/graphql",
+    "admin": {
+      "id": "isolation_admin_api_id",
+      "url": "https://isolation-admin.example.com/graphql"
+    }
+  }
+}

@@ -10,6 +10,15 @@ metadata:
 
 Multi-channel notification system with inbox, delivery tracking, bounce/complaint handling, address suppression, and digest batching.
 
+Use the Notifications feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md) for the tenant inbox UI. Its standalone view renders host-supplied inbox resources and actions. Its Console module requires an explicit reachable `notifications` endpoint whose introspection exposes the required operations, so installation alone does not prove Console availability.
+
+The current Blocks view and Console adapter expose inbox resources plus
+read-state actions only. Discovery may report `notifications.settings` when
+`Query.notificationPreferences` exists, but that evidence does not create a
+rendered settings route, preferences form, or settings adapter. Build a custom
+settings surface against the domain contract when the product needs one, and
+do not present that surface as part of the installed Notifications block.
+
 ## When to Apply
 
 Use this skill when:
@@ -23,17 +32,7 @@ Use this skill when:
 
 ## Module Setup
 
-Include `notifications_module` in your module list. The `full` preset includes it by default.
-
-```ts
-import { getModulePreset } from '@constructive-io/node-type-registry';
-
-// Option A: use a preset that includes it
-const preset = getModulePreset('full');
-
-// Option B: add it explicitly
-const modules = [...baseModules, 'notifications_module'];
-```
+The current `full` backend profile includes notifications. For a custom backend composition, add `notifications_module` through the supported Constructive DB provisioning mechanism; do not reconstruct a preset's module array in application code.
 
 ### Feature Flags
 
@@ -59,7 +58,7 @@ notifications_module (config)
 └── notification_suppressions   (private, no RLS)               [has_channels]
 ```
 
-**Public tables** are exposed via GraphQL with RLS. **Private tables** (delivery_log, suppressions) are internal — your delivery worker and webhook handlers interact with them directly via SQL.
+**Public tables** are exposed via GraphQL with RLS. **Private tables** (delivery log and suppressions) are internal; delivery workers and webhook handlers must use their supported backend service surface rather than application GraphQL or direct table access.
 
 ## Delivery Status Lifecycle
 
@@ -87,3 +86,4 @@ Key distinction: **bounced** (mailbox doesn't exist) and **complained** (recipie
 - **Realtime subscriptions (separate system):** [`constructive-realtime`](../constructive-realtime/SKILL.md)
 - **Background job triggers:** [`constructive-jobs`](../constructive-jobs/SKILL.md)
 - **Billing/limits for rate caps:** [`constructive-billing`](../constructive-billing/SKILL.md)
+- **Notifications feature-pack UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

@@ -1,10 +1,6 @@
 ---
 name: constructive-crud-stack
-description: Build CRUD actions as Stack cards (iOS-style slide-in panels) for any Constructive CRM. Covers the Stack card trigger pattern, CardComponent structure, the card API (close/push/setTitle), useCardReady for deferred loading, and stacked confirm-delete. For dynamic forms that introspect _meta at runtime, see the constructive-meta-forms skill.
-compatibility: Next.js 14+ (App Router), Constructive SDK, @constructive/stack, @tanstack/react-query
-metadata:
-  author: constructive-io
-  version: "2.0.0"
+description: Build custom-domain CRUD actions as Stack cards with typed card props, deferred loading, and stacked confirmation. Use the Data feature pack for generic metadata-driven CRUD.
 ---
 
 # Constructive CRUD Stack Cards
@@ -247,36 +243,18 @@ stack.push({
 
 ---
 
-## 8. Using DynamicFormCard (from `constructive-meta-forms`)
+## 8. Data boundary
 
-Combine both skills: the Stack card trigger pattern (this skill) with schema-driven forms (constructive-meta-forms). `DynamicFormCard` introspects `_meta` at runtime and renders the correct inputs for any table — no static field config needed:
+Use Stack cards for bespoke domain workflows whose field layout and validation
+belong to the application. Use the Data feature pack when the goal is generic
+metadata-driven table CRUD; it already owns the current `_meta` contract,
+standard-introspection reconciliation, row identity, pagination, mutation
+generation, and RLS-aware failure states.
 
-```tsx
-import { DynamicFormCard } from '@/components/crm/dynamic-form-card';
-import { useCardStack } from '@/components/ui/stack';
-
-function ContactDetailPage({ contactId }) {
-  const stack = useCardStack();
-
-  const handleEdit = () => {
-    stack.push({
-      id: `edit-contact-${contactId}`,
-      title: 'Edit Contact',
-      description: 'Update contact fields.',
-      Component: DynamicFormCard,  // from constructive-meta-forms
-      props: {
-        tableName: 'Contact',
-        recordId: contactId,
-      },
-      width: 480,
-    });
-  };
-
-  return <Button onClick={handleEdit}>Edit</Button>;
-}
-```
-
-For static forms with handcrafted fields (more control over layout/validation), use the `CardComponent` pattern from Section 2 above.
+If a custom Stack card still needs runtime metadata, follow
+[meta-forms.md](./meta-forms.md): import the contract from
+`@constructive-io/data`, receive an explicit endpoint/session adapter, and
+confirm every operation through introspection before rendering its action.
 
 ---
 

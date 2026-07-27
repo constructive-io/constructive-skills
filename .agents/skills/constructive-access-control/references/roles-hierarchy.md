@@ -1,6 +1,6 @@
 # Org Hierarchy
 
-The hierarchy system provides organizational chart (org chart) capabilities — manager/subordinate relationships within an entity (org, team, etc.) that can drive access control via the `AuthzOrgHierarchy` policy. It's an optional module installed per entity type (typically at org scope via the `b2b` preset).
+The hierarchy system provides organizational chart (org chart) capabilities — manager/subordinate relationships within an entity (org, team, etc.) that can drive access control via the `AuthzOrgHierarchy` policy. It's an optional module installed per entity type and is present in organization-capable backend profiles.
 
 ## Concepts
 
@@ -22,24 +22,14 @@ The hierarchy system provides organizational chart (org chart) capabilities — 
 
 ## Enabling the Hierarchy
 
-The hierarchy module is installed per entity type. It's included automatically in the **`b2b` preset**:
+The hierarchy module is installed per entity type. The current `b2b:storage` and `full` profiles include the organization hierarchy capability:
 
 ```typescript
-// The b2b preset includes hierarchy at org scope
+// Organization-capable presets include hierarchy at org scope
 ['hierarchy_module', { scope: 'org' }]
 ```
 
-Or install it directly via the modules API:
-
-```typescript
-await db.query.installModule({
-  input: {
-    databaseId: dbId,
-    moduleName: 'hierarchy_module',
-    scope: 'org'
-  }
-}).execute();
-```
+For a new database, select `b2b:storage` or `full`, or pass an explicit custom module composition through the backend `requestDatabase` mutation. The current API has no `db.query.installModule` operation, so module selection belongs to database provisioning rather than application runtime code.
 
 ## Building the Org Chart
 
@@ -277,6 +267,7 @@ When provisioned, the hierarchy module creates these resources per entity type:
 
 | Preset | Hierarchy Scope | Description |
 |--------|----------------|-------------|
-| `b2b` | org | Full B2B SaaS with nested org structures |
+| `b2b:storage` | org | B2B application with organization and storage capabilities |
+| `full` | org | Complete reference capability set |
 
-Other presets (`auth:email`, `auth:hardened`) do not include hierarchy — it's an opt-in module for apps that need organizational chart capabilities.
+`auth:hardened` does not include organization hierarchy. For a custom backend composition, install the hierarchy capability explicitly through the supported backend module surface.

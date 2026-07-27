@@ -82,7 +82,7 @@ Fetch the related parent record:
 
 ```typescript
 // ORM
-const posts = await db.post.findMany({
+const postsResult = await db.post.findMany({
   select: {
     id: true,
     title: true,
@@ -90,19 +90,28 @@ const posts = await db.post.findMany({
       select: { id: true, name: true, avatar: true },
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const posts = postsResult.posts.nodes;
 
 // Access
 posts.forEach(post => {
-  console.log(`${post.title} by ${post.author.name}`);
+  console.log(`${post.title} by ${post.author?.name ?? 'Unknown author'}`);
 });
 ```
 
 ```typescript
 // React Query Hook
-const { data } = usePostsQuery({});
+const { data } = usePostsQuery({
+  selection: {
+    fields: {
+      id: true,
+      title: true,
+      author: { select: { id: true, name: true } },
+    },
+  },
+});
 
-// The hook returns the full relation if schema includes it
+// Generated hooks return the fields selected by the caller.
 data?.posts?.nodes.forEach(post => {
   console.log(`${post.title} by ${post.author?.name}`);
 });
@@ -114,23 +123,24 @@ Fetch child records as a collection:
 
 ```typescript
 // ORM
-const users = await db.user.findMany({
+const usersResult = await db.user.findMany({
   select: {
     id: true,
     name: true,
     posts: {
       select: { id: true, title: true, publishedAt: true },
-      filter: { published: { eq: true } },
-      orderBy: { publishedAt: 'DESC' },
+      filter: { published: { equalTo: true } },
+      orderBy: ['PUBLISHED_AT_DESC'],
       first: 5,
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const users = usersResult.users.nodes;
 
 // Access
 users.forEach(user => {
-  console.log(`${user.name} has ${user.posts.length} recent posts`);
-  user.posts.forEach(post => {
+  console.log(`${user.name} has ${user.posts.nodes.length} recent posts`);
+  user.posts.nodes.forEach(post => {
     console.log(`  - ${post.title}`);
   });
 });
@@ -142,7 +152,7 @@ When `expose_in_api` is `true`, M:N relations appear as direct connection fields
 
 ```typescript
 // ORM - query posts with their tags (M:N shortcut)
-const posts = await db.post.findMany({
+const postsResult = await db.post.findMany({
   select: {
     id: true,
     title: true,
@@ -150,7 +160,8 @@ const posts = await db.post.findMany({
       select: { id: true, name: true, color: true },
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const posts = postsResult.posts.nodes;
 
 // Access - junction table is invisible
 posts.forEach(post => {
@@ -163,43 +174,30 @@ Reverse direction works the same way:
 
 ```typescript
 // ORM - query tags with their posts
-const tags = await db.tag.findMany({
+const tagsResult = await db.tag.findMany({
   select: {
     name: true,
     posts: {
       select: { id: true, title: true },
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const tags = tagsResult.tags.nodes;
 
 tags.forEach(tag => {
   console.log(`${tag.name}: ${tag.posts.nodes.length} posts`);
 });
 ```
 
-## M:N Mutation Methods
+## M:N Writes
 
-The ORM generates `add<Relation>()` and `remove<Relation>()` convenience methods on entity models for M:N relations. These create/delete junction rows without touching the junction table directly.
+Use the junction-table ORM model directly. The current generator can emit
+`add<Relation>()` and `remove<Relation>()` helpers, but `add<Relation>()`
+selects a junction `id` even when the documented composite-key table has no
+such field. Those helpers are outside the supported contract until their
+selection is derived from the junction primary key.
 
-### addTag / removeTag (Generated Methods)
-
-```typescript
-// Add a tag to a post (creates junction row)
-await db.post.addTag(postId, tagId).execute();
-
-// Remove a tag from a post (deletes junction row by composite PK)
-await db.post.removeTag(postId, tagId).execute();
-```
-
-These methods are generated when:
-- The `_meta` endpoint provides `manyToMany` relation metadata with `junctionLeftKeyFields` and `junctionRightKeyFields`
-- The junction table has a `delete` mutation (required for `remove<Relation>`)
-
-**Method naming:** The method name is derived from the M:N field name. For a field called `tags`, the ORM generates `addTag` and `removeTag` (singularized).
-
-### Junction Table CRUD (Always Available)
-
-You can always operate on the junction table directly via its ORM model. This works regardless of `expose_in_api`:
+Direct junction CRUD works regardless of `expose_in_api`:
 
 ```typescript
 // Create a junction row (link post to tag)
@@ -250,11 +248,15 @@ Both follow the same rule: `ucFirst(mutationName) + 'Input'` when the mutation n
 
 ```typescript
 // Single PK (standard)
-await db.post.delete({ where: { id: postId } }).execute();
+await db.post.delete({
+  where: { id: postId },
+  select: { id: true },
+}).execute();
 
 // Composite PK (junction table)
 await db.postTag.delete({
   where: { postId: POST_1, tagId: TAG_TECH },
+  select: { postId: true, tagId: true },
 }).execute();
 ```
 
@@ -262,22 +264,16 @@ The `buildDeleteByPkDocument` in `query-builder.ts` handles both cases - it maps
 
 ### PK Type Safety
 
-PK field types are resolved from the actual table constraints via `getPrimaryKeyInfo(table)`, not hardcoded as `string`. This means:
-
-```typescript
-// If post_id is UUID and tag_id is UUID, parameters are typed as string
-db.post.addTag(postId: string, tagId: string)
-
-// If a junction uses integer PKs, parameters are typed as number
-db.enrollment.addStudent(courseId: number, studentId: number)
-```
+Junction-model `data`, `where`, and `select` fields are resolved from the
+actual table constraints, so composite UUID and integer keys retain their
+generated field types without relying on the unsupported convenience helpers.
 
 ## Nested Relations
 
 Go multiple levels deep:
 
 ```typescript
-const users = await db.user.findMany({
+const usersResult = await db.user.findMany({
   select: {
     id: true,
     name: true,
@@ -302,15 +298,16 @@ const users = await db.user.findMany({
       first: 5,
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const users = usersResult.users.nodes;
 
 // Access deeply nested data
 users.forEach(user => {
-  user.posts.forEach(post => {
+  user.posts.nodes.forEach(post => {
     const tagNames = post.tags.nodes.map(t => t.name).join(', ');
     console.log(`${post.title} [${tagNames}]`);
-    post.comments.forEach(comment => {
-      console.log(`  ${comment.author.name}: ${comment.body}`);
+    post.comments.nodes.forEach(comment => {
+      console.log(`  ${comment.author?.name ?? 'Unknown author'}: ${comment.body}`);
     });
   });
 });
@@ -324,8 +321,8 @@ users.forEach(user => {
 // Find posts by a specific author
 const posts = await db.post.findMany({
   select: { id: true, title: true },
-  filter: {
-    authorId: { eq: 'user-123' },
+  where: {
+    authorId: { equalTo: 'user-123' },
   },
 }).execute();
 ```
@@ -341,9 +338,9 @@ const users = await db.user.findMany({
     posts: {
       select: { id: true, title: true },
       filter: {
-        AND: [
-          { published: { eq: true } },
-          { publishedAt: { gte: '2024-01-01' } },
+        and: [
+          { published: { equalTo: true } },
+          { publishedAt: { greaterThanOrEqualTo: '2024-01-01' } },
         ],
       },
     },
@@ -358,9 +355,9 @@ const users = await db.user.findMany({
 // Note: This depends on your GraphQL schema supporting such filters
 const users = await db.user.findMany({
   select: { id: true, name: true },
-  filter: {
+  where: {
     posts: {
-      some: { published: { eq: true } },
+      some: { published: { equalTo: true } },
     },
   },
 }).execute();
@@ -375,20 +372,20 @@ const users = await db.user.findMany({
     name: true,
     posts: {
       select: { id: true, title: true, publishedAt: true },
-      orderBy: { publishedAt: 'DESC' },
+      orderBy: ['PUBLISHED_AT_DESC'],
     },
     comments: {
       select: { id: true, body: true, createdAt: true },
-      orderBy: { createdAt: 'ASC' },
+      orderBy: ['CREATED_AT_ASC'],
     },
   },
 }).execute();
 ```
 
-## Pagination on Relations
+## Bounded Nested Relations
 
 ```typescript
-// Get first page of posts for a user
+// Bound the nested posts selected with this user
 const user = await db.user.findOne({
   id: userId,
   select: {
@@ -397,24 +394,16 @@ const user = await db.user.findOne({
     posts: {
       select: { id: true, title: true },
       first: 10,
-      offset: 0,
-    },
-  },
-}).execute();
-
-// Get second page
-const userPage2 = await db.user.findOne({
-  id: userId,
-  select: {
-    id: true,
-    posts: {
-      select: { id: true, title: true },
-      first: 10,
-      offset: 10,
     },
   },
 }).execute();
 ```
+
+Generated nested relation selections currently accept only `first`, `filter`,
+and `orderBy`; they do not expose `offset`, cursors, or an implicit page-size
+default. For independent pagination, query the related entity model at the
+root and apply its generated foreign-key filter with the top-level pagination
+arguments.
 
 ## React Query Patterns
 
@@ -422,14 +411,18 @@ const userPage2 = await db.user.findOne({
 
 ```typescript
 function UserProfile({ userId }: { userId: string }) {
-  const { data: user } = useUserQuery({ id: userId });
-  const { data: posts } = usePostsQuery(
-    {
-      filter: { authorId: { eq: userId } },
+  const { data: user } = useUserQuery({
+    id: userId,
+    selection: { fields: { id: true, name: true } },
+  });
+  const { data: posts } = usePostsQuery({
+    selection: {
+      fields: { id: true, title: true },
+      where: { authorId: { equalTo: userId } },
       first: 10,
     },
-    { enabled: !!userId }
-  );
+    enabled: Boolean(userId),
+  });
 
   return (
     <div>
@@ -468,7 +461,7 @@ function UserCard({ user }: { user: User }) {
 ### Author with Post Count
 
 ```typescript
-const authors = await db.user.findMany({
+const authorsResult = await db.user.findMany({
   select: {
     id: true,
     name: true,
@@ -476,40 +469,44 @@ const authors = await db.user.findMany({
       select: { id: true },
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const authors = authorsResult.users.nodes;
 
 const authorsWithCounts = authors.map(author => ({
-  ...author,
-  postCount: author.posts.length,
+  id: author.id,
+  name: author.name,
+  posts: author.posts,
+  postCount: author.posts.totalCount,
 }));
 ```
 
 ### Posts with Comment Count and Latest Comment
 
 ```typescript
-const posts = await db.post.findMany({
+const postsResult = await db.post.findMany({
   select: {
     id: true,
     title: true,
     comments: {
       select: { id: true, body: true, createdAt: true },
-      orderBy: { createdAt: 'DESC' },
+      orderBy: ['CREATED_AT_DESC'],
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const posts = postsResult.posts.nodes;
 
 const postsWithStats = posts.map(post => ({
   id: post.id,
   title: post.title,
-  commentCount: post.comments.length,
-  latestComment: post.comments[0] ?? null,
+  commentCount: post.comments.totalCount,
+  latestComment: post.comments.nodes[0] ?? null,
 }));
 ```
 
 ### User Feed with Mixed Content
 
 ```typescript
-const user = await db.user.findOne({
+const userResult = await db.user.findOne({
   id: userId,
   select: {
     id: true,
@@ -517,7 +514,7 @@ const user = await db.user.findOne({
     // Own posts
     posts: {
       select: { id: true, title: true, createdAt: true },
-      orderBy: { createdAt: 'DESC' },
+      orderBy: ['CREATED_AT_DESC'],
       first: 10,
     },
     // Comments made
@@ -528,7 +525,7 @@ const user = await db.user.findOne({
         createdAt: true,
         post: { select: { id: true, title: true } },
       },
-      orderBy: { createdAt: 'DESC' },
+      orderBy: ['CREATED_AT_DESC'],
       first: 10,
     },
     // Favorites
@@ -539,26 +536,29 @@ const user = await db.user.findOne({
         },
         createdAt: true,
       },
-      orderBy: { createdAt: 'DESC' },
+      orderBy: ['CREATED_AT_DESC'],
       first: 10,
     },
   },
-}).execute().unwrap();
+}).unwrap();
+const user = userResult.user;
 ```
 
 ### Full M:N Lifecycle
 
 ```typescript
 // 1. Create entities
-const post = await db.post.create({
+const postResult = await db.post.create({
   data: { title: 'My Post', body: 'Hello world' },
   select: { id: true },
-}).execute().unwrap();
+}).unwrap();
+const post = postResult.createPost.post;
 
-const tag = await db.tag.create({
+const tagResult = await db.tag.create({
   data: { name: 'TypeScript', color: '#3178C6' },
   select: { id: true },
-}).execute().unwrap();
+}).unwrap();
+const tag = tagResult.createTag.tag;
 
 // 2. Link them (create junction row)
 await db.postTag.create({
@@ -578,6 +578,7 @@ const postWithTags = await db.post.findMany({
 // 4. Unlink (delete junction row by composite PK)
 await db.postTag.delete({
   where: { postId: post.id, tagId: tag.id },
+  select: { postId: true, tagId: true },
 }).execute();
 ```
 
@@ -587,24 +588,26 @@ The select determines the return type:
 
 ```typescript
 // Only selecting id and name
-const minimalUser = await db.user.findOne({
+const minimalUserResult = await db.user.findOne({
   id,
   select: { id: true, name: true },
-}).execute().unwrap();
+}).unwrap();
+const minimalUser = minimalUserResult.user;
 
-// minimalUser.email would be a TypeScript error
+// minimalUser?.email would be a TypeScript error
 
 // Selecting with posts relation
-const userWithPosts = await db.user.findOne({
+const userWithPostsResult = await db.user.findOne({
   id,
   select: {
     id: true,
     name: true,
     posts: { select: { id: true, title: true } },
   },
-}).execute().unwrap();
+}).unwrap();
+const userWithPosts = userWithPostsResult.user;
 
-// userWithPosts.posts is typed as { id: string; title: string }[]
+// userWithPosts?.posts is a typed ConnectionResult.
 ```
 
 ## Codegen Architecture (Internal)
@@ -625,9 +628,8 @@ const userWithPosts = await db.user.findOne({
 
 3. ORM codegen (model-generator.ts)
    |- Standard CRUD: findMany, findFirst, findOne, create, update, delete
-   |- add<Relation>() - calls buildCreateDocument on junction table
-   '- remove<Relation>() - calls buildJunctionRemoveDocument on junction table
-      '- Only generated when junction table has a delete mutation
+   '- M:N convenience helpers may be emitted but are not part of the supported
+      contract until create selections follow the junction primary key
 
 4. Input type naming (centralized)
    |- utils.ts: getDeleteInputTypeName(table), getUpdateInputTypeName(table)

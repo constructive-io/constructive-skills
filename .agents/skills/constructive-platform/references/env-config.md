@@ -52,7 +52,7 @@ Two packages form a layered configuration system:
 Options are merged in this order (later overrides earlier):
 
 1. **Defaults** — `pgpmDefaults` (+ `constructiveGraphqlDefaults` for GraphQL layer)
-2. **Config file** — `pgpm.json` or `pgpm.config.js` (rarely needed — see [references/config-file.md](references/config-file.md))
+2. **Config file** — `pgpm.json` or `pgpm.config.js` (rarely needed — see [env-config-file.md](./env-config-file.md))
 3. **Environment variables** — parsed from `process.env`
 4. **Runtime overrides** — passed programmatically to `getEnvOptions()`
 
@@ -188,9 +188,9 @@ const { isPublic } = opts.api;
 
 | Reference | Topic | Consult When |
 |-----------|-------|--------------|
-| [references/env-vars.md](references/env-vars.md) | Source file locations for env vars and types | Finding which source file defines a specific env var or type |
-| [references/defaults.md](references/defaults.md) | Default values for all configuration | Understanding what values are used when nothing is overridden |
-| [references/config-file.md](references/config-file.md) | Config file reference (last resort) | Only when you specifically need a `pgpm.json` — this is rarely needed |
+| [env-vars.md](./env-vars.md) | Source file locations for env vars and types | Finding which source file defines a specific env var or type |
+| [env-defaults.md](./env-defaults.md) | Default values for all configuration | Understanding what values are used when nothing is overridden |
+| [env-config-file.md](./env-config-file.md) | Config file reference (last resort) | Only when you specifically need a `pgpm.json` — this is rarely needed |
 
 ## Cross-References
 

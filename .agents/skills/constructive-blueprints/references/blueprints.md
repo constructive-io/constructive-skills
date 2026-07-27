@@ -258,4 +258,4 @@ No special handling is needed — blueprints compose the existing primitives.
 - **Definition format:** See [blueprint-definition-format.md](./blueprint-definition-format.md) for the blueprint definition format spec
 - **Safegres policies:** See [constructive-security](../../constructive-security/SKILL.md) for Authz* policy types used in `policies[]`
 - **Codegen:** See [constructive-codegen](../../constructive-codegen/SKILL.md) for generating typed SDK from provisioned tables
-- **Server config:** See [server-config.md](./server-config.md) for running introspection and codegen
+- **Server config:** See [server-config.md](../../constructive-platform/references/server-config.md) for running introspection and optional codegen

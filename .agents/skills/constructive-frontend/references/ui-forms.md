@@ -8,7 +8,8 @@ Layer 1: **Field** (standalone, no form library)
 
 Layer 2: **FormControl** (standalone, layout wrapper)
 - Two modes: `stacked` (label above input) and `floating` (CSS floating label)
-- Uses `Slot` to inject id, aria-invalid, aria-describedby into child
+- Clones its single control child to inject `id`, `aria-invalid`, and
+  `aria-describedby`
 - No form library dependency
 
 Layer 3: **Form** (react-hook-form integration)

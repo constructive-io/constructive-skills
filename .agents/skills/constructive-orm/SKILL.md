@@ -1,138 +1,104 @@
 ---
 name: constructive-orm
-description: "Generated ORM — query patterns, mutations, relations, pagination, _meta introspection, runtime query building, and query keys. Use when asked to 'query data', 'ORM patterns', 'findMany', 'findOne', 'create', 'update', 'delete', 'paginate', 'cursor pagination', 'offset pagination', '_meta', 'runtime query', 'query builder', or when using the generated @constructive-io/sdk ORM client."
+description: "Use the optional generated Constructive ORM for typed queries, mutations, relations, pagination, and custom-domain server workflows against a stable GraphQL schema. Use when asked about findMany, findOne, create, update, delete, relations, or pagination in generated ORM code. Use Blocks runtime for dynamic tenant consoles and generic _meta CRUD."
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "2.0.0"
 ---
 
 # Constructive ORM
 
-The generated Prisma-like ORM client for Constructive — typed queries, mutations, relations, pagination, and runtime query building.
+Use the generated Prisma-like ORM for stable custom-domain schemas. It is optional and must remain endpoint-scoped. Console Kit uses runtime discovery, standalone Data introspects through Sheets, and the other standalone feature packs receive resources and actions from their host.
 
 ## When to Apply
 
 Use this skill when:
-- Querying data with the generated ORM (`db.user.findMany`, `db.user.create`, etc.)
-- Implementing pagination (cursor-based or offset)
-- Using `_meta` introspection for dynamic UI generation
-- Building runtime queries programmatically
-- Understanding query key patterns for cache management
 
-## Quick Start
+- A project has deliberately generated an ORM from a stable domain schema.
+- Implementing typed queries, mutations, relations, or pagination in server code.
+- Creating a client for one explicit endpoint and request/session scope.
+- Debugging generated ORM output or regeneration drift.
 
-```typescript
+Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for Console Kit and feature-pack data. Use [`constructive-frontend`](../constructive-frontend/SKILL.md) for bespoke runtime `_meta` UI.
+
+## Blocks Package Gate
+
+The pinned Blocks snapshot is branch-only with
+`release.publicRegistryReady: false`. Before importing the current
+`@constructive-io/data` contract from an ORM workflow, run the
+`constructive-blocks` source preflight and pinned local package-consumption
+workflow. The same rule applies whenever an ORM-adjacent task reaches for the
+current `@constructive-io/ui`, `@constructive-io/schema-builder`, or
+`@constructive-io/sheets` package or an `@constructive` registry root. Public
+installation becomes valid only after an updated Blocks snapshot points to a
+released commit, sets `publicRegistryReady: true`, and passes its checker.
+
+## Per-Scope Client
+
+Create the ORM client from an explicit endpoint for the current request or tenant. Do not export a mutable process-wide client when endpoints or identities can change.
+
+```ts
 import { createClient } from '@/generated/orm';
 
-const db = createClient({
-  endpoint: process.env.GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${token}` },
-});
-
-// Find many with filters
-const users = await db.user.findMany({
-  select: { id: true, name: true, email: true },
-  where: { role: { equalTo: 'ADMIN' } },
-  first: 10,
-}).execute().unwrap();
-
-// Find one
-const user = await db.user.findOne({ id: '123' }).execute().unwrap();
-
-// Create
-const newUser = await db.user.create({
-  input: { name: 'John', email: 'john@example.com' },
-}).execute().unwrap();
-
-// Update
-await db.user.update({
-  where: { id: '123' },
-  data: { name: 'Jane' },
-  select: { id: true },
-}).execute();
-
-// Delete
-await db.user.delete({ where: { id: '123' } }).execute();
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+}
 ```
 
-## Error Handling
+Keep the token in the host session or server request boundary and create/dispose the binding with that scope.
 
-`.execute()` returns a discriminated union — it does NOT throw. Chain `.execute().unwrap()` for throw-on-error behavior.
+## Query and Mutation Shape
+
+```ts
+const db = createDomainClient(dataEndpoint, accessToken);
+
+const projectsResult = await db.project.findMany({
+  select: { id: true, name: true, completed: true },
+  first: 20
+}).unwrap();
+const projects = projectsResult.projects.nodes;
+
+await db.project.update({
+  where: { id: projectId },
+  data: { completed: true },
+  select: { id: true, completed: true }
+}).unwrap();
+```
+
+Every model method returns a `QueryBuilder`. Use `.execute()` for the `QueryResult` discriminated union or call `.unwrap()`, `.unwrapOr()`, or `.unwrapOrElse()` directly on the builder. List data remains under the generated GraphQL field, such as `projectsResult.projects.nodes`. Never interpret an empty collection as proof that the schema lacks rows—the active identity's RLS policy may be filtering them.
 
 ## Pagination
 
-### Cursor-Based (Recommended)
+Prefer cursor pagination for mutable datasets and stable traversal. Offset pagination is suitable for bounded administrative views where page-number navigation matters and drift is acceptable.
 
-```typescript
-const page1 = await db.user.findMany({
-  first: 20,
-  select: {
-    id: true, name: true,
-    __pageInfo: { hasNextPage: true, endCursor: true },
-  },
-}).execute().unwrap();
+See [pagination.md](./references/pagination.md) for generated pagination patterns.
 
-const page2 = await db.user.findMany({
-  first: 20,
-  after: page1.__pageInfo.endCursor,
-  select: { id: true, name: true },
-}).execute().unwrap();
-```
+## Runtime Metadata
 
-### Offset-Based
+The generated ORM is not the owner of the current `_meta` contract. After the
+pinned local package workflow is active, import the contract documents, types,
+compatibility guards, and operation-analysis helpers from
+`@constructive-io/data`, then reconcile `_meta` with standard introspection.
 
-```typescript
-const page = await db.user.findMany({
-  first: 20,
-  offset: 40,
-  select: { id: true, name: true, __totalCount: true },
-}).execute().unwrap();
-```
-
-See [pagination.md](./references/pagination.md) for the full pagination reference.
-
-## `_meta` Introspection
-
-Query table metadata at runtime for dynamic form generation:
-
-```typescript
-const meta = await db._meta.table('users').execute();
-// Returns: fields, types, constraints, relations, policies
-```
-
-See [query-meta-introspection.md](./references/query-meta-introspection.md) for the full _meta reference.
-
-## Runtime Query Builder
-
-Build GraphQL queries programmatically (browser-safe):
-
-```typescript
-import { buildQuery } from '@constructive-io/graphql-query';
-
-const query = buildQuery('users', {
-  select: { id: true, name: true },
-  where: { role: { equalTo: 'ADMIN' } },
-  first: 10,
-});
-```
-
-See [query-runtime.md](./references/query-runtime.md) for the runtime query API.
+See [query-meta-introspection.md](./references/query-meta-introspection.md) for the evidence model. Use the Data feature pack instead of rebuilding generic table CRUD.
 
 ## References
 
 | File | Content |
-|------|---------|
-| [codegen-orm-output.md](./references/codegen-orm-output.md) | Generated ORM API reference |
-| [codegen-orm-patterns.md](./references/codegen-orm-patterns.md) | Advanced ORM usage patterns |
-| [pagination.md](./references/pagination.md) | Cursor vs offset, nested paging |
-| [query-generators-api.md](./references/query-generators-api.md) | Query generator API reference |
-| [query-runtime.md](./references/query-runtime.md) | Runtime query building |
-| [query-meta-introspection.md](./references/query-meta-introspection.md) | _meta introspection reference |
-| [codegen-query-keys.md](./references/codegen-query-keys.md) | Query key patterns for caching |
+|---|---|
+| [codegen-orm-output.md](./references/codegen-orm-output.md) | Generated ORM output |
+| [codegen-orm-patterns.md](./references/codegen-orm-patterns.md) | Advanced custom-domain patterns |
+| [pagination.md](./references/pagination.md) | Cursor and offset pagination |
+| [query-generators-api.md](./references/query-generators-api.md) | Runtime operation generators |
+| [query-runtime.md](./references/query-runtime.md) | Runtime query construction |
+| [query-meta-introspection.md](./references/query-meta-introspection.md) | Current `_meta` and introspection boundary |
+| [codegen-query-keys.md](./references/codegen-query-keys.md) | Generated query keys |
 
 ## Cross-References
 
-- **Code generation pipeline:** [`constructive-codegen`](../constructive-codegen/SKILL.md)
-- **React Query hooks:** [`constructive-hooks`](../constructive-hooks/SKILL.md)
-- **Search queries:** [`constructive-search`](../constructive-search/SKILL.md)
-- **Data modeling:** [`constructive-data-modeling`](../constructive-data-modeling/SKILL.md)
+- [`constructive-codegen`](../constructive-codegen/SKILL.md) — generation and regeneration.
+- [`constructive-hooks`](../constructive-hooks/SKILL.md) — optional fixed-endpoint React Query layer.
+- [`constructive-security`](../constructive-security/SKILL.md) — RLS and effective authorization.

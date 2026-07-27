@@ -1,34 +1,46 @@
-# Sheet Stacking Reference
+# Sheet stacking
 
-Deep dive into the SheetStackProvider system for multi-level sheet navigation.
+`SheetStackProvider` coordinates nested Sheets that should remain visually
+related. Install `sheet` through the pinned Blocks local-consumption workflow
+and use the consumer's source aliases.
 
-## Setup
+## Stack modes
 
-```tsx
-import { SheetStackProvider } from '@constructive-io/ui/sheet';
-
-// Wrap your app/section to enable sheet stacking
-<SheetStackProvider mode="cascade">
-  {children}
-</SheetStackProvider>
-```
-
-## Stack Modes
-
-### cascade (default)
-
-Each nested sheet indents by `SHEET_INDENT` (24px), creating a cascading stack effect. Previous sheets remain partially visible behind the new sheet.
+Pass `stackMode="cascade"` to indent every underlying sheet by
+`SHEET_INDENT` (`24px`). Pass `stackMode="collapse"` to give the sheet directly
+below the top sheet the full push treatment while deeper sheets retain their
+relative cascade.
 
 ```tsx
-<SheetStackProvider mode="cascade">
+import { Button } from '@/components/ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetStackProvider,
+  SheetTitle,
+  SheetTrigger
+} from '@/components/ui/sheet';
+
+<SheetStackProvider stackMode="cascade">
   <Sheet>
-    <SheetTrigger asChild><Button>Open First</Button></SheetTrigger>
+    <SheetTrigger render={<Button />}>Open customers</SheetTrigger>
     <SheetContent>
-      {/* First sheet, full width */}
+      <SheetHeader>
+        <SheetTitle>Customers</SheetTitle>
+        <SheetDescription>Select a customer to inspect.</SheetDescription>
+      </SheetHeader>
+
       <Sheet>
-        <SheetTrigger asChild><Button>Open Second</Button></SheetTrigger>
+        <SheetTrigger render={<Button variant="ghost" />}>
+          Open Ada Lovelace
+        </SheetTrigger>
         <SheetContent>
-          {/* Second sheet, indented 24px from first */}
+          <SheetHeader>
+            <SheetTitle>Ada Lovelace</SheetTitle>
+            <SheetDescription>Customer details.</SheetDescription>
+          </SheetHeader>
         </SheetContent>
       </Sheet>
     </SheetContent>
@@ -36,135 +48,50 @@ Each nested sheet indents by `SHEET_INDENT` (24px), creating a cascading stack e
 </SheetStackProvider>
 ```
 
-### collapse
+Nesting is derived from the React tree. Give a Sheet a stable `sheetId` when a
+host needs to identify it across renders; otherwise the component generates
+one.
 
-Previous sheet is pushed/collapsed to reveal the new sheet. Only the topmost sheet is fully visible.
+## Current-sheet state
 
-```tsx
-<SheetStackProvider mode="collapse">
-  {children}
-</SheetStackProvider>
-```
-
-## Hooks
-
-### useSheetStack
-
-Access stack metadata from any component inside the provider.
+`useSheet()` must run inside a Sheet and returns `isOpen`, `sheetId`, `depth`,
+`sheetsAbove`, `isTopSheet`, and `close`.
 
 ```tsx
-import { useSheetStack } from '@constructive-io/ui/sheet';
+import { Button } from '@/components/ui/button';
+import { useSheet } from '@/components/ui/sheet';
 
-function SheetContent() {
-  const { stackCount, isInStack } = useSheetStack();
+export function SheetStatus() {
+  const sheet = useSheet();
 
   return (
-    <div>
-      <p>Sheets open: {stackCount}</p>
-      <p>Is stacked: {isInStack ? 'yes' : 'no'}</p>
+    <div className="flex items-center gap-2">
+      <span>{sheet.sheetsAbove} sheets above</span>
+      <Button variant="outline" onClick={sheet.close}>
+        Close this sheet
+      </Button>
     </div>
   );
 }
 ```
 
-### useSheet
+`useSheetStack()` returns the provider context or `undefined` outside a
+provider. Its current surface includes `sheets`, `sheetSizes`, `stackMode`,
+registration and size helpers, `isTopSheet`, and `getSheetsAbove`. Prefer
+`useSheet()` for ordinary leaf content so application code does not mutate the
+stack registry directly.
 
-Access the current sheet's state and actions.
+## Layout and interaction
 
-```tsx
-import { useSheet } from '@constructive-io/ui/sheet';
-
-function SheetBody() {
-  const { close, isOpen, side } = useSheet();
-
-  return (
-    <div>
-      <p>Side: {side}</p>
-      <Button onClick={close}>Close this sheet</Button>
-    </div>
-  );
-}
-```
-
-## Nested Sheets Example
+Each Sheet preserves its own `side`, width, and Base UI dismissal behavior.
+Nested floating overlays use the modal portal scope, so menus and popovers stay
+above the active sheet without application z-index overrides. Set a deliberate
+responsive width on side sheets:
 
 ```tsx
-<Sheet>
-  <SheetTrigger asChild><Button>Open First</Button></SheetTrigger>
-  <SheetContent>
-    <SheetHeader><SheetTitle>List View</SheetTitle></SheetHeader>
-    <ul>
-      {items.map((item) => (
-        <li key={item.id}>
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost">{item.name}</Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader><SheetTitle>{item.name}</SheetTitle></SheetHeader>
-              {/* Detail view -- stacks on top of list */}
-              <Sheet>
-                <SheetTrigger asChild><Button>Edit</Button></SheetTrigger>
-                <SheetContent>
-                  <SheetHeader><SheetTitle>Edit {item.name}</SheetTitle></SheetHeader>
-                  {/* Edit form -- third level */}
-                </SheetContent>
-              </Sheet>
-            </SheetContent>
-          </Sheet>
-        </li>
-      ))}
-    </ul>
-  </SheetContent>
-</Sheet>
+<SheetContent side="right" className="w-full sm:max-w-lg" />
 ```
 
-## Global Escape Handling
-
-- Escape key closes the topmost sheet in the stack
-- Backdrop click closes the topmost sheet
-- Each sheet manages its own animation independently
-- Closing a parent sheet also closes all child sheets in the stack
-
-## Animation Details
-
-- Uses `motion.div` from motion/react with `springs.panel` for smooth transforms
-- Side-specific transforms:
-  - `right` -- `translateX(100%)` to `translateX(0)`
-  - `left` -- `translateX(-100%)` to `translateX(0)`
-  - `top` -- `translateY(-100%)` to `translateY(0)`
-  - `bottom` -- `translateY(100%)` to `translateY(0)`
-- Cascade mode applies `translateX(-(stackIndex * SHEET_INDENT))` to underlying sheets
-- Exit animations reverse the enter transform
-- Backdrop opacity animates in sync with sheet position
-
-## Width Customization
-
-```tsx
-// Fixed width
-<SheetContent side="right" className="w-[400px]">
-
-// Responsive width
-<SheetContent side="right" className="w-full sm:w-[540px] lg:w-[720px]">
-
-// Max width with fill
-<SheetContent side="right" className="w-full max-w-2xl">
-```
-
-## Stacking with Different Sides
-
-Sheets can stack even when using different sides. Each sheet animates from its own direction independently.
-
-```tsx
-<Sheet>
-  <SheetTrigger asChild><Button>Open Right</Button></SheetTrigger>
-  <SheetContent side="right">
-    <Sheet>
-      <SheetTrigger asChild><Button>Open Bottom</Button></SheetTrigger>
-      <SheetContent side="bottom">
-        {/* Bottom sheet stacks on top of right sheet */}
-      </SheetContent>
-    </Sheet>
-  </SheetContent>
-</Sheet>
-```
+Keep a title and description for every nested Sheet, preserve focus return,
+and use controlled `open`/`onOpenChange` only when the host owns that Sheet's
+state.

@@ -1,7 +1,6 @@
 ---
 name: constructive-principals
 description: "Principals — scoped sub-identities for API keys and agents. A principal is a delegated identity owned by a human (or org) that authenticates via an API key and operates with a subset of its parent's permissions. Use when asked to 'create an API key', 'issue an agent credential', 'scope an agent to an org', 'read-only API key', 'revoke an API key', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'principalEntity', 'principalScopeOverride', or when managing agent/API-key identities via the SDK ORM."
-compatibility: "@constructive-io/sdk (generated auth ORM client)"
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -12,6 +11,8 @@ metadata:
 **Principals** are scoped sub-identities of a human user. They are how you give an **agent** or an **API key** its own identity that acts on a human's behalf while carrying only a *subset* of that human's permissions. A principal never exceeds its owner's access, and everything it does still meters and audits back to the owning human.
 
 This skill covers principals from the application layer — how to create them, issue and revoke their API keys, and scope them to specific orgs, all through the generated **SDK ORM**. It intentionally does not cover the SQL/trigger internals (see the `constructive-db-principals` skill in `constructive-db` for that).
+
+The App access and Organizations feature packs provide host-facing principal and API-key management views when the tenant exposes compatible operations. Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for those UI surfaces; use this skill for the identity and authority model.
 
 ## When to Apply
 
@@ -159,4 +160,5 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 - **Permissions:** [`constructive-access-control`](../constructive-access-control/SKILL.md) — the permission model whose subset a principal carries (`allowedMask`).
 - **Enforcement:** [`constructive-security`](../constructive-security/SKILL.md) — `AuthzHumanOnly` (blocks principals from managing principals), read-only access, RLS.
 - **Agents:** [`constructive-agents`](../constructive-agents/SKILL.md) — attaching an `agent_module` (persona, threads) to a principal.
+- **App access and Organizations UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md) — standalone host contracts plus Console module discovery and adapters.
 - **SQL internals:** `constructive-db-principals` skill (in `constructive-db`) — dual-claim JWT, `principal_auth_module`, SPRT sync triggers. Not needed for app development.

@@ -3,10 +3,13 @@
 
 The limits system provides usage metering, feature gating, and quota enforcement. Everything is configured through **blueprints** (Limit* nodes) and managed via the **ORM**.
 
-Three blueprint nodes cover all limit enforcement:
-- **`LimitCounter`** — per-user metered limits (e.g. "each user can create 10 projects")
-- **`LimitAggregate`** — per-entity aggregate limits (e.g. "this org can have 50 seats total")
-- **`LimitFeatureFlag`** — boolean feature gates (e.g. "analytics is enabled for this org")
+The canonical registry exports eight blueprint nodes across three execution roles:
+
+- **Enforce:** `LimitEnforceCounter`, `LimitEnforceAggregate`, `LimitEnforceFeature`, and `LimitEnforceRate` block writes when their configured limit fails.
+- **Track:** `LimitTrackUsage` records billing-meter usage and reversals without serving as the quota gate.
+- **Warn:** `LimitWarningCounter`, `LimitWarningAggregate`, and `LimitWarningRate` enqueue first-crossing threshold jobs without blocking the write.
+
+Use these exact registry names throughout blueprint definitions.
 
 Related skills:
 - **`constructive-billing`**: Billing meters, universal credits, billing provider bridge
@@ -19,7 +22,7 @@ Related skills:
 
 ## Prerequisites
 
-The limits module must be provisioned on the database before Data* nodes can be used. This happens automatically when the database is created with `limits_module` in its modules list.
+The required module depends on the node. Counter, aggregate, feature, and their warning nodes use a provisioned limits module; `LimitTrackUsage` uses billing; rate enforcement uses billing plus meter-rate limits; rate warnings use limits warnings plus rate-limit meters.
 
 Limits are provisioned per-scope via `membership_types` in a blueprint:
 
@@ -44,9 +47,9 @@ The built-in `app` (type 1) and `org` (type 2) scopes get limits automatically w
 
 ## Blueprint Nodes
 
-### 1. Per-user limit tracking (LimitCounter)
+### 1. Per-user limit enforcement (`LimitEnforceCounter`)
 
-Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
+Add `LimitEnforceCounter` to a table's `nodes` array to enforce per-user usage limits:
 
 ```json
 {
@@ -60,7 +63,7 @@ Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
       "DataId",
       "DataTimestamps",
       {
-        "$type": "LimitCounter",
+        "$type": "LimitEnforceCounter",
         "data": {
           "limit_name": "projects",
           "scope": "app",
@@ -91,9 +94,9 @@ Add `LimitCounter` to a table's `nodes` array to enforce per-user usage limits:
 
 ---
 
-### 2. Aggregate entity-level tracking (LimitAggregate)
+### 2. Aggregate entity-level enforcement (`LimitEnforceAggregate`)
 
-Add `LimitAggregate` to enforce total usage across an entire entity (org, database, team):
+Add `LimitEnforceAggregate` to enforce total usage across an entire entity (org, database, team):
 
 ```json
 {
@@ -107,7 +110,7 @@ Add `LimitAggregate` to enforce total usage across an entire entity (org, databa
       "DataId",
       "DataTimestamps",
       {
-        "$type": "LimitAggregate",
+        "$type": "LimitEnforceAggregate",
         "data": {
           "limit_name": "seats",
           "entity_field": "entity_id",
@@ -134,15 +137,15 @@ Add `LimitAggregate` to enforce total usage across an entire entity (org, databa
 - `DELETE` — AFTER trigger: decrements aggregate counter.
 - `UPDATE` — BEFORE trigger: if `entity_field` changes, decrements old entity, increments new.
 
-**Key difference from LimitCounter:**
-- `LimitCounter` — "Can user Y do this?" (keyed on user + entity)
-- `LimitAggregate` — "Has entity Z hit its quota?" (keyed on entity only)
+**Key difference:**
+- `LimitEnforceCounter` asks whether actor Y has capacity, optionally within an entity.
+- `LimitEnforceAggregate` asks whether entity Z has shared capacity.
 
 ---
 
-### 3. Feature flag gates (LimitFeatureFlag)
+### 3. Feature flag enforcement (`LimitEnforceFeature`)
 
-Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
+Add `LimitEnforceFeature` to gate inserts behind a boolean feature toggle:
 
 ```json
 {
@@ -156,7 +159,7 @@ Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
       "DataId",
       "DataTimestamps",
       {
-        "$type": "LimitFeatureFlag",
+        "$type": "LimitEnforceFeature",
         "data": {
           "feature_name": "enable_analytics",
           "scope": "org",
@@ -181,13 +184,91 @@ Add `LimitFeatureFlag` to gate an entire table behind a boolean feature toggle:
 
 ---
 
+### 4. Sliding-window rate enforcement (`LimitEnforceRate`)
+
+`LimitEnforceRate` attaches a `BEFORE` trigger that checks all configured rate scopes—entity, actor within entity, and actor—in one call. Which scopes enforce depends on the rows provisioned in the rate-window limits tables.
+
+```json
+{
+  "$type": "LimitEnforceRate",
+  "data": {
+    "meter_slug": "api_requests",
+    "entity_field": "entity_id",
+    "actor_field": "owner_id",
+    "events": ["INSERT"]
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `meter_slug` | text | *(required)* | Billing meter whose sliding-window limits are checked |
+| `entity_field` | text | `'entity_id'` | Direct entity id or FK used with `entity_lookup` |
+| `entity_lookup` | object | — | `{ obj_table, obj_schema?, obj_field }` |
+| `actor_field` | text | `'owner_id'` | Actor id used for actor-scoped rate limits |
+| `events` | text[] | `['INSERT']` | Any subset of `INSERT` and `UPDATE`; `DELETE` is unsupported because it reduces load |
+
+This node requires the billing and meter-rate-limits modules for the target database.
+
+---
+
+### 5. Billing usage tracking (`LimitTrackUsage`)
+
+`LimitTrackUsage` records usage against a billing meter. `INSERT` increments usage, `DELETE` records a reversal, and `UPDATE` moves usage only when the entity field changes.
+
+```json
+{
+  "$type": "LimitTrackUsage",
+  "data": {
+    "meter_slug": "stored_documents",
+    "entity_field": "entity_id",
+    "quantity": 1,
+    "events": ["INSERT", "DELETE"]
+  }
+}
+```
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `meter_slug` | text | *(required)* | Billing meter that receives usage records |
+| `entity_field` | text | `'entity_id'` | Direct entity id or FK used with `entity_lookup` |
+| `entity_lookup` | object | — | `{ obj_table, obj_schema?, obj_field }` |
+| `quantity` | integer | `1` | Units recorded per event |
+| `events` | text[] | `['INSERT', 'DELETE']` | Any subset of `INSERT`, `DELETE`, and `UPDATE` |
+
+This node requires a provisioned billing module. It tracks billable usage; use a matching enforcement node when the write must also be rejected at a quota boundary.
+
+---
+
+### 6–8. Threshold warnings
+
+The three warning nodes attach `AFTER INSERT` triggers. They check thresholds configured in the limits warning tables, enqueue a background job on the first crossing, and use warning state to deduplicate repeated notifications. They do not reject the insert.
+
+| Node | Required key | Other source-defined parameters | Requirement |
+|---|---|---|---|
+| `LimitWarningCounter` | `limit_name` | `scope` (`app`), `actor_field` (`owner_id`), optional `entity_field` + `entity_lookup` | Limits module with warnings |
+| `LimitWarningAggregate` | `limit_name` | `scope` (`org`), `entity_field` (`entity_id`), optional `entity_lookup` | Limits module with warnings and aggregate limits |
+| `LimitWarningRate` | `meter_slug` | `scope` (`app`), `entity_field` (`entity_id`), `actor_field` (`owner_id`), optional `entity_lookup` | Limits warnings plus rate-limit meters |
+
+```json
+[
+  { "$type": "LimitWarningCounter", "data": { "limit_name": "projects" } },
+  { "$type": "LimitWarningAggregate", "data": { "limit_name": "seats", "scope": "org" } },
+  { "$type": "LimitWarningRate", "data": { "meter_slug": "api_requests" } }
+]
+```
+
+Pair warning and enforcement nodes explicitly when a table needs both behavior types; neither node implies the other.
+
+---
+
 ### Entity Lookup (FK-based entity resolution)
 
 When the target table doesn't have `entity_id` directly but references it through a FK, use `entity_lookup`:
 
 ```json
 {
-  "$type": "LimitAggregate",
+  "$type": "LimitEnforceAggregate",
   "data": {
     "limit_name": "messages",
     "scope": "data_room",
@@ -208,7 +289,7 @@ This generates a trigger that does `SELECT channels.entity_id FROM channels WHER
 | `obj_schema` | no | Schema name (e.g. `"public"`). Omit to auto-resolve within the same database. |
 | `obj_field` | yes | Column on the related table holding entity_id (e.g. `"entity_id"`) |
 
-All Limit*, Event*, and Billing* generators support `entity_lookup`. The schema is validated against metaschema at provision time.
+All eight current `Limit*` nodes accept `entity_lookup` where entity resolution is relevant. `EventTracker` and `EventReferral` use the same shape. The schema is validated against metaschema at provision time.
 
 ---
 
@@ -228,9 +309,11 @@ The `scope` parameter now supports any provisioned membership type, not just `'a
 Then you can scope limits to those entities:
 
 ```json
-{ "$type": "LimitCounter", "data": { "limit_name": "files", "scope": "data_room" } }
-{ "$type": "LimitAggregate", "data": { "limit_name": "total_docs", "scope": "data_room" } }
-{ "$type": "LimitFeatureFlag", "data": { "feature_name": "enable_sharing", "scope": "channel" } }
+[
+  { "$type": "LimitEnforceCounter", "data": { "limit_name": "files", "scope": "data_room" } },
+  { "$type": "LimitEnforceAggregate", "data": { "limit_name": "total_docs", "scope": "data_room" } },
+  { "$type": "LimitEnforceFeature", "data": { "feature_name": "enable_sharing", "scope": "channel" } }
+]
 ```
 
 The scope prefix is resolved dynamically via `memberships_module` at provision time to the corresponding `membership_type` integer.
@@ -267,7 +350,7 @@ await db.appLimitDefault.create({
 
 ### Setting Aggregate Defaults
 
-For `LimitAggregate`, set the entity-level ceiling:
+For `LimitEnforceAggregate`, set the entity-level ceiling:
 
 ```typescript
 // Each org can have up to 50 seats total
@@ -338,7 +421,7 @@ await db.appLimitCredit.create({
 }).execute();
 ```
 
-**Achievement-based credits:** When using the events module (`has_levels: true`), credits can be granted automatically when achievements are earned. The `tg_achievement_reward` trigger INSERTs into `limit_credits` with `reason: 'achievement:{level_name}'`. See [`constructive-events`](../constructive-events/SKILL.md) for configuring achievement rewards.
+**Achievement-based credits:** When using the events module (`has_levels: true`), credits can be granted automatically when achievements are earned. The `tg_achievement_reward` trigger inserts into `limit_credits` with `reason: 'achievement:{level_name}'`. See [`constructive-events`](../../constructive-events/SKILL.md) for configuring achievement rewards.
 
 ### Credit Codes (Self-Service Redemption)
 
@@ -422,12 +505,15 @@ await db.appLimit.update({
 
 | Use Case | Blueprint Node | ORM Model |
 |----------|----------------|-----------|
-| "Each user can create N items" | `LimitCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
-| "Each user within an org can do N things" | `LimitCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
-| "Each user within a data room can do N things" | `LimitCounter` (scope: `'data_room'`) | `db.dataRoomLimitDefault`, `db.dataRoomLimit` |
-| "This org can have N total seats" | `LimitAggregate` | `db.orgLimitAggregate` |
-| "This data room can have N files" | `LimitAggregate` (scope: `'data_room'`) | `db.dataRoomLimitAggregate` |
-| "Is feature X enabled for this entity?" | `LimitFeatureFlag` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
+| "Each user can create N items" | `LimitEnforceCounter` (scope: `'app'`) | `db.appLimitDefault`, `db.appLimit` |
+| "Each user within an org can do N things" | `LimitEnforceCounter` (scope: `'org'`) | `db.orgLimitDefault`, `db.orgLimit` |
+| "Each user within a data room can do N things" | `LimitEnforceCounter` (scope: `'data_room'`) | `db.dataRoomLimitDefault`, `db.dataRoomLimit` |
+| "This org can have N total seats" | `LimitEnforceAggregate` | `db.orgLimitAggregate` |
+| "This data room can have N files" | `LimitEnforceAggregate` (scope: `'data_room'`) | `db.dataRoomLimitAggregate` |
+| "Is feature X enabled for this entity?" | `LimitEnforceFeature` | `db.orgLimitCapsDefault`, `db.orgLimitCap` |
+| "Reject requests beyond a sliding-window rate" | `LimitEnforceRate` | Rate-window limit configuration |
+| "Record table changes against a billing meter" | `LimitTrackUsage` | Billing meter and usage ledger |
+| "Notify on a counter, aggregate, or rate threshold" | Matching `LimitWarning*` node | Limits warning configuration and state |
 | "Bump a user's ceiling by 10" | *(none — ORM only)* | `db.appLimitCredit.create(...)` |
 | "Apply Pro plan to an entity" | *(none — ORM only)* | `db.orgLimitAggregate.update(...)` per limit |
 | "Read current usage" | *(none — ORM only)* | `db.appLimit.findMany(...)` / `db.orgLimitAggregate.findMany(...)` |
@@ -440,8 +526,9 @@ For platform-level gating where databases are the billable unit:
 
 | Need | Approach |
 |------|----------|
-| Meter API calls per database | `LimitAggregate` with `entity_field: 'database_id'` |
-| Gate features per database | `LimitFeatureFlag` with `scope: 'org'`, `entity_field: 'database_id'` |
+| Enforce aggregate records per database | `LimitEnforceAggregate` with `entity_field: 'database_id'` |
+| Record billable API usage per database | `LimitTrackUsage` with `entity_field: 'database_id'` |
+| Gate features per database | `LimitEnforceFeature` with `scope: 'org'`, `entity_field: 'database_id'` |
 | Set a database's aggregate ceiling | `db.orgLimitAggregate.create({ data: { name, entityId: databaseId, max } })` |
 | Override a feature for a database | `db.orgLimitCap.create({ data: { name, entityId: databaseId, max: '1' } })` |
 
@@ -494,7 +581,7 @@ Controls how sub-entities share parent capacity:
         "DataId",
         "DataTimestamps",
         {
-          "$type": "LimitCounter",
+          "$type": "LimitEnforceCounter",
           "data": {
             "limit_name": "documents_per_user",
             "scope": "app",
@@ -502,14 +589,14 @@ Controls how sub-entities share parent capacity:
           }
         },
         {
-          "$type": "LimitAggregate",
+          "$type": "LimitEnforceAggregate",
           "data": {
             "limit_name": "documents_total",
             "entity_field": "entity_id"
           }
         },
         {
-          "$type": "LimitFeatureFlag",
+          "$type": "LimitEnforceFeature",
           "data": {
             "feature_name": "enable_documents",
             "scope": "org",
@@ -549,9 +636,9 @@ await db.orgLimitCap.create({
 ```
 
 **Result:** The `documents` table now enforces:
-- Each user can create up to 50 docs (`LimitCounter`)
-- The org as a whole can have up to 10,000 docs (`LimitAggregate`)
-- The entire table is gated behind the `enable_documents` feature flag (`LimitFeatureFlag`)
+- Each user can create up to 50 docs (`LimitEnforceCounter`).
+- The org as a whole can have up to 10,000 docs (`LimitEnforceAggregate`).
+- The table accepts inserts only when `enable_documents` is enabled (`LimitEnforceFeature`).
 
 All enforcement happens automatically via database triggers. No application code needed beyond the initial ORM setup.
 

@@ -1,0 +1,15 @@
+{
+  "id": "tenant_database_id",
+  "name": "Project Console tenant",
+  "authPolicy": {
+    "requireCsrfForAuth": true
+  },
+  "endpoints": {
+    "data": "https://data.example.com/graphql",
+    "auth": "https://auth.example.com/graphql",
+    "admin": {
+      "id": "admin_api_id",
+      "url": "https://admin.example.com/graphql"
+    }
+  }
+}

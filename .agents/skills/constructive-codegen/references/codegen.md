@@ -326,16 +326,13 @@ const searchFields = getSearchFields(schema);
 
 ## Using Generated Hooks
 
-### Configure Client (once at app startup)
+### Bind transport safely
 
-```typescript
-import { configure } from '@/generated/hooks';
-
-configure({
-  endpoint: process.env.NEXT_PUBLIC_GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${getToken()}` },
-});
-```
+Generated hooks are appropriate for a stable custom-domain endpoint. Inspect
+the generated transport and reject mutable module-global endpoint or header
+state when the application can switch tenant or identity, or when code runs
+across concurrent server requests. Use an instance-scoped request layer or the
+Blocks runtime for dynamic tenants.
 
 ### Query Data
 
@@ -344,8 +341,11 @@ import { useUsersQuery } from '@/generated/hooks';
 
 function UserList() {
   const { data, isLoading } = useUsersQuery({
-    first: 10,
-    filter: { role: { eq: 'ADMIN' } },
+    selection: {
+      fields: { id: true, name: true },
+      first: 10,
+      where: { role: { equalTo: 'ADMIN' } },
+    },
   });
 
   if (isLoading) return <Spinner />;
@@ -359,10 +359,12 @@ function UserList() {
 import { useCreateUserMutation } from '@/generated/hooks';
 
 function CreateUser() {
-  const createUser = useCreateUserMutation();
+  const createUser = useCreateUserMutation({
+    selection: { fields: { id: true, name: true } },
+  });
 
   return (
-    <button onClick={() => createUser.mutate({ input: { name: 'John' } })}>
+    <button onClick={() => createUser.mutate({ name: 'John' })}>
       Create
     </button>
   );
@@ -378,50 +380,65 @@ See `references/hooks-patterns.md` and `references/hooks-output.md` for advanced
 ```typescript
 import { createClient } from '@/generated/orm';
 
-export const db = createClient({
-  endpoint: process.env.GRAPHQL_URL!,
-  headers: { Authorization: `Bearer ${process.env.API_TOKEN}` },
-});
+export function createDomainClient(endpoint: string, accessToken: string) {
+  return createClient({
+    endpoint,
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 ```
 
 ### Query Data
 
 ```typescript
-const users = await db.user.findMany({
+const db = createDomainClient(dataEndpoint, accessToken);
+const usersResult = await db.user.findMany({
   select: { id: true, name: true, email: true },
-  filter: { role: { eq: 'ADMIN' } },
+  where: { role: { equalTo: 'ADMIN' } },
   first: 10,
-}).execute().unwrap();
+}).unwrap();
+const users = usersResult.users.nodes;
 ```
 
 ### Relations
 
 ```typescript
-const posts = await db.post.findMany({
+const postsResult = await db.post.findMany({
   select: {
     id: true,
     title: true,
     author: { select: { id: true, name: true } },
   },
-}).execute().unwrap();
+}).unwrap();
+const posts = postsResult.posts.nodes;
 
-// posts[0].author.name is fully typed
+// Belongs-to relations preserve database nullability.
+const firstAuthorName = posts[0]?.author?.name;
 ```
 
 ### Error Handling
 
 ```typescript
-const result = await db.user.findOne({ id: '123' }).execute();
+const result = await db.user.findOne({
+  id: '123',
+  select: { id: true, name: true },
+}).execute();
 
 if (result.ok) {
-  console.log(result.value.name);
+  console.log(result.data.user?.name);
 } else {
-  console.error(result.error.message);
+  console.error(result.errors.map((error) => error.message).join('; '));
 }
 
 // Or use helpers
-const user = await db.user.findOne({ id }).execute().unwrap(); // throws on error
-const user = await db.user.findOne({ id }).execute().unwrapOr(defaultUser);
+const userResult = await db.user.findOne({
+  id,
+  select: { id: true, name: true },
+}).unwrap(); // throws on error
+const fallbackResult = await db.user.findOne({
+  id,
+  select: { id: true, name: true },
+}).unwrapOr({ user: defaultUser });
 ```
 
 See `references/orm-patterns.md` and `references/orm-output.md` for advanced patterns.
@@ -472,20 +489,20 @@ The CLI includes built-in infrastructure commands:
 ## Filter Syntax
 
 ```typescript
-// Comparison
-filter: { age: { eq: 25 } }
-filter: { age: { gte: 18, lt: 65 } }
-filter: { status: { in: ['ACTIVE', 'PENDING'] } }
+// Root list filters use `where` in ORM and hook selection arguments.
+where: { age: { equalTo: 25 } }
+where: { age: { greaterThanOrEqualTo: 18, lessThan: 65 } }
+where: { status: { in: ['ACTIVE', 'PENDING'] } }
 
 // String
-filter: { name: { contains: 'john' } }
-filter: { email: { endsWith: '.com' } }
+where: { name: { includes: 'john' } }
+where: { email: { endsWith: '.com' } }
 
 // Logical
-filter: {
-  OR: [
-    { role: { eq: 'ADMIN' } },
-    { role: { eq: 'MODERATOR' } },
+where: {
+  or: [
+    { role: { equalTo: 'ADMIN' } },
+    { role: { equalTo: 'MODERATOR' } },
   ],
 }
 ```
@@ -521,7 +538,7 @@ See `references/query-keys.md` for details.
 | Missing `_meta` query | Ensure PostGraphile v5+ with Meta plugin |
 | Type errors after regeneration | Delete output directory and regenerate |
 | Import errors | Verify generated code exists and paths match |
-| Auth errors at runtime | Check `configure()` headers are set |
+| Auth errors at runtime | Verify the request-scoped endpoint, tenant identity, and credential binding |
 | No skill files generated | Set `docs: { skills: true }` |
 | Schema export produces empty file | Verify database/endpoint has tables in the specified schemas |
 | `schemaDir` generates nothing | Ensure directory contains `.graphql` files (not `.gql` or other extensions) |
@@ -529,7 +546,7 @@ See `references/query-keys.md` for details.
 
 ## References
 
-All references are in [references/](references/).
+The focused references are listed below and live alongside this file.
 
 ### Workflow Guides
 

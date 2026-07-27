@@ -1,200 +1,175 @@
-# Sidebar API Reference
+# Sidebar API
 
-Complete sub-component props reference for the Sidebar layout system.
+Use this reference after installing `app-shell`, `app-bar`, or `sidebar`
+through the pinned Blocks local-consumption workflow. The examples use the
+conventional source alias; substitute the alias in the consumer's
+`components.json` when it differs.
 
-## SidebarProvider
+## Provider and state
 
-Root context provider. Wrap your entire layout.
+`SidebarProvider` owns desktop and mobile state in one context:
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `defaultOpen` | `boolean` | `true` | Initial open state (uncontrolled) |
-| `open` | `boolean` | -- | Controlled open state |
-| `onOpenChange` | `(open: boolean) => void` | -- | Callback when state changes |
-| `children` | `React.ReactNode` | -- | Layout contents |
+| Prop | Type | Default | Meaning |
+|---|---|---|---|
+| `defaultOpen` | `boolean` | `true` | Initial uncontrolled desktop state |
+| `open` | `boolean` | — | Controlled desktop state |
+| `onOpenChange` | `(open: boolean) => void` | — | Controlled desktop change callback |
 
-Provides context via `useSidebar()`:
+`useSidebar()` returns `state`, `open`, `setOpen`, `openMobile`,
+`setOpenMobile`, `isMobile`, and `toggleSidebar`. `state` is derived from the
+desktop `open` value and is either `expanded` or `collapsed`.
 
-```tsx
-const {
-  state,         // 'expanded' | 'collapsed'
-  open,          // boolean
-  setOpen,       // (open: boolean) => void
-  openMobile,    // boolean
-  setOpenMobile, // (open: boolean) => void
-  isMobile,      // boolean
-  toggleSidebar, // () => void
-} = useSidebar();
-```
-
-## Sidebar
-
-Main sidebar container.
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `side` | `'left' \| 'right'` | `'left'` | Which side to render on |
-| `variant` | `'sidebar' \| 'floating' \| 'inset' \| 'icon'` | `'sidebar'` | Visual style |
-| `collapsible` | `'offcanvas' \| 'icon' \| 'none'` | `'offcanvas'` | Collapse behavior |
-
-- On mobile: renders as Sheet (side panel overlay)
-- On desktop: renders as `<aside>` with CSS width transitions
-- Hover expansion: when `collapsible="icon"`, hovering expands temporarily (`data-state="expanded"` via `data-collapsible="icon"`)
-
-## SidebarTrigger
-
-Toggle button for sidebar open/close.
-
-- Renders as `Button` with `variant="ghost"`, `size="icon"`
-- Shows menu/panel-left icon based on current state
-- No additional props beyond standard button props
-
-## SidebarInset
-
-Main content wrapper, positioned adjacent to the sidebar.
-
-- Automatically adjusts width when sidebar collapses
-- CSS: `flex flex-1 flex-col overflow-hidden`
-- Place page header and main content inside this component
-
-## SidebarInput
-
-Search input inside the sidebar.
-
-- Auto-styled with sidebar-specific padding and border radius
-- Extends standard `<input>` props
-
-## SidebarHeader
-
-Fixed area at the top of the sidebar.
-
-- Typically contains logo, app name, or user avatar
-- Not scrollable -- stays pinned at top
-
-## SidebarFooter
-
-Fixed area at the bottom of the sidebar.
-
-- Has `data-slot="sidebar-footer"` attribute
-- Typically contains logout button or user menu
-- Not scrollable -- stays pinned at bottom
-
-## SidebarContent
-
-Scrollable area between header and footer.
-
-- `overflow-auto` for vertical scrolling
-- Contains one or more `SidebarGroup` components
-
-## SidebarGroup
-
-Groups related menu items within `SidebarContent`.
-
-| Sub-component | Purpose |
-|---------------|---------|
-| `SidebarGroupLabel` | Section title text, hides in icon mode |
-| `SidebarGroupAction` | Action button in group header (e.g., "Add" button) |
-| `SidebarGroupContent` | Wrapper for the `SidebarMenu` |
-
-## SidebarMenu
-
-Container for menu items. Renders as `<ul>`.
-
-## SidebarMenuItem
-
-Individual menu item. Renders as `<li>`.
-
-Contains: `SidebarMenuButton`, optional `SidebarMenuAction`, `SidebarMenuBadge`.
-
-## SidebarMenuButton
-
-Primary interactive element within a menu item.
-
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `isActive` | `boolean` | `false` | Highlights as current page |
-| `tooltip` | `string \| TooltipContentProps` | -- | Tooltip shown in collapsed/icon mode |
-| `variant` | `'default' \| 'outline'` | `'default'` | Visual style |
-| `size` | `'sm' \| 'default' \| 'lg'` | `'default'` | Button size |
-
-Supports `asChild` for wrapping Next.js `Link`:
+Use one state model:
 
 ```tsx
-<SidebarMenuButton asChild isActive={pathname === '/home'}>
-  <Link href="/home">
-    <Home className="size-4" />
-    <span>Home</span>
-  </Link>
-</SidebarMenuButton>
+'use client';
+
+import * as React from 'react';
+import { SidebarProvider } from '@/components/ui/sidebar';
+
+export function UncontrolledSidebar({
+  children,
+  defaultOpen
+}: Readonly<{
+  children: React.ReactNode;
+  defaultOpen: boolean;
+}>) {
+  return (
+    <SidebarProvider defaultOpen={defaultOpen}>
+      {children}
+    </SidebarProvider>
+  );
+}
+
+export function ControlledSidebar({
+  children,
+  defaultOpen
+}: Readonly<{
+  children: React.ReactNode;
+  defaultOpen: boolean;
+}>) {
+  const [open, setOpen] = React.useState(defaultOpen);
+
+  return (
+    <SidebarProvider open={open} onOpenChange={setOpen}>
+      {children}
+    </SidebarProvider>
+  );
+}
 ```
 
-## SidebarMenuAction
+## Cookie hydration
 
-Secondary action button on a menu item (e.g., kebab menu, delete).
+The provider writes `sidebar_state=true|false` with `path=/` and a seven-day
+maximum age when desktop state changes. It does not read that cookie. Read it
+in the Next.js 16 server layout and pass the result as `defaultOpen` or
+`defaultSidebarOpen`; this prevents the first client render from guessing a
+different state.
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `showOnHover` | `boolean` | `false` | Only visible on hover |
+```tsx
+import { cookies } from 'next/headers';
 
-## SidebarMenuBadge
+import { signOut } from './actions';
+import { TenantShell } from './tenant-shell';
 
-Badge or count display on menu items. Renders inline after the button text.
+export default async function TenantLayout({
+  children
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  const cookieStore = await cookies();
+  const sidebarCookie = cookieStore.get('sidebar_state');
+  const defaultSidebarOpen = sidebarCookie?.value !== 'false';
 
-## SidebarMenuSkeleton
+  return (
+    <TenantShell
+      defaultSidebarOpen={defaultSidebarOpen}
+      onSignOut={signOut}
+    >
+      {children}
+    </TenantShell>
+  );
+}
+```
 
-Loading placeholder for menu items.
+Controlled desktop changes still go through the provider, so it invokes
+`onOpenChange` and writes the cookie. Mobile state is separate, starts closed,
+and is not persisted by this cookie.
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `showIcon` | `boolean` | `false` | Show icon placeholder circle |
+## Sidebar variants and collapse modes
 
-## SidebarMenuSub
+`Sidebar` accepts independent presentation and collapse props:
 
-Nested sub-menu tree. Renders as nested `<ul>`.
+| Prop | Values | Default |
+|---|---|---|
+| `side` | `left`, `right` | `left` |
+| `variant` | `sidebar`, `floating`, `inset` | `sidebar` |
+| `collapsible` | `offcanvas`, `icon`, `none` | `offcanvas` |
 
-## SidebarMenuSubItem
+`variant="floating"` adds an inset frame, rounded inner panel, ring, and
+shadow. `variant="inset"` also frames the sidebar and makes `SidebarInset` a
+rounded content surface on desktop. `variant` does not select icon collapse.
 
-Item within a sub-menu. Renders as `<li>`.
+`collapsible="offcanvas"` moves the desktop sidebar out of view when closed.
+`collapsible="icon"` contracts it to `--sidebar-width-icon`. Expansion happens
+only through provider state changes, the trigger, rail, or keyboard shortcut;
+hover does not expand it. `collapsible="none"` renders a fixed sidebar on every
+viewport and bypasses the mobile Sheet behavior.
 
-## SidebarMenuSubButton
+For the collapsible modes, mobile renders a Sheet with its own `openMobile`
+state and an `18rem` width. `SidebarTrigger` toggles mobile state on mobile and
+desktop state otherwise, while `Cmd+B` or `Ctrl+B` follows the same rule. Use
+`setOpenMobile(false)` after accepted custom navigation when the host owns the
+link rendering.
 
-Button within a sub-menu item.
+## Navigation composition
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| `isActive` | `boolean` | `false` | Highlights as current page |
-| `size` | `'sm' \| 'md'` | `'md'` | Button size |
+Compose custom router links with Base UI's `render` prop:
 
-## SidebarSeparator
+```tsx
+'use client';
 
-Visual divider between groups or sections within the sidebar.
+import Link from 'next/link';
+import { HomeIcon } from 'lucide-react';
 
-## CSS Variables
+import {
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem
+} from '@/components/ui/sidebar';
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `--sidebar-width` | `16rem` | Expanded sidebar width |
-| `--sidebar-width-icon` | `3rem` | Collapsed width (icon mode) |
-| `--sidebar-width-mobile` | `18rem` | Mobile sheet width |
+export function PrimaryNavigation() {
+  return (
+    <SidebarMenu>
+      <SidebarMenuItem>
+        <SidebarMenuButton
+          isActive
+          tooltip="Home"
+          render={<Link href="/home" />}
+        >
+          <HomeIcon aria-hidden="true" />
+          <span>Home</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    </SidebarMenu>
+  );
+}
+```
 
-## Cookie Persistence
+`SidebarMenuButton` supports `default`, `sm`, and `lg` sizes, `default` and
+`outline` variants, active state, and a collapsed-mode tooltip.
+`SidebarMenuAction` is a separate action and can use `showOnHover`; that prop
+only changes action visibility and never sidebar expansion.
 
-Sidebar open/closed state is persisted to the cookie `sidebar_state`.
+## Structure and sizing
 
-- Uses `document.cookie` directly
-- Value: `"true"` or `"false"`
-- Read on mount to restore previous state
+Use `SidebarHeader` and `SidebarFooter` for pinned regions,
+`SidebarContent` for the scrollable region, and
+`SidebarGroup`/`SidebarGroupContent`/`SidebarMenu` for navigation. Place the
+main column in `SidebarInset` and toggle with `SidebarTrigger`. `SidebarRail`
+provides the desktop edge control.
 
-## Keyboard Shortcut
-
-- `Cmd+B` (macOS) / `Ctrl+B` (Windows/Linux) toggles sidebar
-- Registered globally within `SidebarProvider`
-
-## Variant Comparison
-
-| Variant | Collapsed Behavior | Use Case |
-|---------|-------------------|----------|
-| `sidebar` | Slides off-screen | Standard app sidebar |
-| `floating` | Floats over content with shadow | Overlay navigation |
-| `inset` | Content area has card appearance | Dashboard layouts |
-| `icon` | Collapses to icon strip, expands on hover | Dense navigation |
+The expanded desktop width is `--sidebar-width` (`16rem` by default) and the
+icon width is `--sidebar-width-icon` (`3rem` by default). Override them through
+provider or AppShell styles; the mobile Sheet uses its component-local `18rem`
+value.

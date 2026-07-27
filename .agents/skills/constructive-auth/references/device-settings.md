@@ -50,7 +50,7 @@ All three toggles are independent booleans, producing 8 possible combinations. T
 - **Approval gate only** (row 2): `require_device_approval = true`. New devices must be email-confirmed before sign-in. Good for high-value accounts without MFA.
 - **Full hardened** (row 8): all three on. New devices face forced MFA + email approval. Recognized trusted devices skip MFA. This is the Kraken/exchange-style flow.
 
-## Auth Flow Integration
+## Authentication Integration
 
 The device checks happen at specific points in the sign-in pipeline:
 
@@ -156,13 +156,4 @@ await authDb.mutation.approveDevice(
 
 ## Module Installation
 
-The `devices_module` is included in the `full` preset. To add it to other presets:
-
-```typescript
-const modules = [...preset.modules, 'devices_module'];
-
-await db.databaseProvisionModule.create({
-  data: { databaseName, modules: `{${modules.join(',')}}`, ... },
-  select: { id: true },
-}).execute();
-```
+The `devices_module` is included in all three current backend profiles: `auth:hardened`, `b2b:storage`, and `full`. For a custom composition, add it through the supported Constructive DB provisioning mechanism; do not copy or extend a preset array in application code.

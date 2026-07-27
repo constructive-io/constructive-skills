@@ -416,7 +416,7 @@ import { ProgressiveBlur } from '@constructive-io/ui/progressive-blur';
 Wraps children with automatic blur at scroll edges:
 
 ```tsx
-import { ProgressiveBlurScrollContainer } from '@constructive-io/ui/progressive-blur';
+import { ProgressiveBlurScrollContainer } from '@constructive-io/ui/progressive-blur-scroll-container';
 
 <ProgressiveBlurScrollContainer className="h-[400px]">
   {longContent}
@@ -450,6 +450,7 @@ import { ResponsiveDiagram } from '@constructive-io/ui/responsive-diagram';
 | FlickeringGrid | `@constructive-io/ui/flickering-grid` | Decorative background |
 | MotionGrid | `@constructive-io/ui/motion-grid` | Animated background |
 | ProgressiveBlur | `@constructive-io/ui/progressive-blur` | Scroll fade effect |
+| ProgressiveBlurScrollContainer | `@constructive-io/ui/progressive-blur-scroll-container` | Overflow-aware top and bottom blur |
 | ResponsiveDiagram | `@constructive-io/ui/responsive-diagram` | Auto-scaling container |
 
 ## Best Practices

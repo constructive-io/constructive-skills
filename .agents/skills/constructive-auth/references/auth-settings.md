@@ -155,7 +155,7 @@ await db.appSettingsAuth.update({
 
 ## rate_limit_meters_module
 
-Billing-aware rate limit meters, distinct from the basic `rate_limits_module`. Provisioned by `sessions_module` in the `full` preset.
+Billing-aware rate limit meters, distinct from the basic `rate_limits_module`. `rate_limit_meters_module` is a separate module included in the `full` preset; `sessions_module` does not provision it.
 
 Creates three tables:
 - `rate_limit_state` (private) — sliding window tracking per entity/actor/meter/window with three enforcement scopes
@@ -199,6 +199,6 @@ Creates the `user_secrets` table with columns:
 
 A trigger automatically hashes plaintext values with bcrypt on insert/update.
 
-**Gate:** `user_credentials_module` — included in all auth presets (`auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, `auth:hardened`, `b2b`, `b2b:storage`, `full`).
+**Gate:** `user_credentials_module` — resolve its presence from the current backend preset/module registry. It is part of the supported authentication-bearing presets (`auth:hardened`, `b2b:storage`, and `full`).
 
 This module is used internally by `sign_up`, `sign_in`, `set_password`, `reset_password`, and `verify_password` functions. Application code typically does not interact with `user_secrets` directly.

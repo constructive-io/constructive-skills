@@ -98,7 +98,7 @@ Each bucket entry in `buckets[]`:
 | `max_file_size` | integer | No | `null` | Max file size in bytes (overrides module default) |
 | `allowed_origins` | text[] | No | `null` | Per-bucket CORS override |
 
-For default storage policies and the full policy format, see [storage-policies.md](./storage-policies.md).
+For default storage policies and the full policy format, see [storage-policies.md](../../constructive-security/references/storage-policies.md).
 
 ## Entity Types (Phase 0)
 
@@ -109,11 +109,13 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 This provides two equivalent paths for org storage — matching the pattern where constraints/indexes have both inline and top-level paths:
 
+**Path 1 — top-level scope (Phase 0.5):**
 ```json
-// Path 1: top-level scope (Phase 0.5)
 { "storage": [{ "scope": "org", "buckets": [{"name": "documents"}] }] }
+```
 
-// Path 2: entity_types[] extend (Phase 0)
+**Path 2 — `entity_types[]` extension (Phase 0):**
+```json
 { "entity_types": [{ "prefix": "org", "storage": [{ "buckets": [{"name": "documents"}] }] }] }
 ```
 
@@ -157,7 +159,7 @@ This provides two equivalent paths for org storage — matching the pattern wher
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) |
 | `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets and files tables) |
-| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](./storage-policies.md) |
+| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](../../constructive-security/references/storage-policies.md) |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
 | `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grants`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
@@ -229,7 +231,7 @@ Each entry in `tables[]` defines one database table:
 }
 ```
 
-All 28 node types from the `node_type_registry`:
+Common table node types are summarized below. Use [node-type-registry.md](./node-type-registry.md) for the complete 87-node canonical registry inventory; do not infer registry availability from this shorter authoring guide.
 
 #### Core Identity & Ownership
 
@@ -315,14 +317,22 @@ All 28 node types from the `node_type_registry`:
 | `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (legacy simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 | `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. | `event_name` (required), `events` (default `['INSERT']`), `count` (default `1`), `toggle` (default `false`), `actor_field` (default `'owner_id'`, column-ref), `entity_field` (optional column-ref for entity-scoped events), `auto_register_type` (default `true`), `watch_fields` (optional array), `conditions` (compound WHEN clause — same syntax as JobTrigger), `condition_field`/`condition_value` (legacy) — see [`constructive-events`](../../constructive-events/SKILL.md) |
 
-#### Limits & Feature Flags (trigger-only — requires `limits_module`)
+#### Limits, Billing Usage & Warnings (trigger-only)
 
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
-| `LimitCounter` | Attaches increment/decrement triggers to track metered usage against configurable maximums. On INSERT the named limit is incremented; on DELETE it is decremented. | `limit_name` (required — must match a `limit_defaults` entry, e.g. `'projects'`, `'members'`), `scope` (default `'app'` — `'app'` for membership_type=1 or `'org'` for membership_type=2), `actor_field` (default `'owner_id'` — column-ref, field on target table holding the actor/entity ID), `events` (default `['INSERT','DELETE']` — which DML events to attach triggers for) |
-| `LimitFeatureFlag` | Gates a table behind a feature flag backed by cap tables. Attaches a BEFORE INSERT trigger that checks `resolve_cap(feature_name) > 0`. Features are modeled as caps with `max=0` (disabled) or `max=1` (enabled) in `limit_caps_defaults`. | `feature_name` (required — cap name, must match a `limit_caps_defaults` entry), `scope` (default `'app'` — `'app'` or `'org'`), `entity_field` (default `'entity_id'` — column-ref, used for org-scope only to resolve per-entity cap overrides) |
+| `LimitEnforceCounter` | Enforces and updates a per-actor limit counter on table events | `limit_name` (required), `scope` (`'app'`), `actor_field` (`'owner_id'`), optional `entity_field` + `entity_lookup`, `events` (`['INSERT','DELETE']`) |
+| `LimitEnforceAggregate` | Enforces and updates a counter shared by an entity | `limit_name` (required), `scope` (`'org'`), `entity_field` (`'entity_id'`), optional `entity_lookup`, `events` (`['INSERT','DELETE']`) |
+| `LimitEnforceFeature` | Gates INSERT behind a cap resolved from per-entity override, scope default, then zero | `feature_name` (required), `scope` (`'app'`), `entity_field` (`'entity_id'`), optional `entity_lookup` |
+| `LimitEnforceRate` | Enforces configured entity, actor-in-entity, and actor sliding-window limits before mutation | `meter_slug` (required), `entity_field` (`'entity_id'`), optional `entity_lookup`, `actor_field` (`'owner_id'`), `events` (`['INSERT']`; `INSERT`/`UPDATE` only) |
+| `LimitTrackUsage` | Records billing usage, reversal, and entity-transfer events | `meter_slug` (required), `entity_field` (`'entity_id'`), optional `entity_lookup`, `quantity` (`1`), `events` (`['INSERT','DELETE']`) |
+| `LimitWarningCounter` | Enqueues a deduplicated first-crossing job for an actor counter threshold | `limit_name` (required), `scope` (`'app'`), `actor_field` (`'owner_id'`), optional `entity_field` + `entity_lookup` |
+| `LimitWarningAggregate` | Enqueues a deduplicated first-crossing job for an entity aggregate threshold | `limit_name` (required), `scope` (`'org'`), `entity_field` (`'entity_id'`), optional `entity_lookup` |
+| `LimitWarningRate` | Enqueues a deduplicated first-crossing job for an active rate-window threshold | `meter_slug` (required), `scope` (`'app'`), `entity_field` (`'entity_id'`), optional `entity_lookup`, `actor_field` (`'owner_id'`) |
 
-**Prerequisites:** Both require `limits_module` to be provisioned for the target scope. Enable via `modules:['all']` or the `b2b`/`full` presets, or via `has_limits: true` on entity types.
+Inside every `entity_lookup`, `obj_table` and `obj_field` are required and `obj_schema` is optional. The limits nodes resolve `scope` from the membership-type prefix, so custom provisioned scopes such as `data_room` are valid.
+
+**Prerequisites:** Counter, aggregate, feature, and their warning nodes require the relevant `limits_module`; warning nodes also require warning tables. `LimitTrackUsage` requires billing, `LimitEnforceRate` requires billing plus meter-rate limits, and `LimitWarningRate` requires limits warnings plus rate-limit meters. Resolve modules from the backend preset or explicit backend composition; node presence does not install modules.
 
 **Example — limit projects per org:**
 ```json
@@ -331,7 +341,7 @@ All 28 node types from the `node_type_registry`:
   "nodes": [
     "DataId", "DataTimestamps",
     { "$type": "DataEntityMembership", "data": { "entity_field_name": "org_id" } },
-    { "$type": "LimitCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "org_id" } }
+    { "$type": "LimitEnforceCounter", "data": { "limit_name": "projects", "scope": "org", "actor_field": "owner_id", "entity_field": "org_id" } }
   ],
   "fields": [ { "name": "title", "type": { "name": "text" } } ]
 }
@@ -343,7 +353,7 @@ All 28 node types from the `node_type_registry`:
   "table_name": "advanced_reports",
   "nodes": [
     "DataId", "DataTimestamps", "DataDirectOwner",
-    { "$type": "LimitFeatureFlag", "data": { "feature_name": "advanced_reporting" } }
+    { "$type": "LimitEnforceFeature", "data": { "feature_name": "advanced_reporting" } }
   ],
   "fields": [ { "name": "title", "type": { "name": "text" } } ]
 }
@@ -362,9 +372,9 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 |-----------|---------|----------------|
 | `DataI18n` | Creates a `{table}_translations` table with FK, `lang_code`, and copies of translatable fields. Unique constraint on `(parent_fk, lang_code)`. When `search` is provided, creates a SearchFullText tsvector on the translations table with dynamic per-row language stemming (30+ languages out of the box). | `fields` (required — array of field names to make translatable), `search` (optional — SearchFullText config, auto-sets `lang_column: 'lang_code'` for dynamic stemming) |
 
-**Prerequisites:** Requires `i18n_module` to be provisioned. Install via `modules:['all']`, the `full` preset, or add `'i18n_module'` to your module list.
+**Prerequisites:** Requires `i18n_module` to be provisioned. Use the current `full` backend profile or add the module through an explicit custom backend composition.
 
-For full documentation including ORM queries, GraphQL localeStrings, and SQL search patterns, see [`constructive-i18n`](../constructive-i18n/SKILL.md).
+For full documentation including ORM queries and GraphQL locale strings, see [`constructive-i18n`](../../constructive-i18n/SKILL.md).
 
 **Example — make name and description translatable:**
 ```json
@@ -407,7 +417,7 @@ Each translation row is stemmed in its own language — insert with `lang_code =
 |-----------|---------|----------------|
 | `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. | `operations` (default `['INSERT', 'UPDATE', 'DELETE']` — which DML operations to track), `subscriber_table_name` (default `'{source_table}_subscriber'`) |
 
-**Prerequisites:** Requires `realtime_module` to be provisioned. Enable via `modules:['all']` or the `full` preset, or add `'realtime_module'` to your module list.
+**Provisioning:** Add `DataRealtime` to the table's `nodes[]`. No current official backend preset contains `realtime_module`; the `DataRealtime` provisioner creates the shared module when it is absent. Do not copy or extend a preset module array.
 
 **Example — enable realtime on a messages table:**
 ```json
@@ -430,7 +440,7 @@ Each translation row is stemmed in its own language — insert with `lang_code =
 }
 ```
 
-See [realtime-subscriptions.md](./realtime-subscriptions.md) for the full guide on subscription security, change delivery, and partitions.
+See [realtime-subscriptions.md](../../constructive-realtime/references/realtime-subscriptions.md) for the full guide on subscription security, change delivery, and partitions.
 
 #### Search & AI
 
@@ -483,9 +493,11 @@ Optional field properties:
 
 Example with index:
 ```json
-{ "name": "email", "type": { "name": "citext" }, "index": "btree" }
-{ "name": "tags", "type": { "name": "citext", "array_dimensions": 1 }, "index": "gin" }
-{ "name": "location", "type": { "name": "geometry" }, "index": "gist" }
+[
+  { "name": "email", "type": { "name": "citext" }, "index": "btree" },
+  { "name": "tags", "type": { "name": "citext", "array_dimensions": 1 }, "index": "gin" },
+  { "name": "location", "type": { "name": "geometry" }, "index": "gist" }
+]
 ```
 
 ### FieldDefault Reference
@@ -506,14 +518,16 @@ The `default` property on fields uses a **FieldDefault object** representing a s
 
 **Common patterns:**
 ```json
-{ "function": "now" }
-{ "function": "uuidv7" }
-{ "value": true }
-{ "value": "draft" }
-{ "value": {}, "cast": { "name": "jsonb" } }
-{ "value": [], "cast": { "name": "citext", "array_dimensions": 1 } }
-{ "sql_keyword": "CURRENT_TIMESTAMP" }
-{ "operator": "+", "left": { "function": "now" }, "right": { "value": "5 minutes", "cast": { "name": "interval" } } }
+[
+  { "function": "now" },
+  { "function": "uuidv7" },
+  { "value": true },
+  { "value": "draft" },
+  { "value": {}, "cast": { "name": "jsonb" } },
+  { "value": [], "cast": { "name": "citext", "array_dimensions": 1 } },
+  { "sql_keyword": "CURRENT_TIMESTAMP" },
+  { "operator": "+", "left": { "function": "now" }, "right": { "value": "5 minutes", "cast": { "name": "interval" } } }
+]
 ```
 
 ### Grants
@@ -572,9 +586,9 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 | `policy_name` | string | No | Custom policy name |
 | `policy_role` | string | No | Role the policy applies to |
 
-See the [constructive-security](../../constructive-security/SKILL.md) skill for all 23 Authz* policy types and their config shapes.
+See the [constructive-security](../../constructive-security/SKILL.md) skill for all 25 registry Authz nodes, plus the separately platform-applied `AuthzHumanOnly` mechanism, and their config shapes.
 
-**`entity_type` resolution:** For membership-based policies (`AuthzMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
+**`entity_type` resolution:** For membership-based policies (`AuthzEntityMembership`, `AuthzMemberOwner`, `AuthzRelatedEntityMembership`, `AuthzRelatedMemberOwner`, `AuthzPeerOwnership`, `AuthzRelatedPeerOwnership`), you can use `"entity_type": "channel"` (the prefix string) instead of `"membership_type": 3` (a hardcoded integer). The RLS parser resolves the prefix to the correct `membership_type` integer via `memberships_module` lookup. This is recommended for dynamic types (3+) where the int depends on provisioning order. Both forms continue to work.
 
 **Processing:** All policies are applied after the table is created. Multiple permissive policies on the same privilege are ORed by PostgreSQL. Adding a restrictive policy (`"permissive": false`) creates an AND constraint.
 
@@ -684,7 +698,6 @@ Unique constraint definitions can appear at the top level (`definition.unique_co
 |-------|------|----------|-------------|
 | `table_name` | string | Yes (top-level only) | Table to add the constraint to |
 | `columns` | string[] | Yes | Column names for the unique constraint |
-```
 
 ## Achievements (Phase 7)
 
