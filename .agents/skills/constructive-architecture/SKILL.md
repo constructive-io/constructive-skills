@@ -38,7 +38,7 @@ If that baseline is missing, Phase 1 is incomplete. Do not inspect internals wit
 | `http://api-<subdomain>.localhost:3000/graphql` | Per-database app (data) API | Per-database JWT |
 | `http://admin-<subdomain>.localhost:3000/graphql` | Per-database admin API | Per-database JWT |
 
-The `<subdomain>` is a platform-assigned random identifier (e.g., `b16-fatal-rose-mosquito`), **not** the database name. After provisioning, parse the actual endpoints from the `create-db.ts` output or query `metaschema_modules_public.database_provision_module` for the `subdomain` column.
+The `<subdomain>` is a platform-assigned random identifier (e.g., `b16-fatal-rose-mosquito`), **not** the database name. The `auth-/admin-/api-<subdomain>` shape is the **current provisioner's convention, not a platform contract**: the server routes purely by data — each request `Host` resolves through the scoped routing plane (`resolveRoute(hostname)`) against the `domains`/route-binding rows registered for the database. Databases claimed from the warm DB pool carry pool-assigned names, so never derive hostnames from the app slug. After provisioning, **discover** the endpoints: query the scope's `domains` (hostnames) and `apis` (surfaces) by `databaseId` via the SDK, verify with `db.query.resolveRoute({ requestHost })`, or read the `subdomain` column from `database_provision_module` — and write the discovered values into `.env` (see `constructive-secrets-config` §4.3).
 
 The per-database data endpoint is `api-<subdomain>` — the server routes to the correct database off the `Host` header (the path is always `/graphql`). The legacy `app-public-<subdomain>` host is dead; do not use it.
 

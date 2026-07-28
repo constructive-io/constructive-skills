@@ -34,7 +34,7 @@ metadata:
 | **1** | **Site-domain provisioning** | Email links resolve their site from `services_public.domains`; the per-DB provisioner makes API hosts but **no site-domain row** → `"Missing site configuration for email"`. The toolkit now backfills it hands-free. | `scripts/templates/provision/provision.ts` (the live backfill, §1 below) + `troubleshooting.md` → *"Post-Provision: Missing site configuration for email"* (by-hand fallback) |
 | **2** | **Email-services topology** | Four services must all listen: **Mailpit 8025**, **Admin GraphQL 3002**, **send-email-link 8082**, **job-service** (no HTTP port). `SEND_EMAIL_LINK_DRY_RUN` must be `false`. | `SKILL.md` Optional-Extensions *"Email services"* row + `troubleshooting.md` → the four *Post-Provision (Email Services)* sections. Upstream runbook: **`constructive-io/constructive`** (Docker-Compose method). |
 | **3** | **Secrets / KMS / API keys** | `config_secrets_module` backs API-key + secret storage. **`createApiKey` is step-up-gated server-side** and accepts only `accessLevel ∈ {read_only, full_access}` — other values raise `INVALID_ACCESS_LEVEL`. Reveal is one-time, step-up first. | `constructive-principals` (API-key lifecycle) + `constructive-auth` (step-up verification) |
-| **4** | **Env vars / hub `.env` keys** | App `.env` points blocks at the per-DB `auth-/admin-/api-<sub>` endpoints (blocks read the **`_GRAPHQL_`** names). The shared hub server needs `API_IS_PUBLIC` / `API_ANON_ROLE` / `API_ROLE_NAME`. | `SKILL.md` S0/S3 (hub + app env) + `gotchas.md` BLOCKS-001 (the `_GRAPHQL_` name trap) |
+| **4** | **Env vars / hub `.env` keys** | App `.env` points blocks at the per-DB endpoints (blocks read the **`_GRAPHQL_`** names). Endpoint hostnames are **registered routing data, not derivable names** — discover them (§4.3), never string-build them. The shared hub server needs `API_IS_PUBLIC` / `API_ANON_ROLE` / `API_ROLE_NAME`. | `SKILL.md` S0/S3 (hub + app env) + `gotchas.md` BLOCKS-001 (the `_GRAPHQL_` name trap) + §4.3 below |
 
 > **Known-defect status** for these areas is tracked internally; harness deployments layer a private
 > known-gaps overlay on top of this skill with the current list. If a documented flow fails after the
@@ -203,7 +203,8 @@ API_IS_PUBLIC=true   API_ANON_ROLE=anonymous   API_ROLE_NAME=authenticated   + t
 
 Source of truth: **`SKILL.md` S3** (and `scripts/wire-app.mjs`, which writes both files). Write env to
 **BOTH** `<app>/.env` (codegen reads it) **and** `<app>/.env.local` (`pnpm dev` reads it), kept identical.
-Replace `<sub>` with your subdomain:
+The **key names** below are the contract; the **hostname values** come from endpoint discovery (§4.3) —
+`<sub>` is whatever subdomain the platform assigned to your database, never the app slug by assumption:
 
 ```bash
 NEXT_PUBLIC_DB_NAME=<sub>
@@ -222,6 +223,47 @@ CODEGEN_APP_HOST=api-<sub>.localhost                                         # c
 >   `NEXT_PUBLIC_AUTH_GRAPHQL_ENDPOINT` / `NEXT_PUBLIC_ADMIN_GRAPHQL_ENDPOINT` — **different names** from the
 >   template's `NEXT_PUBLIC_AUTH_ENDPOINT` / `NEXT_PUBLIC_ADMIN_ENDPOINT`. Set the `_GRAPHQL_` names too, or
 >   every block request no-ops with `Missing NEXT_PUBLIC_AUTH_GRAPHQL_ENDPOINT`. (`gotchas.md` **BLOCKS-001**.)
+
+### 4.3 Discover your endpoints — never derive hostnames
+
+The `auth-/admin-/api-<sub>` shape is the **current provisioner's naming convention, not a platform
+contract**. The server has no name-derivation logic at all: every request's `Host` header is resolved
+through the scoped routing plane (`resolve_route(hostname)`) against the **`domains` / route-binding rows
+registered for your database** — an endpoint exists because a row exists, not because a name pattern holds.
+Two consequences:
+
+- **Warm-pool databases break derivation.** Databases claimed from the warm DB pool carry
+  **pool-assigned** names/subdomains (e.g. `b16-fatal-rose-mosquito`) — the app slug is *not* the
+  subdomain, and the hostname shape itself may change. Any code that string-builds
+  `api-<app-name>.localhost` is wrong.
+- **The registered rows are queryable.** Ask the platform API which endpoints your database actually has,
+  keyed by the `DATABASE_ID` provisioning wrote to `.env`:
+
+```typescript
+// The hostnames registered for this database — the exact truth the router uses
+const domains = await db.domain.findMany({
+  where: { databaseId: process.env.DATABASE_ID },
+  select: { hostname: true, isPublished: true }
+}).execute();
+
+// The API surfaces those hostnames bind to (name, roles, publication)
+const apis = await db.api.findMany({
+  where: { databaseId: process.env.DATABASE_ID },
+  select: { id: true, name: true, isPublished: true }
+}).execute();
+
+// Verify a specific hostname resolves exactly the way the server will
+const route = await db.query.resolveRoute({
+  requestHost: hostname, requestPath: '/', requestMethod: null
+}).execute();
+```
+
+The provisioner-assigned subdomain is also recorded on
+`database_provision_module` (the `subdomain` column) if you only need that one value.
+
+**Workflow:** provision (or claim from the pool) → discover the hostnames → write them into the §4.2
+`.env` keys. If a doc or example shows a `<sub>`-derived URL, treat it as *illustrative of today's
+convention*; the discovered values win.
 
 > **Auth is per-DB, not the platform token.** A `schema-builder` / platform token does **not** authenticate
 > per-DB data calls. Sign up / sign in against the **tenant** `auth-<sub>.localhost` endpoint (not base
