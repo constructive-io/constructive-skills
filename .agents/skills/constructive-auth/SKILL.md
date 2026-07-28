@@ -24,7 +24,7 @@ For product UI, activate `constructive-blocks` and install the Authentication pa
 
 ## Runtime Boundary
 
-For the Console auth module or custom auth client, the host must supply the tenant's explicit semantic `auth` endpoint. A standalone Authentication pack receives already-loaded resources and semantic actions through its host contract, so it does not resolve that endpoint itself. Never construct an `auth-<database>` hostname, derive a sibling route from the data endpoint, or send a bearer token to an inferred origin.
+For the Console auth module or custom auth client, the host must supply the tenant's explicit semantic `auth` endpoint. A standalone Authentication pack receives already-loaded resources and semantic actions through its host contract, so it does not resolve that endpoint itself. In Blocks/frontend/application code, never construct an `auth-<database>` hostname, derive a sibling route from the data endpoint, or send a bearer token to an inferred origin — endpoint discovery is the provisioning/harness layer's job (that layer derives and pins the per-DB endpoints and hands them to the app via env/host contract).
 
 Use the Blocks auth adapter for Console Kit. A standalone Authentication pack receives its resources, policy, actions, errors, and view state from the host and performs no endpoint or session discovery. For custom domain code, create an endpoint-scoped client from the explicit descriptor and keep credentials in the host session boundary. Do not place bearer tokens in component props, URLs, a process-wide client, or the Console Kit Zustand store.
 

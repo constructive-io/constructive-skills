@@ -35,6 +35,14 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-orm** | ORM refs from constructive-sdk-graphql | Optional generated ORM patterns for stable custom-domain schemas |
 | **constructive-hooks** | hooks refs from constructive-sdk-graphql | Optional generated React Query hook patterns for fixed endpoints |
 | **constructive-platform** | constructive-sdk-api, sdk-services, sdk-site, monorepo-setup | Server config, services, domains, deployment, env, cnc CLI (slimmed) |
+| **constructive-architecture** | *(from sdk-agentic-flow)* | Platform mental model — core model, baseline, endpoint map, provisioning flow, data-module/policy pairing |
+| **constructive-gotchas** | *(from sdk-agentic-flow)* | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) cited by harness tools |
+| **constructive-troubleshooting** | *(from sdk-agentic-flow)* | Failure recipes — exact error strings mapped to root causes and fixes per build phase |
+| **constructive-secrets-config** | *(from sdk-agentic-flow)* | Secrets/config plumbing map — site-domain provisioning, email topology, API-key surface, env keys |
+| **constructive-build-orchestrator** | *(from Constructive harness)* | State-machine router for harness-driven app builds (`.constructive/feature_list.json`) |
+| **constructive-harness-init** | *(from Constructive harness)* | Bootstraps `.constructive/` from harness templates |
+| **constructive-brief-intake** | *(from Constructive harness)* | Conversational/inferred brief intake — writes BRIEF.md + per-entity feature rows |
+| **constructive-harness-tools** | *(from Constructive harness)* | Guide to the harness's typed tools (provision_database, provision_blueprint, run_codegen, …) |
 
 Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
 
