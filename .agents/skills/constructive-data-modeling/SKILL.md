@@ -16,6 +16,7 @@ Use this skill when:
 - Creating tables, fields, relations, constraints, or indexes via the SDK
 - Provisioning databases with module selection
 - Defining enum types
+- Defining domain types (`CREATE DOMAIN`): base type, `NOT NULL`, `CHECK`, `DEFAULT`
 - Creating views and setting view options (`security_invoker`, `security_barrier`, `WITH [LOCAL|CASCADED] CHECK OPTION`)
 - Configuring field validation (regexp, min, max)
 - Adding identity columns (`GENERATED ALWAYS / BY DEFAULT AS IDENTITY`) with sequence options
@@ -124,6 +125,60 @@ await db.enum.create({
   select: { id: true, name: true, values: true },
 }).execute();
 ```
+
+## Domain Types
+
+First-class PostgreSQL domains (PG18 backend): a named base type with optional
+`NOT NULL`, `CHECK`, and `DEFAULT` constraints, enforced everywhere the domain
+is used.
+
+```typescript
+await db.domainType.create({
+  data: {
+    databaseId,
+    schemaId,
+    name: 'email',
+    baseType: { name: 'text' },        // FieldType shape (same as field.type)
+    notNull: true,
+    // CHECK (VALUE ~ '^[^@]+@[^@]+$') — FieldGeneration DSL;
+    // { column: 'value' } is the domain's VALUE pseudo-column
+    checkExpr: {
+      operator: '~',
+      left: { column: 'value' },
+      right: { value: '^[^@]+@[^@]+$' },
+    },
+    // DEFAULT 'x@y.z' — FieldDefault DSL (same shape as field defaultValue)
+    defaultExpr: { value: 'x@y.z' },
+  },
+  select: { id: true, name: true },
+}).execute();
+```
+
+Fields reference the domain by `{ name, schema }` in `field.type`, exactly like
+enums and composite types:
+
+```typescript
+await db.field.create({
+  data: {
+    databaseId,
+    tableId,
+    name: 'contact_email',
+    type: { name: 'email', schema: 'app_public' },
+    isRequired: true,
+  },
+  select: { id: true },
+}).execute();
+```
+
+- `baseType` accepts any FieldType — built-ins, enums, or other catalog types
+  (see [field-types.md](./references/field-types.md)); it is validated for
+  existence at create time.
+- `checkExpr` uses the FieldGeneration DSL (`{operator,left,right}`, `{column}`,
+  `{function}`, `{value}`, `{case}`, `{cast}`) — the same DSL as generated
+  columns. `defaultExpr` uses the FieldDefault DSL from
+  [field-types.md](./references/field-types.md).
+- Both expressions are compiled and validated server-side (allowlist AST
+  validation) before any DDL is generated; deleting the row drops the domain.
 
 ## Relations
 
