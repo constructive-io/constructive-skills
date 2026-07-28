@@ -35,6 +35,11 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-orm** | Optional generated ORM patterns for stable custom-domain schemas |
 | **constructive-hooks** | Optional generated React Query hook patterns for fixed endpoints |
 | **constructive-platform** | Server config, services, domains, deployment, env, cloud functions, cnc CLI |
+| **constructive-architecture** | Platform mental model — core model, baseline, endpoint map, provisioning flow, data-module/policy pairing |
+| **constructive-gotchas** | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) |
+| **constructive-troubleshooting** | Failure recipes — exact error strings mapped to root causes and fixes |
+| **constructive-secrets-config** | Secrets/config plumbing — site-domain provisioning, email topology, API-key surface, env keys |
+| **constructive-harness** | The harness build workflow — init, brief intake, build orchestration, and the typed database/schema/codegen tools |
 
 ## Skill Structure
 
