@@ -38,7 +38,7 @@ If that baseline is missing, Phase 1 is incomplete. Do not inspect internals wit
 | `http://api-<subdomain>.localhost:3000/graphql` | Per-database app (data) API | Per-database JWT |
 | `http://admin-<subdomain>.localhost:3000/graphql` | Per-database admin API | Per-database JWT |
 
-The `<subdomain>` is a platform-assigned random identifier (e.g., `b16-fatal-rose-mosquito`), **not** the database name. After provisioning, parse the actual endpoints from the `create-db.ts` output or query `metaschema_modules_public.database_provision_module` for the `subdomain` column.
+The `<subdomain>` is a platform-assigned random identifier (e.g., `b16-fatal-rose-mosquito`), **not** the database name — never derive hostnames from the app slug. Query your endpoints by `databaseId` via the SDK: `db.domain.findMany` (hostnames), `db.api.findMany` (surfaces), `db.query.resolveRoute({ requestHost })` to verify — then write the returned values into `.env` (see `constructive-secrets-config` §4.3).
 
 The per-database data endpoint is `api-<subdomain>` — the server routes to the correct database off the `Host` header (the path is always `/graphql`). The legacy `app-public-<subdomain>` host is dead; do not use it.
 
