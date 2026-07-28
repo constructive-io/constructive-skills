@@ -39,10 +39,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-gotchas** | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) |
 | **constructive-troubleshooting** | Failure recipes — exact error strings mapped to root causes and fixes |
 | **constructive-secrets-config** | Secrets/config plumbing — site-domain provisioning, email topology, API-key surface, env keys |
-| **constructive-build-orchestrator** | State-machine router for harness-driven Constructive app builds |
-| **constructive-harness-init** | Bootstraps `.constructive/` from harness templates |
-| **constructive-brief-intake** | Brief intake — writes BRIEF.md + per-entity feature rows |
-| **constructive-harness-tools** | Guide to the harness's typed tools (provision_database, provision_blueprint, run_codegen, …) |
+| **constructive-harness** | The harness build workflow — init, brief intake, build orchestration, and the typed database/schema/codegen tools |
 
 ## Skill Structure
 

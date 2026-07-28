@@ -39,10 +39,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-gotchas** | *(from sdk-agentic-flow)* | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) cited by harness tools |
 | **constructive-troubleshooting** | *(from sdk-agentic-flow)* | Failure recipes — exact error strings mapped to root causes and fixes per build phase |
 | **constructive-secrets-config** | *(from sdk-agentic-flow)* | Secrets/config plumbing map — site-domain provisioning, email topology, API-key surface, env keys |
-| **constructive-build-orchestrator** | *(from Constructive harness)* | State-machine router for harness-driven app builds (`.constructive/feature_list.json`) |
-| **constructive-harness-init** | *(from Constructive harness)* | Bootstraps `.constructive/` from harness templates |
-| **constructive-brief-intake** | *(from Constructive harness)* | Conversational/inferred brief intake — writes BRIEF.md + per-entity feature rows |
-| **constructive-harness-tools** | *(from Constructive harness)* | Guide to the harness's typed tools (provision_database, provision_blueprint, run_codegen, …) |
+| **constructive-harness** | *(from Constructive harness)* | The harness build workflow — init, brief intake, build-orchestrator state machine, and the typed database/schema/codegen tools (references per phase) |
 
 Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
 

@@ -1,11 +1,3 @@
----
-name: constructive-brief-intake
-description: Conversational brief intake for harness-driven Constructive app builds — fills .constructive/BRIEF.md and appends one <entity>-crud-ui feature row per entity. Load when BRIEF.md is empty or still on the template defaults.
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Brief Intake
 
 You're loaded because `.constructive/BRIEF.md` has no real content yet (still the template stub). Walk the user through a tight brief, then write `BRIEF.md` and append per-entity feature rows to `.constructive/feature_list.json`.
@@ -119,7 +111,7 @@ Substitute the actual `entities`, `list.brief.name`, and `list.brief.summary` be
 
 1. `cat .constructive/feature_list.json` to confirm the new rows landed (you should see 6 setup features + one per entity).
 2. Tell the user: "Brief saved. Next feature: `db-setup` (Postgres + GraphQL boot)."
-3. Hand back to `constructive-build-orchestrator`. The router will pick `db-setup` since all its deps (none) are done.
+3. Hand back to [build-orchestrator.md](build-orchestrator.md). The router will pick `db-setup` since all its deps (none) are done.
 
 ## What you must NOT do
 

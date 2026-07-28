@@ -1,12 +1,4 @@
----
-name: constructive-harness-tools
-description: The one guide to the Constructive harness's typed tools — provision_database, provision_blueprint, add_relation, add_policies, run_codegen, run_preflight, field/template/record tools — indexed by build purpose, with the harness rule IDs and the script-docs → tools bridge. Load before the first database, schema, or codegen action, and whenever choosing which tool fits a purpose.
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
-# constructive-harness-tools — Harness Tool Guide
+# Harness Tool Guide
 
 The Constructive harness registers typed tools that own the entire database/schema/codegen path of a Constructive build. **These tools are the ONLY supported path for database and schema work.** Never hand-write provisioning TypeScript, raw GraphQL mutations, blueprint definitions, or ad hoc SQL — and when another doc (`constructive-gotchas`, `constructive-skill-supplements`, …) describes a provisioning script, a `packages/provision` package, or raw GraphQL provisioning, that prose is superseded by the tools here (see the bridge table at the end).
 

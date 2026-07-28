@@ -1,11 +1,3 @@
----
-name: constructive-harness-init
-description: Bootstrap a Constructive project by copying harness templates into the working directory. Load when .constructive/ does not exist in a harness-driven Constructive app build.
-metadata:
-  author: constructive-io
-  version: "1.0.0"
----
-
 # Harness Init
 
 You're loaded because `.constructive/` is missing in the current project. Your only job: lay down the harness skeleton and hand control back to the orchestrator.
@@ -13,7 +5,7 @@ You're loaded because `.constructive/` is missing in the current project. Your o
 ## Before you start
 
 - `pwd` to confirm the working directory.
-- Verify `.constructive/` really is absent: `[ -d .constructive ] && echo EXISTS || echo MISSING`. If `EXISTS`, you were routed here in error — re-run the `constructive-build-orchestrator` decision tree.
+- Verify `.constructive/` really is absent: `[ -d .constructive ] && echo EXISTS || echo MISSING`. If `EXISTS`, you were routed here in error — re-run the [build-orchestrator.md](build-orchestrator.md) decision tree.
 
 ## Steps
 
@@ -53,8 +45,8 @@ You're loaded because `.constructive/` is missing in the current project. Your o
 
    It warns on missing `pnpm` / `psql` (optional), then prints the current `feature_list.json` summary (brief + features-done counter + next pending feature).
 
-5. **Hand back to the orchestrator.** Re-run the `constructive-build-orchestrator` decision tree. The next step is almost certainly:
-   - `constructive-brief-intake` (since `BRIEF.md` is still the template stub), or
+5. **Hand back to the orchestrator.** Re-run the [build-orchestrator.md](build-orchestrator.md) decision tree. The next step is almost certainly:
+   - [brief-intake.md](brief-intake.md) (since `BRIEF.md` is still the template stub), or
    - the first feature in `feature_list.json` if a brief was somehow pre-seeded.
 
 ## Layout invariants (locked — do not improvise)
