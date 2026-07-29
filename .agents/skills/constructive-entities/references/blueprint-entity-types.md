@@ -437,7 +437,7 @@ If `is_visible: false`, the `parent_member` SELECT default is omitted and siblin
 | `nodes` | array | No | `[]` | Data behavior nodes applied to the entity table (e.g. `DataTimestamps`) |
 | `fields` | array | No | `[]` | Extra columns on the entity table |
 | `grants` | array | No | `[]` | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting |
-| `policies` | array | No | `[]` | Safegres policy definitions (same `$type` discriminator as `tables[].policies[]`). When present, **fully replaces** the 5 defaults |
+| `policies` | array | No | `[]` | Constructive Authz policy definitions (same `$type` discriminator as `tables[].policies[]`). When present, **fully replaces** the 5 defaults |
 
 ### When to use which
 

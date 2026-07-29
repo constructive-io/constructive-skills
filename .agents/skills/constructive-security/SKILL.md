@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization with Safegres, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, permissions, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, permission defaults, step-up auth, or authorization in blueprints and the ORM."
+description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, permissions, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, permission defaults, step-up auth, or authorization in blueprints and the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -8,7 +8,7 @@ metadata:
 
 # Constructive Security
 
-The Safegres authorization protocol and its SDK integration — expressing authorization as Authz* policy nodes and applying them via RLS, grants, and the `secureTableProvision` workflow.
+The Constructive Authz authorization protocol and its SDK integration — expressing authorization as Authz* policy nodes and applying them via RLS, grants, and the `secureTableProvision` workflow.
 
 ## When to Apply
 

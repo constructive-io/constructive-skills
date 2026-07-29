@@ -131,7 +131,7 @@ const result = await db.entityTypeProvision.create({
 | `nodes` | array | `[]` | Data behavior nodes applied to the entity table (e.g. `DataTimestamps`) |
 | `fields` | array | `[]` | Extra columns on the entity table |
 | `grants` | array | `[]` | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting |
-| `policies` | array | `[]` | Safegres policy definitions. When present, **fully replaces** the 5 defaults |
+| `policies` | array | `[]` | Constructive Authz policy definitions. When present, **fully replaces** the 5 defaults |
 
 > **snake_case inside the object:** `tableProvision` is a JSONB payload, so its inner keys use snake_case (`grants`, `use_rls`) — the same convention as blueprint `tables[]` entries. The outer `tableProvision` key itself is camelCase because it's an ORM column name.
 

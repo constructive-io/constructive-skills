@@ -250,7 +250,7 @@ If `secureTableProvision` fails with `UNKNOWN_POLICY_TYPE`:
 
 Common case: `DataOwnershipInEntity` uses `AuthzEntityMembership` (with `entity_field: 'entity_id'`, `membership_type: 2`) and/or `AuthzDirectOwner` (with `entity_field: 'owner_id'`). There is no `AuthzOwnershipInEntity` type.
 
-Do not stop. Do not switch to SQL. The fix is always a different valid policy type from the safegres skill.
+Do not stop. Do not switch to SQL. The fix is always a different valid policy type from the constructive-security skill.
 
 ## SDK-007
 
