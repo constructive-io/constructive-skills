@@ -335,7 +335,7 @@ See the [`constructive-security`](../../constructive-security/SKILL.md) skill fo
 
 ## Cross-references
 
-- **Safegres protocol (Authz* types):** [`constructive-security`](../../constructive-security/SKILL.md)
+- **Constructive Authz protocol (Authz* types):** [`constructive-security`](../../constructive-security/SKILL.md)
 - **Custom entities & provisioning:** [`constructive-entities`](../../constructive-entities/SKILL.md)
 - **Blueprint definition format:** [blueprint-definition-format.md](../../constructive-blueprints/references/blueprint-definition-format.md)
 - **Upload flow (GraphQL mutations, client library):** [`constructive-storage`](../../constructive-storage/SKILL.md)

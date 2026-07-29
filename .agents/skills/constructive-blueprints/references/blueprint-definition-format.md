@@ -209,7 +209,7 @@ Each entry in `tables[]` defines one database table:
 | `fields` | array | No | Custom field definitions |
 | `grants` | array | No | Unified grant objects: `[{ "roles": [...], "privileges": [[priv, cols], ...] }]`. Enables per-role targeting. Default: `[]` |
 | `use_rls` | boolean | No | Enable RLS (default: `true`) |
-| `policies` | array | No | Safegres policy definitions (see below) |
+| `policies` | array | No | Constructive Authz policy definitions (see below) |
 | `indexes` | array | No | Per-table index definitions (see Indexes section) |
 | `full_text_search` | array | No | Per-table FTS definitions (see Full-Text Search section) |
 | `unique_constraints` | array | No | Per-table unique constraint definitions (see Unique Constraints section) |
@@ -562,7 +562,7 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 
 ### Policies
 
-`policies[]` entries define Safegres RLS policies using the `$type` discriminator:
+`policies[]` entries define Constructive Authz RLS policies using the `$type` discriminator:
 
 ```json
 {
@@ -580,7 +580,7 @@ Each entry grants every role in `roles[]` the cross-product of all `privileges[]
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `$type` | string | Yes | Safegres policy type (e.g. `AuthzEntityMembership`, `AuthzDirectOwner`, `AuthzAllowAll`) |
+| `$type` | string | Yes | Constructive Authz policy type (e.g. `AuthzEntityMembership`, `AuthzDirectOwner`, `AuthzAllowAll`) |
 | `data` | object | No | Policy-specific configuration (depends on `$type`) |
 | `privileges` | string[] | No | Which privileges this policy covers |
 | `permissive` | boolean | No | Permissive (OR) or restrictive (AND) policy (default: `true`) |

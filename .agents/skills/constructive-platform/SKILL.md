@@ -98,7 +98,7 @@ See [cnc-cli.md](./references/cnc-cli.md) for details.
 
 - **Blueprints (definition format, presets, construction):** [`constructive-blueprints`](../constructive-blueprints/SKILL.md)
 - **Auth (MFA, sessions, devices, service settings):** [`constructive-auth`](../constructive-auth/SKILL.md)
-- **Security (Safegres, Authz*, RLS, storage policies):** [`constructive-security`](../constructive-security/SKILL.md)
+- **Security (Constructive Authz, RLS, storage policies):** [`constructive-security`](../constructive-security/SKILL.md)
 - **Background jobs:** [`constructive-jobs`](../constructive-jobs/SKILL.md)
 - **Code generation:** [`constructive-codegen`](../constructive-codegen/SKILL.md)
 - **Tenant application registry/runtime:** [`constructive-blocks`](../constructive-blocks/SKILL.md)

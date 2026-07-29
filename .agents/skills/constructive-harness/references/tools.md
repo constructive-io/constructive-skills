@@ -161,5 +161,5 @@ Some `constructive-*` docs were written for a script-driven repo. Wherever they 
 | Probe the backend with `curl`/`nc` | `run_preflight` |
 | Apply RLS/policies via SQL or scripts | `add_policies` (supported types) or the policies UI |
 | Seed data via SQL/scripts | `add_records` |
-| Load the `safegres` skill | `constructive-security` (Authz\* policy semantics) |
+| Load the `safegres` harness skill (the old Authz protocol doc — not the safegres scanner) | `constructive-security` (Authz\* policy semantics) |
 | Load the `db-data-modules` skill | `constructive-blueprints` (node type registry) |

@@ -249,13 +249,13 @@ Blueprint-provisioned tables automatically flow through the existing introspecti
 1. `constructBlueprint()` provisions tables with all configured security
 2. These are standard Constructive tables — they appear in introspection like any other table
 3. Running `cnc codegen` against the database generates typed SDK with full RLS support
-4. The RLS policies specified in `definition.policies[]` are compiled via the Safegres protocol
+4. The RLS policies specified in `definition.policies[]` are compiled via the Constructive Authz protocol
 
 No special handling is needed — blueprints compose the existing primitives.
 
 ## Cross-References
 
 - **Definition format:** See [blueprint-definition-format.md](./blueprint-definition-format.md) for the blueprint definition format spec
-- **Safegres policies:** See [constructive-security](../../constructive-security/SKILL.md) for Authz* policy types used in `policies[]`
+- **Constructive Authz policies:** See [constructive-security](../../constructive-security/SKILL.md) for Authz* policy types used in `policies[]`
 - **Codegen:** See [constructive-codegen](../../constructive-codegen/SKILL.md) for generating typed SDK from provisioned tables
 - **Server config:** See [server-config.md](../../constructive-platform/references/server-config.md) for running introspection and optional codegen

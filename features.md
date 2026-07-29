@@ -42,7 +42,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 | Assemble and acceptance-check a tenant frontend against an already-provisioned tenant | [`constructive-builder`](./.agents/skills/constructive-builder/SKILL.md) |
 | Style or compose custom application UI | [`constructive-frontend`](./.agents/skills/constructive-frontend/SKILL.md) |
 | Configure identity, sessions, MFA, devices, or account linking | [`constructive-auth`](./.agents/skills/constructive-auth/SKILL.md) |
-| Define RLS, grants, ownership, or Safegres policy behavior | [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
+| Define RLS, grants, ownership, or Constructive Authz policy behavior | [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
 | Define roles, profiles, permissions, grants, or hierarchy | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md) |
 | Model organizations, memberships, and invitations | [`constructive-entities`](./.agents/skills/constructive-entities/SKILL.md) |
 | Create tables, fields, relations, constraints, indexes, enums, or views | [`constructive-data-modeling`](./.agents/skills/constructive-data-modeling/SKILL.md) |

@@ -32,7 +32,7 @@ Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; refer
 | `constructive-blueprints` | Declarative schema definition — blueprints, node type registry, presets |
 | `constructive-auth` | Identity, login, sessions, MFA, devices, auth settings |
 | `constructive-principals` | Scoped identities for API keys, agents, and service accounts |
-| `constructive-security` | Authorization — 25 registry Authz nodes, platform-applied `AuthzHumanOnly`, RLS, grants, and storage policies. See [safegres.com](https://safegres.com) |
+| `constructive-security` | Authorization — 25 registry Authz nodes, platform-applied `AuthzHumanOnly`, RLS, grants, and storage policies. |
 | `constructive-access-control` | Roles, permissions, profiles, grants, memberships, and hierarchy |
 | `constructive-entities` | Multi-tenancy — entity types, memberships, invites, entity-scoped storage |
 | `constructive-data-modeling` | Tables, fields, relations, constraints, indexes, database provisioning |
@@ -81,7 +81,7 @@ Generate GraphQL hooks for my PostGraphile endpoint
 
 Install the b2b-storage Console Kit preset for this tenant
 
-Set up authorization with Safegres
+Set up authorization with Constructive Authz
 ```
 
 ## Skill Structure

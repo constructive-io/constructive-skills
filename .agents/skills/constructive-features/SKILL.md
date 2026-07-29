@@ -56,7 +56,7 @@ After selecting the product capability, activate `constructive-blocks` to choose
 
 | Capability | Skill |
 |---|---|
-| RLS, ownership, grants, and Safegres policy behavior | [`constructive-security`](../constructive-security/SKILL.md) |
+| RLS, ownership, grants, and Constructive Authz policy behavior | [`constructive-security`](../constructive-security/SKILL.md) |
 | Tables, fields, relations, constraints, indexes, enums, and views | [`constructive-data-modeling`](../constructive-data-modeling/SKILL.md) |
 | Full-text, fuzzy, vector, spatial, and unified search | [`constructive-search`](../constructive-search/SKILL.md) |
 | Agents, embeddings, LLM providers, and RAG | [`constructive-agents`](../constructive-agents/SKILL.md) |

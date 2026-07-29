@@ -1,4 +1,4 @@
-# Safegres Authz* Policy Types — Detailed Reference
+# Constructive Authz Policy Types (Authz*) — Detailed Reference
 
 Complete documentation for the 25 Authz nodes exported by the canonical Constructive DB registry, plus the platform-applied `AuthzHumanOnly` guard. `AuthzComposite` composes registry nodes, while `AuthzColumnSecurity` generates write triggers instead of stored RLS policies.
 
@@ -761,7 +761,7 @@ Rule-specific keys:
 
 ## `AuthzComposite` (meta-node, not a leaf type)
 
-`AuthzComposite` lets you build a boolean expression tree (AND/OR/NOT) over Safegres nodes.
+`AuthzComposite` lets you build a boolean expression tree (AND/OR/NOT) over Constructive Authz nodes.
 
 The `data` for an `AuthzComposite` is a boolean expression tree the system recursively evaluates. You can write it with user-friendly `AND`, `OR`, and `NOT` keywords, or with a raw `BoolExpr` AST node for legacy/power-user cases.
 
@@ -836,7 +836,7 @@ The `data` for an `AuthzComposite` is a boolean expression tree the system recur
 
 ## Permissive vs Restrictive policies in RLS
 
-When Safegres policies compile to PostgreSQL RLS, their interaction depends on whether they are **permissive** or **restrictive**:
+When Constructive Authz policies compile to PostgreSQL RLS, their interaction depends on whether they are **permissive** or **restrictive**:
 
 - **Permissive** (default): Multiple permissive policies on the same table and privilege are **ORed** together. If **any** permissive policy passes, the row is accessible.
 - **Restrictive** (`permissive := false`): Restrictive policies are **ANDed** with the result of permissive policies. **All** restrictive policies must pass *in addition to* at least one permissive policy.
