@@ -80,6 +80,7 @@ These are different schemas, but they share the same Constructive-managed prefix
 | `DataOwnershipInEntity` | `AuthzEntityMembership` (and/or `AuthzDirectOwner`) | `id`, `owner_id`, `entity_id` |
 | `DataTimestamps` | Any | `id`, `created_at`, `updated_at` |
 | `DataPeoplestamps` | Any | `id`, `created_by`, `updated_by` |
+| `DataPrincipalstamps` | Any | `id`, `created_by_principal`, `updated_by_principal` |
 | `DataPublishable` | `AuthzPublishable` | `id`, `is_published`, `published_at` |
 | `DataSoftDelete` | Any | `id`, `deleted_at`, `is_deleted` |
 
@@ -88,6 +89,7 @@ Notes:
 - Every Data module creates `id` by default.
 - When composing modules on one table, use `nodeData: { include_id: false }` on the second and later calls.
 - `DataPeoplestamps` only adds user FKs when `include_user_fk: true`.
+- `DataPeoplestamps` (human, `current_user_id()`) and `DataPrincipalstamps` (acting principal — agent/API key/service, `current_principal_id()`) are independent and opt-in; compose both to record human owner and acting principal. Principal columns never carry a user FK.
 
 ## Authz Policy Types
 
