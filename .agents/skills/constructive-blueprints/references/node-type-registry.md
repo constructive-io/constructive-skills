@@ -10,7 +10,8 @@ Source: `constructive-db/packages/node-type-registry/src/`
 |------|-------------|
 | `DataId` | UUID primary key with auto-generation |
 | `DataTimestamps` | `created_at`, `updated_at` columns with auto-update trigger |
-| `DataPeoplestamps` | `created_by`, `updated_by` user-tracking columns |
+| `DataPeoplestamps` | `created_by`, `updated_by` human user-tracking columns (`current_user_id()`) |
+| `DataPrincipalstamps` | `created_by_principal`, `updated_by_principal` acting-principal columns (`current_principal_id()` — agent/API key/service); independent of peoplestamps, no user FK |
 | `DataDirectOwner` | `owner_id` FK → users. Pairs with `AuthzDirectOwner` |
 | `DataEntityMembership` | `entity_id` FK → entity table. Pairs with `AuthzEntityMembership` |
 | `DataOwnershipInEntity` | `owner_id` + `entity_id`. Pairs with `AuthzEntityMembership` |

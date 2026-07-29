@@ -249,7 +249,8 @@ Common table node types are summarized below. Use [node-type-registry.md](./node
 | Node Type | Creates | `data` options |
 |-----------|---------|----------------|
 | `DataTimestamps` | `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()` | (none) |
-| `DataPeoplestamps` | `created_by uuid` (nullable), `updated_by uuid` (nullable) | `include_user_fk` (default `false`) |
+| `DataPeoplestamps` | `created_by uuid` (nullable), `updated_by uuid` (nullable) — the **human** (`current_user_id()`) | `include_user_fk` (default `false`) |
+| `DataPrincipalstamps` | `created_by_principal uuid` (nullable), `updated_by_principal uuid` (nullable) — the **acting principal** (agent/API key/service, `current_principal_id()`); no user FK | `created_by_principal_field`, `updated_by_principal_field`, `create_index` (default `true`) |
 
 #### Publishing & Lifecycle
 

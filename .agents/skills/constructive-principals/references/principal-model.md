@@ -76,9 +76,12 @@ Creating, deleting, and issuing keys for principals is guarded by `AuthzHumanOnl
 
 | System | Attributes to |
 |--------|---------------|
-| Peoplestamps (`created_by`/`updated_by`) | Human — audit survives principal deletion |
+| Peoplestamps (`created_by`/`updated_by`) | Human (`current_user_id()`) — audit survives principal deletion |
+| Principalstamps (`created_by_principal`/`updated_by_principal`) | Acting principal (`current_principal_id()`) — records the agent/API key/service that acted (equals the human for a non-principal session) |
 | Billing / metering | Human |
 | Rate limits | Human |
 | Storage ownership | Human |
 | Ownership policies (`AuthzDirectOwner`) | Human |
 | Permission checks (RLS) | Principal's own permissions |
+
+**Peoplestamps vs principalstamps.** These are independent, opt-in blueprint nodes (`DataPeoplestamps` / `DataPrincipalstamps`) — enable either, both, or neither per table. Peoplestamps always attribute to the **human owner** (so billing/ownership/audit stay stable even when an agent acts, and the audit trail survives principal deletion). Principalstamps additionally record **who actually acted** — useful when you need to see that an agent or API key, not the human, performed a write. Principal columns carry no FK to the users table; they hold whatever principal id the session presents.
