@@ -55,6 +55,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 | Add subscriptions or change tracking | [`constructive-realtime`](./.agents/skills/constructive-realtime/SKILL.md) |
 | Add background jobs or triggers | [`constructive-jobs`](./.agents/skills/constructive-jobs/SKILL.md) |
 | Add multilingual data and search | [`constructive-i18n`](./.agents/skills/constructive-i18n/SKILL.md) |
+| Add row history, audit logs, point-in-time reads, or restore/rollback | [`constructive-history`](./.agents/skills/constructive-history/SKILL.md) |
 | Build flow-based computation graphs | [`constructive-flow-graphs`](./.agents/skills/constructive-flow-graphs/SKILL.md) |
 | Generate a typed client for a stable custom-domain schema | [`constructive-codegen`](./.agents/skills/constructive-codegen/SKILL.md) |
 | Use an optional generated ORM or hook layer for custom-domain code | [`constructive-orm`](./.agents/skills/constructive-orm/SKILL.md), [`constructive-hooks`](./.agents/skills/constructive-hooks/SKILL.md) |
