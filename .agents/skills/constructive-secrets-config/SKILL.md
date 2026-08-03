@@ -1,6 +1,6 @@
 ---
 name: constructive-secrets-config
-description: "Map of Constructive secrets and config plumbing: site-domain provisioning, email-services topology, secrets/KMS/API-key surface, and the hub .env keys that matter. Load for email, secrets, or env/config issues."
+description: "Map of Constructive secrets and config plumbing: site-domain provisioning, email-services topology, secrets/KMS/API-key surface, realms (the nullable discriminator that lets one name hold many values and lets a consumer pick one), and the hub .env keys that matter. Load for email, secrets, realm, or env/config issues."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -35,6 +35,7 @@ metadata:
 | **2** | **Email-services topology** | Four services must all listen: **Mailpit 8025**, **Admin GraphQL 3002**, **send-email-link 8082**, **job-service** (no HTTP port). `SEND_EMAIL_LINK_DRY_RUN` must be `false`. | `SKILL.md` Optional-Extensions *"Email services"* row + `troubleshooting.md` → the four *Post-Provision (Email Services)* sections. Upstream runbook: **`constructive-io/constructive`** (Docker-Compose method). |
 | **3** | **Secrets / KMS / API keys** | `config_secrets_module` backs API-key + secret storage. **`createApiKey` is step-up-gated server-side** and accepts only `accessLevel ∈ {read_only, full_access}` — other values raise `INVALID_ACCESS_LEVEL`. Reveal is one-time, step-up first. | `constructive-principals` (API-key lifecycle) + `constructive-auth` (step-up verification) |
 | **4** | **Env vars / hub `.env` keys** | App `.env` points blocks at the per-DB endpoints (blocks read the **`_GRAPHQL_`** names). Query hostnames by `DATABASE_ID` (§4.3) — never string-build them. The shared hub server needs `API_IS_PUBLIC` / `API_ANON_ROLE` / `API_ROLE_NAME`. | `SKILL.md` S0/S3 (hub + app env) + `gotchas.md` BLOCKS-001 (the `_GRAPHQL_` name trap) + §4.3 below |
+| **5** | **Realms** | Optional nullable `realm` field: one `name` holds many values (per region/tenant-app/user/channel), and an instance (`resource`/`functionDeployment`) selects a lane. `null` = the default lane; reads fall back exact→null. Never synthesize a realm (`realm ?? 'default'`). | `references/realms.md` (SDK/ORM view) + constructive-db `docs/architecture/realms.md` (internals) |
 
 > **Known-defect status** for these areas is tracked internally; harness deployments layer a private
 > known-gaps overlay on top of this skill with the current list. If a documented flow fails after the
@@ -257,6 +258,23 @@ Then write the returned hostnames into the §4.2 `.env` keys.
 
 ---
 
+## Realms (the `realm` discriminator)
+
+A **realm** is an optional nullable field that lets one logical `name` hold many
+values (storage discriminator) and lets an instance choose which value it consumes
+(consumption selector). `null` is the *default lane*, not "missing" — reads resolve
+an exact realm match first, then fall back to the `null`-realm value. There is no
+default realm string; omit it for the ordinary single-value case, and never
+synthesize one (`realm ?? 'default'`). Two consumption modes: **projection**
+(set `realm` on a `resource`/`functionDeployment`, values baked in at deploy) and
+**runtime query** (leave it `null`, fetch the realm of each entity on demand — the
+push worker). Full SDK/ORM detail in `references/realms.md`; the DB-level mechanics
+(uniqueness with `NULLS NOT DISTINCT`, getter fallback, requirements gate,
+`register_push_channel`, cloud-function runtime lookup) live in constructive-db
+`docs/architecture/realms.md`.
+
+---
+
 ## See also (canonical SoTs — full detail lives in these, not here)
 
 - **`scripts/templates/provision/provision.ts`** — the live site-domain backfill (§1) + the `$1::text` cast.
@@ -269,3 +287,5 @@ Then write the returned hostnames into the §4.2 `.env` keys.
   RLS-POLICY-001 (tenant-endpoint FK prereq).
 - **Upstream (different repo):** `constructive-io/constructive` — the local-email-services Docker-Compose
   runbook (§2.3). Not re-hosted here.
+- **`references/realms.md`** — the SDK/ORM view of realms (§5); DB-level internals in constructive-db
+  `docs/architecture/realms.md`.
