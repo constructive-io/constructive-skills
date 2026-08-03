@@ -34,6 +34,7 @@ If that baseline is missing, Phase 1 is incomplete. Do not inspect internals wit
 |----------|---------|------|
 | `http://auth.localhost:3000/graphql` | Platform auth (sign-up, sign-in) | None |
 | `http://api.localhost:3000/graphql` | Platform API (database creation) | Platform JWT |
+| `http://modules.localhost:3000/graphql` | Platform modules API (module and entity-type provisioning) | Platform JWT |
 | `http://auth-<subdomain>.localhost:3000/graphql` | Per-database auth | None |
 | `http://api-<subdomain>.localhost:3000/graphql` | Per-database app (data) API | Per-database JWT |
 | `http://admin-<subdomain>.localhost:3000/graphql` | Per-database admin API | Per-database JWT |
@@ -52,7 +53,7 @@ Every operation belongs to one of two planes, and each plane has its own token. 
 
 | | Control plane | Data plane |
 |---|---|---|
-| Endpoints | `auth.<host>`, `api.<host>` (platform) | `auth-<subdomain>.<host>`, `api-<subdomain>.<host>`, `admin-<subdomain>.<host>` |
+| Endpoints | `auth.<host>`, `api.<host>`, `modules.<host>` (platform) | `auth-<subdomain>.<host>`, `api-<subdomain>.<host>`, `admin-<subdomain>.<host>` |
 | Token | Platform account JWT (platform sign-in) | Per-database app JWT (sign-in via `auth-<subdomain>`) or an API key minted on that database |
 | Operations | Database creation, module provisioning, entity-type provisioning (`entityTypeProvision`), domains, codegen sources | App data CRUD, app users and sessions, principals, API keys, `verifyPassword`, step-up |
 

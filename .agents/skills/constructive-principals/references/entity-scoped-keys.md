@@ -7,11 +7,13 @@ description: End-to-end recipe for entity-scoped API keys — provision an entit
 
 This recipe takes you from nothing to a working credential that is scoped to specific entity rows: entity type → principal → step-up → `createApiKey` → use/revoke.
 
+For org-only scoping, prefer the simpler `createOrgPrincipal` + `createOrgApiKey` flow in [SKILL.md](../SKILL.md) when the deployment exposes it. Use this recipe when scoping to a non-org entity type, or when the org mutations are absent.
+
 The flow crosses both planes (see [`constructive-architecture`](../../constructive-architecture/SKILL.md)):
 
 | Step | Plane | Endpoint | Token |
 |------|-------|----------|-------|
-| Provision the entity type | Control | Platform API (`api.<host>`) | Platform account JWT |
+| Provision the entity type | Control | Platform modules API (`modules.<host>`) | Platform account JWT |
 | Principal, step-up, key mint | Data | Per-database auth (`auth-<subdomain>.<host>`) | Per-database app token |
 | Use the key | Data | Per-database API (`api-<subdomain>.<host>`) | The minted key as bearer |
 

@@ -137,7 +137,7 @@ const { createOrgApiKey } = await db.mutation
 
 ### Entity-scoped keys, end to end
 
-For the full recipe — provision an entity type, create a principal scoped to entity rows, satisfy `STEP_UP_REQUIRED` with `verifyPassword`, mint with `createApiKey`, use and revoke — read [entity-scoped-keys.md](./references/entity-scoped-keys.md). It carries three hard constraints: keys are personal at mint (scope comes from the principal), scope is fixed at principal creation on create-time-scoping deployments (probe first), and step-up demands `verifyPassword` on the same session.
+For the full recipe — provision an entity type, create a principal scoped to entity rows, satisfy `STEP_UP_REQUIRED` with `verifyPassword`, mint with `createApiKey`, use and revoke — read [entity-scoped-keys.md](./references/entity-scoped-keys.md). It carries three hard constraints: keys are personal at mint (scope comes from the principal), scope is fixed at principal creation on create-time-scoping deployments (probe first), and step-up demands `verifyPassword` on the same session. For org-only scoping, prefer the `createOrgPrincipal` flow above; reach for this recipe when the target is a non-org entity type or the org mutations are absent.
 
 ### Revoke
 
