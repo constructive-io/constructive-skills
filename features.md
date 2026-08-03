@@ -44,6 +44,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 | Configure identity, sessions, MFA, devices, or account linking | [`constructive-auth`](./.agents/skills/constructive-auth/SKILL.md) |
 | Define RLS, grants, ownership, or Constructive Authz policy behavior | [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
 | Define roles, profiles, permissions, grants, or hierarchy | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md) |
+| Issue, scope, or revoke API keys, principals, or machine identities | [`constructive-principals`](./.agents/skills/constructive-principals/SKILL.md) |
 | Model organizations, memberships, and invitations | [`constructive-entities`](./.agents/skills/constructive-entities/SKILL.md) |
 | Create tables, fields, relations, constraints, indexes, enums, or views | [`constructive-data-modeling`](./.agents/skills/constructive-data-modeling/SKILL.md) |
 | Work with plans, limits, credits, entitlements, and metering | [`constructive-billing`](./.agents/skills/constructive-billing/SKILL.md) |

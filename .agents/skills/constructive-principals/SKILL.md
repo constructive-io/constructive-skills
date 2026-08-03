@@ -1,6 +1,6 @@
 ---
 name: constructive-principals
-description: "Principals — scoped sub-identities for API keys and agents. A principal is a delegated identity owned by a human (or org) that authenticates via an API key and operates with a subset of its parent's permissions. Use when asked to 'create an API key', 'issue an agent credential', 'scope an agent to an org', 'read-only API key', 'revoke an API key', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'principalEntity', 'principalScopeOverride', or when managing agent/API-key identities via the SDK ORM."
+description: "Principals — scoped sub-identities for API keys and agents. A principal is a delegated identity owned by a human (or org) that authenticates via an API key and operates with a subset of its parent's permissions. Use when asked to 'create an API key', 'issue an agent credential', 'scope an agent to an org', 'entity-scoped API key', 'scope a key to an entity', 'read-only API key', 'revoke an API key', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', or when managing agent/API-key identities via the SDK ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -135,6 +135,10 @@ const { createOrgApiKey } = await db.mutation
 
 **Org scoping via absence:** a principal with **no** `principalEntity` rows inherits access to *all* orgs its owner belongs to. Adding rows restricts it to only those orgs. See [org-scoping.md](./references/org-scoping.md).
 
+### Entity-scoped keys, end to end
+
+For the full recipe — provision an entity type, create a principal scoped to entity rows, satisfy `STEP_UP_REQUIRED` with `verifyPassword`, mint with `createApiKey`, use and revoke — read [entity-scoped-keys.md](./references/entity-scoped-keys.md). It carries three hard constraints: keys are personal at mint (scope comes from the principal), scope is fixed at principal creation on create-time-scoping deployments (probe first), and step-up demands `verifyPassword` on the same session.
+
 ### Revoke
 
 ```typescript
@@ -153,6 +157,7 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 | [principal-model.md](./references/principal-model.md) | Identity model — dual-claim (identity vs authority), user type 3, permission subsetting, `allowedMask`, `isReadOnly`, `bypassStepUp`, what meters to human vs principal |
 | [api-keys.md](./references/api-keys.md) | API key lifecycle via the ORM — `createApiKey`/`createOrgApiKey`, access levels, MFA level, expiry, listing via `orgApiKeyList`, revocation, plaintext-once handling |
 | [org-scoping.md](./references/org-scoping.md) | Org scoping via `principalEntity`, `principalScopeOverride`, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes |
+| [entity-scoped-keys.md](./references/entity-scoped-keys.md) | End-to-end recipe: entity type → scoped principal → step-up (`verifyPassword`) → `createApiKey` → use/revoke, plus the create-time-scoping feature probe and the flat `createPrincipal` SDK gap |
 
 ## Cross-References
 
@@ -160,5 +165,7 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 - **Permissions:** [`constructive-access-control`](../constructive-access-control/SKILL.md) — the permission model whose subset a principal carries (`allowedMask`).
 - **Enforcement:** [`constructive-security`](../constructive-security/SKILL.md) — `AuthzHumanOnly` (blocks principals from managing principals), read-only access, RLS.
 - **Agents:** [`constructive-agents`](../constructive-agents/SKILL.md) — attaching an `agent_module` (persona, threads) to a principal.
+- **Entity types:** [`constructive-entities`](../constructive-entities/SKILL.md) — the multi-tenancy model behind the entity rows that scoped principals are limited to.
+- **Planes:** [`constructive-architecture`](../constructive-architecture/SKILL.md) — control plane vs data plane: entity types provision with the platform token; principals and keys mint with the per-database token.
 - **App access and Organizations UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md) — standalone host contracts plus Console module discovery and adapters.
 - **SQL internals:** `constructive-db-principals` skill (in `constructive-db`) — dual-claim JWT, `principal_auth_module`, SPRT sync triggers. Not needed for app development.
