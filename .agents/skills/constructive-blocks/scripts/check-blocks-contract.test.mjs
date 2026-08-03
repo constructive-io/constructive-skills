@@ -471,6 +471,15 @@ test('Event Studio remains a public org-scoped blueprint without realtime or raw
     /is_owner delete policy/
   );
 
+  const policyNameMutation = structuredClone(loaded.eventStudioBlueprint);
+  const mutatedPolicies = policyNameMutation.tables[0].policies;
+  mutatedPolicies.find((policy) => policy.data?.is_owner === true).policy_name =
+    'admin_delete';
+  assert.throws(
+    () => assertEventStudioBlueprint(policyNameMutation),
+    /distinct policy_name|policy names must be unique/
+  );
+
   const fieldMutation = structuredClone(loaded.eventStudioBlueprint);
   fieldMutation.tables.find((table) => table.table_name === 'sessions')
     .fields.find((field) => field.name === 'description').name = 'summary';
@@ -484,6 +493,13 @@ test('Event Studio remains a public org-scoped blueprint without realtime or raw
   assert.throws(
     () => assertEventStudioBlueprint(uniquenessMutation),
     /Event Studio relation uniqueness drifted/
+  );
+
+  const deleteActionMutation = structuredClone(loaded.eventStudioBlueprint);
+  deleteActionMutation.relations[0].delete_action = 'RESTRICT';
+  assert.throws(
+    () => assertEventStudioBlueprint(deleteActionMutation),
+    /relation delete actions drifted/
   );
 
   const statusMutation = structuredClone(loaded.eventStudioBlueprint);

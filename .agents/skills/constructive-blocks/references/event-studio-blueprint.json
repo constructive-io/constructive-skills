@@ -62,6 +62,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -71,6 +72,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -158,6 +160,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -167,6 +170,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -228,6 +232,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -237,6 +242,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -304,6 +310,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -313,6 +320,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -366,6 +374,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -375,6 +384,7 @@
         },
         {
           "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
           "data": {
             "entity_field": "org_id",
             "membership_type": 2,
@@ -397,7 +407,7 @@
       "source_table": "sessions",
       "target_table": "programs",
       "field_name": "program_id",
-      "delete_action": "RESTRICT",
+      "delete_action": "r",
       "is_required": false
     },
     {
@@ -405,7 +415,7 @@
       "source_table": "sessions",
       "target_table": "venues",
       "field_name": "venue_id",
-      "delete_action": "SET NULL",
+      "delete_action": "n",
       "is_required": false
     },
     {
@@ -413,7 +423,7 @@
       "source_table": "session_people",
       "target_table": "sessions",
       "field_name": "session_id",
-      "delete_action": "CASCADE",
+      "delete_action": "c",
       "is_required": true
     },
     {
@@ -421,7 +431,7 @@
       "source_table": "session_people",
       "target_table": "people",
       "field_name": "person_id",
-      "delete_action": "CASCADE",
+      "delete_action": "c",
       "is_required": true
     }
   ]

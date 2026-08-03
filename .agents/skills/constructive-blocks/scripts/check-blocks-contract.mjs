@@ -2181,7 +2181,19 @@ export function assertEventStudioBlueprint(definition) {
         ['delete'],
         `${table.table_name} ${roleFlag} delete policy`
       );
+      assert(
+        destructivePolicy?.policy_name ===
+          (roleFlag === 'is_admin' ? 'admin_delete' : 'owner_delete'),
+        `${table.table_name} ${roleFlag} delete policy must have a distinct policy_name.`
+      );
     }
+    const policyNames = table.policies?.map(
+      (policy) => policy.policy_name ?? policy.$type
+    );
+    assert(
+      new Set(policyNames).size === policyNames.length,
+      `${table.table_name} policy names must be unique.`
+    );
   }
 
   for (const tableName of ['programs', 'sessions']) {
@@ -2216,6 +2228,11 @@ export function assertEventStudioBlueprint(definition) {
       'session_people.person_id->people'
     ],
     'Event Studio relations'
+  );
+  assertExact(
+    definition.relations.map((relation) => relation.delete_action),
+    ['r', 'n', 'c', 'c'],
+    'Event Studio relation delete actions'
   );
   assertExact(
     definition.unique_constraints,
