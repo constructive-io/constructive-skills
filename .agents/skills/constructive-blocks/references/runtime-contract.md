@@ -4,7 +4,7 @@ Use this reference after selecting a registry item. The machine snapshot in
 `install-roots.v1.json` remains authoritative for the pinned source, release
 state, endpoints, first-party module bindings, pack manifests, preset profiles,
 Console runtime, and source limitations. The complete catalog in
-`registry-catalog.v1.json` pins all 102 source items, but its Data documentation
+`registry-catalog.v1.json` pins the complete source registry, but its Data documentation
 is retained only as drift evidence; validated queries apply
 `registry.queryOverrides` before returning it.
 

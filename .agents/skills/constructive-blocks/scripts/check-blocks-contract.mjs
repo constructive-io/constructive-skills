@@ -14,11 +14,21 @@ const snapshotPath = path.join(
   'references',
   'install-roots.v1.json'
 );
+const briefRoutesPath = path.join(
+  skillDirectory,
+  'references',
+  'brief-to-roots.v1.json'
+);
+const eventStudioBlueprintPath = path.join(
+  skillDirectory,
+  'references',
+  'event-studio-blueprint.json'
+);
 
 const PINNED = Object.freeze({
   repository: 'https://github.com/constructive-io/blocks',
-  branch: 'feat/feature-packs-console-kit',
-  commit: '4f2a789fde9a90c0c6ed5977896493bb4818fa77',
+  branch: 'feat/app-kit',
+  commit: '706ae32b8b03cd6effaa9d0d5f385d93529635df',
   publicationStatus: 'branch-only',
   registryNamespace: '@constructive',
   registryUrl: 'https://constructive-io.github.io/blocks/r/{name}.json',
@@ -29,7 +39,7 @@ const PINNED = Object.freeze({
   nodeEngine: '>=24.0.0',
   metaContractVersion: '2026-07',
   metaCoordinate: 'Query._meta',
-  registryItemCount: 102
+  registryItemCount: 123
 });
 
 const ENDPOINT_KINDS = [
@@ -59,6 +69,42 @@ const PACK_IDS = [
   'billing',
   'notifications'
 ];
+
+const APP_KIT_ROOT_NAMES = [
+  'app-kit-core',
+  'app-kit-data',
+  'app-kit-board',
+  'app-kit-dashboard',
+  'app-kit-calendar',
+  'app-kit-workflow',
+  'app-kit-event-studio'
+];
+
+export function parseNpmPackageRequirement(specifier) {
+  assertString(specifier, 'npm package requirement');
+  const separator = specifier.startsWith('@')
+    ? specifier.indexOf('@', specifier.indexOf('/') + 1)
+    : specifier.indexOf('@');
+  if (separator === -1) {
+    return { name: specifier, requested: null, exactVersion: null };
+  }
+  const name = specifier.slice(0, separator);
+  const requested = specifier.slice(separator + 1);
+  assert(name.length > 0 && requested.length > 0, `Invalid npm package requirement ${specifier}.`);
+  const exactVersion = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(requested)
+    ? requested
+    : null;
+  return { name, requested, exactVersion };
+}
+
+export function pinInspectorInstallCommand(command, itemName) {
+  const liveCommand = `pnpm dlx shadcn@latest add ${PINNED.registryNamespace}/${itemName}`;
+  assert(
+    command === liveCommand,
+    `${itemName} inspector install command changed from the reviewed latest-version template.`
+  );
+  return `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${itemName}`;
+}
 
 const META_CONTRACT_REQUIREMENTS = {
   queryType: { typeName: 'Query', fields: ['_meta'] },
@@ -390,22 +436,22 @@ const ADAPTER_SOURCE_PATHS = {
 const PACKAGE_RELEASES = [
   {
     name: '@constructive-io/ui',
-    version: '0.5.0',
+    version: '0.8.0',
     manifestPath: 'packages/ui/package.json'
   },
   {
     name: '@constructive-io/data',
-    version: '0.2.0',
+    version: '0.5.0',
     manifestPath: 'packages/data/package.json'
   },
   {
     name: '@constructive-io/sheets',
-    version: '0.5.0',
+    version: '0.8.1',
     manifestPath: 'packages/sheets/package.json'
   },
   {
     name: '@constructive-io/schema-builder',
-    version: '0.1.0',
+    version: '0.4.1',
     manifestPath: 'packages/schema-builder/package.json'
   }
 ];
@@ -1897,6 +1943,292 @@ function assertStringArray(value, label) {
   }
 }
 
+function constructiveMetadataForItem(item) {
+  return item?.meta?.constructive ?? null;
+}
+
+function assertConstructiveRegistryMetadata(metadata, label, itemName) {
+  assertObject(metadata, label);
+  assert(
+    APP_KIT_ROOT_NAMES.includes(itemName),
+    `${itemName} declares App Kit metadata without being an App Kit install root.`
+  );
+  assert(metadata.version === 1, `${label}.version must be 1.`);
+  assert(metadata.family === 'app-kit', `${label}.family must be app-kit.`);
+  assertString(metadata.kind, `${label}.kind`);
+  assert(
+    ['runtime', 'resource', 'view', 'composition', 'starter'].includes(
+      metadata.kind
+    ),
+    `${label}.kind is not a supported Constructive registry kind.`
+  );
+  assertString(metadata.boundary, `${label}.boundary`);
+  assert(
+    ['server-safe', 'client', 'mixed'].includes(metadata.boundary),
+    `${label}.boundary is not server-safe, client, or mixed.`
+  );
+  assert(metadata.provider === 'app-kit', `${label}.provider must be app-kit.`);
+  const allowedKeys = new Set([
+    'version',
+    'family',
+    'kind',
+    'boundary',
+    'provider',
+    'dataShapes',
+    'intents',
+    'capabilities',
+    'slots',
+    'events',
+    'compatibleWith'
+  ]);
+  for (const key of Object.keys(metadata)) {
+    assert(allowedKeys.has(key), `${label} contains unknown field ${key}.`);
+  }
+  for (const field of ['dataShapes', 'intents', 'capabilities']) {
+    assertStringArray(metadata[field], `${label}.${field}`);
+    assert(metadata[field].length > 0, `${label}.${field} must not be empty.`);
+    assert(
+      metadata[field].every((entry) => entry.trim().length > 0),
+      `${label}.${field} must contain non-blank strings.`
+    );
+  }
+  for (const field of ['slots', 'events', 'compatibleWith']) {
+    if (metadata[field] === undefined) continue;
+    assertStringArray(metadata[field], `${label}.${field}`);
+    assert(metadata[field].length > 0, `${label}.${field} must not be empty.`);
+    assert(
+      metadata[field].every((entry) => entry.trim().length > 0),
+      `${label}.${field} must contain non-blank strings.`
+    );
+  }
+}
+
+export function assertBriefRoutes(fixture, catalogItems) {
+  assertObject(fixture, 'App Kit brief routes');
+  assert(
+    fixture.schemaVersion === 1,
+    'App Kit brief routes schemaVersion must be 1.'
+  );
+  assert(
+    fixture.kind === 'constructive.app-kit-brief-routes',
+    'App Kit brief routes kind drifted.'
+  );
+  assert(Array.isArray(fixture.cases), 'App Kit brief routes cases must be an array.');
+  assert(Array.isArray(catalogItems), 'App Kit brief routes require registry catalog items.');
+  const catalogByName = byName(catalogItems, 'Registry catalog item');
+  const cases = byId(fixture.cases, 'App Kit brief route');
+  assert(cases.size >= 7, 'App Kit brief routes must cover at least seven application briefs.');
+  for (const route of fixture.cases) {
+    assertString(route.brief, `${route.id}.brief`);
+    for (const field of [
+      'dataShapes',
+      'userIntents',
+      'capabilities',
+      'expectedRoots',
+      'forbiddenRoots',
+      'forbiddenAssumptions'
+    ]) {
+      assertStringArray(route[field], `${route.id}.${field}`);
+    }
+    assert(
+      typeof route.starterRequested === 'boolean',
+      `${route.id}.starterRequested must be a boolean.`
+    );
+    const selectsStarter = route.expectedRoots.includes('app-kit-event-studio');
+    assert(
+      route.starterRequested === selectsStarter,
+      `${route.id} may select the Event Studio starter only with explicit starterRequested opt-in.`
+    );
+    assert(
+      selectsStarter
+        ? isDeepStrictEqual(route.expectedRoots, ['app-kit-event-studio'])
+        : route.expectedRoots[0] === 'app-kit-core',
+      `${route.id} must select either its explicitly requested starter or app-kit-core first.`
+    );
+    assert(
+      route.expectedRoots.every((root) => root.startsWith('app-kit-')),
+      `${route.id} must route application composition only to App Kit roots.`
+    );
+    assert(
+      route.expectedRoots.every((root) => APP_KIT_ROOT_NAMES.includes(root)),
+      `${route.id} references an unknown App Kit root.`
+    );
+    for (const root of route.expectedRoots) {
+      const catalogItem = catalogByName.get(root);
+      assert(catalogItem, `${route.id} references App Kit root ${root} absent from the registry catalog.`);
+      const metadata = constructiveMetadataForItem(catalogItem);
+      assert(
+        metadata?.family === 'app-kit',
+        `${route.id} root ${root} is not catalogued in the app-kit family.`
+      );
+      assert(
+        selectsStarter ? metadata.kind === 'starter' : metadata.kind !== 'starter',
+        `${route.id} root ${root} has incompatible starter metadata.`
+      );
+    }
+    assert(
+      route.forbiddenRoots.includes('feature-pack-data') &&
+        route.forbiddenRoots.includes('console-kit-nextjs'),
+      `${route.id} must reject the Sheets and Console defaults.`
+    );
+    assert(
+      route.expectedRoots.every((root) => !route.forbiddenRoots.includes(root)),
+      `${route.id} contains a root in both expectedRoots and forbiddenRoots.`
+    );
+    if (!route.starterRequested) {
+      assert(
+        route.forbiddenRoots.includes('app-kit-event-studio'),
+        `${route.id} must explicitly forbid the Event Studio starter by default.`
+      );
+    }
+  }
+  assert(
+    cases.get('event-studio-opt-in')?.backendPreset === 'b2b',
+    'Event Studio must pair with the supported b2b preset.'
+  );
+  return cases;
+}
+
+function nodeTypeName(node) {
+  return typeof node === 'string' ? node : node?.$type;
+}
+
+export function assertEventStudioBlueprint(definition) {
+  assertObject(definition, 'Event Studio blueprint');
+  assert(Array.isArray(definition.tables), 'Event Studio blueprint tables must be an array.');
+  assert(Array.isArray(definition.relations), 'Event Studio blueprint relations must be an array.');
+  const tableByName = byName(
+    definition.tables.map((table) => ({ ...table, name: table.table_name })),
+    'Event Studio table'
+  );
+  assertExact(
+    Array.from(tableByName.keys()),
+    ['programs', 'sessions', 'people', 'venues', 'session_people'],
+    'Event Studio table order'
+  );
+  const expectedFields = {
+    programs: ['name', 'description', 'status', 'starts_on', 'ends_on'],
+    sessions: [
+      'title',
+      'description',
+      'status',
+      'starts_at',
+      'ends_at',
+      'capacity',
+      'tags'
+    ],
+    people: ['display_name', 'email', 'role'],
+    venues: ['name', 'address', 'time_zone', 'capacity'],
+    session_people: ['role']
+  };
+
+  const source = JSON.stringify(definition);
+  assert(!source.includes('DataRealtime'), 'Event Studio V1 must not enable realtime.');
+  assert(!/"realtime"\s*:/iu.test(source), 'Event Studio V1 must not declare realtime configuration.');
+  assert(!/"(?:raw_?sql|sql|migrations?)"\s*:/iu.test(source), 'Event Studio must use blueprint nodes rather than raw SQL.');
+
+  for (const table of definition.tables) {
+    assertExact(
+      table.fields?.map((field) => field.name),
+      expectedFields[table.table_name],
+      `${table.table_name} fields`
+    );
+    assert(table.use_rls === true, `${table.table_name} must enable RLS.`);
+    assert(Array.isArray(table.nodes), `${table.table_name}.nodes must be an array.`);
+    assert(nodeTypeName(table.nodes[0]) === 'DataId', `${table.table_name} must start with DataId.`);
+    const membershipNode = table.nodes.find(
+      (node) => nodeTypeName(node) === 'DataEntityMembership'
+    );
+    assert(
+      membershipNode?.data?.entity_field_name === 'org_id',
+      `${table.table_name} must be org-scoped through DataEntityMembership.`
+    );
+    const authenticatedGrant = table.grants?.find(
+      (grant) => grant.roles?.includes('authenticated')
+    );
+    assert(authenticatedGrant, `${table.table_name} must grant the authenticated role.`);
+    const grantedPrivileges = new Set(
+      authenticatedGrant.privileges?.map((entry) => entry[0])
+    );
+    assertExact(
+      Array.from(grantedPrivileges),
+      ['select', 'insert', 'update', 'delete'],
+      `${table.table_name} authenticated grants`
+    );
+    const memberPolicy = table.policies?.find(
+      (policy) =>
+        policy.$type === 'AuthzEntityMembership' &&
+        policy.data?.entity_field === 'org_id' &&
+        policy.data?.membership_type === 2 &&
+        policy.data?.is_admin === undefined &&
+        policy.data?.is_owner === undefined
+    );
+    assertExact(
+      memberPolicy?.privileges,
+      ['select', 'insert', 'update'],
+      `${table.table_name} member privileges`
+    );
+    for (const roleFlag of ['is_admin', 'is_owner']) {
+      const destructivePolicy = table.policies?.find(
+        (policy) =>
+          policy.$type === 'AuthzEntityMembership' &&
+          policy.data?.entity_field === 'org_id' &&
+          policy.data?.membership_type === 2 &&
+          policy.data?.[roleFlag] === true
+      );
+      assertExact(
+        destructivePolicy?.privileges,
+        ['delete'],
+        `${table.table_name} ${roleFlag} delete policy`
+      );
+    }
+  }
+
+  for (const tableName of ['programs', 'sessions']) {
+    const status = tableByName
+      .get(tableName)
+      ?.fields?.find((field) => field.name === 'status');
+    assertExact(
+      status?.type,
+      { name: 'text' },
+      `${tableName} status type`
+    );
+  }
+  const tags = tableByName
+    .get('sessions')
+    ?.fields?.find((field) => field.name === 'tags');
+  assertExact(
+    tags?.type,
+    { name: 'text', array_dimensions: 1 },
+    'sessions tags type'
+  );
+
+  const relationCoordinates = definition.relations.map(
+    (relation) =>
+      `${relation.source_table}.${relation.field_name}->${relation.target_table}`
+  );
+  assertExact(
+    relationCoordinates,
+    [
+      'sessions.program_id->programs',
+      'sessions.venue_id->venues',
+      'session_people.session_id->sessions',
+      'session_people.person_id->people'
+    ],
+    'Event Studio relations'
+  );
+  assertExact(
+    definition.unique_constraints,
+    [
+      {
+        table_name: 'session_people',
+        columns: ['session_id', 'person_id']
+      }
+    ],
+    'Event Studio relation uniqueness'
+  );
+}
+
 function assertExact(actual, expected, label) {
   assert(
     isDeepStrictEqual(actual, expected),
@@ -2064,6 +2396,89 @@ function byName(entries, label) {
 
 function registryContentKey(registryItem, sourcePath) {
   return registryItem + '\0' + sourcePath;
+}
+
+function appKitRegistryItems(catalogItems) {
+  const catalogByName = byName(catalogItems, 'Registry catalog item');
+  const collected = new Map();
+  const visit = (name, ancestry = []) => {
+    assert(
+      !ancestry.includes(name),
+      `App Kit registry dependency cycle: ${ancestry.concat(name).join(' -> ')}.`
+    );
+    if (collected.has(name)) return;
+    const item = catalogByName.get(name);
+    assert(item, `App Kit registry closure references missing item ${name}.`);
+    collected.set(name, item);
+    for (const dependency of item.registryDependencies) {
+      const prefix = `${PINNED.registryNamespace}/`;
+      assert(
+        dependency.startsWith(prefix) && dependency.length > prefix.length,
+        `${name} has unsupported registry dependency ${dependency}.`
+      );
+      visit(dependency.slice(prefix.length), ancestry.concat(name));
+    }
+  };
+  for (const name of APP_KIT_ROOT_NAMES) visit(name);
+  return Array.from(collected.values()).sort((left, right) =>
+    left.name.localeCompare(right.name)
+  );
+}
+
+export function collectAttestedRegistrySources(plans, catalogItems) {
+  const sources = new Map();
+  const add = (registryItem, sourcePath, type) => {
+    const key = registryContentKey(registryItem, sourcePath);
+    const existing = sources.get(key);
+    assert(
+      !existing || existing.type === type,
+      `Registry content source type conflict for ${registryItem}/${sourcePath}.`
+    );
+    if (!existing) sources.set(key, { registryItem, path: sourcePath, type });
+  };
+  for (const plan of plans.values()) {
+    for (const file of plan.composition.files) {
+      for (const source of file.sources) {
+        add(source.registryItem, source.path, file.type);
+      }
+    }
+  }
+  for (const item of appKitRegistryItems(catalogItems)) {
+    for (const file of item.files) add(item.name, file.path, file.type);
+  }
+  return Array.from(sources.values()).sort((left, right) =>
+    `${left.registryItem}/${left.path}`.localeCompare(`${right.registryItem}/${right.path}`)
+  );
+}
+
+export function collectAttestedExternalPackages(snapshot, plans, catalogItems) {
+  const firstParty = new Set(snapshot.release.packages.map((entry) => entry.name));
+  const requirements = new Map();
+  const add = (specifier) => {
+    const requirement = parseNpmPackageRequirement(specifier);
+    if (firstParty.has(requirement.name)) return;
+    assert(
+      requirement.requested === null || requirement.exactVersion !== null,
+      `External package ${requirement.name} uses unsupported non-exact requirement ${requirement.requested}.`
+    );
+    const versions = requirements.get(requirement.name) ?? new Set();
+    versions.add(requirement.exactVersion);
+    requirements.set(requirement.name, versions);
+  };
+  for (const plan of plans.values()) {
+    for (const dependency of plan.composition.npmDependencies) add(dependency.name);
+  }
+  for (const item of appKitRegistryItems(catalogItems)) {
+    for (const dependency of item.dependencies) add(dependency);
+  }
+  return Array.from(requirements, ([name, versions]) => {
+    const exactVersions = Array.from(versions).filter((version) => version !== null);
+    assert(
+      new Set(exactVersions).size <= 1,
+      `Package ${name} has conflicting exact requirements.`
+    );
+    return { name, exactVersion: exactVersions[0] ?? null };
+  }).sort((left, right) => left.name.localeCompare(right.name));
 }
 
 function sourceMap(snapshot) {
@@ -3281,6 +3696,14 @@ export function projectRegistryCatalog(registry) {
       type: file.type,
       target: file.target ?? null
     }));
+    const constructive = item.meta?.constructive;
+    if (constructive !== undefined) {
+      assertConstructiveRegistryMetadata(
+        constructive,
+        `${item.name}.meta.constructive`,
+        item.name
+      );
+    }
     return {
       name: item.name,
       type: item.type,
@@ -3292,6 +3715,9 @@ export function projectRegistryCatalog(registry) {
       devDependencies: item.devDependencies ?? [],
       registryDependencies: item.registryDependencies ?? [],
       files,
+      ...(constructive === undefined
+        ? {}
+        : { meta: { constructive } }),
       installCommand:
         `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${item.name}`
     };
@@ -3330,6 +3756,25 @@ export function assertRegistryCatalog(catalog, snapshot) {
     assertStringArray(item.dependencies, `${item.name}.dependencies`);
     assertStringArray(item.devDependencies, `${item.name}.devDependencies`);
     assertStringArray(item.registryDependencies, `${item.name}.registryDependencies`);
+    if (item.meta !== undefined) {
+      assertObject(item.meta, `${item.name}.meta`);
+      assert(
+        Object.keys(item.meta).length === 1 && item.meta.constructive,
+        `${item.name}.meta may contain only the portable constructive contract.`
+      );
+      assertConstructiveRegistryMetadata(
+        item.meta.constructive,
+        `${item.name}.meta.constructive`,
+        item.name
+      );
+      for (const compatibleItem of item.meta.constructive.compatibleWith ?? []) {
+        assert(
+          APP_KIT_ROOT_NAMES.includes(compatibleItem) &&
+            itemByName.has(compatibleItem),
+          `${item.name}.meta.constructive.compatibleWith references unknown App Kit root ${compatibleItem}.`
+        );
+      }
+    }
     assert(Array.isArray(item.files), `${item.name}.files must be an array.`);
     for (const file of item.files) {
       assertObject(file, `${item.name} file`);
@@ -3345,6 +3790,21 @@ export function assertRegistryCatalog(catalog, snapshot) {
       const dependencyName = dependency.slice(PINNED.registryNamespace.length + 1);
       assert(itemByName.has(dependencyName), `${item.name} references unknown registry item ${dependency}.`);
     }
+  }
+  const namedAppKitRoots = catalog.items
+    .filter((item) => APP_KIT_ROOT_NAMES.includes(item.name))
+    .map((item) => item.name);
+  assertExact(
+    namedAppKitRoots.slice().sort(),
+    APP_KIT_ROOT_NAMES.slice().sort(),
+    'App Kit registry root set'
+  );
+  for (const rootName of APP_KIT_ROOT_NAMES) {
+    assert(
+      constructiveMetadataForItem(itemByName.get(rootName))?.family ===
+        'app-kit',
+      `${rootName} is missing versioned meta.constructive.`
+    );
   }
   for (const name of [
     'constructive-theme',
@@ -3491,24 +3951,12 @@ export function validateSkillArtifacts(snapshot, root = skillDirectory) {
     registryContent.recordCount === registryContent.records.length,
     'Registry content recordCount is inconsistent.'
   );
-  const expectedSources = new Map();
-  for (const plan of planByItem.values()) {
-    for (const file of plan.composition.files) {
-      for (const source of file.sources) {
-        const key = registryContentKey(source.registryItem, source.path);
-        const expected = expectedSources.get(key);
-        if (expected) {
-          assert(expected.type === file.type, 'Registry content source type conflicts across install plans.');
-        } else {
-          expectedSources.set(key, {
-            registryItem: source.registryItem,
-            path: source.path,
-            type: file.type
-          });
-        }
-      }
-    }
-  }
+  const expectedSources = new Map(
+    collectAttestedRegistrySources(planByItem, catalog.items).map((source) => [
+      registryContentKey(source.registryItem, source.path),
+      source
+    ])
+  );
   const contentBySource = new Map();
   for (const record of registryContent.records) {
     assertObject(record, 'Registry content record');
@@ -3525,7 +3973,7 @@ export function validateSkillArtifacts(snapshot, root = skillDirectory) {
   }
   assert(
     contentBySource.size === expectedSources.size,
-    'Registry content must exactly cover every install-plan source.'
+    'Registry content must exactly cover every Console-plan and App Kit source.'
   );
   const packageResolutionsPath = assertAttestedFile(
     root,
@@ -3555,15 +4003,11 @@ export function validateSkillArtifacts(snapshot, root = skillDirectory) {
     packageResolutions.recordCount === packageResolutions.records.length,
     'Package resolutions recordCount is inconsistent.'
   );
-  const firstPartyPackages = new Set(snapshot.release.packages.map((entry) => entry.name));
-  const expectedExternalPackages = new Set();
-  for (const plan of planByItem.values()) {
-    for (const dependency of plan.composition.npmDependencies) {
-      if (!firstPartyPackages.has(dependency.name)) {
-        expectedExternalPackages.add(dependency.name);
-      }
-    }
-  }
+  const expectedExternalPackages = new Map(
+    collectAttestedExternalPackages(snapshot, planByItem, catalog.items).map(
+      ({ name, exactVersion }) => [name, new Set([exactVersion])]
+    )
+  );
   const packageByName = new Map();
   for (const record of packageResolutions.records) {
     assertObject(record, 'Package resolution record');
@@ -3575,6 +4019,18 @@ export function validateSkillArtifacts(snapshot, root = skillDirectory) {
       expectedExternalPackages.has(record.name),
       'Package resolutions contain unexpected package ' + record.name + '.'
     );
+    const exactVersions = Array.from(expectedExternalPackages.get(record.name))
+      .filter((version) => version !== null);
+    assert(
+      new Set(exactVersions).size <= 1,
+      `Package ${record.name} has conflicting exact requirements.`
+    );
+    if (exactVersions.length === 1) {
+      assert(
+        record.version === exactVersions[0],
+        `Package ${record.name} must resolve exact requested version ${exactVersions[0]}.`
+      );
+    }
     assert(!packageByName.has(record.name), 'Duplicate package resolution ' + record.name + '.');
     let resolvedUrl;
     try {
@@ -3612,6 +4068,8 @@ export function parseArguments(arguments_) {
   let blocksRepo = null;
   let help = false;
   let query = null;
+  let registryCapability = null;
+  let registryFamily = null;
   let registryType = null;
   let sourcePreflight = false;
   for (let index = 0; index < arguments_.length; index += 1) {
@@ -3660,11 +4118,35 @@ export function parseArguments(arguments_) {
       index += 1;
       continue;
     }
+    if (argument === '--family') {
+      assert(registryFamily === null, '--family may be provided only once.');
+      const value = arguments_[index + 1];
+      assert(value && !value.startsWith('-'), '--family requires a registry family.');
+      registryFamily = value;
+      index += 1;
+      continue;
+    }
+    if (argument === '--capability') {
+      assert(
+        registryCapability === null,
+        '--capability may be provided only once.'
+      );
+      const value = arguments_[index + 1];
+      assert(
+        value && !value.startsWith('-'),
+        '--capability requires a capability.'
+      );
+      registryCapability = value;
+      index += 1;
+      continue;
+    }
     fail(`Unknown argument ${argument}.`);
   }
   assert(
-    registryType === null || query?.kind === 'list-registry',
-    '--type is valid only with --list-registry.'
+    [registryType, registryFamily, registryCapability].every(
+      (value) => value === null
+    ) || query?.kind === 'list-registry',
+    '--type, --family, and --capability are valid only with --list-registry.'
   );
   assert(
     !sourcePreflight || blocksRepo !== null,
@@ -3674,7 +4156,15 @@ export function parseArguments(arguments_) {
     !sourcePreflight || query === null,
     '--source-preflight cannot be combined with a query mode.'
   );
-  return { blocksRepo, help, query, registryType, sourcePreflight };
+  return {
+    blocksRepo,
+    help,
+    query,
+    registryCapability,
+    registryFamily,
+    registryType,
+    sourcePreflight
+  };
 }
 
 function usage() {
@@ -3687,7 +4177,7 @@ function usage() {
     '  node /absolute/path/to/check-blocks-contract.mjs --blocks-repo /absolute/path/to/blocks',
     '  node /absolute/path/to/check-blocks-contract.mjs --list-roots',
     '  node /absolute/path/to/check-blocks-contract.mjs --root preset-b2b-storage',
-    '  node /absolute/path/to/check-blocks-contract.mjs --list-registry [--type registry:block]',
+    '  node /absolute/path/to/check-blocks-contract.mjs --list-registry [--type registry:block] [--family app-kit] [--capability temporal]',
     '  node /absolute/path/to/check-blocks-contract.mjs --registry-item app-shell',
     '',
     'Without --blocks-repo, validates the portable catalog, all 19 complete plans,',
@@ -3907,6 +4397,7 @@ function registryItemForQuery(item, snapshot) {
     devDependencies: item.devDependencies,
     registryDependencies: item.registryDependencies,
     files: item.files,
+    meta: item.meta ?? null,
     publicInstall: publicInstallForCommand(snapshot, item.installCommand),
     portableOverrides,
     sourceLimitations: sourceLimitationsForRoot(snapshot, item.name),
@@ -3965,6 +4456,59 @@ function adapterProfilesForBindings(snapshot, bindings) {
       contract: snapshot.adapterActionProfiles[id]
     }))
   };
+}
+
+export function filterRegistryItems(items, filters = {}) {
+  const {
+    type = null,
+    family = null,
+    capability = null
+  } = filters;
+  return items.filter((item) => {
+    const constructive = constructiveMetadataForItem(item);
+    return (
+      (!type || item.type === type) &&
+      (!family || constructive?.family === family) &&
+      (!capability || constructive?.capabilities?.includes(capability))
+    );
+  });
+}
+
+function sortedUnique(values) {
+  return Array.from(new Set(values)).sort();
+}
+
+export function validateRegistryFilters(items, filters = {}) {
+  const { family = null, capability = null } = filters;
+  const catalogued = items.filter(
+    (item) => constructiveMetadataForItem(item) !== null
+  );
+  const families = sortedUnique(
+    catalogued.map((item) => constructiveMetadataForItem(item).family)
+  );
+  if (family) {
+    assert(
+      families.includes(family),
+      `Unknown registry family ${family}. Available families: ${families.join(', ') || '(none)'}.`
+    );
+  }
+  const familyItems = family
+    ? catalogued.filter(
+        (item) => constructiveMetadataForItem(item).family === family
+      )
+    : catalogued;
+  const capabilities = sortedUnique(
+    familyItems.flatMap(
+      (item) => constructiveMetadataForItem(item).capabilities ?? []
+    )
+  );
+  if (capability) {
+    assert(
+      capabilities.includes(capability),
+      `Unknown registry capability ${capability}${family ? ` for family ${family}` : ''}. Available capabilities: ${capabilities.join(', ') || '(none)'}.`
+    );
+  }
+  return { families, capabilities };
 }
 
 function queryOutput(options, loaded) {
@@ -4061,8 +4605,17 @@ function queryOutput(options, loaded) {
           `Unknown registry type ${options.registryType}.`
         );
       }
-      const selected = loaded.artifacts.catalog.items.filter(
-        (item) => !options.registryType || item.type === options.registryType
+      validateRegistryFilters(loaded.artifacts.catalog.items, {
+        family: options.registryFamily,
+        capability: options.registryCapability
+      });
+      const selected = filterRegistryItems(
+        loaded.artifacts.catalog.items,
+        {
+          type: options.registryType,
+          family: options.registryFamily,
+          capability: options.registryCapability
+        }
       ).map((item) => registryItemForQuery(item, loaded.snapshot));
       return {
         schemaVersion: 1,
@@ -4071,7 +4624,9 @@ function queryOutput(options, loaded) {
         installability: installabilityEnvelope(loaded.snapshot),
         metaContract: loaded.snapshot.metaContract,
         filter: {
-          type: options.registryType
+          type: options.registryType,
+          family: options.registryFamily,
+          capability: options.registryCapability
         },
         itemCount: selected.length,
         items: selected.map((item) => ({
@@ -4081,6 +4636,7 @@ function queryOutput(options, loaded) {
           description: item.description,
           categories: item.categories,
           docs: item.docs,
+          meta: item.meta,
           publicInstall: item.publicInstall,
           runtimeStatus: item.runtimeStatus,
           sourceLimitationIds: item.sourceLimitations.map(
@@ -4667,14 +5223,22 @@ export function assertBlocksSource(snapshot, artifacts, blocksRepo) {
   );
 
   const liveList = runBlocksInspector(blocksRepo, ['--list']);
+  const normalizedLiveItems = liveList.items.map((item) => ({
+    ...item,
+    installCommand: pinInspectorInstallCommand(item.installCommand, item.name)
+  }));
   assert(liveList.schemaVersion === snapshot.source.inspector.schemaVersion, 'Live inspector schemaVersion drifted.');
   assert(liveList.kind === snapshot.source.inspector.kind, 'Live inspector kind drifted.');
-  assertExact(liveList.items, snapshot.items, 'Live inspector install roots');
+  assertExact(normalizedLiveItems, snapshot.items, 'Live inspector install roots');
 
   for (const item of snapshot.items) {
     const livePlan = runBlocksInspector(
       blocksRepo,
       ['--item', item.name, '--compact']
+    );
+    livePlan.install.command = pinInspectorInstallCommand(
+      livePlan.install.command,
+      item.name
     );
     assertExact(
       livePlan,
@@ -4722,9 +5286,22 @@ export function loadPortableContract() {
   const snapshot = readJson(snapshotPath, snapshotPath);
   assertSnapshot(snapshot);
   const artifacts = validateSkillArtifacts(snapshot);
+  const briefRoutes = readJson(briefRoutesPath, briefRoutesPath);
+  const briefRouteById = assertBriefRoutes(
+    briefRoutes,
+    artifacts.catalog.items
+  );
+  const eventStudioBlueprint = readJson(
+    eventStudioBlueprintPath,
+    eventStudioBlueprintPath
+  );
+  assertEventStudioBlueprint(eventStudioBlueprint);
   return {
     snapshot,
-    artifacts
+    artifacts,
+    briefRoutes,
+    briefRouteById,
+    eventStudioBlueprint
   };
 }
 

@@ -1,8 +1,21 @@
-# Constructive application capabilities
+# Constructive application composition and capabilities
 
-Constructive applications are assembled from Blocks feature packs. A feature pack is a frontend capability surface with a machine-readable compatibility and host/runtime contract; it does not provision backend modules or grant access by itself.
+Constructive domain applications are composed with App Kit resources, queries,
+actions, and view families. Feature packs remain frontend surfaces for optional
+platform capabilities; they do not provision backend modules or grant access.
 
-Use [`constructive-blocks`](./.agents/skills/constructive-blocks/SKILL.md) for exact registry roots, installation, Console Kit composition, tenant descriptors, endpoint routing, capability discovery, and verification. Use the domain skills below when changing the underlying application behavior.
+Use [`constructive-blocks`](./.agents/skills/constructive-blocks/SKILL.md) for
+App Kit selection, exact registry roots, installation, Console Kit composition,
+tenant scope, capability discovery, and verification. Use the domain skills
+below when changing underlying application behavior.
+
+## App Kit
+
+Select App Kit from the brief's data geometry and user tasks: core contracts
+for every domain application, data views for records and relations, board for
+semantic stage movement, dashboard for explicit analytical loaders, calendar
+for range-based temporal views, and workflow for semantic actions and guided
+steps. Do not default to Sheets, Console Kit, or a review queue.
 
 ## Feature packs
 
@@ -28,6 +41,7 @@ Choose the smallest Blocks surface that owns the intended experience:
 | A backend-aligned application console | Official preset root |
 | A focused tenant console | Console Kit core plus selected console modules |
 | A host-controlled screen | Standalone feature pack |
+| An application around domain records and actions | App Kit capability roots |
 | A custom visual component | Constructive UI primitive or block |
 
 The six non-Data standalone packs are provider-neutral views driven by host-injected resources, policy, actions, and state. Standalone Data is adapter-driven: the host configures its endpoint and adapter boundary, while the pack performs its own `_meta` and GraphQL introspection.
@@ -38,7 +52,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 
 | Intent | Skill |
 |---|---|
-| Install or compose feature packs, Console Kit, app shell, app bar, billing blocks, or UI primitives | [`constructive-blocks`](./.agents/skills/constructive-blocks/SKILL.md) |
+| Compose App Kit or install feature packs, Console Kit, app shell, billing blocks, or UI primitives | [`constructive-blocks`](./.agents/skills/constructive-blocks/SKILL.md) |
 | Assemble and acceptance-check a tenant frontend against an already-provisioned tenant | [`constructive-builder`](./.agents/skills/constructive-builder/SKILL.md) |
 | Style or compose custom application UI | [`constructive-frontend`](./.agents/skills/constructive-frontend/SKILL.md) |
 | Configure identity, sessions, MFA, devices, or account linking | [`constructive-auth`](./.agents/skills/constructive-auth/SKILL.md) |
@@ -66,6 +80,11 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 
 - Treat feature-pack installation, backend provisioning, and acceptance scenarios as separate decisions. Authentication scenarios such as password sign-in or recovery are tests within the Authentication pack, not install units.
 - Pass a secret-free database identity and explicit semantic endpoints. Never derive related endpoint hostnames or send tenant credentials to an inferred route.
-- For a custom-domain route, follow the [`2026-07` `_meta` contract sequence](./.agents/skills/constructive-frontend/references/meta-forms.md): use `_meta` for Constructive schema facts and feature tags, then standard introspection for the exact executable GraphQL surface. Neither source proves the current user's write authority.
+- For App Kit or another custom-domain route, use `_meta` for Constructive
+  schema facts and final GraphQL introspection for exact executable names. Run
+  App Kit resource validation at generation/build time; neither schema source
+  proves the current user's write authority.
 - Let runtime reads and mutations establish effective grants and RLS behavior. Do not replace an empty RLS result with an operator endpoint or private routing header.
-- Use generated clients only when a custom domain surface benefits from a stable compile-time schema. Console Kit and feature packs do not require generated SDKs or process-wide client configuration.
+- Generate or refresh typed App Kit definitions from the final schema. Console
+  Kit capability discovery and feature-pack host contracts remain separate and
+  do not require an application-wide process-global client.
