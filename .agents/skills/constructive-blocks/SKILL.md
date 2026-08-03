@@ -197,7 +197,7 @@ turn every action flow into a review queue.
 ## Respect the branch-only release gate
 
 The pinned source is
-`feat/app-kit@706ae32b8b03cd6effaa9d0d5f385d93529635df`.
+`feat/app-kit@c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b`.
 The checkout may be that named branch or detached at the exact commit. Its
 publication status is `branch-only`, and
 `release.publicRegistryReady` is `false`. Do not run a public install for these

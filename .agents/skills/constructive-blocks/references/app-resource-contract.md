@@ -7,7 +7,12 @@ for exact types, signatures, entrypoints, and supported field kinds.
 ## Build from executable evidence
 
 1. Fetch current `_meta` facts and final GraphQL introspection from the same
-   tenant/schema revision. Refresh a selected generated SDK or ORM first.
+   tenant/schema revision. Current `_meta` can expose partly inflected names:
+   keep its database identity, constraints, nullability, and relation facts,
+   but let the final executable schema decide public GraphQL type, field,
+   relation, scalar/enum, and operation-root names. Treat `_meta` GraphQL names
+   and type hints as advisory; they must not override the executable schema.
+   Refresh a selected generated SDK or ORM first.
 2. Inventory each resource's stable identity, display fields, editable fields,
    relations, executable reads, executable writes, and semantic actions.
 3. Map final inflected GraphQL names rather than deriving them from PostgreSQL
@@ -35,5 +40,8 @@ for exact types, signatures, entrypoints, and supported field kinds.
 Follow the canonical scope and query-key contract exactly. Change endpoint,
 database, authenticated session partition, organization/tenant, and schema or
 security revision independently, then prove cached, cancelled, and optimistic
-data cannot cross any partition. Never place credentials in definitions,
-URLs, cache keys, or stores.
+data cannot cross any partition. Pass raw, credential-free domain input and let
+App Kit produce its opaque deterministic query-input fingerprint; do not hash
+or serialize inputs into ad hoc keys. Credential-shaped query or action input
+fails closed, so capture authentication in the injected executor closure and
+never place credentials in definitions, URLs, cache keys, or stores.

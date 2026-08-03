@@ -10,11 +10,16 @@ for current action definitions, runtime hooks, surfaces, and invalidation APIs.
 1. Name the semantic intent and identify its typed input, output, validation,
    confirmation, authority expectation, and affected views.
 2. Inject an abortable executor through the host transport. Keep transport
-   details and credentials outside reusable definitions.
+   details and credentials outside reusable definitions. Return framework
+   result envelopes only through the documented `appSuccess` and `appFailure`
+   helpers; do not hand-build lookalike `{ ok, data }` or `{ ok, error }`
+   objects.
 3. Declare targeted invalidation for affected detail, collection, relation,
    board, dashboard, and calendar queries. Avoid whole-cache invalidation.
 4. Add optimistic behavior only when rollback is deterministic inside the
-   active cache partition.
+   active cache partition. Use the callback's scope-bound cache facade and App
+   Kit query keys; do not reach through it to a raw TanStack `QueryClient` or
+   read, write, or cancel a key from another scope.
 5. Choose a documented controlled surface when the host owns execution or a
    connected surface when App Kit should own validation, progress,
    cancellation, rollback, and invalidation.

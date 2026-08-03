@@ -810,7 +810,7 @@ test('every query mode exposes the same branch-only installability gate', () => 
     );
     assert.equal(
       gate.pinnedLocalConsumption.sourceCommit,
-      '706ae32b8b03cd6effaa9d0d5f385d93529635df'
+      'c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b'
     );
     assert.equal(
       gate.pinnedLocalConsumption.consumerIsolation.required,

@@ -28,7 +28,7 @@ const eventStudioBlueprintPath = path.join(
 const PINNED = Object.freeze({
   repository: 'https://github.com/constructive-io/blocks',
   branch: 'feat/app-kit',
-  commit: '706ae32b8b03cd6effaa9d0d5f385d93529635df',
+  commit: 'c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b',
   publicationStatus: 'branch-only',
   registryNamespace: '@constructive',
   registryUrl: 'https://constructive-io.github.io/blocks/r/{name}.json',

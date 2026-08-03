@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "constructive.blocks-registry-content",
-  "sourceCommit": "706ae32b8b03cd6effaa9d0d5f385d93529635df",
+  "sourceCommit": "c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b",
   "recordCount": 371,
   "records": [
     {
@@ -26,13 +26,13 @@
       "registryItem": "app-kit-board",
       "path": "registry/constructive/blocks/app-kit/board/board.tsx",
       "type": "registry:component",
-      "contentSha256": "d502bd6aa66cd94d52f3605f17721c982579314bdb82de3374f4ebc33ff4e4ee"
+      "contentSha256": "ffecbaff4fddf5f117ccb9fb5aaa084a8395178d3a38a4cccb6d9617f07a0010"
     },
     {
       "registryItem": "app-kit-board",
       "path": "registry/constructive/blocks/app-kit/board/connected-board.tsx",
       "type": "registry:component",
-      "contentSha256": "0f87d69bbb4d04bbf0c958afa11ff2ad6245dd91854bb312f5229a51642a356b"
+      "contentSha256": "f4cc1f3a0d375383d20bb17cbbef7e9794c38f83e6e7780a2d4e92891ca84f7f"
     },
     {
       "registryItem": "app-kit-board",
@@ -62,7 +62,7 @@
       "registryItem": "app-kit-core",
       "path": "registry/constructive/blocks/app-kit/core/contracts.ts",
       "type": "registry:lib",
-      "contentSha256": "477d3d183d0511d32a9f20ee4812a2820f4c71ac51b88fba051cf21d4ed82c29"
+      "contentSha256": "cb61146fb27a67b782a9393f5a00c704a539d0bba10af6cb1266a877633ea5ec"
     },
     {
       "registryItem": "app-kit-core",
@@ -80,19 +80,19 @@
       "registryItem": "app-kit-core",
       "path": "registry/constructive/blocks/app-kit/core/runtime.tsx",
       "type": "registry:component",
-      "contentSha256": "fafadf39a5dc31bc34c96d53221aab79798a544f24892f14fbaf5a95c2b57d14"
+      "contentSha256": "179c9a6931552012ea9cb482079ee2ab06530efbca7057a0f1279b80e76a8108"
     },
     {
       "registryItem": "app-kit-core",
       "path": "registry/constructive/blocks/app-kit/core/schema-validation.ts",
       "type": "registry:lib",
-      "contentSha256": "15fc21e9dc189c1ab8045d43fbf95f90214dc91b6c214b130760bf1c14d6e1af"
+      "contentSha256": "1dffb89f0a4be4b4ebbf784c5da68194f9e196ebf9caa4f42f624385b619d793"
     },
     {
       "registryItem": "app-kit-core",
       "path": "registry/constructive/blocks/app-kit/core/scope.ts",
       "type": "registry:lib",
-      "contentSha256": "14da0433216deabd51dd1917b163fb21922e9c4a314f6ad184d638f054bdb866"
+      "contentSha256": "ce7b39eb0f639d73b73474701b671600427e4796833d3a6bcd135635bbc2823f"
     },
     {
       "registryItem": "app-kit-dashboard",
@@ -152,7 +152,7 @@
       "registryItem": "app-kit-data",
       "path": "registry/constructive/blocks/app-kit/data/detail-form.tsx",
       "type": "registry:component",
-      "contentSha256": "0bf42fdf00f390e66de256e4d4e9307b6058fc015b79c2ed9483ac43190986ba"
+      "contentSha256": "427073f1bba16b4ee1dc0e5314d3f8fd139abd2c770ffba9dfd189b11fc95c55"
     },
     {
       "registryItem": "app-kit-data",
@@ -164,7 +164,7 @@
       "registryItem": "app-kit-data",
       "path": "registry/constructive/blocks/app-kit/data/relations.tsx",
       "type": "registry:component",
-      "contentSha256": "abd903d5ab3a28c97c16642cce54ba77c7dc67d6cd7a8c7b6f3fb4e639eef057"
+      "contentSha256": "d0b2b0211bc0caea0bad5171d9651dd286c6a9578d3342f5260d2d3214b9afff"
     },
     {
       "registryItem": "app-kit-data",
@@ -182,7 +182,7 @@
       "registryItem": "app-kit-event-studio",
       "path": "registry/constructive/blocks/app-kit/event-studio/definitions.ts",
       "type": "registry:lib",
-      "contentSha256": "5d600406f9f124e9be4320cb00f6fc3dd53b7d0abde50dc22d1c89113912fe51"
+      "contentSha256": "fe97707725c449a70c048ecb24951fc50ae32636ed6c4a9ef8cbffe837a546ef"
     },
     {
       "registryItem": "app-kit-event-studio",

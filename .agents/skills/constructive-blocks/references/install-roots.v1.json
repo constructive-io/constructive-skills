@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://github.com/constructive-io/blocks",
     "branch": "feat/app-kit",
-    "commit": "706ae32b8b03cd6effaa9d0d5f385d93529635df",
+    "commit": "c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b",
     "inspector": {
       "schemaVersion": 1,
       "kind": "constructive.console-kit-install-roots",
@@ -26,15 +26,15 @@
       },
       "registryCatalog": {
         "path": "references/registry-catalog.v1.json",
-        "sha256": "95358574a470315a4862ecbf2faea159e2de6a4f7136bfa3de75c5a1578be4b7"
+        "sha256": "2016d63aa23228e9233f6046acf2167c8cd1ae0f3fc162341e91523cdc0286d8"
       },
       "registryContent": {
         "path": "references/registry-content.v1.json",
-        "sha256": "224c5f9da6b6d5f4920a2780f793431708b3257fee744f53dfa93586e2cb017a"
+        "sha256": "d809cd9fb01594de4d067e4900872ae0c2687cacf61fb73cd86f5abe9de0d8d0"
       },
       "packageResolutions": {
         "path": "references/package-resolutions.v1.json",
-        "sha256": "9373792323e42124de66d9c9dab9ec7c9c56e50dc3e45000ee9e9484bc58c014"
+        "sha256": "359b993ab97f40ebbd6f359442ace30d6f341268bfdfdd0749a6d68855f8f29a"
       },
       "canonicalFiles": [
         {

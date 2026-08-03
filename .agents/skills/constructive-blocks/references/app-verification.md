@@ -7,14 +7,20 @@ the pinned install contract.
 
 ## Run the evidence loop
 
-1. Reconcile `_meta` with final introspection. Cover inflected roots, enums,
-   arrays, JSON, custom scalars, composite and absent identities, relations,
-   absent operations, and custom roots.
+1. Reconcile partly inflected `_meta` with final introspection. Prove database
+   facts remain authoritative while the executable schema controls GraphQL
+   names, types, relations, and roots, including when an advisory `_meta`
+   GraphQL hint disagrees. Cover inflected roots, enums, arrays, JSON, custom
+   scalars, composite and absent identities, relations, absent operations, and
+   custom roots.
 2. Vary every documented cache-scope dimension independently. Cancel slow work
    during a scope switch and prove cached or optimistic data cannot cross it.
 3. Exercise validation, confirmation, cancellation, duplicate submission,
    partial GraphQL errors, denials, rollback, and targeted cross-view
-   invalidation.
+   invalidation. Also prove credential-shaped query and action inputs are rejected,
+   ordinary records that resemble results stay ordinary records, only
+   `appSuccess` and `appFailure` create framework envelopes, and optimistic
+   callbacks cannot access another scope's cache keys.
 4. Exercise intended member behavior plus anonymous, peer, revoked, cross-org,
    and destructive member denials. Verify admin/owner destruction only where
    the database policy permits it.
