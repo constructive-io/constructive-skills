@@ -72,7 +72,7 @@ mutation ($input: CreatePrincipalInput!) {
 }
 ```
 
-`result` is the new principal id. The owner is session-derived — there is no `ownerId` field. `entityIds` takes entity **row** UUIDs (rows of the provisioned entity table), not entity-type ids.
+`result` is the principal's identity user id — the value that `createApiKey.principalId` expects. The `principals` table row carries a different `id`, and `principalEntity.principalId` references that row id. Do not pass the row id to `createApiKey`: the mint fails with `PRINCIPAL_NOT_OWNED`. The owner is session-derived — there is no `ownerId` field. `entityIds` takes entity **row** UUIDs (rows of the provisioned entity table), not entity-type ids.
 
 ## Step 3 — Mint the key, satisfy step-up (data plane)
 
