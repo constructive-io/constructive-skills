@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "constructive.blocks-package-resolutions",
-  "sourceCommit": "c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b",
+  "sourceCommit": "1a72e5d95f7ce4a243cd4536ed78c638708d538c",
   "registry": "https://registry.npmjs.org",
   "recordCount": 25,
   "records": [

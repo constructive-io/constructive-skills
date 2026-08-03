@@ -1,7 +1,7 @@
 # Constructive UI foundations
 
 Build custom UI on the same foundation as the pinned Blocks source: Next.js 16
-App Router, React Server Components, shadcn `4.13.1` with `base-nova`, Base UI,
+App Router, React Server Components, shadcn `4.16.1` with `base-nova`, Base UI,
 Tailwind CSS v4, OKLCH semantic tokens, and Lucide icons.
 
 The current UI package and registry are branch-only. Complete the

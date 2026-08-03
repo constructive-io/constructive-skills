@@ -1,8 +1,9 @@
 # Generate App Kit resource contracts
 
-Read this before generating resources, queries, forms, or relations. Use the
-[canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for exact types, signatures, entrypoints, and supported field kinds.
+Read this before generating resources, queries, forms, or relations. Resolve
+`installability.appKitDocumentation.authority` through the validated App Kit
+catalog query for exact types, signatures, entrypoints, and supported field
+kinds.
 
 ## Build from executable evidence
 

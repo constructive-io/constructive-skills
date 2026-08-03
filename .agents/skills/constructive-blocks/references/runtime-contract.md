@@ -8,6 +8,15 @@ Console runtime, and source limitations. The complete catalog in
 is retained only as drift evidence; validated queries apply
 `registry.queryOverrides` before returning it.
 
+## Branch-aware App Kit documentation
+
+Every validated query returns `installability.appKitDocumentation`. Read its
+`authority` before using an exact App Kit API. While
+`publicRegistryReady: false`, authority is `kind: pinned-source`; join its path
+to the exact Blocks checkout only after source preflight verifies the commit and
+SHA-256. The public URL is withheld from query output until authority becomes
+`kind: public-url` after Pages and registry publication are verified.
+
 ## Surface ownership
 
 | Surface | Installs | Runtime owner |
@@ -510,7 +519,8 @@ generated artifacts.
 
 Every validated query marks `installability.publicInstall` as `blocked` and
 `future-only` in this snapshot. Item and plan query surfaces also wrap the
-canonical public command in a status-bearing `publicInstall` object; they never
+canonical `shadcn@latest` public command in a status-bearing `publicInstall`
+object; they never
 expose a bare `installCommand`. Do not execute that wrapped command until its
 status is `available`. Use only the pinned local workflow below before release.
 

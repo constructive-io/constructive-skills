@@ -46,7 +46,7 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 Then follow the pinned local-consumption workflow in
 [`constructive-blocks/references/runtime-contract.md`](../constructive-blocks/references/runtime-contract.md#pinned-local-consumption-before-release).
 It verifies the exact Blocks commit, builds local registries and packages, and
-installs through shadcn `4.13.1` without treating localhost resolutions as
+installs through shadcn `4.16.1` without treating localhost resolutions as
 release artifacts. Public registry and package installation becomes valid
 only after the Blocks snapshot says `publicRegistryReady: true` and its checker
 passes against that released source.
@@ -62,7 +62,7 @@ install contract.
 
 ## UI Composition
 
-Target Next.js 16 App Router with React Server Components, shadcn `4.13.1`,
+Target Next.js 16 App Router with React Server Components, shadcn `4.16.1`,
 the `base-nova` style, Base UI primitives, Tailwind CSS v4, and Lucide icons.
 Interactive registry components carry `'use client'`; pages and layouts remain
 server components until they need browser state. Compose polymorphic Base UI
@@ -86,8 +86,8 @@ relations, actions, aggregates, boards, or time ranges. Read its
 [composition](../constructive-blocks/references/app-composition.md),
 [resource contract](../constructive-blocks/references/app-resource-contract.md),
 and [view patterns](../constructive-blocks/references/app-view-patterns.md), then
-use the [canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for exact APIs before styling the result.
+use the branch-aware App Kit documentation authority returned by the validated
+Blocks catalog for exact APIs before styling the result.
 
 Use the Data feature pack when the goal is generic application-table
 exploration or spreadsheet-style inline CRUD. It owns its separate Sheets

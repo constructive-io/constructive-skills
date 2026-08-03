@@ -1,9 +1,9 @@
 # Select and compose App Kit views
 
 Read this after resources are validated and the brief needs a collection,
-board, dashboard, or temporal surface. Use the
-[canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for current controlled and connected component APIs.
+board, dashboard, or temporal surface. Resolve
+`installability.appKitDocumentation.authority` through the validated App Kit
+catalog query for current controlled and connected component APIs.
 
 ## Select by geometry
 

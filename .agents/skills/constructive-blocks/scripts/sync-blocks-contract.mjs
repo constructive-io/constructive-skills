@@ -12,6 +12,7 @@ import {
   assertSnapshot,
   collectAttestedExternalPackages,
   collectAttestedRegistrySources,
+  PINNED,
   pinInspectorInstallCommand,
   projectRegistryCatalog,
   validateSkillArtifacts
@@ -112,6 +113,7 @@ function assertCleanPinnedCheckout(contract, blocksRepo) {
 export function parseArguments(arguments_) {
   let blocksRepo = null;
   let check = false;
+  let repin = false;
   let refreshPackageResolutions = false;
   let help = false;
 
@@ -126,6 +128,9 @@ export function parseArguments(arguments_) {
     } else if (argument === '--check') {
       if (check) fail('--check may be provided only once.');
       check = true;
+    } else if (argument === '--repin') {
+      if (repin) fail('--repin may be provided only once.');
+      repin = true;
     } else if (argument === '--refresh-package-resolutions') {
       if (refreshPackageResolutions) {
         fail('--refresh-package-resolutions may be provided only once.');
@@ -138,7 +143,7 @@ export function parseArguments(arguments_) {
     }
   }
   if (!help && blocksRepo === null) fail('--blocks-repo is required.');
-  return { blocksRepo, check, refreshPackageResolutions, help };
+  return { blocksRepo, check, repin, refreshPackageResolutions, help };
 }
 
 function usage() {
@@ -148,14 +153,27 @@ function usage() {
     'Usage:',
     '  node sync-blocks-contract.mjs --blocks-repo /absolute/path/to/blocks',
     '  node sync-blocks-contract.mjs --blocks-repo /absolute/path/to/blocks --check',
+    '  node sync-blocks-contract.mjs --blocks-repo /absolute/path/to/blocks --repin',
     '  node sync-blocks-contract.mjs --blocks-repo /absolute/path/to/blocks --refresh-package-resolutions',
     '',
     'The Blocks checkout must be clean and exactly match the already-pinned commit.',
+    '--repin deliberately advances generated artifacts to the checker\'s reviewed',
+    'commit and exact tested shadcn version before final staged validation.',
     'Without --check, generated catalog, plans, content, package snapshot, and',
     'attestations replace their checked-in counterparts only after staged validation.',
     '--refresh-package-resolutions explicitly queries npm latest releases; without it,',
     'the existing exact package records are preserved and only their sourceCommit changes.'
   ].join('\n');
+}
+
+export function repinContract(contract) {
+  const result = structuredClone(contract);
+  result.source.commit = PINNED.commit;
+  result.release.testedShadcnVersion = PINNED.testedShadcnVersion;
+  result.release.localConsumption.testedInstallCommandTemplate =
+    `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/{name}`;
+  result.registry.testedShadcnVersion = PINNED.testedShadcnVersion;
+  return result;
 }
 
 function inspectorArguments(blocksRepo, arguments_) {
@@ -382,8 +400,9 @@ async function main() {
     return;
   }
 
-  const contract = readJson(contractPath, 'install-roots contract');
-  assertSnapshot(contract);
+  const currentContract = readJson(contractPath, 'install-roots contract');
+  const contract = options.repin ? repinContract(currentContract) : currentContract;
+  if (!options.repin) assertSnapshot(contract);
   assertCleanPinnedCheckout(contract, options.blocksRepo);
   run('pnpm', ['--dir', options.blocksRepo, 'build:registry'], 'Building Blocks registry', {
     inherit: true

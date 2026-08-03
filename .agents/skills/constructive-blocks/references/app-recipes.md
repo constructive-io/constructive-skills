@@ -1,9 +1,9 @@
 # Adapt compact App Kit recipes
 
 Read this when a brief resembles a common app shape but does not need Event
-Studio. Use the [canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for current capabilities, then query the validated catalog instead of copying
-root names from these prompts.
+Studio. Resolve `installability.appKitDocumentation.authority` through the
+validated App Kit catalog query for current capabilities, then use catalog
+metadata instead of copying root names from these prompts.
 
 | Recipe | Extract from the brief | Challenge before selecting views |
 | --- | --- | --- |

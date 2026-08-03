@@ -4,7 +4,7 @@
   "source": {
     "repository": "https://github.com/constructive-io/blocks",
     "branch": "feat/app-kit",
-    "commit": "c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b",
+    "commit": "1a72e5d95f7ce4a243cd4536ed78c638708d538c",
     "inspector": {
       "schemaVersion": 1,
       "kind": "constructive.console-kit-install-roots",
@@ -26,15 +26,15 @@
       },
       "registryCatalog": {
         "path": "references/registry-catalog.v1.json",
-        "sha256": "2016d63aa23228e9233f6046acf2167c8cd1ae0f3fc162341e91523cdc0286d8"
+        "sha256": "4a5fd029f66e146b4218e47f86ba35fcbbf2572faaa274fc0a3c30088304ba66"
       },
       "registryContent": {
         "path": "references/registry-content.v1.json",
-        "sha256": "d809cd9fb01594de4d067e4900872ae0c2687cacf61fb73cd86f5abe9de0d8d0"
+        "sha256": "15908ba4f3c30d4b0da8424f796df1a376f7f24f58a23554ad2282812a829ec4"
       },
       "packageResolutions": {
         "path": "references/package-resolutions.v1.json",
-        "sha256": "359b993ab97f40ebbd6f359442ace30d6f341268bfdfdd0749a6d68855f8f29a"
+        "sha256": "b2243347053c6cb2298147f50d6a2502a158a2d891e1fc3bac4923ad799c7cad"
       },
       "canonicalFiles": [
         {
@@ -43,7 +43,7 @@
         },
         {
           "path": "apps/registry/package.json",
-          "sha256": "0263177a6461eb7223fc33c5725bba85053e5ea34a814a4b1ba5371220badcfb"
+          "sha256": "6e0d7140478d98d7271de4e8ff24001c65a299672ca3f34b250e5a30f973ebb0"
         },
         {
           "path": "apps/registry/scripts/build.ts",
@@ -56,6 +56,10 @@
         {
           "path": "apps/blocks/registry.json",
           "sha256": "cbe89216a09780463262fe10284e3b5d6b7cb3d67e35853005d4bb105b62c79f"
+        },
+        {
+          "path": "apps/blocks/src/app/blocks/app-kit/page.tsx",
+          "sha256": "9bce8d78d2f951416fa43385937add24c27a3cb881ec56f8b1bf5cd36e37c740"
         },
         {
           "path": "scripts/inspect-console-kit.ts",
@@ -290,97 +294,97 @@
         {
           "item": "console-kit-core",
           "path": "references/install-plans.v1/console-kit-core.json",
-          "sha256": "1414597f5ddee0c8e2d36fab8449c4d418d623926d96b8bfb14a3ced2c252563"
+          "sha256": "99ba624565edf8e5f5061afc4796c33dd193253b9442eb3a901295e80507f2e7"
         },
         {
           "item": "console-kit-nextjs",
           "path": "references/install-plans.v1/console-kit-nextjs.json",
-          "sha256": "dae45c7a952e3d8d72a6bf00b0ba464352c41b3ac4a9dfce3daac21fc868eb2f"
+          "sha256": "fbeed09b27a1c0858fe369a27467bed2eed559802cf86f6414740552dc2eddbb"
         },
         {
           "item": "console-module-auth",
           "path": "references/install-plans.v1/console-module-auth.json",
-          "sha256": "40c25a2d59cfe9732c6f78253340bbc38261d9142e85e1972d07b6dea49c0c58"
+          "sha256": "a4fa3d1b48fc0ee038ffc132fe1d9a50a4d017e069a007dee3d111a344ab6e9f"
         },
         {
           "item": "console-module-billing",
           "path": "references/install-plans.v1/console-module-billing.json",
-          "sha256": "643159e2de3653344a65f5786dc4584c681f9ce236c414f26d2b6be8b395fcb3"
+          "sha256": "3b420f8bb6ba86ff0a943c3abb12922e6a0c8f610a55a741c94e214d4fb8df3b"
         },
         {
           "item": "console-module-data",
           "path": "references/install-plans.v1/console-module-data.json",
-          "sha256": "f76209fb16e5792abb918f506873469a747e75ffc0f2c7c523efae0363bf3048"
+          "sha256": "fd9830c4f19702ed25f4fb087ba2907e6768ad188bb4726d6664dff6858aa03d"
         },
         {
           "item": "console-module-notifications",
           "path": "references/install-plans.v1/console-module-notifications.json",
-          "sha256": "30b4b7bb585e70f34609bd703768386f315c45e9242034557c6f5dccb9414276"
+          "sha256": "48596bfdd151391f59e9bf1849a68d6901b121f4359bf894c94e6bb0f7af7ebe"
         },
         {
           "item": "console-module-organizations",
           "path": "references/install-plans.v1/console-module-organizations.json",
-          "sha256": "01d0a271b0fc9411572ece022491a250a65c34c35120e0adc4588f1b5f48d824"
+          "sha256": "277f8823ad07f1e285c932c4fab629ce8264d465cfcce32867f3eb39c9181087"
         },
         {
           "item": "console-module-storage",
           "path": "references/install-plans.v1/console-module-storage.json",
-          "sha256": "112494d8b7d1d9b00d55a752408dcff335318e4cfdcfd474f5c3cdd681eb58e6"
+          "sha256": "da09bc13a0007638d04e0e0a17ce24e8a000f35e0549897e0e59c6054a3d1f92"
         },
         {
           "item": "console-module-users",
           "path": "references/install-plans.v1/console-module-users.json",
-          "sha256": "d53d09adca9e341f2c3b20e0b6d2d427359a499c39803939b83ad55e67e7eea2"
+          "sha256": "622e869c96bb9eb8aa2d1a898093e7dac177db8ecedf7b6ff9f4ad45ec9ffe50"
         },
         {
           "item": "feature-pack-auth",
           "path": "references/install-plans.v1/feature-pack-auth.json",
-          "sha256": "bbf4a8e9e0fde6ac950d03d36863026fb7621e7b0a46ab970ef543b43c624506"
+          "sha256": "2beb9aaec013747942f8aa5fc19d95427c3899d26ff4bb4e767ecffed81e4b09"
         },
         {
           "item": "feature-pack-billing",
           "path": "references/install-plans.v1/feature-pack-billing.json",
-          "sha256": "db4e4b528bd624ab072574a540656e0f6c637b0c90bb3fe7bd9010ea7972d322"
+          "sha256": "e0420dcfa4a41bd52ef08039dfff3960cd78d169212491037ceea5995001808b"
         },
         {
           "item": "feature-pack-data",
           "path": "references/install-plans.v1/feature-pack-data.json",
-          "sha256": "b36ce78ff965ac2b63c65ea20043849efb621aa31d41e93dbcdabfd38166ea97"
+          "sha256": "158c549f952d1017c42ac625cfb36fdc8c1b4161e5400bd94e0c9a74a36c1f5f"
         },
         {
           "item": "feature-pack-notifications",
           "path": "references/install-plans.v1/feature-pack-notifications.json",
-          "sha256": "db7bb7227b51c42ce43b07229e29225c928e544fbd22516fa20a2442e3935615"
+          "sha256": "71cccfcfbcd48aac9ae05a2fb01a37f881add15ef9cf1fdb11c6db3272e98f8c"
         },
         {
           "item": "feature-pack-organizations",
           "path": "references/install-plans.v1/feature-pack-organizations.json",
-          "sha256": "9d1d14ece5f438e8c4d29f0b7257e7466a3f96a335bc074ab6a946901280e1dc"
+          "sha256": "14ed1faf5b76eece952e6325cbd154c4d0eb41039a43c28e5337082235176e15"
         },
         {
           "item": "feature-pack-storage",
           "path": "references/install-plans.v1/feature-pack-storage.json",
-          "sha256": "5261a3e9145d113ad3cc03e45e11edbde7e9fbf025d3188ce097bd72d6ee15be"
+          "sha256": "b2478f019c18fb2ca427427cdb32cd25c740e562ee1043ae5490eb1dce41dcc9"
         },
         {
           "item": "feature-pack-users",
           "path": "references/install-plans.v1/feature-pack-users.json",
-          "sha256": "946ee2328e1823e29b5253338b6c984d33231dba2539329f773a73d400c3a7d1"
+          "sha256": "38e69edfb2073d6910765843922d0067a2c43bb3647a974b2e0ef20c1b5f6cb8"
         },
         {
           "item": "preset-auth-hardened",
           "path": "references/install-plans.v1/preset-auth-hardened.json",
-          "sha256": "d3e30c6230a45d1ad5b5e90f01f25c3e083a8dab0fc15e28332220c0098fbea2"
+          "sha256": "eae85c94268c930ed993676d474b248bd6f8b5926479c806c572b4f2e1425195"
         },
         {
           "item": "preset-b2b-storage",
           "path": "references/install-plans.v1/preset-b2b-storage.json",
-          "sha256": "23800feb34604277b4212ce972e63015954383d5f71c6ffebcda450ab11d4a88"
+          "sha256": "d3cbff7babe99ba89acc55f8dd62a7c9ced312835bf6269c77f8f9126a45e6a6"
         },
         {
           "item": "preset-full",
           "path": "references/install-plans.v1/preset-full.json",
-          "sha256": "d289d95105fd4a41c76c3f65ca5b4371a48c3f67797d8131dfbc14d0039c8a74"
+          "sha256": "8e8c2bf3b3ec1d35b965c23d2fa7ff4a342a3eade593463881702774b34014be"
         }
       ]
     }
@@ -390,7 +394,7 @@
     "publicRegistryReady": false,
     "packageManager": "pnpm@10.28.0",
     "nodeEngine": ">=24.0.0",
-    "shadcnVersion": "4.13.1",
+    "testedShadcnVersion": "4.16.1",
     "packages": [
       {
         "name": "@constructive-io/ui",
@@ -461,16 +465,30 @@
       "consumerWorkspace": "disposable-or-isolated-worktree",
       "localLockfilePolicy": "The local install necessarily records localhost tarball resolutions; never commit its temporary .npmrc or lockfile.",
       "promotionRule": "After public release, remove local registry settings, regenerate the lockfile from public registries, reject every localhost reference, then commit or merge the consumer.",
-      "installCommandTemplate": "pnpm dlx shadcn@4.13.1 add @constructive/{name}",
+      "testedInstallCommandTemplate": "pnpm dlx shadcn@4.16.1 add @constructive/{name}",
       "localInstallCommandTemplate": "pnpm --dir <blocks-repo>/apps/registry exec shadcn add @constructive/{name} --cwd <consumer-repo> --yes",
       "maintainerVerificationCommand": "SMOKE_CASE=app-shell,billing-settings-page,feature-pack-data,preset-b2b-storage,console-kit-nextjs pnpm --dir <blocks-repo> --filter @constructive-io/registry smoke:install"
+    }
+  },
+  "documentation": {
+    "appKit": {
+      "public": {
+        "url": "https://constructive-io.github.io/blocks/blocks/app-kit/",
+        "status": "future-only"
+      },
+      "pinnedSource": {
+        "path": "apps/blocks/src/app/blocks/app-kit/page.tsx",
+        "sha256": "9bce8d78d2f951416fa43385937add24c27a3cb881ec56f8b1bf5cd36e37c740"
+      }
     }
   },
   "registry": {
     "namespace": "@constructive",
     "urlTemplate": "https://constructive-io.github.io/blocks/r/{name}.json",
-    "shadcnVersion": "4.13.1",
-    "shadcnVersionPolicy": "exact",
+    "publicShadcnTag": "latest",
+    "publicInstallCommandTemplate": "pnpm dlx shadcn@latest add @constructive/{name}",
+    "testedShadcnVersion": "4.16.1",
+    "testedShadcnVersionPolicy": "exact",
     "queryOverrides": [
       {
         "item": "feature-pack-data",
@@ -4397,7 +4415,7 @@
       "presetProfiles": [
         "full"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-nextjs"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-kit-nextjs"
     },
     {
       "name": "preset-auth-hardened",
@@ -4412,7 +4430,7 @@
       "presetProfiles": [
         "auth-hardened"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-auth-hardened"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-auth-hardened"
     },
     {
       "name": "preset-b2b-storage",
@@ -4429,7 +4447,7 @@
       "presetProfiles": [
         "b2b-storage"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-b2b-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-b2b-storage"
     },
     {
       "name": "preset-full",
@@ -4448,7 +4466,7 @@
       "presetProfiles": [
         "full"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-full"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-full"
     },
     {
       "name": "console-kit-core",
@@ -4457,7 +4475,7 @@
       "description": "The leaf-independent Console Kit shell, runtime, discovery, and single modular Zustand store.",
       "featurePacks": [],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-core"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-kit-core"
     },
     {
       "name": "console-module-data",
@@ -4468,7 +4486,7 @@
         "data"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-data"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-data"
     },
     {
       "name": "console-module-auth",
@@ -4479,7 +4497,7 @@
         "auth"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-auth"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-auth"
     },
     {
       "name": "console-module-users",
@@ -4490,7 +4508,7 @@
         "users"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-users"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-users"
     },
     {
       "name": "console-module-organizations",
@@ -4501,7 +4519,7 @@
         "organizations"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-organizations"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-organizations"
     },
     {
       "name": "console-module-storage",
@@ -4512,7 +4530,7 @@
         "storage"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-storage"
     },
     {
       "name": "console-module-billing",
@@ -4523,7 +4541,7 @@
         "billing"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-billing"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-billing"
     },
     {
       "name": "console-module-notifications",
@@ -4534,7 +4552,7 @@
         "notifications"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-notifications"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-notifications"
     },
     {
       "name": "feature-pack-data",
@@ -4545,7 +4563,7 @@
         "data"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-data"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-data"
     },
     {
       "name": "feature-pack-auth",
@@ -4556,7 +4574,7 @@
         "auth"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-auth"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-auth"
     },
     {
       "name": "feature-pack-users",
@@ -4567,7 +4585,7 @@
         "users"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-users"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-users"
     },
     {
       "name": "feature-pack-organizations",
@@ -4578,7 +4596,7 @@
         "organizations"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-organizations"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-organizations"
     },
     {
       "name": "feature-pack-storage",
@@ -4589,7 +4607,7 @@
         "storage"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-storage"
     },
     {
       "name": "feature-pack-billing",
@@ -4600,7 +4618,7 @@
         "billing"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-billing"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-billing"
     },
     {
       "name": "feature-pack-notifications",
@@ -4611,7 +4629,7 @@
         "notifications"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-notifications"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-notifications"
     }
   ],
   "featurePackManifests": [

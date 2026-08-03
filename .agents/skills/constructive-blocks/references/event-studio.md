@@ -1,12 +1,12 @@
 # Build the Event Studio starter
 
-Read this only for the complete Event Studio recipe. Use the
-[canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for its current UI exports and integration contract.
+Read this only for the complete Event Studio recipe. Resolve
+`installability.appKitDocumentation.authority` through the validated App Kit
+catalog query for its current UI exports and integration contract.
 
 ## Provision the paired domain
 
-1. Select the supported `b2b` preset through the normal backend
+1. Select the supported `b2b:storage` preset through the normal backend
    provisioning flow. Keep preset selection separate from frontend install.
 2. Apply `event-studio-blueprint.json` through the public blueprint SDK/ORM
    workflow. Do not translate it into raw SQL or edit backend repositories.

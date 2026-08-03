@@ -1,9 +1,9 @@
 # Verify an App Kit application
 
-Read this before declaring an App Kit build complete. Use the
-[canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for the current runtime and accessibility contracts, and use the checker for
-the pinned install contract.
+Read this before declaring an App Kit build complete. Resolve
+`installability.appKitDocumentation.authority` through the validated App Kit
+catalog query for current runtime and accessibility contracts, and use the
+checker for the pinned install contract.
 
 ## Run the evidence loop
 
@@ -30,8 +30,17 @@ the pinned install contract.
 6. Install each selected root independently under default and custom aliases.
    Reject hidden dependencies on Constructive UI packages, Sheets, Console Kit,
    or an unselected App Kit family.
-7. Build and hydrate a real Next.js App Router consumer for page-scale
+7. Prove every selected root is imported by application-owned code and drives
+   at least one requested, user-reachable behavior. An installed directory is
+   not composition evidence.
+8. Build and hydrate a real Next.js App Router consumer for page-scale
    starters.
+
+Behavior evidence must execute behavior. Reject tests that only search source
+text, check that labels exist, or serialize hard-coded `true` claims for URL
+state, hydration, mobile layout, keyboard/focus behavior, or presentation
+states. Exercise the rendered application and real loaders/actions, and retain
+the command or browser evidence that distinguishes each result.
 
 Discover and narrow candidates before installation:
 

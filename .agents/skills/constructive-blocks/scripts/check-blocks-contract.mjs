@@ -25,16 +25,20 @@ const eventStudioBlueprintPath = path.join(
   'event-studio-blueprint.json'
 );
 
-const PINNED = Object.freeze({
+export const PINNED = Object.freeze({
   repository: 'https://github.com/constructive-io/blocks',
   branch: 'feat/app-kit',
-  commit: 'c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b',
+  commit: '1a72e5d95f7ce4a243cd4536ed78c638708d538c',
   publicationStatus: 'branch-only',
   registryNamespace: '@constructive',
   registryUrl: 'https://constructive-io.github.io/blocks/r/{name}.json',
   registryHomepage: 'https://constructive-io.github.io/blocks',
+  appKitDocsUrl: 'https://constructive-io.github.io/blocks/blocks/app-kit/',
+  appKitDocsPath: 'apps/blocks/src/app/blocks/app-kit/page.tsx',
   registrySchema: 'https://ui.shadcn.com/schema/registry.json',
-  shadcnVersion: '4.13.1',
+  publicShadcnTag: 'latest',
+  testedShadcnVersion: '4.16.1',
+  workspaceShadcnVersion: '4.13.1',
   packageManager: 'pnpm@10.28.0',
   nodeEngine: '>=24.0.0',
   metaContractVersion: '2026-07',
@@ -103,7 +107,7 @@ export function pinInspectorInstallCommand(command, itemName) {
     command === liveCommand,
     `${itemName} inspector install command changed from the reviewed latest-version template.`
   );
-  return `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${itemName}`;
+  return `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/${itemName}`;
 }
 
 const META_CONTRACT_REQUIREMENTS = {
@@ -345,6 +349,7 @@ const CANONICAL_SOURCE_PATHS = [
   'apps/registry/scripts/build.ts',
   'packages/ui/registry.json',
   'apps/blocks/registry.json',
+  'apps/blocks/src/app/blocks/app-kit/page.tsx',
   'scripts/inspect-console-kit.ts',
   'apps/blocks/src/feature-packs/catalog.ts',
   'apps/blocks/src/feature-packs/capabilities.ts',
@@ -2029,6 +2034,10 @@ export function assertBriefRoutes(fixture, catalogItems) {
       'forbiddenAssumptions'
     ]) {
       assertStringArray(route[field], `${route.id}.${field}`);
+      assert(
+        route[field].length > 0,
+        `${route.id}.${field} must not be empty.`
+      );
     }
     assert(
       typeof route.starterRequested === 'boolean',
@@ -2053,6 +2062,7 @@ export function assertBriefRoutes(fixture, catalogItems) {
       route.expectedRoots.every((root) => APP_KIT_ROOT_NAMES.includes(root)),
       `${route.id} references an unknown App Kit root.`
     );
+    const selectedMetadata = [];
     for (const root of route.expectedRoots) {
       const catalogItem = catalogByName.get(root);
       assert(catalogItem, `${route.id} references App Kit root ${root} absent from the registry catalog.`);
@@ -2061,10 +2071,37 @@ export function assertBriefRoutes(fixture, catalogItems) {
         metadata?.family === 'app-kit',
         `${route.id} root ${root} is not catalogued in the app-kit family.`
       );
+      assertConstructiveRegistryMetadata(
+        metadata,
+        `${route.id} root ${root}.meta.constructive`,
+        root
+      );
       assert(
         selectsStarter ? metadata.kind === 'starter' : metadata.kind !== 'starter',
         `${route.id} root ${root} has incompatible starter metadata.`
       );
+      selectedMetadata.push({ root, metadata });
+    }
+    for (const [briefField, metadataField] of [
+      ['dataShapes', 'dataShapes'],
+      ['userIntents', 'intents'],
+      ['capabilities', 'capabilities']
+    ]) {
+      const selectedVocabulary = new Set(
+        selectedMetadata.flatMap(({ metadata }) => metadata[metadataField])
+      );
+      for (const value of route[briefField]) {
+        assert(
+          selectedVocabulary.has(value),
+          `${route.id}.${briefField} value ${value} is not declared by a selected root's meta.constructive.${metadataField}.`
+        );
+      }
+      for (const { root, metadata } of selectedMetadata) {
+        assert(
+          metadata[metadataField].some((value) => route[briefField].includes(value)),
+          `${route.id} root ${root} has no ${briefField} evidence grounded in meta.constructive.${metadataField}.`
+        );
+      }
     }
     assert(
       route.forbiddenRoots.includes('feature-pack-data') &&
@@ -2083,8 +2120,8 @@ export function assertBriefRoutes(fixture, catalogItems) {
     }
   }
   assert(
-    cases.get('event-studio-opt-in')?.backendPreset === 'b2b',
-    'Event Studio must pair with the supported b2b preset.'
+    cases.get('event-studio-opt-in')?.backendPreset === 'b2b:storage',
+    'Event Studio must pair with the supported b2b:storage preset.'
   );
   return cases;
 }
@@ -2732,7 +2769,10 @@ function assertRelease(snapshot, sources) {
   assert(snapshot.release.publicRegistryReady === false, 'Public registry must remain branch-only.');
   assert(snapshot.release.packageManager === PINNED.packageManager, 'release.packageManager drifted.');
   assert(snapshot.release.nodeEngine === PINNED.nodeEngine, 'release.nodeEngine drifted.');
-  assert(snapshot.release.shadcnVersion === PINNED.shadcnVersion, 'release.shadcnVersion drifted.');
+  assert(
+    snapshot.release.testedShadcnVersion === PINNED.testedShadcnVersion,
+    'release.testedShadcnVersion drifted.'
+  );
   assert(Array.isArray(snapshot.release.packages), 'release.packages must be an array.');
   assert(snapshot.release.packages.length === PACKAGE_RELEASES.length, 'release.packages count drifted.');
   for (let index = 0; index < PACKAGE_RELEASES.length; index += 1) {
@@ -2793,7 +2833,7 @@ function assertRelease(snapshot, sources) {
     'pnpm --dir <blocks-repo> pack:local',
     'pnpm --dir <blocks-repo> local:registry',
     'python3 -m http.server',
-    'shadcn@4.13.1'
+    'shadcn@4.16.1'
   ]) {
     assert(commands.includes(required), `Local consumption is missing ${required}.`);
   }
@@ -2816,6 +2856,33 @@ function assertRelease(snapshot, sources) {
     snapshot.release.localConsumption.localInstallCommandTemplate ===
       'pnpm --dir <blocks-repo>/apps/registry exec shadcn add @constructive/{name} --cwd <consumer-repo> --yes',
     'Local install command template drifted.'
+  );
+  assert(
+    snapshot.release.localConsumption.testedInstallCommandTemplate ===
+      `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/{name}`,
+    'Exact tested install command template drifted.'
+  );
+}
+
+function assertAppKitDocumentation(snapshot, sources) {
+  assertObject(snapshot.documentation, 'documentation');
+  assertObject(snapshot.documentation.appKit, 'documentation.appKit');
+  const documentation = snapshot.documentation.appKit;
+  assertObject(documentation.public, 'documentation.appKit.public');
+  assert(
+    documentation.public.url === PINNED.appKitDocsUrl,
+    'App Kit public documentation URL drifted.'
+  );
+  assert(
+    documentation.public.status ===
+      (snapshot.release.publicRegistryReady ? 'available' : 'future-only'),
+    'App Kit public documentation status must follow publicRegistryReady.'
+  );
+  assertSourceLink(
+    documentation.pinnedSource,
+    PINNED.appKitDocsPath,
+    sources,
+    'App Kit pinned documentation source'
   );
 }
 
@@ -3492,10 +3559,22 @@ export function assertSnapshot(snapshot) {
   assertObject(snapshot.registry, 'registry');
   assert(snapshot.registry.namespace === PINNED.registryNamespace, 'registry.namespace drifted.');
   assert(snapshot.registry.urlTemplate === PINNED.registryUrl, 'registry.urlTemplate drifted.');
-  assert(snapshot.registry.shadcnVersion === PINNED.shadcnVersion, 'registry.shadcnVersion drifted.');
   assert(
-    snapshot.registry.shadcnVersionPolicy === 'exact',
-    'registry.shadcnVersionPolicy must be exact.'
+    snapshot.registry.publicShadcnTag === PINNED.publicShadcnTag,
+    'registry.publicShadcnTag drifted.'
+  );
+  assert(
+    snapshot.registry.publicInstallCommandTemplate ===
+      `pnpm dlx shadcn@${PINNED.publicShadcnTag} add ${PINNED.registryNamespace}/{name}`,
+    'registry.publicInstallCommandTemplate drifted.'
+  );
+  assert(
+    snapshot.registry.testedShadcnVersion === PINNED.testedShadcnVersion,
+    'registry.testedShadcnVersion drifted.'
+  );
+  assert(
+    snapshot.registry.testedShadcnVersionPolicy === 'exact',
+    'registry.testedShadcnVersionPolicy must be exact.'
   );
   assert(
     !Object.hasOwn(snapshot.registry, 'minimumShadcnVersion'),
@@ -3559,7 +3638,7 @@ export function assertSnapshot(snapshot) {
     assertStringArray(item.featurePacks, `${item.name}.featurePacks`);
     assertStringArray(item.presetProfiles, `${item.name}.presetProfiles`);
     const command =
-      `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${item.name}`;
+      `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/${item.name}`;
     assert(item.installCommand === command, `${item.name} install command drifted.`);
   }
   for (const packId of PACK_IDS) {
@@ -3626,6 +3705,7 @@ export function assertSnapshot(snapshot) {
   );
 
   assertRelease(snapshot, sources);
+  assertAppKitDocumentation(snapshot, sources);
   assertExact(
     snapshot.adapterContractProfiles,
     ADAPTER_CONTRACT_PROFILES,
@@ -3736,7 +3816,7 @@ export function projectRegistryCatalog(registry) {
         ? {}
         : { meta: { constructive } }),
       installCommand:
-        `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${item.name}`
+        `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/${item.name}`
     };
   });
   return {
@@ -3800,7 +3880,7 @@ export function assertRegistryCatalog(catalog, snapshot) {
       assertNullableString(file.target, `${item.name} file.target`);
     }
     const command =
-      `pnpm dlx shadcn@${PINNED.shadcnVersion} add ${PINNED.registryNamespace}/${item.name}`;
+      `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add ${PINNED.registryNamespace}/${item.name}`;
     assert(item.installCommand === command, `${item.name} catalog install command drifted.`);
     for (const dependency of item.registryDependencies) {
       if (!dependency.startsWith(`${PINNED.registryNamespace}/`)) continue;
@@ -4318,29 +4398,69 @@ function runtimeStatusForRoot(item, snapshot) {
 
 function publicInstallForCommand(snapshot, command) {
   const available = snapshot.release.publicRegistryReady === true;
+  const testedPrefix = `pnpm dlx shadcn@${PINNED.testedShadcnVersion} add `;
+  assert(
+    command.startsWith(testedPrefix),
+    'Public install projection requires an exact tested shadcn command.'
+  );
+  const publicCommand =
+    `pnpm dlx shadcn@${PINNED.publicShadcnTag} add ${command.slice(testedPrefix.length)}`;
   return {
     status: available ? 'available' : 'blocked',
     availability: available ? 'released' : 'future-only',
-    command,
+    command: publicCommand,
     reason: available
       ? null
       : 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
   };
 }
 
+function appKitDocumentationForQuery(snapshot) {
+  const documentation = snapshot.documentation.appKit;
+  const available = snapshot.release.publicRegistryReady === true;
+  return {
+    authority: available
+      ? {
+          kind: 'public-url',
+          url: documentation.public.url
+        }
+      : {
+          kind: 'pinned-source',
+          sourceCommit: snapshot.source.commit,
+          path: documentation.pinnedSource.path,
+          sha256: documentation.pinnedSource.sha256
+        },
+    public: {
+      status: available ? 'available' : 'future-only',
+      url: available ? documentation.public.url : null
+    },
+    pinnedSource: {
+      sourceCommit: snapshot.source.commit,
+      path: documentation.pinnedSource.path,
+      sha256: documentation.pinnedSource.sha256
+    }
+  };
+}
+
 function installabilityEnvelope(snapshot) {
   const local = snapshot.release.localConsumption;
+  const publicAvailable = snapshot.release.publicRegistryReady === true;
   return {
     releaseStatus: snapshot.release.status,
     publicRegistryReady: snapshot.release.publicRegistryReady,
+    appKitDocumentation: appKitDocumentationForQuery(snapshot),
     publicInstall: {
-      status: 'blocked',
-      availability: 'future-only',
-      commandTemplate: local.installCommandTemplate,
-      reason: 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
+      status: publicAvailable ? 'available' : 'blocked',
+      availability: publicAvailable ? 'released' : 'future-only',
+      commandTemplate: snapshot.registry.publicInstallCommandTemplate,
+      reason: publicAvailable
+        ? null
+        : 'The pinned Blocks source is branch-only and its public registry artifacts are not released.'
     },
     pinnedLocalConsumption: {
       sourceCommit: snapshot.source.commit,
+      testedShadcnVersion: snapshot.registry.testedShadcnVersion,
+      testedInstallCommandTemplate: local.testedInstallCommandTemplate,
       acceptedCheckoutStates: snapshot.source.acceptedCheckoutStates,
       workflow: local.bootstrapSequence,
       installCommandTemplate: local.localInstallCommandTemplate,
@@ -4391,6 +4511,20 @@ function metaContractForItem(snapshot, itemName) {
   return snapshot.metaContract;
 }
 
+function registryDocsForQuery(item, snapshot, docs) {
+  if (
+    snapshot.release.publicRegistryReady === true ||
+    constructiveMetadataForItem(item)?.family !== 'app-kit' ||
+    typeof docs !== 'string'
+  ) {
+    return docs;
+  }
+  return docs.replace(
+    `Guide: ${PINNED.appKitDocsUrl}`,
+    'Guide: resolve installability.appKitDocumentation.authority from this validated query.'
+  );
+}
+
 function registryItemForQuery(item, snapshot) {
   const override = registryQueryOverride(snapshot, item.name);
   const installRoot = snapshot.items.find(
@@ -4403,13 +4537,14 @@ function registryItemForQuery(item, snapshot) {
         reason: override.reason
       }]
     : [];
+  const docs = override ? override.portableValue : item.docs;
   return {
     name: item.name,
     type: item.type,
     title: item.title,
     description: item.description,
     categories: item.categories,
-    docs: override ? override.portableValue : item.docs,
+    docs: registryDocsForQuery(item, snapshot, docs),
     dependencies: item.dependencies,
     devDependencies: item.devDependencies,
     registryDependencies: item.registryDependencies,
@@ -4727,7 +4862,7 @@ function assertLiveRelease(blocksRepo) {
     'Blocks registry package.json'
   );
   assert(
-    registryPackage.devDependencies?.shadcn === PINNED.shadcnVersion,
+    registryPackage.devDependencies?.shadcn === PINNED.workspaceShadcnVersion,
     'Live shadcn registry dependency drifted.'
   );
   for (const expected of PACKAGE_RELEASES) {

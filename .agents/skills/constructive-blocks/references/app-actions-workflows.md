@@ -1,9 +1,9 @@
 # Wire App Kit actions and workflows
 
 Read this when a brief includes mutations, confirmations, bulk execution, or a
-multi-step interaction. Use the
-[canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for current action definitions, runtime hooks, surfaces, and invalidation APIs.
+multi-step interaction. Resolve `installability.appKitDocumentation.authority`
+through the validated App Kit catalog query for current action definitions,
+runtime hooks, surfaces, and invalidation APIs.
 
 ## Define actions from user intent
 

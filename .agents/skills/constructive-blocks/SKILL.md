@@ -13,16 +13,19 @@ PostgreSQL/RLS authority. Keep those as separate facts.
 Choose between two orthogonal lanes. Use App Kit to compose an application
 around domain resources and user tasks. Add feature packs or Console Kit only
 when the product also needs their specific platform-capability surfaces.
-Treat the [canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-as authority for exact APIs and exports; this skill owns selection and
-verification procedure.
+Treat `installability.appKitDocumentation.authority` from the validated catalog
+query as authority for exact APIs and exports; this skill owns selection and
+verification procedure. While the release is branch-only, read the returned
+`pinned-source` path from the source-preflighted Blocks checkout. Use the public
+URL only when the query returns `kind: public-url`.
 
 ## Read the pinned contract first
 
 [`references/install-roots.v1.json`](references/install-roots.v1.json) is the
 portable authority for the exact Blocks branch and commit, release state,
 `_meta` contract, endpoint bindings, package versions, source and built-content
-hashes, 19 complete inspector plans, Console runtime invariants, and
+hashes, the branch-aware App Kit documentation source, 19 complete inspector
+plans, Console runtime invariants, and
 structurally scoped source limitations. Use the validated
 queries below for ordinary selection; load the full snapshot only when
 auditing or updating the contract.
@@ -41,6 +44,8 @@ node /absolute/path/to/check-blocks-contract.mjs --registry-item app-shell
 Use the returned `name`, `type`, `categories`, `docs`, and versioned metadata to
 select candidates. Inspect one item before installation to verify its
 dependencies, file targets, release status, and limitations.
+For App Kit, also resolve the returned
+`installability.appKitDocumentation.authority` before implementing an exact API.
 
 Always use the validated queries for Data. The byte-pinned source catalog and
 plan retain incorrect generic Data documentation as drift evidence; query
@@ -190,6 +195,11 @@ without replacing checked-in files.
    availability, executable roots, grants, or RLS-visible rows. Verify those
    after integration.
 
+For App Kit, installation is only dependency acquisition. Application-owned
+code must import and compose the selected definitions and views into working
+user paths; installed source directories, navigation labels, prose, or empty
+placeholders are never evidence that a capability was implemented.
+
 Select Sheets only for spreadsheet-style inline editing and generic table
 exploration. Do not substitute Console Kit for a domain application shell or
 turn every action flow into a review queue.
@@ -197,7 +207,7 @@ turn every action flow into a review queue.
 ## Respect the branch-only release gate
 
 The pinned source is
-`feat/app-kit@c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b`.
+`feat/app-kit@1a72e5d95f7ce4a243cd4536ed78c638708d538c`.
 The checkout may be that named branch or detached at the exact commit. Its
 publication status is `branch-only`, and
 `release.publicRegistryReady` is `false`. Do not run a public install for these
@@ -227,8 +237,10 @@ Released query surfaces expose `publicInstall` with the command beside its
 `status` and `availability`; execute it only when status is `available`.
 Branch-only responses mark it `blocked` and `future-only`, so use the
 `installability.pinnedLocalConsumption` command template instead. Keep shadcn
-at `4.13.1`; nested dependencies still require the `@constructive` namespace
-when the root is installed by direct URL.
+at the exact returned `testedShadcnVersion` for reproducible branch-local
+diagnostics. Released public commands use `shadcn@latest`; nested dependencies
+still require the `@constructive` namespace when a root is installed by direct
+URL.
 
 ## Integrate the installed owner
 

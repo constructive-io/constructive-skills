@@ -26,7 +26,8 @@ import {
 } from './check-blocks-contract.mjs';
 import {
   changedReplacementPaths,
-  parseArguments as parseSyncArguments
+  parseArguments as parseSyncArguments,
+  repinContract
 } from './sync-blocks-contract.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -39,6 +40,10 @@ const briefRoutesReference = path.join(
   scriptDirectory,
   '../references/brief-to-roots.v1.json'
 );
+const registryCatalogReference = path.join(
+  scriptDirectory,
+  '../references/registry-catalog.v1.json'
+);
 
 test('transactional Blocks contract synchronizer requires an explicit checkout', () => {
   assert.deepEqual(
@@ -46,6 +51,7 @@ test('transactional Blocks contract synchronizer requires an explicit checkout',
     {
       blocksRepo: '/tmp/blocks',
       check: true,
+      repin: false,
       refreshPackageResolutions: false,
       help: false
     }
@@ -56,6 +62,10 @@ test('transactional Blocks contract synchronizer requires an explicit checkout',
       '/tmp/blocks',
       '--refresh-package-resolutions'
     ]).refreshPackageResolutions,
+    true
+  );
+  assert.equal(
+    parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--repin']).repin,
     true
   );
   assert.throws(
@@ -70,6 +80,32 @@ test('transactional Blocks contract synchronizer requires an explicit checkout',
     () => parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--unknown']),
     /Unknown argument --unknown/
   );
+});
+
+test('transactional Blocks contract synchronizer repins only release coordinates', () => {
+  const current = {
+    source: { commit: 'old' },
+    release: {
+      testedShadcnVersion: '0.0.0',
+      localConsumption: { testedInstallCommandTemplate: 'old command' }
+    },
+    registry: { testedShadcnVersion: '0.0.0' },
+    preserved: { value: true }
+  };
+
+  assert.deepEqual(repinContract(current), {
+    source: { commit: '1a72e5d95f7ce4a243cd4536ed78c638708d538c' },
+    release: {
+      testedShadcnVersion: '4.16.1',
+      localConsumption: {
+        testedInstallCommandTemplate:
+          'pnpm dlx shadcn@4.16.1 add @constructive/{name}'
+      }
+    },
+    registry: { testedShadcnVersion: '4.16.1' },
+    preserved: { value: true }
+  });
+  assert.equal(current.source.commit, 'old');
 });
 
 test('synchronizer check mode detects generated artifact drift', () => {
@@ -125,7 +161,7 @@ test('npm dependency requirements preserve exact versions while canonicalizing n
       'pnpm dlx shadcn@latest add @constructive/app-kit-data',
       'app-kit-data'
     ),
-    'pnpm dlx shadcn@4.13.1 add @constructive/app-kit-data'
+    'pnpm dlx shadcn@4.16.1 add @constructive/app-kit-data'
   );
   assert.throws(
     () => pinInspectorInstallCommand(
@@ -137,23 +173,9 @@ test('npm dependency requirements preserve exact versions while canonicalizing n
 });
 
 function appKitCatalogFixture() {
-  return [
-    'app-kit-core',
-    'app-kit-data',
-    'app-kit-board',
-    'app-kit-dashboard',
-    'app-kit-calendar',
-    'app-kit-workflow',
-    'app-kit-event-studio'
-  ].map((name) => ({
-    name,
-    meta: {
-      constructive: {
-        family: 'app-kit',
-        kind: name === 'app-kit-event-studio' ? 'starter' : 'view'
-      }
-    }
-  }));
+  return JSON.parse(readFileSync(registryCatalogReference, 'utf8')).items.filter(
+    (item) => item.meta?.constructive?.family === 'app-kit'
+  );
 }
 
 function runQuery(arguments_) {
@@ -366,6 +388,13 @@ test('loaded catalog backs validated App Kit family and capability queries', () 
       'app-kit-event-studio'
     ]
   );
+  for (const item of family.items) {
+    assert.doesNotMatch(
+      item.docs,
+      /constructive-io\.github\.io\/blocks\/blocks\/app-kit/
+    );
+    assert.match(item.docs, /appKitDocumentation\.authority/);
+  }
   const temporal = runQuery([
     '--list-registry',
     '--family',
@@ -439,7 +468,7 @@ test('brief routes select App Kit by shape instead of Sheets, Console, or review
   );
   assert.equal(
     briefRouteById.get('event-studio-opt-in').backendPreset,
-    'b2b'
+    'b2b:storage'
   );
 
   const missingOptIn = structuredClone(briefRoutes);
@@ -448,6 +477,30 @@ test('brief routes select App Kit by shape instead of Sheets, Console, or review
   assert.throws(
     () => assertBriefRoutes(missingOptIn, catalogItems),
     /only with explicit starterRequested opt-in/
+  );
+
+  const unknownCapability = structuredClone(briefRoutes);
+  unknownCapability.cases.find((route) => route.id === 'service-desk')
+    .capabilities.push('spatial');
+  assert.throws(
+    () => assertBriefRoutes(unknownCapability, catalogItems),
+    /capabilities value spatial is not declared by a selected root/
+  );
+
+  const emptyDataShapes = structuredClone(briefRoutes);
+  emptyDataShapes.cases.find((route) => route.id === 'service-desk')
+    .dataShapes = [];
+  assert.throws(
+    () => assertBriefRoutes(emptyDataShapes, catalogItems),
+    /service-desk\.dataShapes must not be empty/
+  );
+
+  const unsupportedDashboard = structuredClone(briefRoutes);
+  unsupportedDashboard.cases.find((route) => route.id === 'service-desk')
+    .expectedRoots.splice(2, 0, 'app-kit-dashboard');
+  assert.throws(
+    () => assertBriefRoutes(unsupportedDashboard, catalogItems),
+    /app-kit-dashboard has no dataShapes evidence grounded in meta\.constructive\.dataShapes/
   );
 });
 
@@ -568,13 +621,20 @@ test('standalone Data conditional configuration remains complete and exact', () 
   );
 });
 
-test('the shadcn CLI policy remains an exact pin', () => {
+test('public shadcn latest stays separate from the exact tested CLI version', () => {
   const loaded = loadPortableContract();
   const mutation = structuredClone(loaded.snapshot);
-  mutation.registry.shadcnVersionPolicy = 'minimum';
+  mutation.registry.testedShadcnVersionPolicy = 'minimum';
   assert.throws(
     () => assertSnapshot(mutation),
-    /shadcnVersionPolicy must be exact/
+    /testedShadcnVersionPolicy must be exact/
+  );
+
+  const publicMutation = structuredClone(loaded.snapshot);
+  publicMutation.registry.publicShadcnTag = '4.13.1';
+  assert.throws(
+    () => assertSnapshot(publicMutation),
+    /publicShadcnTag drifted/
   );
 
   const legacyMutation = structuredClone(loaded.snapshot);
@@ -582,6 +642,29 @@ test('the shadcn CLI policy remains an exact pin', () => {
   assert.throws(
     () => assertSnapshot(legacyMutation),
     /minimumShadcnVersion is forbidden/
+  );
+});
+
+test('App Kit documentation follows the release gate and pins local source', () => {
+  const loaded = loadPortableContract();
+  assert.equal(loaded.snapshot.documentation.appKit.public.status, 'future-only');
+  assert.equal(
+    loaded.snapshot.documentation.appKit.pinnedSource.path,
+    'apps/blocks/src/app/blocks/app-kit/page.tsx'
+  );
+
+  const statusMutation = structuredClone(loaded.snapshot);
+  statusMutation.documentation.appKit.public.status = 'available';
+  assert.throws(
+    () => assertSnapshot(statusMutation),
+    /public documentation status must follow publicRegistryReady/
+  );
+
+  const sourceMutation = structuredClone(loaded.snapshot);
+  sourceMutation.documentation.appKit.pinnedSource.path = 'README.md';
+  assert.throws(
+    () => assertSnapshot(sourceMutation),
+    /pinned documentation source\.path drifted/
   );
 });
 
@@ -736,7 +819,7 @@ test('query mode validates first and is independent of the current directory', (
   assert.equal(item.name, 'app-shell');
   assert.equal(
     item.publicInstall.command,
-    'pnpm dlx shadcn@4.13.1 add @constructive/app-shell'
+    'pnpm dlx shadcn@latest add @constructive/app-shell'
   );
   assert.equal(item.publicInstall.status, 'blocked');
   assert.equal(item.publicInstall.availability, 'future-only');
@@ -806,11 +889,23 @@ test('every query mode exposes the same branch-only installability gate', () => 
     assert.equal(gate.publicInstall.availability, 'future-only');
     assert.match(
       gate.publicInstall.commandTemplate,
-      /shadcn@4\.13\.1 add @constructive\/\{name\}/
+      /shadcn@latest add @constructive\/\{name\}/
     );
+    assert.equal(gate.appKitDocumentation.authority.kind, 'pinned-source');
+    assert.equal(
+      gate.appKitDocumentation.authority.path,
+      'apps/blocks/src/app/blocks/app-kit/page.tsx'
+    );
+    assert.equal(gate.appKitDocumentation.public.status, 'future-only');
+    assert.equal(gate.appKitDocumentation.public.url, null);
     assert.equal(
       gate.pinnedLocalConsumption.sourceCommit,
-      'c7ad28b5c48bd1f5925f9fc1cd625399038c1f9b'
+      '1a72e5d95f7ce4a243cd4536ed78c638708d538c'
+    );
+    assert.equal(gate.pinnedLocalConsumption.testedShadcnVersion, '4.16.1');
+    assert.match(
+      gate.pinnedLocalConsumption.testedInstallCommandTemplate,
+      /shadcn@4\.16\.1 add @constructive\/\{name\}/
     );
     assert.equal(
       gate.pinnedLocalConsumption.consumerIsolation.required,
@@ -844,7 +939,7 @@ test('query surfaces expose only status-bearing publicInstall commands', () => {
   for (const publicInstall of publicInstalls) {
     assert.equal(publicInstall.status, 'blocked');
     assert.equal(publicInstall.availability, 'future-only');
-    assert.match(publicInstall.command, /^pnpm dlx shadcn@4\.13\.1 add @constructive\//);
+    assert.match(publicInstall.command, /^pnpm dlx shadcn@latest add @constructive\//);
     assert.match(publicInstall.reason, /branch-only/);
   }
   for (const item of rootList.items) {

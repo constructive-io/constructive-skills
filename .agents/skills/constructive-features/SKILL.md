@@ -27,9 +27,10 @@ owns exact roots, dependency closure, runtime contracts, and verification.
 4. Activate [`constructive-frontend`](../constructive-frontend/SKILL.md) after
    selection when the application needs custom visual composition.
 
-Use the [canonical Blocks App Kit docs](https://constructive-io.github.io/blocks/blocks/app-kit/)
-for exact contracts. Do not default to Sheets, Console Kit, a dashboard,
-board, or review queue merely because the domain contains records or statuses.
+Use the branch-aware App Kit documentation authority returned by the validated
+Blocks catalog for exact contracts. Do not default to Sheets, Console Kit, a
+dashboard, board, or review queue merely because the domain contains records or
+statuses.
 
 ## Route optional platform capabilities
 
