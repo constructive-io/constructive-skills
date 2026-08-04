@@ -116,7 +116,7 @@ See [invites.md](./references/invites.md) for invite types, claim flow, and erro
 |------|---------|
 | [blueprint-entity-types.md](./references/blueprint-entity-types.md) | Blueprint entity_types spec and examples |
 | [invites.md](./references/invites.md) | Invite types, claim flow, profile assignment |
-| [orm-provisioning.md](./references/orm-provisioning.md) | ORM/GraphQL provisioning examples |
+| [orm-provisioning.md](./references/orm-provisioning.md) | ORM/GraphQL provisioning examples, the control-plane endpoint/token, and registration immutability |
 
 ## Cross-References
 
@@ -125,3 +125,4 @@ See [invites.md](./references/invites.md) for invite types, claim flow, and erro
 - **File uploads:** [`constructive-storage`](../constructive-storage/SKILL.md)
 - **Limits per entity:** [`constructive-billing`](../constructive-billing/SKILL.md)
 - **Organizations feature-pack UI:** [`constructive-blocks`](../constructive-blocks/SKILL.md)
+- **Credentials scoped to entity rows:** [`constructive-principals`](../constructive-principals/SKILL.md)

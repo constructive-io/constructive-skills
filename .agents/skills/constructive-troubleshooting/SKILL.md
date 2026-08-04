@@ -902,7 +902,7 @@ The dynamically-provisioned per-tenant `users` table has RLS enabled and a colum
 
 ### Solution
 
-Apply the users-table self-update policy as a control-plane step (the `provision.ts` template already runs it) — `createSecureTableProvision` on `http://modules.localhost:3000/graphql` with the provisioning sudo token:
+Apply the users-table self-update policy as a [control-plane](../constructive-architecture/SKILL.md#control-plane-vs-data-plane) step (the `provision.ts` template already runs it) — `createSecureTableProvision` on `http://modules.localhost:3000/graphql` with the provisioning sudo token:
 
 ```typescript
 await modulesClient.secureTableProvision.create({

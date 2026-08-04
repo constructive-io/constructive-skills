@@ -59,7 +59,7 @@ Every operation belongs to one of two planes, and each plane has its own token. 
 
 A platform token never authenticates a data-plane call. Each database issues its own JWTs from its own auth module — the two token families have different issuers and audiences, and the data API validates only its own. The reverse also holds: a per-database token or API key cannot call the platform API. When a flow crosses planes (for example: provision an entity type, then mint a key scoped to its rows), it must hold both tokens and send each to its own plane.
 
-API keys are data-plane credentials: a key minted on one database authenticates `api-<subdomain>` for that database only. See [`constructive-principals`](../constructive-principals/SKILL.md) for the mint flow.
+API keys are data-plane credentials: a key minted on one database authenticates `api-<subdomain>` for that database only. See [`constructive-principals`](../constructive-principals/SKILL.md) for the mint flow, and [`constructive-entities` → orm-provisioning.md](../constructive-entities/references/orm-provisioning.md) for control-plane entity-type provisioning.
 
 ## Provisioning Flow
 

@@ -1,6 +1,6 @@
 ---
 name: constructive-principals-api-keys
-description: API key lifecycle via the SDK ORM — createApiKey/createOrgApiKey, access levels, MFA level, expiry, listing via orgApiKeyList, revocation, and plaintext-once handling.
+description: API key lifecycle via the SDK ORM — createApiKey/createOrgApiKey, access levels, MFA level, expiry, the STEP_UP_REQUIRED + verifyPassword retry, listing via orgApiKeyList, revocation, and plaintext-once handling.
 ---
 
 # API Keys (via the SDK ORM)
@@ -39,11 +39,45 @@ console.log(createApiKey.result.apiKey); // <-- shown ONCE. Store it now.
 | `accessLevel` | String | `'full_access'` (default) or `'read_only'` |
 | `mfaLevel` | String | MFA level required to present this key |
 | `expiresIn` | IntervalInput | e.g. `{ days: 90 }`, `{ hours: 12 }`; omit = no expiry |
-| `principalId` | UUID | Optional — mint the key for an existing principal instead of creating a new one |
+| `principalId` | UUID | Optional — mint the key for an existing principal instead of creating a new one. Must be the principal's **identity user id** (what `createPrincipal`/`createOrgPrincipal` return in `result`), *not* the `principals` row `id` — passing the row id fails with `PRINCIPAL_NOT_OWNED`. |
+
+**Omitting `principalId` mints a personal key**: it acts as the calling human with all of their access. Scope comes only from the principal, so create the scoped principal first and pass its id.
 
 ### Return (`CreateApiKeyRecord`)
 
 `{ apiKey, keyId, expiresAt }`. **`apiKey` is the plaintext secret and is only returned here.** It is not stored in a form you can read back — capture it at creation time. Later you can only query metadata.
+
+## Step-up (`STEP_UP_REQUIRED`)
+
+Minting a key is step-up-guarded. If the session's last password/MFA proof is older than `step_up_window` (default 30 minutes — see [`constructive-security` → GuardStepUp](../../constructive-security/SKILL.md)), the mutation fails with a step-up error. Verify on the **same session** (same bearer token) and retry — a verify on a different session does not open the window for this one. A fresh password sign-in satisfies it with no extra call.
+
+```typescript
+const mint = () =>
+  db.mutation
+    .createApiKey(
+      { input: { principalId, keyName: 'reporting-bot', accessLevel: 'read_only', expiresIn: { days: 90 } } },
+      { select: { result: { apiKey: true, keyId: true, expiresAt: true } } },
+    )
+    .execute();
+
+let minted = await mint();
+if (!minted.ok && minted.errors.some((e) => /step[\s_-]?up/i.test(e.message))) {
+  const verified = await db.mutation
+    .verifyPassword({ input: { password } }, { select: { result: true } })
+    .execute();
+  if (verified.data?.verifyPassword?.result !== true) throw new Error('Password verification failed.');
+  minted = await mint();
+}
+```
+
+`verifyPassword` result semantics (verified against a live deployment):
+
+| Outcome | Response |
+|---|---|
+| Correct password | `{ result: true }` |
+| Wrong password | `{ result: null }` — **not** `false`, and **not** a GraphQL error |
+
+Treat anything other than `result === true` as a failed verify.
 
 ## Access levels
 

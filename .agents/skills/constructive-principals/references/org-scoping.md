@@ -1,11 +1,27 @@
 ---
 name: constructive-principals-org-scoping
-description: Scoping principals to orgs via principalEntity, per-membership-type overrides via principalScopeOverride, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes.
+description: Scoping principals to orgs and other entity types — principalEntity, principalScopeOverride, the create-time entityIds variant and its probe, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes.
 ---
 
-# Org Scoping
+# Scoping a Principal
 
-By default a principal inherits access to **every** org its owning human belongs to. Scoping narrows that to specific orgs. All of this is done through the SDK ORM — no SQL required.
+By default a principal inherits access to **every** org its owning human belongs to. Scoping narrows that to specific entity rows — orgs, or rows of any entity type you provisioned ([`constructive-entities`](../../constructive-entities/SKILL.md)). All of this is done through the SDK ORM — no SQL required.
+
+## Which scoping surface does this deployment expose?
+
+Two surfaces exist, and a deployment may expose one or the other depending on how far its schema has drifted from the generated SDK. Introspect `CreatePrincipalInput` on the per-database auth endpoint before you build on either:
+
+```graphql
+{ __type(name: "CreatePrincipalInput") { inputFields { name } } }
+```
+
+| Probe result | Surface | Semantics |
+|---|---|---|
+| `entityIds` present | **Create-time scoping** — pass `entityIds` (entity **row** UUIDs, not entity-type ids) and `isReadOnly` to `createPrincipal` | Scope is **fixed at creation**; to change it, create a new principal and mint a new key |
+| `entityIds` absent | **Post-hoc scoping** — the `principalEntity` / `principalScopeOverride` tables below | Scope is adjustable at any time |
+| Neither | The deployment cannot scope this principal | Fail the scoped request with that reason; mint an unscoped key only after the user explicitly accepts one |
+
+> Treat the create-time variant as **version skew between the SDK and the deployed auth schema** (observed 2026-08), not as two permanent products. Re-probe rather than assuming; prefer `principalEntity` when both are present.
 
 ## `principalEntity` — which orgs a principal may access
 

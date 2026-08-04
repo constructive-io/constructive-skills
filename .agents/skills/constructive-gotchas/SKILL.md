@@ -98,7 +98,7 @@ If you copy-edit the example verbatim, you will carry over generic tables into y
 
 `updateUser` returns **200 but persists 0 rows** (silent no-op) on the dynamically-provisioned per-tenant `users` table. The dynamic provisioner enables RLS + a column UPDATE grant to `authenticated` (username/display_name/profile_picture) but emits ONLY an `auth_sel` SELECT policy and **no UPDATE policy**, so RLS rejects every update. This is deterministic (verified identical across tenants) and is **not expressible in the blueprint** — `users` is module-owned.
 
-Fix = a CONTROL-PLANE step (the `provision.ts` template already runs it): AFTER `createDatabaseProvisionModule` + `constructBlueprint`, issue `createSecureTableProvision` on `http://modules.localhost:3000/graphql` with the SAME sudo/admin token used for provisioning:
+Fix = a CONTROL-PLANE step ([what that means](../constructive-architecture/SKILL.md#control-plane-vs-data-plane); the `provision.ts` template already runs it): AFTER `createDatabaseProvisionModule` + `constructBlueprint`, issue `createSecureTableProvision` on `http://modules.localhost:3000/graphql` with the SAME sudo/admin token used for provisioning:
 
 ```graphql
 createSecureTableProvision(input: { secureTableProvision: {

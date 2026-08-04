@@ -161,9 +161,11 @@ Source of truth: **`references/flow-catalog.md` → "API keys" (`api-keys`)** + 
     `accessLevelOptions` list of **`read`/`write`/`admin`**, which does **not** match the proc. **Constrain
     the UI to the two valid values** (`read_only`, `full_access`), or every create rejects.
 - **`mfaLevel ∈ { 'none', 'verified' }`.**
-- **`STEP_UP_REQUIRED` server-side.** A `verifyPassword` on the **same session** must precede the create
-  (defense-in-depth *beyond* the client gate). The `auth-api-key-create-dialog` runs that step-up first; if
-  you call `createApiKey` **directly**, complete `verifyPassword` before the mutation or it rejects.
+- **`STEP_UP_REQUIRED` server-side** (defense-in-depth *beyond* the client gate). The
+  `auth-api-key-create-dialog` runs the step-up first; if you call `createApiKey` **directly**, use the
+  verify-and-retry pattern in
+  [`constructive-principals` → api-keys.md § Step-up](../constructive-principals/references/api-keys.md#step-up-step_up_required),
+  which also owns the `verifyPassword` result semantics.
 
 ### 3.2 Reveal is one-time + step-up-gated
 

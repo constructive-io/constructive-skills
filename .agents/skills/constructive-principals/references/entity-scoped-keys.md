@@ -1,59 +1,33 @@
 ---
 name: constructive-principals-entity-scoped-keys
-description: End-to-end recipe for entity-scoped API keys — provision an entity type, create a scoped principal, satisfy step-up, mint with createApiKey, and use or revoke the key. Includes the create-time-scoping feature probe.
+description: Ordering recipe for entity-scoped API keys — which plane and token each step uses (entity type → scoped principal → step-up → createApiKey → use/revoke), the three constraints that make the order matter, and the flat createPrincipal SDK gap.
 ---
 
 # Entity-Scoped API Keys (End-to-End)
 
-This recipe takes you from nothing to a working credential that is scoped to specific entity rows: entity type → principal → step-up → `createApiKey` → use/revoke.
+This is the **ordering** recipe for a credential scoped to specific entity rows. Each step is owned by another reference; this file only says what order they go in, which plane each one talks to, and what breaks if you get it wrong.
 
-For org-only scoping, prefer the simpler `createOrgPrincipal` + `createOrgApiKey` flow in [SKILL.md](../SKILL.md) when the deployment exposes it. Use this recipe when scoping to a non-org entity type, or when the org mutations are absent.
+For org-only scoping, prefer the simpler `createOrgPrincipal` + `createOrgApiKey` flow in [api-keys.md](./api-keys.md). Use this recipe when scoping to a non-org entity type, or when the org mutations are absent.
 
-The flow crosses both planes (see [`constructive-architecture`](../../constructive-architecture/SKILL.md)):
+| # | Step | Plane | Endpoint / token | Owned by |
+|---|------|-------|------------------|----------|
+| 0 | Provision the entity type | Control | `modules.<host>` / platform account JWT | [`constructive-entities` → orm-provisioning.md](../../constructive-entities/references/orm-provisioning.md) |
+| 1 | Probe the scoping surface | Data | `auth-<subdomain>.<host>` / per-database token | [org-scoping.md](./org-scoping.md) |
+| 2 | Create the scoped principal | Data | `auth-<subdomain>.<host>` / per-database token | [org-scoping.md](./org-scoping.md), plus the SDK gap below |
+| 3 | Step up, then mint the key | Data | `auth-<subdomain>.<host>` / per-database token | [api-keys.md](./api-keys.md) |
+| 4 | Use and revoke | Data | `api-<subdomain>.<host>` / the minted key | [api-keys.md](./api-keys.md) |
 
-| Step | Plane | Endpoint | Token |
-|------|-------|----------|-------|
-| Provision the entity type | Control | Platform modules API (`modules.<host>`) | Platform account JWT |
-| Principal, step-up, key mint | Data | Per-database auth (`auth-<subdomain>.<host>`) | Per-database app token |
-| Use the key | Data | Per-database API (`api-<subdomain>.<host>`) | The minted key as bearer |
+The flow crosses planes, so it must hold **both** tokens and send each to its own plane — a platform token never authenticates a data-plane call and vice versa. See [`constructive-architecture` → Control Plane vs Data Plane](../../constructive-architecture/SKILL.md#control-plane-vs-data-plane).
 
-## Three hard constraints
+## Three constraints that fix the order
 
-1. **Keys are personal at mint.** `createApiKey` without a `principalId` mints a key that acts as the calling human, with all of their access. Scope comes only from the principal that the key is minted for — create the scoped principal first, then pass its id.
-2. **Scope is fixed at principal creation.** On deployments with create-time scoping, `CreatePrincipalInput` carries `entityIds` (entity-row UUIDs) and `isReadOnly`. There is no update path for a principal's scope on these deployments — to change scope, create a new principal and mint a new key. Deployments that instead expose the `principalEntity` / `principalScopeOverride` tables allow post-hoc adjustment (see [org-scoping.md](./org-scoping.md)). Probe before you rely on either surface (below), and never fall back to a broader key without an explicit user decision.
-3. **`STEP_UP_REQUIRED` demands `verifyPassword` on the same session.** Minting a key is a step-up-guarded operation. If the session's last password proof is older than the step-up window (default 30 minutes), the mint fails with a step-up error. Call `verifyPassword` with the same session token, then retry the mint. A fresh password sign-in satisfies the window with no extra call.
+1. **Keys are personal at mint.** `createApiKey` without a `principalId` mints a key that acts as the calling human with all of their access. Scope comes only from the principal, so step 2 must precede step 3.
+2. **Scope may be fixed at principal creation.** On create-time-scoping deployments there is no update path for a principal's scope — probe (step 1) before you commit to a shape, and never fall back to a broader key without an explicit user decision.
+3. **Step-up is per session.** The mint fails with `STEP_UP_REQUIRED` unless the *same* session has a recent password proof; `verifyPassword` and the retry both belong on the session that mints.
 
-## Step 0 — Provision the entity type (control plane)
+## Step 2 — creating the principal (SDK gap)
 
-An entity type (organization, team, project, …) provisions its own entity table plus membership wiring, and is the unit that keys can be scoped to. Use the platform `modules` client with the platform account JWT:
-
-```typescript
-const { createEntityTypeProvision } = await modules.entityTypeProvision
-  .create({
-    data: { databaseId, name: 'Team', prefix: 'team' },
-    select: { id: true, name: true, outEntityTableName: true, outInstalledModules: true },
-  })
-  .unwrap();
-// outEntityTableName: "team" — the entity table now in the per-database API schema.
-```
-
-Registrations are immutable: there is no update. To change one, delete it and create a new one. Deleting removes the registration only — **the provisioned entity table and its data stay in the API schema.**
-
-## Step 1 — Probe for create-time scoping (data plane)
-
-Deployments differ in where scope is expressed. Introspect `CreatePrincipalInput` on the per-database auth endpoint:
-
-```graphql
-{ __type(name: "CreatePrincipalInput") { inputFields { name } } }
-```
-
-- `entityIds` present → scope at create time (this recipe).
-- `entityIds` absent → check for the `principalEntity` / `principalScopeOverride` tables (post-hoc scoping, [org-scoping.md](./org-scoping.md)).
-- Neither → the deployment cannot scope this principal. Fail the scoped request with that reason. Mint an unscoped key only after the user explicitly accepts one.
-
-## Step 2 — Create the scoped principal (data plane)
-
-> **SDK gap:** the generated `db.principal.create` sends a nested `{ principal }` input, but the live `CreatePrincipalInput` is flat and its payload exposes only `result: UUID`. Until the SDK regenerates, send the mutation as raw GraphQL against the per-database auth endpoint (same bearer token as the SDK client).
+> **SDK gap (observed 2026-08).** The generated `db.principal.create` sends a nested `{ principal }` input, but the deployed `CreatePrincipalInput` is flat and its payload exposes only `result: UUID`. Until the SDK regenerates, send this one mutation as raw GraphQL against the per-database auth endpoint (same bearer token as the SDK client). Everything else in this recipe uses the ORM.
 
 ```graphql
 mutation ($input: CreatePrincipalInput!) {
@@ -62,65 +36,14 @@ mutation ($input: CreatePrincipalInput!) {
 ```
 
 ```jsonc
-// variables
+// variables — entityIds only on create-time-scoping deployments (probe first)
 {
   "input": {
     "name": "reporting-bot",
-    "entityIds": ["<entity-row-uuid>"],  // rows of the entity table from step 0
+    "entityIds": ["<entity-row-uuid>"],
     "isReadOnly": true
   }
 }
 ```
 
-`result` is the principal's identity user id — the value that `createApiKey.principalId` expects. The `principals` table row carries a different `id`, and `principalEntity.principalId` references that row id. Do not pass the row id to `createApiKey`: the mint fails with `PRINCIPAL_NOT_OWNED`. The owner is session-derived — there is no `ownerId` field. `entityIds` takes entity **row** UUIDs (rows of the provisioned entity table), not entity-type ids.
-
-## Step 3 — Mint the key, satisfy step-up (data plane)
-
-Mint with the SDK on the per-database auth client, passing the principal id:
-
-```typescript
-const mint = () =>
-  db.mutation
-    .createApiKey(
-      {
-        input: {
-          principalId,
-          keyName: 'reporting-bot',
-          accessLevel: 'read_only',
-          expiresIn: { days: 90 },
-        },
-      },
-      { select: { result: { select: { apiKey: true, keyId: true, expiresAt: true } } } },
-    )
-    .execute();
-
-let minted = await mint();
-if (!minted.ok && minted.errors.some((e) => /step[\s_-]?up/i.test(e.message))) {
-  const verified = await db.mutation
-    .verifyPassword({ input: { password } }, { select: { result: true } })
-    .execute();
-  if (verified.data?.verifyPassword?.result !== true) throw new Error('Password verification failed.');
-  minted = await mint();
-}
-```
-
-`verifyPassword` semantics, proven against a live deployment:
-
-- Correct password → `{ result: true }`.
-- Wrong password → `{ result: null }` — **not** `false` and **not** a GraphQL error. Treat anything other than `result === true` as a failed verify.
-- The verify must run on the **same session** (same bearer token) as the mint. A verify on a different session does not open the step-up window for this one.
-
-The returned `apiKey` plaintext appears exactly once — store it immediately (see [api-keys.md](./api-keys.md) for the full lifecycle).
-
-## Step 4 — Use and revoke
-
-Present the plaintext as a bearer token to the **per-database API endpoint** (`api-<subdomain>`). The session authenticates as the principal: reads are limited to the scoped entity rows, writes are rejected when `isReadOnly` or `accessLevel: 'read_only'` is set.
-
-```typescript
-await db.mutation
-  .revokeApiKey({ input: { keyId } }, { select: { result: true } })
-  .execute()
-  .unwrap();
-```
-
-After revocation the key fails with `UNAUTHENTICATED`. Revocation is soft (audit row stays). Delete the principal to remove the identity entirely — its keys cascade.
+`result` is the principal's **identity user id** — the value `createApiKey.principalId` expects. The `principals` table row carries a different `id` (the one `principalEntity.principalId` references); passing that row id to the mint fails with `PRINCIPAL_NOT_OWNED`. The owner is session-derived — there is no `ownerId` field.

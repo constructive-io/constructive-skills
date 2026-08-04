@@ -53,7 +53,7 @@ The generated auth ORM client (`db`) exposes principals as tables plus a set of 
 
 | Model | Purpose | Key fields |
 |-------|---------|-----------|
-| `db.principal` | The principal identity | `id`, `ownerId`, `userId`, `name`, `allowedMask`, `isReadOnly`, `bypassStepUp` |
+| `db.principal` | The principal identity | `id`, `ownerId`, `userId`, `name`, `allowedMask`, `isReadOnly`, `bypassStepUp` — reads and updates only; `create` currently mismatches the deployed input (see [entity-scoped-keys.md](./references/entity-scoped-keys.md)) |
 | `db.principalEntity` | Org-scoping junction (which orgs a principal may access) | `principalId`, `entityId` |
 | `db.principalScopeOverride` | Per-membership-type permission override | `principalId`, `membershipType`, `allowedMask`, `isAdmin`, `isReadOnly` |
 | `db.orgApiKeyList` | Read model of an org's API keys | `keyId`, `name`, `principalId`, `orgId`, `expiresAt`, `revokedAt`, `lastUsedAt`, `mfaLevel`, `accessLevel` |
@@ -135,9 +135,11 @@ const { createOrgApiKey } = await db.mutation
 
 **Org scoping via absence:** a principal with **no** `principalEntity` rows inherits access to *all* orgs its owner belongs to. Adding rows restricts it to only those orgs. See [org-scoping.md](./references/org-scoping.md).
 
+**Scoping to non-org entity types:** the same `principalEntity` mechanism covers rows of any provisioned entity type, and some deployments instead take `entityIds` at principal creation. Probe first — [org-scoping.md](./references/org-scoping.md) has the check and both surfaces.
+
 ### Entity-scoped keys, end to end
 
-For the full recipe — provision an entity type, create a principal scoped to entity rows, satisfy `STEP_UP_REQUIRED` with `verifyPassword`, mint with `createApiKey`, use and revoke — read [entity-scoped-keys.md](./references/entity-scoped-keys.md). It carries three hard constraints: keys are personal at mint (scope comes from the principal), scope is fixed at principal creation on create-time-scoping deployments (probe first), and step-up demands `verifyPassword` on the same session. For org-only scoping, prefer the `createOrgPrincipal` flow above; reach for this recipe when the target is a non-org entity type or the org mutations are absent.
+[entity-scoped-keys.md](./references/entity-scoped-keys.md) is the ordering recipe for the cross-plane flow (entity type → scoped principal → step-up → mint → use/revoke) and the three constraints that fix that order: keys are personal at mint, scope may be fixed at principal creation, and step-up is per session. For org-only scoping, prefer the `createOrgPrincipal` flow above.
 
 ### Revoke
 
@@ -155,9 +157,9 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 | File | Content |
 |------|---------|
 | [principal-model.md](./references/principal-model.md) | Identity model — dual-claim (identity vs authority), user type 3, permission subsetting, `allowedMask`, `isReadOnly`, `bypassStepUp`, what meters to human vs principal |
-| [api-keys.md](./references/api-keys.md) | API key lifecycle via the ORM — `createApiKey`/`createOrgApiKey`, access levels, MFA level, expiry, listing via `orgApiKeyList`, revocation, plaintext-once handling |
-| [org-scoping.md](./references/org-scoping.md) | Org scoping via `principalEntity`, `principalScopeOverride`, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes |
-| [entity-scoped-keys.md](./references/entity-scoped-keys.md) | End-to-end recipe: entity type → scoped principal → step-up (`verifyPassword`) → `createApiKey` → use/revoke, plus the create-time-scoping feature probe and the flat `createPrincipal` SDK gap |
+| [api-keys.md](./references/api-keys.md) | API key lifecycle via the ORM — `createApiKey`/`createOrgApiKey`, access levels, MFA level, expiry, the `STEP_UP_REQUIRED` + `verifyPassword` retry, listing via `orgApiKeyList`, revocation, plaintext-once handling |
+| [org-scoping.md](./references/org-scoping.md) | Scoping via `principalEntity`, `principalScopeOverride`, the create-time `entityIds` variant and its probe, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes |
+| [entity-scoped-keys.md](./references/entity-scoped-keys.md) | Ordering recipe for the cross-plane flow — which plane/token each step uses, the three constraints, and the flat `createPrincipal` SDK gap |
 
 ## Cross-References
 

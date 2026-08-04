@@ -2,9 +2,15 @@
 
 Direct entity type provisioning via the ORM — for cases where you want to provision entity types outside of blueprints.
 
+## Which plane, which token
+
+Entity-type provisioning is a **control-plane** operation: send it to the platform modules API (`modules.<host>`, e.g. `http://modules.localhost:3000/graphql`) with a **platform account JWT**. A per-database token cannot provision, and the platform token cannot call the per-database (`api-<subdomain>`) surface the provisioned table lands in. See [`constructive-architecture` → Control Plane vs Data Plane](../../constructive-architecture/SKILL.md#control-plane-vs-data-plane).
+
 ## entity_type_provision (Trigger Table)
 
 `entity_type_provision` is a **trigger table** — inserting a row fires a trigger that provisions the entire entity type (table, permissions, memberships, security). The INSERT returns the provisioning results.
+
+**Registrations are immutable.** There is no update path: to change one, delete the registration and create a new one. Deleting removes the *registration only* — the provisioned entity table and its rows stay in the API schema.
 
 ### Create a new entity type
 
