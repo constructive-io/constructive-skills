@@ -1,6 +1,6 @@
 ---
 name: constructive-architecture
-description: "Constructive platform architecture: core model, platform baseline, endpoint map, provisioning flow, data-module/policy pairing, and Authz policy types. Load for the platform mental model before schema or provisioning decisions."
+description: "Constructive platform architecture: core model, platform baseline, endpoint map, control plane vs data plane tokens, provisioning flow, data-module/policy pairing, and Authz policy types. Load for the platform mental model before schema or provisioning decisions."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -34,6 +34,7 @@ If that baseline is missing, Phase 1 is incomplete. Do not inspect internals wit
 |----------|---------|------|
 | `http://auth.localhost:3000/graphql` | Platform auth (sign-up, sign-in) | None |
 | `http://api.localhost:3000/graphql` | Platform API (database creation) | Platform JWT |
+| `http://modules.localhost:3000/graphql` | Platform modules API (module and entity-type provisioning) | Platform JWT |
 | `http://auth-<subdomain>.localhost:3000/graphql` | Per-database auth | None |
 | `http://api-<subdomain>.localhost:3000/graphql` | Per-database app (data) API | Per-database JWT |
 | `http://admin-<subdomain>.localhost:3000/graphql` | Per-database admin API | Per-database JWT |
@@ -45,6 +46,20 @@ The per-database data endpoint is `api-<subdomain>` — the server routes to the
 Node.js caveat: `*.localhost` does not resolve reliably in Node.js. The SDK handles Host header routing automatically for both Node.js and browser environments.
 
 Frontend caveat: the sandbox template only manages the platform (`schema-builder`) token. A platform token does not authenticate `api-<subdomain>` (per-database data) calls. If your frontend uses per-database app endpoints, it must establish and store a separate per-database app session via `auth-<subdomain>`.
+
+## Control Plane vs Data Plane
+
+Every operation belongs to one of two planes, and each plane has its own token. The plane decides which endpoint and which bearer a call needs.
+
+| | Control plane | Data plane |
+|---|---|---|
+| Endpoints | `auth.<host>`, `api.<host>`, `modules.<host>` (platform) | `auth-<subdomain>.<host>`, `api-<subdomain>.<host>`, `admin-<subdomain>.<host>` |
+| Token | Platform account JWT (platform sign-in) | Per-database app JWT (sign-in via `auth-<subdomain>`) or an API key minted on that database |
+| Operations | Database creation, module provisioning, entity-type provisioning (`entityTypeProvision`), domains, codegen sources | App data CRUD, app users and sessions, principals, API keys, `verifyPassword`, step-up |
+
+A platform token never authenticates a data-plane call. Each database issues its own JWTs from its own auth module — the two token families have different issuers and audiences, and the data API validates only its own. The reverse also holds: a per-database token or API key cannot call the platform API. When a flow crosses planes (for example: provision an entity type, then mint a key scoped to its rows), it must hold both tokens and send each to its own plane.
+
+API keys are data-plane credentials: a key minted on one database authenticates `api-<subdomain>` for that database only. See [`constructive-principals`](../constructive-principals/SKILL.md) for the mint flow, and [`constructive-entities` → orm-provisioning.md](../constructive-entities/references/orm-provisioning.md) for control-plane entity-type provisioning.
 
 ## Provisioning Flow
 
