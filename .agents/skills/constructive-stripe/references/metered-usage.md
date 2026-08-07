@@ -70,17 +70,24 @@ run that never happens before the period closes loses billing for that period.
 Step 5 is the one worth keeping in a test. It is what proves the customer will
 not be billed twice for the same usage.
 
-## Gap: metered pricing is not expressible in the catalog
+## Not built yet: metered pricing in the catalog
 
 Plan pricing carries a billing interval but no usage type, so the sync job
 creates a licensed recurring price — never a metered one. A metered price must
-be created on the Stripe side out of band and mapped to the pricing row.
+be created on the Stripe side out of band and mapped to the pricing row. The rest
+of the metered path — recording, reporting, the marker — works normally once the
+subscription exists.
 
-Until this is lifted, the metered path cannot be driven entirely from your own
-catalog. See [gaps.md](./gaps.md).
+Until the catalog can express it, the catalog is no longer the single source of
+truth for what a plan costs. Anyone changing prices has to know which ones live
+outside it.
+
+This is a capability that has not been built, not a line the integration draws on
+purpose — unlike the constraints in
+[limitations.md](./limitations.md), it is expected to change.
 
 ## Cross-References
 
 - **Recording usage, meters, quota checks:** [`constructive-billing`](../../constructive-billing/SKILL.md)
 - **Scheduled jobs:** [`constructive-jobs`](../../constructive-jobs/SKILL.md)
-- **Limitations:** [gaps.md](./gaps.md)
+- **Standing constraints:** [limitations.md](./limitations.md)

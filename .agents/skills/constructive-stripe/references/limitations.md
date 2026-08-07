@@ -1,42 +1,19 @@
 # Known limitations
 
-Things the provider integration does not do yet, what breaks because of it, and
-what to do instead. Each of these is a real constraint on what you can sell — not
-a bug you can work around in your app.
+Things the provider integration does not do, what breaks because of it, and what
+to do instead. Each of these is a standing constraint on what you can sell — a
+line the integration draws deliberately, not work that is pending.
 
-## Metered pricing is not expressible in the catalog
+Two kinds of thing deliberately do **not** live here:
 
-Plan pricing carries a billing interval but no usage type, so a synced price is
-always licensed — a fixed amount per period. There is no way to describe "charge
-per unit consumed" in your catalog.
+- **Defects** — something behaving wrong. Those belong in
+  [troubleshooting.md](./troubleshooting.md), by symptom.
+- **Capabilities not built yet** — metered pricing in the catalog, for instance,
+  which is described where it bites in
+  [metered-usage.md](./metered-usage.md).
 
-**Breaks:** the metered path cannot be driven from your own catalog. Usage
-reporting has nothing to report against, because a licensed price accepts no
-usage records.
-
-**Instead:** create the metered price on the Stripe side and map it to a pricing
-row, then subscribe customers to that. The rest of the metered path — recording,
-reporting, the marker — works normally once the subscription exists.
-
-**Consequence to plan around:** the catalog is no longer the single source of
-truth for what a plan costs. Anyone changing prices has to know which ones live
-outside it.
-
-## A refund reverses one meter
-
-A refund's record is keyed to the refund, and it carries one meter. A credit pack
-whose plan describes several meters cannot be fully reversed by a single refund —
-the first is reversed, the rest are logged as skipped.
-
-**Breaks:** refunding a multi-meter pack returns the money but leaves the
-customer holding most of what they bought.
-
-**Instead:** keep credit packs to a single meter. Sell three packs rather than one
-pack granting three meters.
-
-**Why it is logged rather than silently partial:** reversing part of a purchase
-without saying so is worse than not reversing it — the discrepancy surfaces later
-as a balance nobody can explain.
+If a constraint below ever stops being true, it is because the design changed.
+Nothing here is waiting on a fix.
 
 ## Subscription payments record no grant to reverse
 
@@ -49,6 +26,11 @@ allowances. The customer keeps the entitlement they were refunded for.
 
 **Instead:** cancel the subscription as well. Cancellation is what removes the
 plan's allowances; the refund only returns money.
+
+**Why it is not automatic:** a refund carries no intent. Service failure,
+accounting correction, and a customer leaving all arrive as the same event, and
+only the first two should leave access intact. The caller knows which one it was;
+the integration cannot.
 
 ## Invoices are recorded, not reconciled
 
@@ -72,10 +54,15 @@ The reporting job exists and is registered, but nothing runs it on a cadence.
 [metered-usage.md](./metered-usage.md) for choosing a cadence and
 [`constructive-jobs`](../../constructive-jobs/SKILL.md) for scheduling.
 
+**Why it is not chosen for you:** the cadence is a billing decision — how quickly
+usage must appear on a customer's invoice — and it costs Stripe calls to get
+wrong in either direction.
+
 ## Hosted checkout cannot be completed headlessly
 
 Stripe-hosted checkout requires a browser, in test mode as well as live. There is
-no API call that completes a session.
+no API call that completes a session. This is Stripe's constraint, not the
+integration's.
 
 **Breaks:** an end-to-end automated test cannot cover the payment itself.
 
@@ -91,8 +78,12 @@ direct table write, a hand-built Stripe object — treat that as a gap worth
 reporting rather than a pattern to spread. The workaround tends to outlive the
 person who understood why it was needed.
 
+That is the one thing on this page that is genuinely open: a gap is something to
+report, not a constraint to plan around.
+
 ## Cross-References
 
+- **Something behaving wrong:** [troubleshooting.md](./troubleshooting.md)
 - **Usage reporting:** [metered-usage.md](./metered-usage.md)
 - **Refund behaviour:** [lifecycle.md](./lifecycle.md)
 - **Choosing a domain:** [credit-domains.md](./credit-domains.md)

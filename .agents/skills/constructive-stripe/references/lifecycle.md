@@ -69,9 +69,10 @@ Records the refund and reverses the credits the original purchase granted.
 **Confirm:** the balance returned to its pre-purchase value; a refund record
 exists.
 
-**Limitation:** one meter is reversed per refund. A pack granting several meters
-has the first reversed and the rest logged as skipped. See
-[gaps.md](./gaps.md).
+**Known defect** (`constructive-db#2841`): one meter is reversed per refund. A
+pack granting several meters has the first reversed and the rest logged as
+skipped, while the money is returned in full. Keep credit packs to a single meter
+until this is fixed — see [troubleshooting.md](./troubleshooting.md).
 
 ## Idempotency
 
@@ -117,3 +118,4 @@ problem is delivery, not application.
 - **Which domain gets credited:** [credit-domains.md](./credit-domains.md)
 - **Usage reporting:** [metered-usage.md](./metered-usage.md)
 - **Nothing happened:** [troubleshooting.md](./troubleshooting.md)
+- **What the events deliberately do not do:** [limitations.md](./limitations.md)

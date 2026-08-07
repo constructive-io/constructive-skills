@@ -167,9 +167,9 @@ The platform only ever reports the difference since the last successful report,
 and only moves that marker forward, so usage is neither double-billed nor lost
 when a report fails.
 
-**Gap:** plan pricing cannot yet express a metered price, so the Stripe-side
-metered price must be created out of band. See
-[gaps.md](./references/gaps.md).
+**Not built yet:** plan pricing cannot express a metered price, so the
+Stripe-side metered price must be created out of band. See
+[metered-usage.md](./references/metered-usage.md).
 
 ## When a payment seems to do nothing
 
@@ -195,8 +195,8 @@ table.
 | [credit-domains.md](./references/credit-domains.md) | Limits vs meters, and how to choose |
 | [lifecycle.md](./references/lifecycle.md) | Event-by-event effects and how to verify |
 | [metered-usage.md](./references/metered-usage.md) | Usage reporting and its guarantees |
-| [troubleshooting.md](./references/troubleshooting.md) | Symptom to cause |
-| [gaps.md](./references/gaps.md) | Known limitations and what to do instead |
+| [troubleshooting.md](./references/troubleshooting.md) | Symptom to cause, including known defects |
+| [limitations.md](./references/limitations.md) | Standing constraints and what to do instead |
 
 ## Cross-References
 

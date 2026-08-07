@@ -92,8 +92,21 @@ a purchase of a plan describing no allowances, correctly touches no balance.
 
 ### The pack granted several meters
 
-Only the first is reversed; the rest are logged as skipped. This is a known
-limitation — see [gaps.md](./gaps.md). Prefer single-meter credit packs.
+**Known defect** (`constructive-db#2841`), not a design decision. A refund record
+is keyed to the refund and carries one meter, so a pack whose plan describes
+several cannot be fully reversed: the first is reversed, the rest are logged as
+skipped. The money is returned in full, so the customer keeps most of what they
+bought.
+
+Which one survives is not deterministic — do not rely on it being any particular
+meter.
+
+**Until it is fixed:** keep credit packs to a single meter. Sell three packs
+rather than one pack granting three meters. Packs already sold as multi-meter
+have to be reversed by hand.
+
+The skipped meters are in the webhook log, so an affected refund can be found
+after the fact rather than only being noticed as an unexplained balance.
 
 ### The refund event never arrived
 
@@ -112,7 +125,7 @@ report them. This is the normal state for a non-metered plan and is not an error
 
 A licensed price accepts no usage. Note that plan pricing cannot yet express a
 metered price, so the metered price must be created out of band — see
-[gaps.md](./gaps.md).
+[metered-usage.md](./metered-usage.md).
 
 ### The reporting job is not scheduled
 
@@ -137,3 +150,4 @@ and cannot double-grant.
 - **Which domain to credit:** [credit-domains.md](./credit-domains.md)
 - **What each event does:** [lifecycle.md](./lifecycle.md)
 - **Wiring:** [setup.md](./setup.md)
+- **Working as intended, just not what you wanted:** [limitations.md](./limitations.md)
