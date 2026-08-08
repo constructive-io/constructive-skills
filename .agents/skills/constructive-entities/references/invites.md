@@ -111,6 +111,11 @@ constructive public:org-invite create \
 
 - Only **email invites** can carry `profile_id`. Blank and multiple invites are rejected with `PROFILE_ASSIGNMENT_REQUIRES_EMAIL_INVITE`.
 - The inviter must pass the permission model check (see below).
+- An invite carries **one** `profile_id`, including on entity types with
+  `has_multiple_profiles: true`. The claimed profile becomes the first profile
+  the new membership holds; grant any further profiles afterwards through
+  `{prefix}ProfileGrant`. See
+  [`constructive-access-control` → profiles.md](../../constructive-access-control/references/profiles.md#multiple-profiles-per-member).
 
 ---
 

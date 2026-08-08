@@ -25,6 +25,7 @@ const result = await db.entityTypeProvision.create({
     isVisible: true,
     hasLimits: false,
     hasProfiles: false,
+    hasMultipleProfiles: false,
     hasLevels: false,
     skipEntityPolicies: false,
   },
@@ -62,6 +63,7 @@ const result = await db.entityTypeProvision.create({
 | `isVisible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. **No-op when `tableProvision` is supplied.** See [Entity-Table Policies](#entity-table-policies-isvisible-skipentitypolicies-tableprovision) |
 | `hasLimits` | boolean | No | `false` | Provision limits module |
 | `hasProfiles` | boolean | No | `false` | Provision profiles module |
+| `hasMultipleProfiles` | boolean | No | `false` | Let one membership hold several profiles at once (`{prefix}MembershipProfile`), masks unioned. Requires `hasProfiles` |
 | `hasLevels` | boolean | No | `false` | Provision levels module |
 | `skipEntityPolicies` | boolean | No | `false` | Escape hatch: apply zero default policies. See [Entity-Table Policies](#entity-table-policies-isvisible-skipentitypolicies-tableprovision) |
 | `tableProvision` | object | No | `null` | Override for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the 5 default entity-table policies. See [Entity-Table Policies](#entity-table-policies-isvisible-skipentitypolicies-tableprovision) |
@@ -172,6 +174,7 @@ constructive public:entity-type-provision create \
   --isVisible true \
   --hasLimits false \
   --hasProfiles false \
+  --hasMultipleProfiles false \
   --hasLevels false \
   --skipEntityPolicies false \
   --select outMembershipType,outEntityTableId,outEntityTableName,outInstalledModules

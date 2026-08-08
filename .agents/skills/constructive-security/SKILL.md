@@ -147,12 +147,12 @@ See [permission-defaults.md](./references/permission-defaults.md) for the full O
 
 ## Profiles
 
-Role-based access control via named permission bundles. Enable via `hasProfiles: true` on `entityTypeProvision`.
+Role-based access control via named permission bundles. Enable via `hasProfiles: true` on `entityTypeProvision`; add `hasMultipleProfiles: true` to let one membership hold several profiles at once.
 
-- **Effective permissions** = `granted` (direct) + `profile.permissions` (from assigned profile)
+- **Effective permissions** = `granted` (direct) + the union of every held profile's `permissions`
 - **Default profile** — set `isDefault: true` on a profile; new memberships are automatically assigned it
 - **ORM tables** (created per scope): `profiles`, `profilePermissions`, `profileGrants`, `profileDefinitionGrants`
-- **Membership** — each membership carries a `profileId` (nullable); read via `db.appMembership` / `db.orgMembership`
+- **Membership** — each membership carries a `profileId` (nullable); read via `db.appMembership` / `db.orgMembership`. Under `hasMultipleProfiles` it is a pointer at one held profile and `{prefix}MembershipProfile` is the full set
 - **Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state
 
 See [profiles.md](./references/profiles.md) for the full reference with code examples.

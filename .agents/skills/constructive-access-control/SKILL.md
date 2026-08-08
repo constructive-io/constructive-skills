@@ -60,13 +60,13 @@ A Constructive app has four composable access layers:
     {
       "name": "Organization",
       "prefix": "org",
-      "hasProfiles": true
+      "has_profiles": true
     }
   ]
 }
 ```
 
-Every entity type automatically gets a `permissions_module` and `memberships_module`. Setting `hasProfiles: true` additionally provisions the profiles system for that scope.
+Every entity type automatically gets a `permissions_module` and `memberships_module`. Setting `has_profiles: true` additionally provisions the profiles system for that scope; adding `has_multiple_profiles: true` lets one membership hold several profiles at once, with their permission masks unioned.
 
 ### ORM Tables by Scope
 

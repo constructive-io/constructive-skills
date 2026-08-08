@@ -14,7 +14,8 @@ Member assigned "Editor" profile
 
 - Each profile contains a set of named permissions
 - Assigning a profile to a membership adds those permissions to the member's effective access
-- A member can have at most **one profile** per scope (but can also have direct grants on top)
+- By default a member holds **one profile** per scope (plus direct grants on top)
+- With `hasMultipleProfiles: true` a member holds **any number of profiles** at once, and their masks are OR-ed together — see [Multiple Profiles per Member](#multiple-profiles-per-member)
 - Admins and owners always have full permissions regardless of profile
 
 ## Enabling Profiles
@@ -29,7 +30,7 @@ Profiles are enabled per entity type. You must explicitly opt in.
     {
       "name": "Organization",
       "prefix": "org",
-      "hasProfiles": true
+      "has_profiles": true
     }
   ]
 }
@@ -57,6 +58,7 @@ When enabled, the following tables are created (prefixed by scope):
 | `{prefix}ProfilePermission` | Join table linking profiles to named permissions |
 | `{prefix}ProfileGrant` | Audit log of profile assignments/unassignments |
 | `{prefix}ProfileDefinitionGrant` | Audit log of permission additions/removals from profiles |
+| `{prefix}MembershipProfile` | Every profile a membership holds — only when `hasMultipleProfiles: true` |
 
 ## Creating Profiles
 
@@ -147,6 +149,10 @@ await db.orgProfile.create({
 
 ### Direct Assignment
 
+Single-profile scopes assign by writing the pointer; multi-profile scopes go
+through `{prefix}ProfileGrant` instead (see
+[Multiple Profiles per Member](#multiple-profiles-per-member)).
+
 ```typescript
 // Assign a profile to a member
 await db.orgMembership.update({
@@ -157,7 +163,7 @@ await db.orgMembership.update({
 
 ### Via Invite
 
-Email invites can carry a `profileId` that pre-assigns the profile when the invite is claimed:
+Email invites can carry a single `profileId` that pre-assigns the profile when the invite is claimed — including on multi-profile scopes, where the claimed profile becomes the first member of the held set and further profiles are granted afterwards:
 
 ```typescript
 await db.orgInvite.create({
@@ -175,12 +181,120 @@ See [`constructive-entities` → invites.md](../../constructive-entities/referen
 ### Removing a Profile
 
 ```typescript
-// Remove profile from a member (they keep only direct grants + defaults)
+// Single-profile scope: clear the pointer (they keep only direct grants + defaults)
 await db.orgMembership.update({
   where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
   data: { profileId: null }
 }).execute();
 ```
+
+## Multiple Profiles per Member
+
+One person often wears two hats in the same scope — the data-room investor who is
+also an advisor. Set `hasMultipleProfiles: true` alongside `hasProfiles` on the
+entity type and a membership may hold several profiles at once:
+
+```json
+{
+  "entity_types": [
+    {
+      "name": "Data Room",
+      "prefix": "room",
+      "parent_entity": "org",
+      "has_profiles": true,
+      "has_multiple_profiles": true
+    }
+  ]
+}
+```
+
+```typescript
+await db.entityTypeProvision.create({
+  data: {
+    databaseId: dbId,
+    name: 'Data Room',
+    prefix: 'room',
+    parentEntity: 'org',
+    hasProfiles: true,
+    hasMultipleProfiles: true
+  },
+  select: { id: true }
+}).execute();
+```
+
+The flag is **opt-in per entity type** and independent of every other scope: org
+memberships can stay single-profile while room memberships hold many. It only
+takes effect together with `hasProfiles` — on its own it provisions nothing.
+
+### What changes
+
+| | `hasMultipleProfiles: false` (default) | `hasMultipleProfiles: true` |
+|---|---|---|
+| Assignment | `membership.profileId` **is** the assignment | `{prefix}MembershipProfile` holds every held profile |
+| `membership.profileId` | the assignment | a **pointer** at one held profile (display/compatibility) |
+| Effective permissions | direct grants ∪ the one profile's mask | direct grants ∪ the **union of every held profile's mask** |
+| Granting a second profile | replaces the first | adds to the set |
+
+The held set always contains the pointed-at profile too, so there is one source of
+truth: reading `{prefix}MembershipProfile` tells you everything the member holds,
+and `profileId` is only the one to show in a UI.
+
+### Assigning and revoking
+
+Assignments go through the same `{prefix}ProfileGrant` audit table as before — it
+is the write surface, and the platform applies each row:
+
+```typescript
+// Add the Advisor profile to a membership that already holds Investor
+await db.roomProfileGrant.create({
+  data: { membershipId, profileId: advisorProfileId, isGrant: true },
+  select: { id: true }
+}).execute();
+
+// Revoke just the Advisor profile; Investor and its permissions remain
+await db.roomProfileGrant.create({
+  data: { membershipId, profileId: advisorProfileId, isGrant: false },
+  select: { id: true }
+}).execute();
+
+// Revoke every profile: omit profileId
+await db.roomProfileGrant.create({
+  data: { membershipId, isGrant: false },
+  select: { id: true }
+}).execute();
+```
+
+Writing `membership.profileId` directly still works and seeds the set with that
+profile, so existing single-profile code keeps working after the flag is turned
+on.
+
+### Reading what a member holds
+
+```typescript
+const held = await db.roomMembershipProfile.findMany({
+  where: { membershipId: { equalTo: membershipId } },
+  select: { profileId: true, createdAt: true }
+}).execute();
+```
+
+The assignment set is **read-only to clients** — RLS grants `SELECT` only, and
+only to admins of the scope, the same visibility as `{prefix}ProfileGrant`. A
+member cannot list their own held profiles; what they *can* always read is their
+own effective permissions. Write through `{prefix}ProfileGrant`.
+
+### Composition rules
+
+- **Masks OR together** — holding Investor (`read_financials`) and Advisor
+  (`read_legal`) yields both; permissions never conflict, they accumulate
+- **Revoking one profile keeps the others** — the mask is recomputed from the
+  remaining held profiles plus direct grants
+- **The pointer follows the set** — revoking the pointed-at profile repoints
+  `profileId` at a remaining one; revoking the last one nulls it
+- **Profile edits cascade** — adding a permission to a profile updates every
+  membership holding it, whether through the pointer or only through the set
+- **Non-permission attributes do not union** — anything a bitmask cannot express
+  (a redaction level, a tier) needs its own most-restrictive-wins rule in tenant
+  data; the platform composes permissions only
 
 ## Listing Profiles
 
@@ -260,7 +374,7 @@ const defHistory = await db.orgProfileDefinitionGrant.findMany({
 
 ## Key Behaviors
 
-- **One profile per membership** — a member can only have one profile at a time per scope; switching profiles replaces the previous one
+- **One profile per membership by default** — switching profiles replaces the previous one, unless the entity type sets `hasMultipleProfiles: true`, where a membership holds a set and the masks union
 - **Additive with grants** — profile permissions are unioned with direct grants; revoking a profile does not remove direct grants
 - **Admin bypass** — admins and owners have all permissions regardless of profile assignment
 - **Profile ≠ Role** — profiles are configurable bundles; roles (`isAdmin`, `isOwner`) are structural and not profile-dependent

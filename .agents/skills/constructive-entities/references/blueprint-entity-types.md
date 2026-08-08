@@ -22,6 +22,7 @@ Each entry either **creates** a new entity type or **extends** an existing one:
       "is_visible": true,
       "has_limits": false,
       "has_profiles": false,
+      "has_multiple_profiles": false,
       "has_levels": false,
       "has_invites": false,
       "has_invite_achievements": false,
@@ -65,6 +66,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. **No-op when `table_provision` is supplied.** See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
+| `has_multiple_profiles` | boolean | No | `false` | Let one membership hold several profiles at once, in `{prefix}_membership_profiles`, with their permission masks unioned. Requires `has_profiles` — ignored without it. See [`constructive-access-control` → profiles.md](../../constructive-access-control/references/profiles.md#multiple-profiles-per-member) |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
 | `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
@@ -493,6 +495,7 @@ const channelType: BlueprintMembershipType = {
   parent_entity: 'org',
   has_limits: false,
   has_profiles: false,
+  has_multiple_profiles: false,
   has_levels: false,
 };
 

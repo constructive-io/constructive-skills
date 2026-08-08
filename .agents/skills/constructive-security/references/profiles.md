@@ -172,3 +172,4 @@ await db.orgMembershipDefault.create({
 - **System profiles** — `isSystem: true` profiles are platform-managed and cannot be deleted by users
 - **Audit trail** — profile assignments (`profileGrants`) and definition changes (`profileDefinitionGrants`) are append-only logs with `isGrant` boolean for grant/revoke tracking
 - **Scoped per entity type** — each entity type with `hasProfiles: true` gets its own independent set of profile tables; org profiles are separate from app profiles
+- **Multiple profiles are opt-in** — `hasMultipleProfiles: true` adds `{prefix}MembershipProfile`, holding every profile a membership has; effective permissions union all of them and `profileId` becomes a pointer at one. See [`constructive-access-control` → profiles.md](../../constructive-access-control/references/profiles.md#multiple-profiles-per-member)
