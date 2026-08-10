@@ -1,6 +1,6 @@
 # Service Settings Reference
 
-Typed configuration tables in `services_public` that control per-database and per-API runtime behavior. These replace legacy `api_modules` JSONB blobs with typed, FK-validated columns.
+Typed configuration tables in `services_public` that control per-database and per-API runtime behavior. Settings are typed, FK-validated columns rather than JSONB blobs.
 
 All examples use the codegen'd ORM. No raw SQL.
 

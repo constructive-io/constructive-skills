@@ -74,8 +74,8 @@ This creates INSERT and UPDATE triggers that enqueue a `process_invoice` job wit
 | `payload_custom` | object | — | Key-to-column mapping for `custom` strategy |
 | `events` | `("INSERT" \| "UPDATE" \| "DELETE")[]` | `["INSERT", "UPDATE"]` | Which DML events fire the trigger |
 | `watch_fields` | string[] | — | For UPDATE: only fire when these columns change |
-| `condition_field` | string | — | Legacy: column for simple equality WHEN clause |
-| `condition_value` | string | — | Legacy: value to match for `condition_field` |
+| `condition_field` | string | — | Shorthand: column for a simple equality WHEN clause |
+| `condition_value` | string | — | Shorthand: value to match for `condition_field` |
 | `conditions` | object \| array | — | Compound conditions for WHEN clause (see below) |
 | `include_old` | boolean | `false` | Include OLD row in UPDATE payload |
 | `include_meta` | boolean | `false` | Include table/schema metadata in payload |

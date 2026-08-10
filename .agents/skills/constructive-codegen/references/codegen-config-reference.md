@@ -43,8 +43,8 @@ interface GraphQLSDKConfig {
 interface GraphQLSDKConfigTarget {
   // Schema Source (choose one)
   endpoint?: string;           // GraphQL endpoint URL
-  schemaFile?: string;         // Path to .graphql file (renamed from 'schema')
-  db?: DbConfig;               // NEW: Database introspection
+  schemaFile?: string;         // Path to .graphql file
+  db?: DbConfig;               // Database introspection
 
   // Output Configuration
   output?: string;  // Default: './generated/graphql'
@@ -353,13 +353,6 @@ A boolean flag. Default: `false`.
 }
 ```
 
-**v2.x (deprecated):**
-```typescript
-{
-  reactQuery: { enabled: true },  // Old syntax
-}
-```
-
 ### Query Key Configuration
 
 #### `queryKeys.style`
@@ -437,13 +430,6 @@ A boolean flag. Default: `false`.
 }
 ```
 
-**v2.x (deprecated):**
-```typescript
-{
-  orm: { enabled: true, output: './generated/orm' },  // Old syntax
-}
-```
-
 ORM is always generated to `{output}/orm` subdirectory.
 
 ### Global Field Exclusion
@@ -454,7 +440,7 @@ Exclude specific fields from all tables globally.
 
 ```typescript
 {
-  excludeFields: ['internalId', 'legacyField', '__typename'],
+  excludeFields: ['internalId', '__typename'],
 }
 ```
 

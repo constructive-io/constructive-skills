@@ -397,7 +397,7 @@ Optional keys:
 **Semantics:** Authorize when the actor id appears in `{array_field}`.
 
 **Use when:**
-- Legacy share lists stored as arrays (supported but not recommended for new designs).
+- Share lists stored as arrays (supported, but a join table is the better design).
 
 ---
 
@@ -423,7 +423,7 @@ Required keys are `owned_table_key`, `owned_table_ref_key`, and `this_object_key
 **Semantics:** "Follow a reference to a related row that contains an array of member ids."
 
 **Use when:**
-- Legacy membership lists stored as arrays in a related table (supported but not recommended for new designs).
+- Membership lists stored as arrays in a related table (supported, but a join table is the better design).
 
 ---
 
@@ -763,7 +763,7 @@ Rule-specific keys:
 
 `AuthzComposite` lets you build a boolean expression tree (AND/OR/NOT) over Constructive Authz nodes.
 
-The `data` for an `AuthzComposite` is a boolean expression tree the system recursively evaluates. You can write it with user-friendly `AND`, `OR`, and `NOT` keywords, or with a raw `BoolExpr` AST node for legacy/power-user cases.
+The `data` for an `AuthzComposite` is a boolean expression tree the system recursively evaluates. You can write it with user-friendly `AND`, `OR`, and `NOT` keywords, or with a raw `BoolExpr` AST node when you need to build the tree programmatically.
 
 **Single leaf node wrap** — delegates to one Authz* node:
 ```json
@@ -813,7 +813,7 @@ The `data` for an `AuthzComposite` is a boolean expression tree the system recur
 }
 ```
 
-**Legacy `BoolExpr` AST** (still supported):
+**Raw `BoolExpr` AST** (equivalent):
 ```json
 {
   "BoolExpr": {

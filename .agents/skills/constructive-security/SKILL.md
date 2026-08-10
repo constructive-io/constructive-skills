@@ -61,7 +61,7 @@ The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` 
 | 17 | `AuthzDenyAll` | Generates `FALSE`; use a restrictive policy for a hard deny alongside other policies | `{}` |
 | 18 | `AuthzFilePath` | Path-scoped file sharing (ltree) | path-shares table ref, `capability_field`; optional files table ref |
 | 19 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
-| 20 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or legacy `BoolExpr` AST) |
+| 20 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or a raw `BoolExpr` AST) |
 | 21 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
 | 22 | `AuthzValueAllowed` | Check local column against allowed values | `column`, `allowed`, `operator` |
 | 23 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row | referenced table ref, `join`; optional `conditions` |

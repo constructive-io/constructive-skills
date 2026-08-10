@@ -25,7 +25,7 @@ Ask for one by slug in the `events_module` entry of a database's module list:
 
 > **App scope only.** A ladder is seeded at provisioning time, and an entity-scoped ladder would belong to an organization that does not exist yet. Request `scope: "app"`; org-scoped ladders are seeded when the org is created.
 
-> **The events module is what carries levels.** `levels_module` is not a provisioned module — the levels, requirements, grants, and reward tables all come from `events_module`. A database without an `events_module` entry has no ladder and no way to earn one, whatever else its module list says.
+> **The events module is what carries levels.** The levels, requirements, grants, and reward tables all come from `events_module`. A database without an `events_module` entry has no ladder and no way to earn one.
 
 ## Shipped Ladders
 

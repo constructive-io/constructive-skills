@@ -323,7 +323,7 @@ That means:
 - per-database `auth-<sub>` and `api-<sub>` (data) endpoints need their own shared app-session integration
 - a browser signup/login flow is incomplete unless it also establishes the app-specific session needed by the app data CRUD route
 
-> The per-database data endpoint is `api-<sub>`, **not** `app-public-<sub>` (that host is dead). Routing is by `Host` header — see SUBDOMAIN-001. The still-true lesson here is about **authentication, not the host name**: even with the right `api-<sub>` host, a platform/`schema-builder` token does not authenticate per-database data calls. You must establish a separate per-database app session via `auth-<sub>` and send *that* token.
+> The per-database data endpoint is `api-<sub>`. Routing is by `Host` header — see SUBDOMAIN-001. The lesson here is about **authentication, not the host name**: even with the right `api-<sub>` host, a platform/`schema-builder` token does not authenticate per-database data calls. You must establish a separate per-database app session via `auth-<sub>` and send *that* token.
 
 If the frontend uses both:
 
@@ -429,7 +429,7 @@ Read the list straight off the chosen flow instead of retyping it:
 node -e 'const f=require("./references/flows.json");const fl=f.flows.find(x=>x.id==="email-password");console.log(fl.backend.preset);console.log(JSON.stringify(fl.backend.modules,null,2))'
 ```
 
-For a **basic auth app** (email + password sign-up/sign-in, app-level RLS — no orgs/SSO/MFA) the `email-password` flow carries its own `backend.modules` list; no shipped preset is that small any more, so the flow's list is the authority and the block below is a copy for templates that cannot read a file at provision time. Keep it in sync with the flow.
+For a **basic auth app** (email + password sign-up/sign-in, app-level RLS — no orgs/SSO/MFA) the `email-password` flow carries its own `backend.modules` list. No shipped preset is that small — the smallest, `auth:hardened`, installs considerably more — so the flow's list is the authority and the block below is a copy for templates that cannot read a file at provision time. Keep it in sync with the flow.
 
 > **Scoped modules are TUPLES, not colon strings.** The proc takes `["name", { "scope": ".." }]` tuples for scope-aware modules — a `name:scope` colon string (e.g. `'memberships_module:app'`) is read as a bare module name and throws `NOT_FOUND (memberships_module)`, installing the scoped module *not at all*. `flows.json` already carries these as native tuples; pass them verbatim.
 
@@ -456,7 +456,7 @@ const MODULES_EMAIL_PASSWORD = [
 
 Re-provisioning with this exact list yields 18 schemas with working `signIn` / `signUp` / `currentUser` and a live RLS-governed `createNote` / query — versus the broken ~4-schema result from `['all']`.
 
-> **`levels_module` is not a module.** The provisioning proc has no branch for it, so a list naming it silently installs nothing — no levels, requirements, grants or reward tables. Levels come from `events_module`, and the ladder that fills them must be named: `["events_module", { "scope": "app", "trust_ladder": "humanity" }]`. The list above omits it for that reason, and therefore cannot earn a level; the shipped presets (`auth:hardened`, `b2b:storage`, `full`) all carry the `humanity` ladder. See [`constructive-events` → trust-ladders.md](../constructive-events/references/trust-ladders.md).
+> **This list cannot earn a level.** Levels, requirements, grants and rewards come from `events_module`, and the ladder that fills them must be named: `["events_module", { "scope": "app", "trust_ladder": "humanity" }]`. Add both if the app gates on `level.reachable`; the shipped presets (`auth:hardened`, `b2b:storage`, `full`) already carry the `humanity` ladder. See [`constructive-events` → trust-ladders.md](../constructive-events/references/trust-ladders.md).
 
 For a **fuller app**, provision the richer flow's module list — again read from `flows.json`, not invented:
 

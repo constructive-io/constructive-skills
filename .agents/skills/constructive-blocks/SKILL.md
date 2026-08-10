@@ -316,5 +316,5 @@ instead of fabricating an action or broader authority.
   Data's pinned nested Sheets store is a recorded source limitation.
 
 Do not reintroduce generated SDK requirements, global clients,
-`BlocksRuntime`, legacy flow IDs as install units, credentials in props or
+`BlocksRuntime`, flow IDs as install units, credentials in props or
 Zustand, process-wide Console stores, or new per-pack Console state systems.

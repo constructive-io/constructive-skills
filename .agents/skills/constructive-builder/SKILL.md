@@ -9,7 +9,7 @@ Assemble a tenant-scoped frontend and prove that it works. This skill orchestrat
 
 ## Keep the boundary exact
 
-- Consume an already-provisioned Constructive tenant. Do not provision databases, choose PostgreSQL modules, run a legacy scaffold engine, repair services, or patch `constructive-db`.
+- Consume an already-provisioned Constructive tenant. Do not provision databases, choose PostgreSQL modules, run a scaffold engine, repair services, or patch `constructive-db`.
 - Use one strict `frontend.composition`: a matching preset, the complete Console, the zero-pack Console core, selected Console modules, or individually mounted standalone packs. Builder validates composition rules; Blocks supplies each root and plan.
 - Derive backend preset eligibility and preset-root matching from the pinned Blocks `backendPresetRouting` contract. `blank` has no preset root and instead permits explicit core/module composition; a custom backend also cannot claim a preset root. The complete `console-kit-nextjs` may target any preset or custom Constructive tenant because unsupported packs remain explicitly partial or unavailable.
 - Accept only explicit, secret-free tenant descriptors. Never derive sibling hosts, add operator headers, put credentials in the brief, or treat `_meta`/introspection as authorization.

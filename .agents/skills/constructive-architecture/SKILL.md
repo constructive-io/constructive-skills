@@ -41,7 +41,7 @@ If that baseline is missing, Phase 1 is incomplete. Do not inspect internals wit
 
 The `<subdomain>` is a platform-assigned random identifier (e.g., `b16-fatal-rose-mosquito`), **not** the database name — never derive hostnames from the app slug. Query your endpoints by `databaseId` via the SDK: `db.domain.findMany` (hostnames), `db.api.findMany` (surfaces), `db.query.resolveRoute({ requestHost })` to verify — then write the returned values into `.env` (see `constructive-secrets-config` §4.3).
 
-The per-database data endpoint is `api-<subdomain>` — the server routes to the correct database off the `Host` header (the path is always `/graphql`). The legacy `app-public-<subdomain>` host is dead; do not use it.
+The per-database data endpoint is `api-<subdomain>` — the server routes to the correct database off the `Host` header (the path is always `/graphql`).
 
 Node.js caveat: `*.localhost` does not resolve reliably in Node.js. The SDK handles Host header routing automatically for both Node.js and browser environments.
 

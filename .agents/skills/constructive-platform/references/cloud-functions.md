@@ -76,7 +76,7 @@ export default async (params: any, context: any) => {
 ```
 
 The `context` object provides:
-- `client` — Legacy GraphQL client (prefer using generated ORM client instead)
+- `client` — Raw GraphQL client (prefer the generated ORM client)
 - `headers` — Request headers from the incoming HTTP request
 
 **Important:** Use the typed SDK from `@constructive-io/graphql-codegen` instead of raw gql strings. See the `graphql-codegen` skill for setup.
