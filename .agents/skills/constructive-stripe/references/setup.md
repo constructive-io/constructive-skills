@@ -59,6 +59,31 @@ Locally, the Stripe CLI provides this:
 stripe listen --forward-to "localhost:8080/stripe?databaseId=<tenant-database-id>"
 ```
 
+## Pin the API version
+
+Every `new Stripe()` passes an explicit `apiVersion`, and all of them agree:
+
+| | |
+|---|---|
+| SDK | `stripe@22.4.0` |
+| API version | `2026-07-29.dahlia` |
+
+Pinning is not tidiness. Several handlers read fields that later versions moved,
+and the checkout route creates the sessions the receiver later reads — a version
+split between them would be a shape mismatch across a process boundary. Left to
+the SDK default, a dependency bump would change what Stripe returns without
+changing a line of code.
+
+Note that **webhook payloads are serialised at the account's default version**,
+not the one pinned in code. If they differ by a major, what arrives is not the
+shape the handlers expect. Check the account's default before configuring a real
+endpoint.
+
+`subscriptionItems.createUsageRecord` was removed in SDK v18 — usage now goes
+through Billing Meter Events, which are addressed to a customer and a meter
+event name. See [metered-usage.md](./metered-usage.md).
+
+
 Take the `whsec_…` it prints and store it as `stripe_webhook_secret` for that
 tenant.
 

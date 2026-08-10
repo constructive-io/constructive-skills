@@ -92,7 +92,7 @@ a purchase of a plan describing no allowances, correctly touches no balance.
 
 ### The pack granted several meters
 
-**Known defect** (`constructive-db#2841`), not a design decision. A refund record
+**Known defect** (`constructive-planning#1507`), not a design decision. A refund record
 is keyed to the refund and carries one meter, so a pack whose plan describes
 several cannot be fully reversed: the first is reversed, the rest are logged as
 skipped. The money is returned in full, so the customer keeps most of what they

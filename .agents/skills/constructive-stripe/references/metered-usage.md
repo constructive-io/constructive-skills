@@ -22,14 +22,33 @@ billing.
 
 | Requirement | Why |
 |-------------|-----|
-| The Stripe price is metered | A licensed price has no usage to report against |
-| An active subscription on that price | Usage is reported against its subscription item |
+| **A Stripe meter whose `event_name` equals the local meter slug** | Usage is reported to a meter *by name*. Nothing creates these — see below |
+| The Stripe price is metered and references that meter | A licensed price has no usage to report against |
+| An active subscription on that price | Otherwise there is no billing relationship to accrue against |
+| A `billing_customers` mapping for the entity | Usage is addressed to a **customer**, not a subscription item |
 | Usage recorded through `recordUsage` | Nothing else advances the balance |
 | The reporting job runs | Nothing reports on its own |
 
-Balances whose subscription has no recorded subscription item are skipped —
-there is nowhere to report them to. This is silent by design: it is the normal
-state for a plan that is not metered.
+Balances the reporter cannot resolve to a provider customer are counted as
+failed rather than skipped: the usage is real, the marker stays put, and the
+next run retries once the customer exists.
+
+### The Stripe meter is a prerequisite nothing creates
+
+Reporting is done with **Billing Meter Events**, which are addressed by event
+name. If no active Stripe meter carries that name, every report fails:
+
+```
+No active meter found for event name "api_calls"
+```
+
+The egress path syncs plans, prices, customers and subscriptions. **It does not
+sync meters.** Each locally defined meter needs a Stripe meter created by hand
+with a matching `event_name` before any usage can be billed, and missing one is
+silent — the job retries until it exhausts its attempts and then stops.
+
+That gap is
+[constructive-planning#1505](https://github.com/constructive-io/constructive-planning/issues/1505).
 
 ## What gets reported
 
@@ -49,6 +68,11 @@ twice would double-bill; this is why the marker is not advanced optimistically.
 
 The marker also only ever moves forward, so a delayed or duplicated report of an
 older value cannot rewind it.
+
+**Meter events carry their own idempotency.** Each report is sent with an
+`identifier` derived from the entity, meter and reported total, and Stripe
+deduplicates on it for at least 24 hours. A retried job or two workers racing
+therefore report once by construction, not only by the marker.
 
 ## Scheduling
 
