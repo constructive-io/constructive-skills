@@ -49,12 +49,12 @@ Default behavior: requires `password_or_mfa` for UPDATE and DELETE.
 
 ```jsonc
 { "$type": "GuardStepUp", "data": {
-    "watch_fields": ["bitlen", "permissions"],
+    "watch_fields": ["bitlen", "capabilities"],
     "step_up_type": "password"
 }}
 ```
 
-Generates `WHEN (NEW.bitlen IS DISTINCT FROM OLD.bitlen OR NEW.permissions IS DISTINCT FROM OLD.permissions)`.
+Generates `WHEN (NEW.bitlen IS DISTINCT FROM OLD.bitlen OR NEW.capabilities IS DISTINCT FROM OLD.capabilities)`.
 
 #### Simple condition — single field match
 

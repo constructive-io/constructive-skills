@@ -1,6 +1,6 @@
 # Entity-Scoped Access
 
-Permissions are **scoped to entities** — each membership scope (app, org, custom) has its own independent permission space. A user's permissions in one organization don't carry to another, and app-level permissions don't imply org-level permissions.
+Capabilities are **scoped to entities** — each membership scope (app, org, custom) has its own independent capability space. A user's capabilities in one organization don't carry to another, and app-level capabilities don't imply org-level capabilities.
 
 ## Scope Hierarchy
 
@@ -12,41 +12,41 @@ App (global scope)
         └── Department (per-department scope)
 ```
 
-Each level is an independent permission space with its own:
-- Named permissions registry
+Each level is an independent capability space with its own:
+- Named capabilities registry
 - Grants log
-- Permission defaults
+- Capability defaults
 - Profiles (if enabled)
 - Memberships
 
 ## How Scoping Works
 
-| Scope | ORM Tables | Membership | Permissions | Grants |
+| Scope | ORM Tables | Membership | Capabilities | Grants |
 |-------|-----------|------------|-------------|--------|
-| **App** | `appMembership`, `appPermission`, `appGrant`, `appProfile` | One per user | App-wide features | App-wide |
-| **Org** | `orgMembership`, `orgPermission`, `orgGrant`, `orgProfile` | One per user per org | Org-specific features | Per-org |
-| **Custom** | `{prefix}Membership`, `{prefix}Permission`, `{prefix}Grant`, `{prefix}Profile` | One per user per entity | Entity-specific features | Per-entity |
+| **App** | `appMembership`, `appCapability`, `appGrant`, `appProfile` | One per user | App-wide features | App-wide |
+| **Org** | `orgMembership`, `orgCapability`, `orgGrant`, `orgProfile` | One per user per org | Org-specific features | Per-org |
+| **Custom** | `{prefix}Membership`, `{prefix}Capability`, `{prefix}Grant`, `{prefix}Profile` | One per user per entity | Entity-specific features | Per-entity |
 
 ### Example: User in Multiple Orgs
 
 ```typescript
-// User has different permissions in different orgs
+// User has different capabilities in different orgs
 const orgAMembership = await db.orgMembership.findOne({
   where: { actorId: { equalTo: userId }, entityId: { equalTo: orgAId } },
-  select: { permissions: true, isAdmin: true, profileId: true }
+  select: { capabilities: true, isAdmin: true, profileId: true }
 }).execute();
-// → { permissions: 'invoke_agents,write_files', isAdmin: false, profileId: editorProfileId }
+// → { capabilities: 'invoke_agents,write_files', isAdmin: false, profileId: editorProfileId }
 
 const orgBMembership = await db.orgMembership.findOne({
   where: { actorId: { equalTo: userId }, entityId: { equalTo: orgBId } },
-  select: { permissions: true, isAdmin: true, profileId: true }
+  select: { capabilities: true, isAdmin: true, profileId: true }
 }).execute();
-// → { permissions: 'manage_agents,manage_storage', isAdmin: true, profileId: null }
+// → { capabilities: 'manage_agents,manage_storage', isAdmin: true, profileId: null }
 ```
 
-## Permission Isolation
+## Capability Isolation
 
-Permissions do NOT inherit across scopes:
+Capabilities do NOT inherit across scopes:
 
 | Scenario | Result |
 |----------|--------|
@@ -55,7 +55,7 @@ Permissions do NOT inherit across scopes:
 | User is org admin | Does NOT automatically have channel admin |
 | User has a profile in one org | That profile doesn't exist in another org |
 
-Each scope is a fully independent permission system. Cross-scope access requires separate memberships.
+Each scope is a fully independent capability system. Cross-scope access requires separate memberships.
 
 ## Blueprint: Multi-Scope Entity Types
 
@@ -86,7 +86,7 @@ Each scope is a fully independent permission system. Cross-scope access requires
 
 When an entity type is provisioned with access control:
 
-1. **Permissions module** — automatically installed; registers scope's permission table
+1. **Capabilities module** — automatically installed; registers scope's capability table
 2. **Memberships module** — tracks who belongs to each entity instance
 3. **Profiles module** (optional) — enabled via `hasProfiles: true`
 4. **Invites module** (optional) — enabled via `hasInvites: true`
@@ -95,25 +95,25 @@ When an entity type is provisioned with access control:
 
 ### Pattern: App-Level Gates for Global Features
 
-Use app-scope permissions to gate features that span all organizations:
+Use app-scope capabilities to gate features that span all organizations:
 
 ```typescript
-// App-level permission for platform admin features
+// App-level capability for platform admin features
 const appMembership = await db.appMembership.findOne({
   where: { actorId: { equalTo: userId } },
-  select: { isAdmin: true, permissions: true }
+  select: { isAdmin: true, capabilities: true }
 }).execute();
 ```
 
 ### Pattern: Org-Level Gates for Org Features
 
-Use org-scope permissions to gate features within an organization:
+Use org-scope capabilities to gate features within an organization:
 
 ```typescript
-// Org-level permission check before allowing an action
+// Org-level capability check before allowing an action
 const orgMembership = await db.orgMembership.findOne({
   where: { actorId: { equalTo: userId }, entityId: { equalTo: orgId } },
-  select: { permissions: true }
+  select: { capabilities: true }
 }).execute();
 ```
 
@@ -129,7 +129,7 @@ For child entities (channels under orgs), the parent entity's membership is typi
       "data": {
         "entity_field": "entity_id",
         "membership_type": 3,
-        "permission": "invoke_agents"
+        "capabilities": ["invoke_agents"]
       }
     }
   ]
@@ -146,7 +146,7 @@ Every user has a personal org identity — their own org with a single-member me
 
 ```
 User "Alice"
-  ├── App membership (type=1)        → app-level permissions
+  ├── App membership (type=1)        → app-level capabilities
   ├── Personal org membership (type=2, entity=alice_org) → personal data
   ├── Company org membership (type=2, entity=company_org) → company data
   └── Project channel membership (type=3, entity=project_channel) → channel data
@@ -154,23 +154,23 @@ User "Alice"
 
 ## Managing Entity-Specific Defaults
 
-Each entity can customize its own permission defaults independently:
+Each entity can customize its own capability defaults independently:
 
 ```typescript
 // Org A: new members get invoke_agents + write_files
-await db.orgPermissionDefault.create({
+await db.orgCapabilityDefault.create({
   data: {
     entityId: orgAId,
-    permissions: orgADefaultValue
+    capabilities: orgADefaultValue
   },
   select: { id: true }
 }).execute();
 
 // Org B: new members get only invoke_agents (more restrictive)
-await db.orgPermissionDefault.create({
+await db.orgCapabilityDefault.create({
   data: {
     entityId: orgBId,
-    permissions: orgBDefaultValue
+    capabilities: orgBDefaultValue
   },
   select: { id: true }
 }).execute();
@@ -178,8 +178,8 @@ await db.orgPermissionDefault.create({
 
 ## Key Behaviors
 
-- **Complete isolation** — permissions in one entity are invisible to another
+- **Complete isolation** — capabilities in one entity are invisible to another
 - **Independent configuration** — each entity configures its own defaults, profiles, and grants
 - **Parent doesn't imply child** — being an org admin doesn't make you a channel admin
-- **Same permission names, different scopes** — `invoke_agents` in Org A and Org B are separate grants
+- **Same capability names, different scopes** — `invoke_agents` in Org A and Org B are separate grants
 - **Users are orgs** — personal ownership uses the same entity membership model as shared access

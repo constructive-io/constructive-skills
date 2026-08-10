@@ -1,13 +1,13 @@
-# Permission Defaults
+# Capability Defaults
 
-When modules are installed, the platform automatically registers named permissions and sets default access levels. New members receive these defaults on join — no manual configuration needed for base-level access.
+When modules are installed, the platform automatically registers named capabilities and sets default access levels. New members receive these defaults on join — no manual configuration needed for base-level access.
 
 ## How Defaults Work
 
 ```
 Module Installed (e.g., agent_module)
-  ├── 1. Registers named permissions (invoke_agents, manage_agents)
-  ├── 2. Sets default permissions (invoke_agents → all members)
+  ├── 1. Registers named capabilities (invoke_agents, manage_agents)
+  ├── 2. Sets default capabilities (invoke_agents → all members)
   └── 3. New members automatically receive the default on join
 ```
 
@@ -17,15 +17,15 @@ This three-step process is fully automatic. You only need to intervene when you 
 
 When a user joins (via sign-up, invite, or direct membership creation), they receive:
 
-1. **Module defaults** — base permissions from all installed modules
-2. **Permission defaults** — any custom defaults configured by an admin
+1. **Module defaults** — base capabilities from all installed modules
+2. **Capability defaults** — any custom defaults configured by an admin
 3. **Default profile** — if a profile with `isDefault: true` exists, it's assigned automatically
 
 These are additive — the effective initial access is the union of all three sources.
 
-## Module Default Permissions
+## Module Default Capabilities
 
-Each module declares what permissions members should get out of the box:
+Each module declares what capabilities members should get out of the box:
 
 | Module | Granted to All Members | Admin-Only |
 |--------|----------------------|------------|
@@ -41,40 +41,40 @@ Each module declares what permissions members should get out of the box:
 | **Rate Limits** | — | *(all admin-only)* |
 | **Usage** | — | *(all admin-only)* |
 
-"Granted to All Members" means these permissions are included in the default permission value automatically. "Admin-Only" means only admin/owner roles have these — they're registered but not included in defaults.
+"Granted to All Members" means these capabilities are included in the default capability value automatically. "Admin-Only" means only admin/owner roles have these — they're registered but not included in defaults.
 
 ## Reading Current Defaults
 
 ```typescript
 // Read app-level defaults
-const defaults = await db.appPermissionDefault.findMany({
-  select: { id: true, permissions: true }
+const defaults = await db.appCapabilityDefault.findMany({
+  select: { id: true, capabilities: true }
 }).execute();
 
 // Read org-level defaults (per entity)
-const orgDefaults = await db.orgPermissionDefault.findMany({
+const orgDefaults = await db.orgCapabilityDefault.findMany({
   where: { entityId: { equalTo: orgId } },
-  select: { id: true, permissions: true }
+  select: { id: true, capabilities: true }
 }).execute();
 ```
 
 ## Overriding Defaults
 
-Admins can customize what permissions new members receive. This overrides the module-level defaults:
+Admins can customize what capabilities new members receive. This overrides the module-level defaults:
 
 ### Setting Custom Defaults
 
 ```typescript
 // Set custom defaults for the app (all new app members get these)
-await db.appPermissionDefault.create({
-  data: { permissions: customPermissionValue },
+await db.appCapabilityDefault.create({
+  data: { capabilities: customCapabilityValue },
   select: { id: true }
 }).execute();
 
 // Set custom defaults for a specific org
-await db.orgPermissionDefault.create({
+await db.orgCapabilityDefault.create({
   data: {
-    permissions: customPermissionValue,
+    capabilities: customCapabilityValue,
     entityId: orgId
   },
   select: { id: true }
@@ -84,34 +84,34 @@ await db.orgPermissionDefault.create({
 ### Updating Existing Defaults
 
 ```typescript
-await db.appPermissionDefault.update({
+await db.appCapabilityDefault.update({
   where: { id: defaultId },
-  data: { permissions: newPermissionValue },
+  data: { capabilities: newCapabilityValue },
   select: { id: true }
 }).execute();
 ```
 
-### Building the Permission Value
+### Building the Capability Value
 
 ```typescript
-// Resolve desired permission names to a value
-const result = await db.query.appPermissionsGetMaskByNames({
+// Resolve desired capability names to a value
+const result = await db.query.appCapabilitiesGetMaskByNames({
   names: 'invoke_agents,write_files,execute_graphs'
 }).execute();
-const customPermissionValue = result.permissions;
+const customCapabilityValue = result.capabilities;
 ```
 
 ## Default Grants (Audit Trail)
 
-Changes to permission defaults are tracked:
+Changes to capability defaults are tracked:
 
 ```typescript
-// View history of default permission changes
-const defaultGrants = await db.appPermissionDefaultGrant.findMany({
+// View history of default capability changes
+const defaultGrants = await db.appCapabilityDefaultGrant.findMany({
   select: {
     id: true,
-    permissions: true,
-    isGrant: true,       // true = permissions added to default, false = removed
+    capabilities: true,
+    isGrant: true,       // true = capabilities added to default, false = removed
     grantorId: true,
     createdAt: true
   },
@@ -121,15 +121,15 @@ const defaultGrants = await db.appPermissionDefaultGrant.findMany({
 
 ## Interaction with Profiles
 
-Permission defaults and profiles are independent but additive:
+Capability defaults and profiles are independent but additive:
 
 | Source | When Applied | Scope |
 |--------|-------------|-------|
 | Module defaults | On module install | Automatic for all new members |
-| Permission defaults | On member join | Per-entity (app/org/custom) |
+| Capability defaults | On member join | Per-entity (app/org/custom) |
 | Default profile | On member join (if `isDefault: true` profile exists) | Per-entity |
 
-If all three exist, the new member's initial permissions = `module defaults ∪ permission defaults ∪ default profile permissions`.
+If all three exist, the new member's initial capabilities = `module defaults ∪ capability defaults ∪ default profile capabilities`.
 
 ## Entity-Level vs App-Level
 

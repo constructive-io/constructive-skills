@@ -33,15 +33,26 @@ Table row change
             → tg_invitee_achievement → record_event for inviter
 ```
 
-## Capabilities
+## Features
 
-| Capability | Node/Config | Purpose |
-|------------|-------------|---------|
+| Feature | Node/Config | Purpose |
+|---------|-------------|---------|
 | **EventTracker** | Table `nodes[]` | Record events on row INSERT/UPDATE/DELETE |
 | **achievements[]** | Top-level blueprint | Levels with requirements and rewards |
 | **has_invite_achievements** | Entity type flag | Auto-wire invitee achievement chain |
 | **EventReferral** | Table `nodes[]` | Attribute events to inviters (multi-level) |
 | **period_interval** | Event type config | Auto-reset counts for recurring achievements |
+
+## Levels and Capabilities
+
+A level reached through events can project into the access-control system: the reward attached to a rung sets a capability with `kind = 'level'` on the member's row, so an RLS policy can require it exactly like a granted capability (`levels: ["level.reachable"]`). This is how earned trust becomes enforceable access rather than a display badge — a rung with no capability reward is a badge and grants nothing.
+
+Two things to know before designing around it:
+
+- **Owners and admins hold every level automatically.** Their membership is given the complete capability set, so a level requirement never constrains them inside their own entity. See [`constructive-access-control` → admin-owner-member.md](../constructive-access-control/references/admin-owner-member.md#owner-and-admin-hold-every-capability).
+- **Levels are earned, never granted.** Do not expose `kind = 'level'` rows in a grant or profile picker; filter capability lists by `kind`.
+
+See [`constructive-access-control` → named-capabilities.md](../constructive-access-control/references/named-capabilities.md#two-kinds-of-capability) for the capability model itself.
 
 ## EventTracker
 

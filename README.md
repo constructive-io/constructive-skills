@@ -33,7 +33,7 @@ Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; refer
 | `constructive-auth` | Identity, login, sessions, MFA, devices, auth settings |
 | `constructive-principals` | Scoped identities for API keys, agents, and service accounts |
 | `constructive-security` | Authorization — 25 registry Authz nodes, platform-applied `AuthzHumanOnly`, RLS, grants, and storage policies. |
-| `constructive-access-control` | Roles, permissions, profiles, grants, memberships, and hierarchy |
+| `constructive-access-control` | Roles, capabilities, profiles, grants, memberships, and hierarchy |
 | `constructive-entities` | Multi-tenancy — entity types, memberships, invites, entity-scoped storage |
 | `constructive-data-modeling` | Tables, fields, relations, constraints, indexes, database provisioning |
 | `constructive-billing` | Billing, limits, plans, credits, feature flags, meters |

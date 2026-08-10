@@ -84,7 +84,7 @@ Treat anything other than `result === true` as a failed verify.
 | Value | Behavior |
 |-------|----------|
 | `full_access` | Normal read + write, subject to RLS. |
-| `read_only` | The credential runs every request in a PostgreSQL read-only transaction — **all writes are rejected by the engine**, independent of the owner's permissions. |
+| `read_only` | The credential runs every request in a PostgreSQL read-only transaction — **all writes are rejected by the engine**, independent of the owner's capabilities. |
 
 Read-only keys are the safest way to hand out an integration credential that can never mutate data. See [`constructive-security` → read-only-access.md](../../constructive-security/references/read-only-access.md).
 
@@ -172,4 +172,4 @@ const db = createClient({
 });
 ```
 
-The session then authenticates as the principal: permission checks use the principal's subset, while billing/audit still attribute to the owning human.
+The session then authenticates as the principal: capability checks use the principal's subset, while billing/audit still attribute to the owning human.

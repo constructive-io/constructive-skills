@@ -17,7 +17,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
 | **constructive-principals** | *(standalone)* | Scoped sub-identities for API keys and agents — API key lifecycle, org scoping, read-only keys (SDK ORM) |
 | **constructive-security** | constructive-safegres, constructive-sdk-security | Authorization — 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, RLS, grants, storage policies |
-| **constructive-access-control** | *(standalone)* | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
+| **constructive-access-control** | *(standalone)* | Access control — roles, capabilities, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | constructive-sdk-entities | Multi-tenancy, memberships, invites, entity types, entity-scoped storage |
 | **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
 | **constructive-billing** | constructive-sdk-billing, constructive-sdk-limits | Billing, limits, plans, credits, feature flags, meters |

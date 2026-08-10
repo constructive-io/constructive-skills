@@ -56,20 +56,20 @@ Each mechanism is described as:
 {}
 ```
 
-**Config (permissioned):**
+**Config (with a capability requirement):**
 ```json
-{ "permission": "admin_permissions" }
+{ "capabilities": ["admin_capabilities"] }
 ```
 
 Optional keys:
-- `permission` (string)
-- `permissions` (string[])
+- `capabilities` (string[]) — capability names of any kind, merged into one mask
+- `levels` (string[]) — trust-ladder rung names (`kind = 'level'` catalog rows), merged into the same mask
 - `is_admin` (boolean)
 - `is_owner` (boolean)
 
 > **Note:** `membership_type` is not configurable — it is always `1` (app-level). For entity-scoped membership checks, use `AuthzEntityMembership`.
 
-**Semantics:** "The actor has app-level membership, optionally matching permission/admin flags."
+**Semantics:** "The actor has app-level membership, optionally matching capability/admin flags."
 
 **Use when:**
 - App-level admin checks.
@@ -88,7 +88,7 @@ Optional keys:
 ```json
 {
   "owner_field": "owner_id",
-  "permission": "write_content"
+  "capabilities": ["write_content"]
 }
 ```
 
@@ -96,10 +96,10 @@ Required key:
 - `owner_field` — column containing the owning user's id.
 
 Optional keys:
-- `permission` / `permissions`
+- `capabilities` (string[]) / `levels` (string[])
 - `is_admin` / `is_owner`
 
-**Semantics:** Authorize only when `{owner_field}` equals the actor's user id **and** the actor has app-level membership (`membership_type=1`) satisfying any configured permission or role flags.
+**Semantics:** Authorize only when `{owner_field}` equals the actor's user id **and** the actor has app-level membership (`membership_type=1`) satisfying any configured capability or role flags.
 
 **Use when:**
 - A globally scoped row is author-owned, but authorship must stop granting access when the author loses app membership.
@@ -121,7 +121,7 @@ Optional keys:
 Optional keys:
 - `sel_field` (default `entity_id`)
 - `membership_type` or `entity_type`
-- `permission` / `permissions`
+- `capabilities` (string[]) / `levels` (string[])
 - `is_admin` / `is_owner`
 
 **Semantics:** "The actor is a member of the entity referenced by this row's `{entity_field}`."
@@ -147,7 +147,7 @@ Optional keys:
 
 Optional keys:
 - `sel_field` — SPRT column to select for entity match (default: `entity_id`)
-- `permission` / `permissions`
+- `capabilities` (string[]) / `levels` (string[])
 - `entity_type` — string name resolved to membership_type via membership types module
 
 **Semantics:** "The actor owns this row (owner_field = current_user_id) AND the actor is a member of the entity referenced by entity_field."
@@ -189,7 +189,7 @@ Required and lookup keys:
 - `entity_field` is required.
 - Select the membership scope with `membership_type` or `entity_type`.
 - Identify the related table with `obj_schema` + `obj_table`, or `obj_table_id`; identify its entity field with `obj_field`, or `obj_field_id`.
-- Optional membership filters are `permission` / `permissions`, `is_admin`, and `is_owner`; `sel_field` and `sprt_join_field` default to `entity_id`.
+- Optional membership filters are `capabilities` (string[]), `levels` (string[]), `is_admin`, and `is_owner`; `sel_field` and `sprt_join_field` default to `entity_id`.
 
 ---
 
@@ -218,7 +218,7 @@ Related-table keys:
 - Identify its entity field with `obj_field`, or with `obj_field_id`.
 - `sel_field` and `sprt_join_field` default to `entity_id`.
 
-Membership filters may use `membership_type` or `entity_type`, plus `permission` / `permissions`, `is_admin`, and `is_owner`.
+Membership filters may use `membership_type` or `entity_type`, plus `capabilities` (string[]), `levels` (string[]), `is_admin`, and `is_owner`.
 
 **Semantics:** Authorize only when `{owner_field}` equals the actor's user id **and** the related row resolves to an entity in which the actor has the required membership. Ownership stops granting access when that membership is lost.
 
@@ -240,7 +240,7 @@ Membership filters may use `membership_type` or `entity_type`, plus `permission`
 ```
 
 Optional keys:
-- `permission` / `permissions`
+- `capabilities` (string[]) / `levels` (string[])
 - `is_admin` / `is_owner`
 
 **Semantics (in words):**
@@ -278,7 +278,7 @@ Required and lookup keys:
 
 Optional keys:
 - `obj_ref_field` (defaults to `id`)
-- `permission` / `permissions`
+- `capabilities` (string[]) / `levels` (string[])
 - `is_admin` / `is_owner`
 
 **Semantics (in words):**
@@ -472,7 +472,7 @@ Required keys are `owned_table_key`, `owned_table_ref_key`, and `this_object_key
 
 ## `AuthzFilePath`
 
-**Intent:** Path-scoped file sharing via ltree containment. Grants access when a `path_shares` row matches the current user, bucket, and an ancestor path with the required permission.
+**Intent:** Path-scoped file sharing via ltree containment. Grants access when a `path_shares` row matches the current user, bucket, and an ancestor path with the required capability.
 
 **Config (typical):**
 ```json
@@ -480,24 +480,24 @@ Required keys are `owned_table_key`, `owned_table_ref_key`, and `this_object_key
   "shares_schema": "public",
   "shares_table": "path_shares",
   "files_table": "files",
-  "permission_field": "can_read"
+  "capability_field": "can_read"
 }
 ```
 
 Required keys:
 - Identify the path-shares table with `shares_schema` + `shares_table`, or with `shares_table_id`.
-- `permission_field` — boolean column on path_shares granting the required permission (e.g. `can_read`, `can_write`).
+- `capability_field` — boolean column on path_shares granting the required capability (e.g. `can_read`, `can_write`).
 
 Optional keys:
 - Identify the files table with `files_schema` + `files_table`, or with `files_table_id`, when qualified outer-row references are needed.
 - `bucket_field` — column on the files table referencing the bucket (default `"bucket_id"`).
 - `path_field` — ltree column on the files table representing the file path (default `"path"`).
 
-**Semantics:** EXISTS subquery checks for a `path_shares` row where the actor matches, the bucket matches, the share's path is an ancestor of (or equal to) the file's path via ltree containment (`@>`), and the `permission_field` is true.
+**Semantics:** EXISTS subquery checks for a `path_shares` row where the actor matches, the bucket matches, the share's path is an ancestor of (or equal to) the file's path via ltree containment (`@>`), and the `capability_field` is true.
 
 **Use when:**
 - File-level access control using ltree path hierarchy (e.g. shared folders, virtual filesystem ACLs).
-- You have a `path_shares` table mapping users to path prefixes with per-permission booleans.
+- You have a `path_shares` table mapping users to path prefixes with per-capability booleans.
 
 **Tags:** `storage`, `authz`
 
@@ -590,7 +590,7 @@ Effective: org members can read; only system sessions (triggers/jobs) can write
 - Credential and principal lifecycle mutations that a bot must never invoke on its owner's behalf — `createApiKey`/`revokeApiKey`, `createOrgPrincipal`/`deleteOrgPrincipal`, `createOrgApiKey`/`revokeOrgApiKey`.
 
 **Avoid when:**
-- Regular data access — SPRT-based policies already resolve `current_principal_id()` correctly, so principals get exactly their subset of permissions without an extra guard.
+- Regular data access — SPRT-based policies already resolve `current_principal_id()` correctly, so principals get exactly their subset of capabilities without an extra guard.
 
 **Tags:** `authz`, `principal`, `human-only`
 
@@ -797,7 +797,7 @@ The `data` for an `AuthzComposite` is a boolean expression tree the system recur
     },
     {
       "AuthzAppMembership": {
-        "permission": "create_invites"
+        "capabilities": ["create_invites"]
       }
     }
   ]

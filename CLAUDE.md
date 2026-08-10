@@ -17,7 +17,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-auth** | Identity, login, sessions, MFA, devices, auth settings, service settings |
 | **constructive-principals** | Scoped sub-identities for API keys and agents — create/scope/revoke via the SDK ORM, read-only keys, org scoping |
 | **constructive-security** | Authorization — 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, RLS, grants, storage policies |
-| **constructive-access-control** | Access control — roles, permissions, profiles, grants, membership access, entity-scoped authorization |
+| **constructive-access-control** | Access control — roles, capabilities, profiles, grants, membership access, entity-scoped authorization |
 | **constructive-entities** | Multi-tenancy — entity types, memberships, invites, entity-scoped storage, agent module |
 | **constructive-data-modeling** | Tables, fields, relations, constraints, indexes, database provisioning (SDK CRUD) |
 | **constructive-billing** | Billing, limits, plans, credits, feature flags, meters, usage tracking |

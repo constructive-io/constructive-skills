@@ -10,7 +10,7 @@ Use [`constructive-blocks`](./.agents/skills/constructive-blocks/SKILL.md) for e
 |---|---|---|
 | Data (`data`) | `_meta`-driven application table exploration and spreadsheet CRUD | [`constructive-frontend`](./.agents/skills/constructive-frontend/SKILL.md), [`constructive-data-modeling`](./.agents/skills/constructive-data-modeling/SKILL.md), [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
 | Authentication (`auth`) | Sign-up, sign-in, recovery, personal account, and session controls | [`constructive-auth`](./.agents/skills/constructive-auth/SKILL.md) |
-| App access (`users`) | Application members, invitations, profiles, permissions, and defaults | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md), [`constructive-principals`](./.agents/skills/constructive-principals/SKILL.md) |
+| App access (`users`) | Application members, invitations, profiles, capabilities, and defaults | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md), [`constructive-principals`](./.agents/skills/constructive-principals/SKILL.md) |
 | Organizations (`organizations`) | Organization selection, membership governance, invitations, hierarchy, principals, and API keys | [`constructive-entities`](./.agents/skills/constructive-entities/SKILL.md), [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md), [`constructive-principals`](./.agents/skills/constructive-principals/SKILL.md) |
 | Storage (`storage`) | Buckets, folders, objects, upload, download, and deletion | [`constructive-storage`](./.agents/skills/constructive-storage/SKILL.md), [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
 | Billing (`billing`) | Plans, subscriptions, usage, entitlements, credits, and activity | [`constructive-billing`](./.agents/skills/constructive-billing/SKILL.md) |
@@ -43,7 +43,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 | Style or compose custom application UI | [`constructive-frontend`](./.agents/skills/constructive-frontend/SKILL.md) |
 | Configure identity, sessions, MFA, devices, or account linking | [`constructive-auth`](./.agents/skills/constructive-auth/SKILL.md) |
 | Define RLS, grants, ownership, or Constructive Authz policy behavior | [`constructive-security`](./.agents/skills/constructive-security/SKILL.md) |
-| Define roles, profiles, permissions, grants, or hierarchy | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md) |
+| Define roles, profiles, capabilities, grants, or hierarchy | [`constructive-access-control`](./.agents/skills/constructive-access-control/SKILL.md) |
 | Issue, scope, or revoke API keys, principals, or machine identities | [`constructive-principals`](./.agents/skills/constructive-principals/SKILL.md) |
 | Model organizations, memberships, and invitations | [`constructive-entities`](./.agents/skills/constructive-entities/SKILL.md) |
 | Create tables, fields, relations, constraints, indexes, enums, or views | [`constructive-data-modeling`](./.agents/skills/constructive-data-modeling/SKILL.md) |

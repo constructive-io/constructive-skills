@@ -8,7 +8,7 @@ metadata:
 
 # Constructive Entities
 
-Hierarchical entity type system for multi-tenancy. Every scope of membership — app, org, channel, department, team, data room — is a membership type with its own entity table, permissions, memberships, and security policies.
+Hierarchical entity type system for multi-tenancy. Every scope of membership — app, org, channel, department, team, data room — is a membership type with its own entity table, capabilities, memberships, and security policies.
 
 For tenant-facing organization selection and governance UI, use the Organizations feature pack through [`constructive-blocks`](../constructive-blocks/SKILL.md). This skill owns the entity, membership, invitation, and hierarchy model underneath that surface.
 
@@ -19,7 +19,7 @@ Use this skill when:
 - Provisioning entity-scoped storage (buckets + file uploads per entity)
 - Configuring agent modules (threads, messages, tasks, prompts, knowledge)
 - Setting up namespace modules (namespace_events partitioned metrics log)
-- Managing invites, profile assignment, and membership permissions
+- Managing invites, profile assignment, and membership capabilities
 - Understanding the entity hierarchy and parent-child relationships
 
 ## Core Concepts
@@ -32,7 +32,7 @@ Use this skill when:
 | 2 | Organization Member | `org` | Built-in |
 | 3+ | Dynamic | varies | You provision these |
 
-Every entity type gets: entity table, permissions module, memberships module, RLS policies. Optional: limits, profiles, levels, invites, storage, agent_module, namespace_module.
+Every entity type gets: entity table, capabilities module, memberships module, RLS policies. Optional: limits, profiles, levels, invites, storage, agent_module, namespace_module.
 
 ### Parent-Child Relationships
 
@@ -47,14 +47,14 @@ app (1)
 
 Nested types must be provisioned after their parent type.
 
-### Permission Model
+### Capability Model
 
-Each level has standard permissions. `create_entity` means "create the next level down":
+Each level has standard capabilities. `create_entity` means "create the next level down":
 
-| Level | `create_entity` | Other Permissions |
+| Level | `create_entity` | Other Capabilities |
 |-------|-----------------|-------------------|
 | App (1) | Creates organizations | `admin_members`, `admin_invites`, `admin_limits` |
-| Org (2) | Creates child entities | `admin_members`, `create_invites`, `admin_permissions` |
+| Org (2) | Creates child entities | `admin_members`, `create_invites`, `admin_capabilities` |
 | Dynamic (3+) | Creates sub-entities | `admin_members`, `create_invites`, `admin_entity` |
 
 ## Three Ways to Provision
@@ -98,7 +98,7 @@ Set `has_agents: true` to provision agent infrastructure per entity:
 | `false` (default) | `AuthzMemberOwner` | Private — only the thread creator sees their threads within the entity |
 | `true` | `AuthzEntityMembership` | Multiplayer — all entity members see and contribute to all threads |
 
-Auto-registers permissions: `invoke_agents` (default for all members), `manage_agents` (admin-only).
+Auto-registers capabilities: `invoke_agents` (default for all members), `manage_agents` (admin-only).
 
 ## Namespace Module
 
@@ -106,7 +106,7 @@ Set `has_namespaces: true` to provision `{prefix}_namespace_events` — a partit
 
 ## Invite System
 
-The invite system supports email invites, blank invites, and multiple invites with optional profile assignment and permission setting.
+The invite system supports email invites, blank invites, and multiple invites with optional profile assignment and capability setting.
 
 See [invites.md](./references/invites.md) for invite types, claim flow, and error codes.
 

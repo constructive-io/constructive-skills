@@ -8,7 +8,7 @@ Entity-type provisioning is a **control-plane** operation: send it to the platfo
 
 ## entity_type_provision (Trigger Table)
 
-`entity_type_provision` is a **trigger table** — inserting a row fires a trigger that provisions the entire entity type (table, permissions, memberships, security). The INSERT returns the provisioning results.
+`entity_type_provision` is a **trigger table** — inserting a row fires a trigger that provisions the entire entity type (table, capabilities, memberships, security). The INSERT returns the provisioning results.
 
 **Registrations are immutable.** There is no update path: to change one, delete the registration and create a new one. Deleting removes the *registration only* — the provisioned entity table and its rows stay in the API schema.
 
@@ -42,7 +42,7 @@ const result = await db.entityTypeProvision.create({
 //   outEntityTableId: '<uuid>',        // UUID of the channels table
 //   outEntityTableName: 'channels',    // table name
 //   outInstalledModules: [             // modules installed
-//     'permissions_module (channel)',
+//     'capabilities_module (channel)',
 //     'memberships_module (channel)',
 //     'invites_module (channel)'
 //   ]
@@ -89,7 +89,7 @@ When `tableProvision` is `null` and `skipEntityPolicies` is `false`:
 |---|---|---|
 | `self_member` | `SELECT` | Members of this entity can see it |
 | `parent_member` | `SELECT` | Members of the **parent** entity can see it **— only when `isVisible: true`** |
-| `admin_create` | `INSERT` | Parent members with `create_entity` permission can create one |
+| `admin_create` | `INSERT` | Parent members with `create_entity` capability can create one |
 | `admin_update` | `UPDATE` | Entity admins can update |
 | `admin_delete` | `DELETE` | Entity admins can delete |
 
@@ -240,4 +240,4 @@ Once a type is provisioned, run introspection + codegen to get typed SDK access 
 cnc codegen --database <db-name>
 ```
 
-The new entity tables (`channels`, `channel_permissions`, etc.) will appear in the generated SDK like any other table.
+The new entity tables (`channels`, `channel_capabilities`, etc.) will appear in the generated SDK like any other table.

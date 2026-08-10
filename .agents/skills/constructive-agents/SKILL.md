@@ -142,12 +142,12 @@ When `has_agents` is enabled, `agent_messages` includes an `agent_id` FK. This a
 - Tasks are attributed via `actor_id`
 - Agent personas define system prompts, model config, and linked resources
 
-### Module Permissions
+### Module Capabilities
 
-The agent module auto-registers these permissions on install:
+The agent module auto-registers these capabilities on install:
 
-| Permission | Default | Purpose |
-|-----------|---------|---------|
+| Capability | Default | Purpose |
+|------------|---------|---------|
 | `invoke_agents` | Granted to all members | Use agent features (threads, messages, tasks) |
 | `manage_agents` | Admin-only | Administer agent infrastructure |
 

@@ -25,7 +25,7 @@ Use this skill when:
 |---|---|---|
 | Explore application tables and perform dynamic CRUD | Data (`data`) | [`constructive-frontend`](../constructive-frontend/SKILL.md), [`constructive-data-modeling`](../constructive-data-modeling/SKILL.md), [`constructive-security`](../constructive-security/SKILL.md) |
 | Sign up, sign in, recover an account, or manage a personal session | Authentication (`auth`) | [`constructive-auth`](../constructive-auth/SKILL.md) |
-| Govern application members, invitations, profiles, and permissions | App access (`users`) | [`constructive-access-control`](../constructive-access-control/SKILL.md), [`constructive-principals`](../constructive-principals/SKILL.md) |
+| Govern application members, invitations, profiles, and capabilities | App access (`users`) | [`constructive-access-control`](../constructive-access-control/SKILL.md), [`constructive-principals`](../constructive-principals/SKILL.md) |
 | Govern organizations, members, hierarchy, principals, and API keys | Organizations (`organizations`) | [`constructive-entities`](../constructive-entities/SKILL.md), [`constructive-access-control`](../constructive-access-control/SKILL.md), [`constructive-principals`](../constructive-principals/SKILL.md) |
 | Browse buckets and objects or perform upload/download actions | Storage (`storage`) | [`constructive-storage`](../constructive-storage/SKILL.md), [`constructive-security`](../constructive-security/SKILL.md) |
 | Manage plans, subscriptions, usage, entitlements, and credits | Billing (`billing`) | [`constructive-billing`](../constructive-billing/SKILL.md) |
