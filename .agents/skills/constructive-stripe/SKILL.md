@@ -1,12 +1,41 @@
 ---
 name: constructive-stripe
-description: "Stripe billing provider — checkout, subscriptions, credit packs, refunds, invoice history, and metered usage reporting. Use when asked to 'add Stripe', 'take payments', 'sell credits', 'create a checkout session', 'upgrade a plan', 'handle refunds', 'show invoice history', 'bill by usage', 'metered billing', 'usage-based pricing', 'why didn't my limit go up after paying', 'credits not refunded', 'which credits does a purchase grant', or when wiring billing_provider_module to Stripe."
+description: "Stripe billing provider — checkout, subscriptions, credit packs, refunds, invoice history, metered usage, failed payments and dunning, and disputes. Use when asked to 'add Stripe', 'take payments', 'sell credits', 'create a checkout session', 'upgrade a plan', 'cancel a subscription', 'handle refunds', 'show invoice history', 'bill by usage', 'metered billing', 'usage-based pricing', 'report usage to Stripe', 'meter events'; when a payment failed — 'card declined', 'payment failed', 'past due', 'overdue subscription', 'dunning', 'grace period', 'downgrade after non-payment', 'expired card'; when money comes back — 'refund', 'refund failed', 'chargeback', 'dispute', 'customer disputed a charge'; or for symptoms like 'why didn't my limit go up after paying', 'credits not refunded', 'usage is not being billed', 'No active meter found for event name', 'cancelled but the customer still has paid limits', 'which credits does a purchase grant', or when wiring billing_provider_module to Stripe."
 metadata:
   author: constructive-io
-  version: "1.0.0"
+  version: "1.1.0"
 ---
 
 # Constructive Stripe
+
+## Before you build on this
+
+Three things decide whether a deployment works, and none of them is visible
+from the code:
+
+1. **Disputes are not handled.** Five events, none received. A customer
+   disputes a charge, the bank takes the money, and nothing in the platform
+   reflects it — the evidence window passes unattended, which loses the case by
+   default. Do not treat billing as complete without it.
+   ([lifecycle.md](./references/lifecycle.md),
+   [planning#1526](https://github.com/constructive-io/constructive-planning/issues/1526))
+
+2. **Metered billing needs a Stripe meter that nothing creates.** Usage is
+   reported to a meter *by event name*. If no active Stripe meter carries the
+   local meter's slug, every report fails with `No active meter found for event
+   name "…"` — the job retries, exhausts its attempts, and stops. Nothing else
+   says so. ([metered-usage.md](./references/metered-usage.md))
+
+3. **Selling top-up credits is currently unsafe.** A customer with 3 free
+   projects who buys 5 more ends up with 5 in total: the purchase destroys the
+   free allowance. Keep that entry point closed until
+   [planning#1506](https://github.com/constructive-io/constructive-planning/issues/1506)
+   lands.
+
+Everything else below is verified end to end against a real Stripe test account
+in `constructive-hub/tests/billing`.
+
+## What this covers
 
 Taking money with Stripe and having the platform apply the result — raising a
 limit, granting metered credits, reversing them on a refund, keeping an invoice
