@@ -150,3 +150,100 @@ type Condition =
 - `user_auth_module` must be provisioned (provides `require_step_up()` in auth_public schema)
 - `app_settings_auth` singleton must exist (provides `step_up_window` config)
 - Resolve required auth modules from the current backend preset registry; do not depend on the removed `AUTH_EMAIL` preset alias
+
+## DataLock
+
+`GuardStepUp` guards a table — *every* row on it. `DataLock` guards a **row**: it adds a boolean lock column and only guards rows where that column is `true`. Use it for infrastructure rows other things depend on (the bucket a cloud function needs, a production route, a billing plan) so they cannot be deleted or edited by accident, while the rest of the table stays freely mutable.
+
+Registry category is `data` (not `guard`), because it owns a column; behaviorally it belongs to this family.
+
+### Two enforcement modes
+
+| `enforcement` | Guarded verb on a locked row | Needs auth module |
+|---|---|---|
+| `step_up` (default) | allowed after recent verification — raises `STEP_UP_REQUIRED_*` otherwise | yes |
+| `block` | always refused with `ROW_LOCKED`; you must unlock first | no |
+
+So `block` is a true two-step: unlock, then delete. `step_up` is one step for someone who can re-authenticate.
+
+### Options
+
+| Option | Default | Meaning |
+|---|---|---|
+| `lock_field` | `"locked"` | Boolean column holding the lock state (created if absent) |
+| `events` | `["DELETE"]` | Which verbs to guard — `UPDATE`, `DELETE`, or both. `INSERT` is rejected |
+| `enforcement` | `"step_up"` | `step_up` or `block` |
+| `step_up_type` | `"fresh_auth"` | `fresh_auth`, `mfa`, or `password` |
+| `guard_unlock` | `true` | Require step-up to change the lock column itself |
+| `protect_fields` | `[]` | Narrow a guarded UPDATE to changes touching these columns |
+| `default_locked` | `false` | Initial value of the lock column |
+| `min_age` | *(none)* | Only guard rows older than this interval |
+
+### Blueprint examples
+
+```jsonc
+// A bucket a cloud function depends on: locked buckets cannot be deleted at all
+{ "$type": "DataLock", "data": { "enforcement": "block" } }
+```
+
+```jsonc
+// Locked production routes are read-only AND undeletable, MFA to override
+{ "$type": "DataLock", "data": {
+    "events": ["UPDATE", "DELETE"],
+    "step_up_type": "mfa"
+}}
+```
+
+```jsonc
+// Locked rows stay editable except for the fields that actually matter
+{ "$type": "DataLock", "data": {
+    "events": ["UPDATE"],
+    "enforcement": "block",
+    "protect_fields": ["region", "endpoint"]
+}}
+```
+
+`events` is a list, so DELETE and UPDATE protection are independent: `["DELETE"]` leaves locked rows editable, `["UPDATE"]` leaves them deletable. `enforcement` currently applies to the whole node — you cannot yet block DELETE while only stepping up UPDATE.
+
+### Locking and unlocking through the SDK
+
+The lock is an ordinary boolean column, so it is set like any other field:
+
+```typescript
+await db.bucket.update({ where: { id: bucketId }, data: { locked: true } }).execute();
+```
+
+Unlocking is guarded, so verify first (as with any step-up mutation):
+
+```typescript
+await db.query.requireStepUp({ stepUpType: 'mfa' }).execute();
+await db.bucket.update({ where: { id: bucketId }, data: { locked: false } }).execute();
+await db.bucket.delete({ where: { id: bucketId } }).execute();
+```
+
+### Why the unlock cannot lock itself out
+
+The obvious implementation guards `locked` and bricks the row: the unlock is itself an UPDATE, so it gets caught by the guard it is trying to escape. The generated conditions therefore differ per verb and mode:
+
+- `DELETE` → guards `OLD.locked`.
+- `UPDATE` + `block` → guards `OLD.locked AND NEW.locked`, which refuses edits but deliberately lets the unlock through.
+- `UPDATE` + `step_up` → guards `OLD.locked OR NEW.locked`, catching the unlock as well, since re-authentication covers it.
+
+`guard_unlock` adds a standalone `NEW.locked IS DISTINCT FROM OLD.locked` guard only when the above does not already cover the transition — under `step_up` with UPDATE guarded, it is skipped as redundant. The unlock guard is always `step_up`: blocking the lock column outright would make the lock permanent.
+
+### Known gaps
+
+- **Cascading deletes bypass the lock.** A locked row deleted via `ON DELETE CASCADE` from a parent is removed without the guard firing. Lock (or restrict) the parent as well if the row must survive.
+- `min_age` requires a `created_at` column (e.g. via `DataTimestamps`) and applies to `UPDATE`/`DELETE` only.
+
+### Error codes
+
+| Error | Meaning |
+|-------|---------|
+| `ROW_LOCKED` | `block` enforcement refused the verb; unlock the row first. Context carries `table`, `operation`, `lock_field` |
+| `STEP_UP_REQUIRED_*` | `step_up` enforcement — verify, then retry (see the table above) |
+
+### Prerequisites
+
+- `enforcement: "block"` needs nothing beyond the table itself.
+- `enforcement: "step_up"` (and any `guard_unlock`) needs `user_auth_module`, same as `GuardStepUp`.
