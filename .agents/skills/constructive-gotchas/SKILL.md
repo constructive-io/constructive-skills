@@ -89,7 +89,7 @@ If you copy-edit the example verbatim, you will carry over generic tables into y
 - **`AuthzDirectOwner` (default — each user owns their rows).** `nodes: ['DataId', 'DataDirectOwner', …]`, `use_rls: true`, `policies: [{ $type: 'AuthzDirectOwner', privileges: ['select','insert','update','delete'], permissive: true, data: { entity_field: 'owner_id' } }]`. Compiles to `owner_id = jwt_public.current_user_id()` (USING for s/u/d, WITH CHECK for insert). Proven 1/1/1/1 CRUD e2e. The client sets `ownerId` to the authed user's id on create — WITH CHECK rejects any other value (anti-spoof). Optionally force it server-side with the node `{ $type: 'DataForceCurrentUser', data: { field_name: 'owner_id' } }`.
   - **FK prereq:** `owner_id` FKs to the per-tenant users table, so the authed user must exist in-tenant — sign up via the TENANT endpoint (`auth-<sub>.localhost`), NOT base `auth.localhost`, or the insert FK-violates.
 - **`AuthzAllowAll` (app-wide shared pool, no ownership).** `nodes: ['DataId', { $type: 'DataTimestamps', data: { include_id: false } }]`, `use_rls: true`, `policies: [{ $type: 'AuthzAllowAll', privileges: ['select','insert','update','delete'], permissive: true }]`.
-- **`AuthzEntityMembership` + `membership_type: 2` (org/b2b tenancy) — ONLY with org modules.** On any app WITHOUT org/b2b/memberships modules (i.e. the `auth:email` preset) this does NOT silently 0-row: it **FAILS HARD** at `constructBlueprint` time with `status: failed, errorDetails: "NOT_FOUND (memberships_module)"` (the org-scoped SPRT does not exist), so the table is **never created**. Only use it when you provisioned the `b2b` module preset.
+- **`AuthzEntityMembership` + `membership_type: 2` (org/b2b tenancy) — ONLY with org modules.** On any app WITHOUT org/b2b/memberships modules (i.e. the `auth:hardened` preset, or any list without them) this does NOT silently 0-row: it **FAILS HARD** at `constructBlueprint` time with `status: failed, errorDetails: "NOT_FOUND (memberships_module)"` (the org-scoped SPRT does not exist), so the table is **never created**. Only use it when you provisioned the `b2b:storage` module preset.
 - **`AuthzAppMembership` (membership_type 1)** *constructs* but then **silently denies all CRUD** (0 rows, no error) until the actor's `app_membership` is approved+active (`is_approved`/`is_active`/`is_verified = TRUE`). If you must use it, add the post-provision approval UPDATE; otherwise prefer `AuthzDirectOwner`.
 
 > `AuthzDirectOwner`'s config key is **`entity_field`** (value = the owner column, e.g. `'owner_id'`), NOT `owner_field` (that belongs to `AuthzMemberOwner` / `AuthzPeerOwnership` / `AuthzRelatedPeerOwnership` / `AuthzOrgHierarchy`). Using `owner_field` triggers `MISSING_REQUIRED_FIELD`.
@@ -119,7 +119,7 @@ This emits `auth_upd_self_update` (`FOR UPDATE TO authenticated USING id = jwt_p
 **B2B (org) flows need MORE than the basic recipe — the org counterpart to RLS-USERS-UPDATE-001.** Only
 applies to the opt-in **b2b tier** (a flow whose `backend.modules` carry the org-scoped
 `memberships`/`hierarchy` tuples — `organization` / `org-members` / `org-roles` / `org-invites` /
-`app-memberships`). The users self-update step + `app_public` blueprint grants cover `auth:email`, but org
+`app-memberships`). The users self-update step + `app_public` blueprint grants cover `auth:hardened`, but org
 flows write **module-owned** org tables and gate org creation on the `create_entity` app-permission bit
 (bit 5 = `0x20`) the basic recipe never sets — so org create / member writes are RLS-denied even with auth
 in place. The full 3-step reconciliation (grant `create_entity`; `authenticated` INSERT/UPDATE on the
@@ -429,24 +429,20 @@ Read the list straight off the chosen flow instead of retyping it:
 node -e 'const f=require("./references/flows.json");const fl=f.flows.find(x=>x.id==="email-password");console.log(fl.backend.preset);console.log(JSON.stringify(fl.backend.modules,null,2))'
 ```
 
-For a **basic auth app** (email + password sign-up/sign-in, app-level RLS — no orgs/SSO/MFA) the `email-password` flow rides the `auth:email` preset. The concrete list below is what templates embed where reading a file at provision time is impractical — **but its authority is `flows.json` (the `email-password` flow's `backend.modules`), and `check-flows` is what keeps it honest.** Keep it byte-for-byte in sync with `flows.json`; if you change one, regenerate and re-check the other.
+For a **basic auth app** (email + password sign-up/sign-in, app-level RLS — no orgs/SSO/MFA) the `email-password` flow carries its own `backend.modules` list; no shipped preset is that small any more, so the flow's list is the authority and the block below is a copy for templates that cannot read a file at provision time. Keep it in sync with the flow.
 
 > **Scoped modules are TUPLES, not colon strings.** The proc takes `["name", { "scope": ".." }]` tuples for scope-aware modules — a `name:scope` colon string (e.g. `'memberships_module:app'`) is read as a bare module name and throws `NOT_FOUND (memberships_module)`, installing the scoped module *not at all*. `flows.json` already carries these as native tuples; pass them verbatim.
 
 ```typescript
-// auth:email — the verified default for a basic auth app.
-// AUTHORITY: references/flows.json → flows[id="email-password"].backend.modules
-//   (generated from constructive/packages/node-type-registry/src/module-presets/auth-email.ts;
-//    machine-checked by `pnpm check:flows`). Do not edit this list by hand without
-//    regenerating flows.json — `check-flows` will flag the drift.
+// The verified minimum for a basic auth app. Not a shipped preset — the
+// smallest preset that covers it is `auth:hardened`, which installs far more.
 // Scoped entries are ['name', { scope }] tuples — colon strings ('name:scope')
 // throw NOT_FOUND in the provision proc.
-const MODULES_AUTH_EMAIL = [
+const MODULES_EMAIL_PASSWORD = [
   'users_module',
   'membership_types_module',
   ['capabilities_module', { scope: 'app' }],
   ['limits_module', { scope: 'app' }],
-  ['levels_module', { scope: 'app' }],
   ['memberships_module', { scope: 'app' }],
   'sessions_module',
   'user_state_module',
@@ -460,13 +456,13 @@ const MODULES_AUTH_EMAIL = [
 
 Re-provisioning with this exact list yields 18 schemas with working `signIn` / `signUp` / `currentUser` and a live RLS-governed `createNote` / query — versus the broken ~4-schema result from `['all']`.
 
-> **`levels_module` in a preset does not give you levels.** Pass the list verbatim — but do not read that entry as "this database can earn levels". The levels, requirements, grants and reward tables are provisioned by `events_module`, which only `full` installs, and the trust ladder that fills them has to be requested by slug: `["events_module", { "scope": "app", "trust_ladder": "humanity" }]`. A database provisioned from any other preset has zero `kind = 'level'` capability rows, so a policy gating on `level.reachable` admits nobody. See [`constructive-events` → trust-ladders.md](../constructive-events/references/trust-ladders.md).
+> **`levels_module` is not a module.** The provisioning proc has no branch for it, so a list naming it silently installs nothing — no levels, requirements, grants or reward tables. Levels come from `events_module`, and the ladder that fills them must be named: `["events_module", { "scope": "app", "trust_ladder": "humanity" }]`. The list above omits it for that reason, and therefore cannot earn a level; the shipped presets (`auth:hardened`, `b2b:storage`, `full`) all carry the `humanity` ladder. See [`constructive-events` → trust-ladders.md](../constructive-events/references/trust-ladders.md).
 
 For a **fuller app**, provision the richer flow's module list — again read from `flows.json`, not invented:
 
-- Any `social-oauth` / `connected-accounts` flow → `auth:sso` (adds `connected_accounts_module` + `identity_providers_module`).
-- Any `org-*` flow (`organization`, `org-members`, `org-roles`, `org-invites`, `app-memberships`) → `b2b` (org-scoped memberships, invites, fine-grained capabilities, levels, profiles, hierarchy, rate limits, SSO, passkeys, SMS). There is **no preset smaller than `b2b`** for org flows. Use when the app has workspaces / teams / tenants.
-- `full` — installs every standard module (everything in `b2b` plus storage, billing/plans, notifications, crypto addresses, events). Use for reference/demo DBs and open-ended greenfield apps. (Not flow-keyed; pull from the preset directly.)
+- Any `social-oauth` / `connected-accounts` flow → `auth:hardened` (adds `connected_accounts_module` + `identity_providers_module` + `oauth_requests_module`, plus passkeys, SMS and rate limits).
+- Any `org-*` flow (`organization`, `org-members`, `org-roles`, `org-invites`, `app-memberships`) → `b2b:storage` (org-scoped memberships, invites, fine-grained capabilities, levels, profiles, hierarchy, storage, on top of `auth:hardened`). There is **no preset smaller than `b2b:storage`** for org flows. Use when the app has workspaces / teams / tenants.
+- `full` — installs every standard module (everything in `b2b:storage` plus billing/plans, notifications, crypto addresses, i18n, functions). Use for reference/demo DBs and open-ended greenfield apps. (Not flow-keyed; pull from the preset directly.)
 
 The flow's `backend.modules` IS the exact set to pass to `databaseProvisionModule`; `backend.preset` is only the smallest covering shipped preset (advisory). If you need a preset not represented by a flow, pull its `modules` array from `constructive/packages/node-type-registry/src/module-presets/<preset>.ts` (the `ModulePreset.modules` field) or via `getModulePreset('<preset>').modules` — but for anything a flow covers, prefer `flows.json` so `check-flows` guards it. Presets are metadata only — what actually installs the modules is passing that flat `string[]` to `databaseProvisionModule`. Order does not matter; provisioning resolves dependencies.
 
@@ -774,7 +770,7 @@ The same pattern applies to `cnc server`: it prompts for CORS origin if `--origi
 ## Architecture Shortcuts
 
 - Users are organizations. `user.id` is the personal organization id.
-- Provision with an **explicit module list**, never `modules: ['all']` — see PROVISION-001 below. Which modules comes from the chosen flow's `backend.modules` in `references/flows.json` (machine-checked by `pnpm check:flows`); the default for a basic auth app is the `email-password` flow's `auth:email` list.
+- Provision with an **explicit module list**, never `modules: ['all']` — see PROVISION-001 below. Which modules comes from the chosen flow's `backend.modules` in `references/flows.json` (machine-checked by `pnpm check:flows`); the default for a basic auth app is the `email-password` flow's own module list — no shipped preset is that small.
 - The `create-db.ts` script passes `bootstrapUser: true`. Always include it when provisioning manually.
 - Prefer `AuthzEntityMembership` over `AuthzMembership` for entity-scoped tables. Read the `constructive-security` skill for the full list of valid Authz* types. There is no `AuthzOwnershipInEntity` — use the `constructive-db-data-modules` skill for correct pairings.
 - Most `id`-bearing Data modules add `id` by default, so when composing several on one table set `include_id: false` on the *follow-up* nodes via `nodes: [{ $type: 'DataTimestamps', data: { include_id: false } }]` (Blueprint shape — NOT a separate flat `nodeData` call). But not every Data module adds `id`: `DataDirectOwner` adds **only `owner_id`** (no PK), so an owner-scoped table that needs full CRUD must **prepend `DataId`** (`nodes: ['DataId', 'DataDirectOwner', …]`). See `constructive-blueprints` → references/node-type-registry.md.
