@@ -16,8 +16,8 @@ The `EventTracker` node type creates AFTER triggers on a table that call `record
 | `entity_field` | string (column-ref) | — | Column containing the entity ID for entity-scoped events |
 | `auto_register_type` | boolean | `true` | Register `event_name` in event_types catalog during provisioning |
 | `watch_fields` | string[] | — | UPDATE-only: fire when these columns change |
-| `condition_field` | string | — | Legacy: column for simple WHEN clause |
-| `condition_value` | string | — | Legacy: value to match |
+| `condition_field` | string | — | Shorthand: column for a simple equality WHEN clause |
+| `condition_value` | string | — | Shorthand: value to match |
 | `conditions` | object \| array | — | Compound conditions (same syntax as JobTrigger) |
 
 **Constraints:** `conditions`, `condition_field`, and `watch_fields` are mutually exclusive.

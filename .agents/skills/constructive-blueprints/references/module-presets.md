@@ -15,7 +15,7 @@ The supported profiles are:
 | `b2b:storage` | Hardened auth, organizations, membership governance, and storage infrastructure |
 | `full` | Complete reference capability set, including billing and notifications modules |
 
-These four are the whole lineup. Do not accept removed preset aliases such as `auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, or `b2b` in a new brief. If a custom backend composition is required, declare it explicitly through the backend's supported module mechanism rather than inventing another preset name.
+These four are the whole lineup. Do not accept any other preset name in a brief: if a custom backend composition is required, declare it explicitly through the backend's supported module mechanism rather than inventing a preset.
 
 ## Content presets are a different thing
 

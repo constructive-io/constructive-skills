@@ -2,7 +2,7 @@
 
 Capabilities are named access rights that control what actions a member can perform within a scope. Each module registers its own capabilities when installed, and they compose into a unified capability model per entity type.
 
-> **Naming:** this concept was called *permissions* until the platform rename. A capability is now the single named unit of access, and every table, column, ORM model, and blueprint argument uses the capability spelling. The word *permission* survives in exactly one place — as a value of the `kind` column (see below).
+> **Naming:** a capability is the single named unit of access, and every table, column, ORM model, and blueprint argument uses that spelling. The word *permission* appears in exactly one place — as a value of the `kind` column (see below).
 
 ## Two Kinds of Capability
 

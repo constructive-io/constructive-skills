@@ -1,6 +1,6 @@
 ---
 name: constructive-access-control
-description: "Access control — roles, capabilities (formerly capabilities), profiles, grants, membership access, and entity-scoped authorization. Use when asked to 'assign capabilities', 'assign capabilities', 'create roles', 'set up profiles', 'grant access', 'capability defaults', 'capability defaults', 'admin vs owner', 'membership capabilities', 'effective capabilities', 'revoke access', 'role hierarchy', 'custom roles', 'profile bundles', 'default profile', 'entity-scoped capabilities', 'org capabilities', 'app capabilities', 'capability resolution', 'trust levels', 'do owners get everything', or when working with the access control model in blueprints or the ORM."
+description: "Access control — roles, capabilities, profiles, grants, membership access, and entity-scoped authorization. Use when asked to 'assign capabilities', 'create roles', 'set up profiles', 'grant access', 'capability defaults', 'admin vs owner', 'membership capabilities', 'effective capabilities', 'revoke access', 'role hierarchy', 'custom roles', 'profile bundles', 'default profile', 'entity-scoped capabilities', 'org capabilities', 'app capabilities', 'capability resolution', 'trust levels', 'do owners get everything', or when working with the access control model in blueprints or the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -10,7 +10,7 @@ metadata:
 
 The access control model — how users get capabilities, how roles and profiles organize them, and how access composes across scopes. This skill covers the semantic layer: what access means in a Constructive app, how to configure it via blueprints and the ORM, and how the different layers (roles, profiles, grants, defaults) compose into effective access.
 
-> **Naming:** the platform concept formerly called a *permission* is now a **capability**. Every table, column, ORM model, blueprint argument, and module name uses the capability spelling (`appCapability`, `capabilities_module`, `capabilities: […]`). *Permission* remains only as a value of a capability's `kind` column, distinguishing a granted access right from an earned trust `level`.
+> **Naming:** a **capability** is the named unit of access — every table, column, ORM model, blueprint argument, and module name uses that spelling (`appCapability`, `capabilities_module`, `capabilities: […]`). *Permission* appears only as a value of a capability's `kind` column, distinguishing a granted access right from an earned trust `level`.
 
 For application UI, the App access and Organizations feature packs expose the corresponding membership, invitation, profile, capability, and default-management surfaces. Use [`constructive-blocks`](../constructive-blocks/SKILL.md) for installation, standalone host contracts, and Console module discovery and adapters; this skill remains the authority for access semantics.
 
