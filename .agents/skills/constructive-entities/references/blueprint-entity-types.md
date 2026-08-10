@@ -65,7 +65,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. **No-op when `table_provision` is supplied.** See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named capability roles |
-| `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
+| `has_levels` | boolean | No | `false` | Provision an `events_module` for this type — events, levels, requirements, grants, and rewards. Powers achievements and trust ladders alike. See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
 | `has_invite_achievements` | boolean | No | `false` | Auto-attach an EventTracker to `claimed_invites` for invite-based achievements + wire the invitee achievement virality trigger. Requires `has_invites=true` AND `has_levels=true`. See [`constructive-events`](../../constructive-events/SKILL.md). |

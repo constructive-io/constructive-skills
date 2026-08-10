@@ -11,7 +11,7 @@ Every capability row carries a `kind`:
 | `kind` | Meaning | Granted by |
 |--------|---------|------------|
 | `permission` *(default)* | A named access right — "can do X" | Defaults, profiles, direct grants, admin/owner role |
-| `level` | A trust-ladder rung — "has reached X" | Earned through recorded events (see [`constructive-events`](../../constructive-events/SKILL.md)) |
+| `level` | A trust-ladder rung — "has reached X" | Earned through recorded events (see [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md)) |
 
 Both kinds live in the same table and the same underlying bit space, so a policy can require a permission, a level, or both, and one check answers all of it. The distinction matters when you build UI: a levels picker must filter to `kind = 'level'` and a capabilities picker to `kind = 'permission'`, or a level becomes grantable as though it were a capability — which would let an operator hand out trust that is supposed to be earned.
 
@@ -121,7 +121,9 @@ Capabilities follow a naming convention:
 | `admin_*` | Administrative access | `admin_invites`, `admin_members` |
 | `write_*` / `delete_*` | Data operations | `write_files`, `delete_files` |
 | `execute_*` | Run operations | `execute_graphs` |
-| `level.*` | A trust-ladder rung (`kind = 'level'`) | `level.reachable` |
+| `level.*` | A trust-ladder rung (`kind = 'level'`) | `level.reachable`, `level.accountable` |
+
+The `level.*` rows come from the trust ladder a database was provisioned with — a database that asked for none has no `kind = 'level'` rows at all, and a policy requiring one can never be satisfied. See [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md).
 
 ## Custom Capabilities via Blueprint
 

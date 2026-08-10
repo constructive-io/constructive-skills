@@ -60,7 +60,7 @@ After selecting the product capability, activate `constructive-blocks` to choose
 | Tables, fields, relations, constraints, indexes, enums, and views | [`constructive-data-modeling`](../constructive-data-modeling/SKILL.md) |
 | Full-text, fuzzy, vector, spatial, and unified search | [`constructive-search`](../constructive-search/SKILL.md) |
 | Agents, embeddings, LLM providers, and RAG | [`constructive-agents`](../constructive-agents/SKILL.md) |
-| Events, achievements, referrals, and gamification | [`constructive-events`](../constructive-events/SKILL.md) |
+| Events, achievements, referrals, gamification, and progressive trust | [`constructive-events`](../constructive-events/SKILL.md) |
 | Subscriptions and change tracking | [`constructive-realtime`](../constructive-realtime/SKILL.md) |
 | Background jobs and triggers | [`constructive-jobs`](../constructive-jobs/SKILL.md) |
 | Internationalized data and multilingual search | [`constructive-i18n`](../constructive-i18n/SKILL.md) |

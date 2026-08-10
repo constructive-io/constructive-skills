@@ -13,7 +13,7 @@ Use these exact registry names throughout blueprint definitions.
 
 Related skills:
 - **`constructive-billing`**: Billing meters, universal credits, billing provider bridge
-- **`constructive-events`**: Achievement rewards grant `limit_credits` when levels are achieved
+- **`constructive-events`**: Achievement rewards and [trust-ladder rungs](../../constructive-events/references/trust-ladders.md) grant `limit_credits` when levels are achieved
 - **`constructive-platform`**: Blueprint provisioning overview
 - **`entity-types-and-provisioning`**: Entity types and `membership_types` in blueprints
 - **`constructive-db-limits`**: SQL-level architecture reference (internal implementation)
@@ -327,6 +327,8 @@ All limits tables are exposed via the generated ORM. Prefix is `app` for app-sco
 ### Setting Default Maximums
 
 Every named limit needs a default max. When a user first hits a limit, the system lazy-initializes their row from this default.
+
+Defaults can also be seeded at provisioning time from a named baseline — `["limits_module", { "scope": "app", "limit_defaults": "metered" }]` seeds the conservative starting capacity that the `metered` trust ladder pays credits into. Without it, that ladder deposits credits into limits nobody defined. See [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md).
 
 ```typescript
 // Set default: users can create up to 10 projects

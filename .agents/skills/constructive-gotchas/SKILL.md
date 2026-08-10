@@ -460,6 +460,8 @@ const MODULES_AUTH_EMAIL = [
 
 Re-provisioning with this exact list yields 18 schemas with working `signIn` / `signUp` / `currentUser` and a live RLS-governed `createNote` / query — versus the broken ~4-schema result from `['all']`.
 
+> **`levels_module` in a preset does not give you levels.** Pass the list verbatim — but do not read that entry as "this database can earn levels". The levels, requirements, grants and reward tables are provisioned by `events_module`, which only `full` installs, and the trust ladder that fills them has to be requested by slug: `["events_module", { "scope": "app", "trust_ladder": "humanity" }]`. A database provisioned from any other preset has zero `kind = 'level'` capability rows, so a policy gating on `level.reachable` admits nobody. See [`constructive-events` → trust-ladders.md](../constructive-events/references/trust-ladders.md).
+
 For a **fuller app**, provision the richer flow's module list — again read from `flows.json`, not invented:
 
 - Any `social-oauth` / `connected-accounts` flow → `auth:sso` (adds `connected_accounts_module` + `identity_providers_module`).

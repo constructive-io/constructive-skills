@@ -52,7 +52,7 @@ The canonical names, dependency closure, shadcn command, runtime requirements, a
 | Configure notification delivery and preferences | [`constructive-notifications`](./.agents/skills/constructive-notifications/SKILL.md) |
 | Add full-text, fuzzy, vector, spatial, or unified search | [`constructive-search`](./.agents/skills/constructive-search/SKILL.md) |
 | Add agents, embeddings, or RAG | [`constructive-agents`](./.agents/skills/constructive-agents/SKILL.md) |
-| Add events, achievements, referrals, or gamification | [`constructive-events`](./.agents/skills/constructive-events/SKILL.md) |
+| Add events, achievements, referrals, gamification, or a progressive trust ladder | [`constructive-events`](./.agents/skills/constructive-events/SKILL.md) |
 | Add subscriptions or change tracking | [`constructive-realtime`](./.agents/skills/constructive-realtime/SKILL.md) |
 | Add background jobs or triggers | [`constructive-jobs`](./.agents/skills/constructive-jobs/SKILL.md) |
 | Add multilingual data and search | [`constructive-i18n`](./.agents/skills/constructive-i18n/SKILL.md) |

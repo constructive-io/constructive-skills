@@ -1,6 +1,6 @@
 ---
 name: constructive-events
-description: "EventTracker, achievements, referrals, invite virality — EventTracker blueprint node for recording events on row changes, achievements[] for levels with credit rewards, EventReferral for multi-level referral chains, period-aware counting. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'EventTracker', 'level requirements', 'achievement rewards', 'invite virality', 'referral credits', 'EventReferral', 'max_depth', 'multi-level referral', or when working with events_module in blueprints."
+description: "EventTracker, achievements, trust ladders, referrals, invite virality — EventTracker blueprint node for recording events on row changes, achievements[] for levels with credit rewards, the humanity and metered trust ladders that turn evidence into capability bits, EventReferral for multi-level referral chains, period-aware counting. Use when asked to 'add analytics', 'track events', 'add achievements', 'gamification', 'progressive trust', 'trust ladder', 'humanity', 'verify a human', 'levels', 'EventTracker', 'level requirements', 'achievement rewards', 'invite virality', 'referral credits', 'EventReferral', 'max_depth', 'multi-level referral', or when working with events_module in blueprints."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -8,7 +8,7 @@ metadata:
 
 # Constructive Events
 
-Event tracking, gamification, and achievement-based credit rewards. Configured through blueprints (EventTracker nodes + `achievements[]`) and managed via the ORM.
+Event tracking, gamification, progressive trust, and achievement-based rewards. Configured through blueprints (EventTracker nodes + `achievements[]`) and module options (`trust_ladder`), and managed via the ORM.
 
 ## When to Apply
 
@@ -18,6 +18,7 @@ Use this skill when:
 - Building invite virality chains (EventReferral with max_depth)
 - Implementing period-aware recurring achievements
 - Tracking analytics events on row changes
+- Turning evidence into access — trust ladders, earned levels, capability rewards
 
 ## Architecture
 
@@ -42,6 +43,22 @@ Table row change
 | **has_invite_achievements** | Entity type flag | Auto-wire invitee achievement chain |
 | **EventReferral** | Table `nodes[]` | Attribute events to inviters (multi-level) |
 | **period_interval** | Event type config | Auto-reset counts for recurring achievements |
+| **trust_ladder** | `events_module` option | Seed a ladder of rungs that earn capability bits and capacity |
+
+## Trust Ladders
+
+A **trust ladder** is a set of rungs that turn recorded evidence into access — the same levels/requirements/rewards machinery as `achievements[]`, with rungs that reward a *capability* rather than a credit. Request one by slug when the events module is provisioned:
+
+```json
+["events_module", { "scope": "app", "trust_ladder": "humanity" }]
+```
+
+| Slug | Question it answers | Rungs |
+|---|---|---|
+| `humanity` | Does this account belong to someone? | `reachable` (email **or** phone **or** captcha) → `profile_complete` badge |
+| `metered` | How much may this account consume? | `reachable` → `accountable` → `established` → `trusted` → `vouched`, each buying limit capacity |
+
+Humans, bots and agents climb identically — nothing in a ladder asserts humanity, it accumulates evidence that costs something to fake. **No shipped module preset requests a ladder yet**, so it must be named explicitly today. Full rung tables, rung fields, and the `metered` limit baseline: [trust-ladders.md](./references/trust-ladders.md).
 
 ## Levels and Capabilities
 
@@ -89,6 +106,7 @@ See [`constructive-access-control` → named-capabilities.md](../constructive-ac
 |------|---------|
 | [event-tracker.md](./references/event-tracker.md) | EventTracker configuration reference |
 | [achievements.md](./references/achievements.md) | Achievement levels, requirements, rewards |
+| [trust-ladders.md](./references/trust-ladders.md) | Progressive trust — the `humanity` and `metered` ladders, rung fields, capability rewards |
 | [event-referral.md](./references/event-referral.md) | Referral attribution and multi-level chains |
 | [invite-virality.md](./references/invite-virality.md) | Invite virality chain wiring |
 | [triggers.md](./references/triggers.md) | Trigger internals and compound conditions |
