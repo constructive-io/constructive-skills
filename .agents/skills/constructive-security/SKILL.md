@@ -22,6 +22,7 @@ Use this skill when:
 - Understanding capability defaults, capability kinds, and module-level capabilities
 - Deciding where to gate access that an owner or admin must not bypass
 - Adding session-level guards (GuardStepUp) that require MFA/password before DML
+- Protecting individual infrastructure rows from accidental deletion or edits (DataLock)
 
 ## Core Vocabulary
 
@@ -308,6 +309,22 @@ Requires recent password/MFA verification before allowing mutations. Blueprint u
 
 See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the condition system.
 
+### `DataLock`
+
+Where `GuardStepUp` guards a whole table, `DataLock` guards a **single row**: it adds a boolean lock column and guards only the rows where it is `true`. Use it to protect infrastructure rows other things depend on — the bucket a cloud function needs, a production route — from accidental deletion or edits, while the rest of the table stays freely mutable.
+
+```jsonc
+// Locked buckets cannot be deleted at all — unlock first (needs no auth module)
+{ "$type": "DataLock", "data": { "enforcement": "block" } }
+
+// Locked rows are read-only and undeletable; MFA overrides either
+{ "$type": "DataLock", "data": { "events": ["UPDATE", "DELETE"], "step_up_type": "mfa" } }
+```
+
+`enforcement: 'block'` refuses the verb outright with `ROW_LOCKED` (a genuine two-step: unlock, then delete); `enforcement: 'step_up'` (default) allows it after recent verification. `events` picks DELETE and UPDATE protection independently, and clearing the lock is itself step-up guarded so unlocking is deliberate rather than a silent prelude to deletion. Note that a locked row is still removed by an `ON DELETE CASCADE` from its parent.
+
+See [guard-nodes.md](./references/guard-nodes.md) for all options, the SDK lock/unlock flow, and why the unlock cannot lock itself out.
+
 ## References
 
 | File | Content |
@@ -316,7 +333,7 @@ See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the 
 | [capability-defaults.md](./references/capability-defaults.md) | Module capability defaults — ORM tables, helper queries, grant/revoke examples |
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — capability bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
-| [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers |
+| [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers — plus `DataLock` row-level locking |
 | [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
 
 ## Cross-References

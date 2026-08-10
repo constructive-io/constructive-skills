@@ -33,6 +33,7 @@ Source: `constructive-db/packages/node-type-registry/src/`
 | `DataImmutableFields` | BEFORE UPDATE trigger preventing changes to specified fields after INSERT |
 | `DataOwnedFields` | AFTER UPDATE trigger restricting which user can modify specific columns |
 | `DataForceCurrentUser` | BEFORE INSERT trigger forcing a field to `current_user_id()` (anti-spoofing) |
+| `DataLock` | Boolean lock column + BEFORE triggers guarding UPDATE/DELETE while a row is locked — step-up or hard `ROW_LOCKED` block. See the `constructive-security` skill |
 
 ## Check Nodes — Constraint Generators
 
