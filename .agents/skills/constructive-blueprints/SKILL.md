@@ -70,7 +70,9 @@ Constructive DB owns the backend module arrays for three supported presets. Reso
 
 The canonical source lives in `constructive-db/packages/node-type-registry/src/module-presets/`. Blocks maps these backend profiles to frontend preset roots, but frontend installation remains a separate decision owned by [`constructive-blocks`](../constructive-blocks/SKILL.md).
 
-See [module-presets.md](./references/module-presets.md) for the full preset catalog.
+A preset names the *modules* a database installs. The *content* seeded into them — a trust ladder, a limit baseline — is requested separately as an option on a module entry (`["events_module", { "trust_ladder": "humanity" }]`), and no shipped preset requests one today.
+
+See [module-presets.md](./references/module-presets.md) for the full preset catalog and the content presets.
 
 ### Node Type Registry
 

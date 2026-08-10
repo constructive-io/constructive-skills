@@ -155,7 +155,7 @@ This provides two equivalent paths for org storage — matching the pattern wher
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. No-op when `table_provision` is supplied |
 | `has_limits` | boolean | No | `false` | Provision a limits module |
 | `has_profiles` | boolean | No | `false` | Provision a profiles module (named permission roles) |
-| `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, gamification). See [`constructive-events`](../../constructive-events/SKILL.md) |
+| `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, trust ladders). See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) |
 | `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_storage` | boolean | No | `false` | Provision a storage module (buckets and files tables) |

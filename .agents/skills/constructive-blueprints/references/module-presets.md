@@ -16,6 +16,28 @@ The supported profiles are:
 
 Do not accept removed preset aliases such as `minimal`, `auth:email`, `auth:sso`, `auth:passkey`, or `b2b` in a new brief. If a custom backend composition is required, declare it explicitly through the backend's supported module mechanism rather than inventing another preset name.
 
+## Content presets are a different thing
+
+A **module preset** is the set of modules a database installs. A **content preset** is a document of rows seeded *into* one of those modules — same catalog idea, different axis, and the two are named independently.
+
+Content presets are requested as options on a module entry, by slug:
+
+```json
+[
+  ["events_module", { "scope": "app", "trust_ladder": "humanity" }],
+  ["limits_module", { "scope": "app", "limit_defaults": "metered" }]
+]
+```
+
+| Option | Kind | Shipped slugs |
+|---|---|---|
+| `trust_ladder` on `events_module` | `trust_ladder` | `humanity`, `metered` |
+| `limit_defaults` on `limits_module` | `limit_defaults` | `metered` |
+
+Omitting the option seeds nothing; passing an array instead of a slug supplies the caller's own document inline. As with module presets, do not reconstruct a shipped document in a skill or a brief — name the slug, or capture a tuned one as a new named preset.
+
+**No shipped module preset requests a content preset today**, so a database that needs a trust ladder must name it explicitly, and only `full` installs `events_module` at all. See [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md).
+
 ## Frontend mapping
 
 A backend preset and a Blocks preset are distinct artifacts:
