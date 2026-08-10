@@ -4,7 +4,7 @@ The `entity_types` array is a top-level key in the blueprint definition JSONB, a
 
 Each entry either **creates** a new entity type or **extends** an existing one:
 
-- **Create** (has `name` + `prefix`): provisions a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+- **Create** (has `name` + `prefix`): provisions a full entity table with membership modules, capabilities, and security policies via `entity_type_provision`.
 - **Extend** (only `prefix`, no `name`): looks up an existing entity type by prefix (e.g., `"org"`) and adds capabilities like storage — without creating a new entity type.
 
 ## Definition Shape
@@ -64,7 +64,7 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `table_name` | string | No | `prefix + 's'` | Override entity table name (e.g. `"rooms"` instead of default `"channels"`) |
 | `is_visible` | boolean | No | `true` | Gates the default `parent_member` SELECT policy. **No-op when `table_provision` is supplied.** See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
-| `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named permission roles |
+| `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named capability roles |
 | `has_levels` | boolean | No | `false` | Provision a `levels_module` for gamification |
 | `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
@@ -375,7 +375,7 @@ The `namespaces` field provisions a `namespace_module` for the entity type — K
 
 ### Security
 
-Namespace tables use `apply_module_security` with `manage_namespaces` permission — entity members with that permission can read/write namespace records.
+Namespace tables use `apply_module_security` with `manage_namespaces` capability — entity members with that capability can read/write namespace records.
 
 ## Entity-Table Policies (`is_visible`, `skip_entity_policies`, `table_provision`)
 
@@ -400,7 +400,7 @@ When `table_provision` is `null` and `skip_entity_policies` is `false`, the foll
 |---|---|---|
 | `self_member` | `SELECT` | Members of this entity can see it |
 | `parent_member` | `SELECT` | Members of the **parent** entity can see it **— only when `is_visible: true`** |
-| `admin_create` | `INSERT` | Parent members with `create_entity` permission can create one |
+| `admin_create` | `INSERT` | Parent members with `create_entity` capability can create one |
 | `admin_update` | `UPDATE` | Entity admins can update |
 | `admin_delete` | `DELETE` | Entity admins can delete |
 

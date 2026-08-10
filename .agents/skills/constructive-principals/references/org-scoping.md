@@ -51,13 +51,13 @@ await db.principalEntity.delete({ where: { id: '<row-uuid>' } }).execute();
 
 ## `principalScopeOverride` — per-membership-type tuning
 
-Sometimes you want a principal to have a different permission shape for a *type* of membership (e.g. broader in one scope, read-only in another). `principalScopeOverride` expresses that.
+Sometimes you want a principal to have a different capability shape for a *type* of membership (e.g. broader in one scope, read-only in another). `principalScopeOverride` expresses that.
 
 | Field | Type | Notes |
 |-------|------|-------|
 | `principalId` | UUID | The principal |
 | `membershipType` | Int | Which membership type the override applies to |
-| `allowedMask` | BitString | Permission subset for that membership type |
+| `allowedMask` | BitString | Capability subset for that membership type |
 | `isAdmin` | Boolean | Grant admin within that scope |
 | `isReadOnly` | Boolean | Force read-only within that scope |
 

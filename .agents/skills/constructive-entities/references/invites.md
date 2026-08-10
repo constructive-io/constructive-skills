@@ -67,7 +67,7 @@ The `profile_id` CASE expression: only updates if the invite explicitly specifie
 
 ## Profile Assignment on Invites
 
-When `profiles_module` is installed alongside `invites_module`, email invites can carry a `profile_id` that pre-assigns a named permission bundle to the recipient.
+When `profiles_module` is installed alongside `invites_module`, email invites can carry a `profile_id` that pre-assigns a named capability bundle to the recipient.
 
 ### Blueprint Configuration
 
@@ -110,21 +110,21 @@ constructive public:org-invite create \
 ### Restrictions
 
 - Only **email invites** can carry `profile_id`. Blank and multiple invites are rejected with `PROFILE_ASSIGNMENT_REQUIRES_EMAIL_INVITE`.
-- The inviter must pass the permission model check (see below).
+- The inviter must pass the capability model check (see below).
 
 ---
 
-## Permission Model for Profile Assignment
+## Authorization Model for Profile Assignment
 
-A configurable permission model controls who can assign profiles to invites. The mode is set per-organization via `membership_settings.invite_profile_assignment_mode`.
+A configurable authorization model controls who can assign profiles to invites. The mode is set per-organization via `membership_settings.invite_profile_assignment_mode`.
 
 ### Modes
 
 | Mode | Behavior | Default |
 |------|----------|---------|
-| `strict` | Requires `assign_profiles` permission **AND** profile's permissions must be a subset of inviter's | **Yes (default)** |
-| `permission_only` | Requires `assign_profiles` permission only — no subset check | No |
-| `subset_only` | No permission needed — any user with `create_invites` can assign profiles with permissions <= their own | No |
+| `strict` | Requires `assign_profiles` capability **AND** profile's capabilities must be a subset of inviter's | **Yes (default)** |
+| `capability_only` | Requires `assign_profiles` capability only — no subset check | No |
+| `subset_only` | No capability needed — any user with `create_invites` can assign profiles with capabilities <= their own | No |
 
 ### App-Level Behavior
 
@@ -136,35 +136,35 @@ App-level memberships always use `strict` mode (hardcoded). There is no configur
 await db.orgMembershipSetting.update({
   where: { entityId: { equalTo: orgId } },
   data: {
-    inviteProfileAssignmentMode: 'permission_only',
+    inviteProfileAssignmentMode: 'capability_only',
   },
 }).execute();
 ```
 
-### Permission Check Details
+### Capability Check Details
 
 The check happens at **invite creation time** (BEFORE INSERT trigger on invites table), not at claim time. This prevents creating invites with unauthorized profiles.
 
 **Strict mode** (both checks):
-1. `assign_profiles` permission check on the sender
-2. Subset check: the profile's permissions must be a subset of the inviter's permissions — the profile cannot grant any permission the inviter lacks
+1. `assign_profiles` capability check on the sender
+2. Subset check: the profile's capabilities must be a subset of the inviter's capabilities — the profile cannot grant any capability the inviter lacks
 
-**Permission only** (check 1 only):
-- Anyone with `assign_profiles` can assign any profile, regardless of their own permission level
+**Capability only** (check 1 only):
+- Anyone with `assign_profiles` can assign any profile, regardless of their own capability level
 
 **Subset only** (check 2 only):
-- No special permission needed, but the inviter can only assign profiles with permissions that are a subset of their own
+- No special capability needed, but the inviter can only assign profiles with capabilities that are a subset of their own
 
 ---
 
-## Permissions
+## Capabilities
 
-| Permission | Description |
+| Capability | Description |
 |---|---|
 | `create_invites` | Can create invites |
 | `admin_invites` | Can view and manage all invites in the scope |
 | `send_approved_invites` | Invites from this user auto-approve the new membership (skip waitlist) |
-| `assign_profiles` | Can attach a `profile_id` to email invites (required in `strict` and `permission_only` modes) |
+| `assign_profiles` | Can attach a `profile_id` to email invites (required in `strict` and `capability_only` modes) |
 
 ---
 
@@ -177,10 +177,10 @@ The check happens at **invite creation time** (BEFORE INSERT trigger on invites 
 | `INVITE_EMAIL_NOT_FOUND` | User's email doesn't match the email invite's target | Claim |
 | `EMAIL_NOT_VERIFIED` | Blank/multiple invite claim without a verified email | Claim |
 | `PROFILE_ASSIGNMENT_REQUIRES_EMAIL_INVITE` | `profile_id` set on a blank or multiple invite | Creation |
-| `ASSIGN_PROFILES_PERMISSION_REQUIRED` | Sender lacks `assign_profiles` permission (strict/permission_only modes) | Creation |
+| `ASSIGN_PROFILES_CAPABILITY_REQUIRED` | Sender lacks `assign_profiles` capability (strict/capability_only modes) | Creation |
 | `PROFILE_NOT_FOUND` | Referenced profile doesn't exist | Creation |
-| `PROFILE_EXCEEDS_PERMISSIONS` | Profile's permissions exceed inviter's (strict/subset_only modes) | Creation |
-| `MEMBERSHIP_NOT_FOUND` | Inviter's membership not found for permission check | Creation |
+| `PROFILE_EXCEEDS_CAPABILITIES` | Profile's capabilities exceed inviter's (strict/subset_only modes) | Creation |
+| `MEMBERSHIP_NOT_FOUND` | Inviter's membership not found for capability check | Creation |
 
 All error codes are in the Graphile server's `SAFE_ERROR_CODES` allowlist — they pass through to clients in production (not masked).
 
@@ -200,17 +200,17 @@ When `has_invites: true` is set on an entity type with prefix `{prefix}`:
 | Function | Description |
 |---|---|
 | `submit_{prefix}_invite_code(invite_code UUID)` | Claims an invite code for the current user |
-| `invite_profile_check()` | BEFORE INSERT trigger validating profile assignment permissions |
+| `invite_profile_check()` | BEFORE INSERT trigger validating profile assignment capabilities |
 
 ---
 
 ## Admin/Owner Elevation
 
-Profile assignment on invites covers **profiles** (named permission bundles), but does NOT grant **administrator** or **owner** status. These are separate grant levels with system-wide elevated access.
+Profile assignment on invites covers **profiles** (named capability bundles), but does NOT grant **administrator** or **owner** status. These are separate grant levels with system-wide elevated access.
 
 **Admin elevation is post-membership only.** The recommended workflow:
 
-1. Invite the user with an appropriate profile (e.g., a high-permission profile)
+1. Invite the user with an appropriate profile (e.g., a high-capability profile)
 2. User claims the invite and joins as a regular member
 3. An existing admin promotes them to administrator after they've joined
 

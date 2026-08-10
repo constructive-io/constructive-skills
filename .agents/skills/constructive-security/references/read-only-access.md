@@ -9,7 +9,7 @@ Mark an entity-scoped membership as read-only to block all mutations (INSERT, UP
 ### How It Works
 
 - Every entity-scoped membership (orgs, groups, data rooms, channels, etc.) has an `isReadOnly` boolean field.
-- When `isReadOnly` is `true`, the `AuthzNotReadOnly` restrictive policy blocks all mutation privileges. The member's normal permissions still grant SELECT but all writes are denied.
+- When `isReadOnly` is `true`, the `AuthzNotReadOnly` restrictive policy blocks all mutation privileges. The member's normal capabilities still grant SELECT but all writes are denied.
 - Owners and admins cannot be set to read-only — trigger guards prevent `isReadOnly = true` when `isOwner = true` or `isAdmin = true`.
 - One restrictive policy per table — automatically injected during table provisioning.
 
@@ -82,7 +82,7 @@ constructive public:org-membership create \
 
 ## 2. Read-Only API Keys (`accessLevel`)
 
-Create an API key with `accessLevel: 'read_only'` to make the entire transaction read-only at the PostgreSQL level. The key physically cannot perform any writes, regardless of the user's permissions.
+Create an API key with `accessLevel: 'read_only'` to make the entire transaction read-only at the PostgreSQL level. The key physically cannot perform any writes, regardless of the user's capabilities.
 
 ### How It Works
 

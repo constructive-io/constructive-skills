@@ -1,6 +1,6 @@
 # Profiles
 
-Profiles are reusable permission bundles — named roles like "Editor", "Viewer", or "Manager" that package a set of permissions together. When assigned to a membership, the profile's permissions are added to that member's effective access.
+Profiles are reusable capability bundles — named roles like "Editor", "Viewer", or "Manager" that package a set of capabilities together. When assigned to a membership, the profile's capabilities are added to that member's effective access.
 
 ## How Profiles Work
 
@@ -9,13 +9,13 @@ Profile "Editor"
   └── includes: invoke_agents, write_files, execute_graphs
 
 Member assigned "Editor" profile
-  └── effective permissions = profile permissions ∪ direct grants ∪ defaults
+  └── effective capabilities = profile capabilities ∪ direct grants ∪ defaults
 ```
 
-- Each profile contains a set of named permissions
-- Assigning a profile to a membership adds those permissions to the member's effective access
+- Each profile contains a set of named capabilities
+- Assigning a profile to a membership adds those capabilities to the member's effective access
 - A member can have at most **one profile** per scope (but can also have direct grants on top)
-- Admins and owners always have full permissions regardless of profile
+- Admins and owners always have full capabilities regardless of profile
 
 ## Enabling Profiles
 
@@ -53,10 +53,10 @@ When enabled, the following tables are created (prefixed by scope):
 
 | Table | Purpose |
 |-------|---------|
-| `{prefix}Profile` | Profile definitions (name, slug, permissions, isDefault, isSystem) |
-| `{prefix}ProfilePermission` | Join table linking profiles to named permissions |
+| `{prefix}Profile` | Profile definitions (name, slug, capabilities, isDefault, isSystem) |
+| `{prefix}ProfileCapability` | Join table linking profiles to named capabilities |
 | `{prefix}ProfileGrant` | Audit log of profile assignments/unassignments |
-| `{prefix}ProfileDefinitionGrant` | Audit log of permission additions/removals from profiles |
+| `{prefix}ProfileDefinitionGrant` | Audit log of capability additions/removals from profiles |
 
 ## Creating Profiles
 
@@ -67,31 +67,31 @@ await db.orgProfile.create({
     name: 'Editor',
     slug: 'editor',
     entityId: orgId,
-    permissions: editorPermissionValue  // from permissionsGetMaskByNames
+    capabilities: editorCapabilityValue  // from capabilitiesGetMaskByNames
   },
   select: { id: true }
 }).execute();
 
-// Create a "Viewer" profile (read-only, fewer permissions)
+// Create a "Viewer" profile (read-only, fewer capabilities)
 await db.orgProfile.create({
   data: {
     name: 'Viewer',
     slug: 'viewer',
     entityId: orgId,
-    permissions: viewerPermissionValue
+    capabilities: viewerCapabilityValue
   },
   select: { id: true }
 }).execute();
 ```
 
-### Building the Permission Value
+### Building the Capability Value
 
 ```typescript
-// Resolve permission names to a value for the profile
-const result = await db.query.orgPermissionsGetMaskByNames({
+// Resolve capability names to a value for the profile
+const result = await db.query.orgCapabilitiesGetMaskByNames({
   names: 'invoke_agents,write_files,execute_graphs'
 }).execute();
-const editorPermissionValue = result.permissions;
+const editorCapabilityValue = result.capabilities;
 ```
 
 ## Default Profiles
@@ -104,7 +104,7 @@ await db.orgProfile.create({
     name: 'Member',
     slug: 'member',
     entityId: orgId,
-    permissions: memberPermissionValue,
+    capabilities: memberCapabilityValue,
     isDefault: true
   },
   select: { id: true }
@@ -136,7 +136,7 @@ await db.orgProfile.create({
     name: 'Admin',
     slug: 'admin',
     entityId: orgId,
-    permissions: allPermissionsValue,
+    capabilities: allCapabilitiesValue,
     isSystem: true
   },
   select: { id: true }
@@ -170,7 +170,7 @@ await db.orgInvite.create({
 }).execute();
 ```
 
-See [`constructive-entities` → invites.md](../../constructive-entities/references/invites.md) for invite profile assignment modes and permission checks.
+See [`constructive-entities` → invites.md](../../constructive-entities/references/invites.md) for invite profile assignment modes and capability checks.
 
 ### Removing a Profile
 
@@ -194,29 +194,29 @@ const profiles = await db.orgProfile.findMany({
     slug: true,
     isDefault: true,
     isSystem: true,
-    permissions: true
+    capabilities: true
   }
 }).execute();
 ```
 
-## Profile Permissions (Join Table)
+## Profile Capabilities (Join Table)
 
-For granular management of which permissions a profile includes:
+For granular management of which capabilities a profile includes:
 
 ```typescript
-// Add a permission to a profile
-await db.orgProfilePermission.create({
+// Add a capability to a profile
+await db.orgProfileCapability.create({
   data: {
     profileId: editorProfileId,
-    permissionId: writeFilesPermId
+    capabilityId: writeFilesPermId
   },
   select: { id: true }
 }).execute();
 
-// List permissions in a profile
-const profilePerms = await db.orgProfilePermission.findMany({
+// List capabilities in a profile
+const profilePerms = await db.orgProfileCapability.findMany({
   where: { profileId: { equalTo: editorProfileId } },
-  select: { id: true, permissionId: true }
+  select: { id: true, capabilityId: true }
 }).execute();
 ```
 
@@ -244,13 +244,13 @@ const history = await db.orgProfileGrant.findMany({
 ### Profile Definition Changes (ProfileDefinitionGrants)
 
 ```typescript
-// View permission changes to a profile definition
+// View capability changes to a profile definition
 const defHistory = await db.orgProfileDefinitionGrant.findMany({
   where: { profileId: { equalTo: editorProfileId } },
   select: {
     id: true,
-    permissions: true,
-    isGrant: true,       // true = permissions added, false = permissions removed
+    capabilities: true,
+    isGrant: true,       // true = capabilities added, false = capabilities removed
     grantorId: true,
     createdAt: true
   },
@@ -261,7 +261,7 @@ const defHistory = await db.orgProfileDefinitionGrant.findMany({
 ## Key Behaviors
 
 - **One profile per membership** — a member can only have one profile at a time per scope; switching profiles replaces the previous one
-- **Additive with grants** — profile permissions are unioned with direct grants; revoking a profile does not remove direct grants
-- **Admin bypass** — admins and owners have all permissions regardless of profile assignment
+- **Additive with grants** — profile capabilities are unioned with direct grants; revoking a profile does not remove direct grants
+- **Admin bypass** — admins and owners have all capabilities regardless of profile assignment
 - **Profile ≠ Role** — profiles are configurable bundles; roles (`isAdmin`, `isOwner`) are structural and not profile-dependent
 - **Scope isolation** — profiles in one org don't affect another org; each entity has its own profile set

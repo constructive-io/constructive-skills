@@ -132,7 +132,7 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
 1. Validates blueprint exists and status is `draft`
 2. **Phase 0 — Entity Types:** For each entry in `definition.entity_types[]`:
    - Creates dynamic entity types (channels, teams, data rooms) via `entity_type_provision`
-   - Provisions membership tables, permissions, and entity-scoped storage
+   - Provisions membership tables, capabilities, and entity-scoped storage
 3. **Phase 0.5 — Storage:** For each entry in `definition.storage[]`:
    - `scope: "app"` (default): provisions app-level storage (`app_buckets`/`app_files`)
    - `scope: "org"`: provisions per-org/user storage (`org_buckets`/`org_files` with `owner_id`), creates AFTER INSERT seed trigger on entity table

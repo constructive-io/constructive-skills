@@ -444,7 +444,7 @@ For a **basic auth app** (email + password sign-up/sign-in, app-level RLS — no
 const MODULES_AUTH_EMAIL = [
   'users_module',
   'membership_types_module',
-  ['permissions_module', { scope: 'app' }],
+  ['capabilities_module', { scope: 'app' }],
   ['limits_module', { scope: 'app' }],
   ['levels_module', { scope: 'app' }],
   ['memberships_module', { scope: 'app' }],
@@ -463,7 +463,7 @@ Re-provisioning with this exact list yields 18 schemas with working `signIn` / `
 For a **fuller app**, provision the richer flow's module list — again read from `flows.json`, not invented:
 
 - Any `social-oauth` / `connected-accounts` flow → `auth:sso` (adds `connected_accounts_module` + `identity_providers_module`).
-- Any `org-*` flow (`organization`, `org-members`, `org-roles`, `org-invites`, `app-memberships`) → `b2b` (org-scoped memberships, invites, fine-grained permissions, levels, profiles, hierarchy, rate limits, SSO, passkeys, SMS). There is **no preset smaller than `b2b`** for org flows. Use when the app has workspaces / teams / tenants.
+- Any `org-*` flow (`organization`, `org-members`, `org-roles`, `org-invites`, `app-memberships`) → `b2b` (org-scoped memberships, invites, fine-grained capabilities, levels, profiles, hierarchy, rate limits, SSO, passkeys, SMS). There is **no preset smaller than `b2b`** for org flows. Use when the app has workspaces / teams / tenants.
 - `full` — installs every standard module (everything in `b2b` plus storage, billing/plans, notifications, crypto addresses, events). Use for reference/demo DBs and open-ended greenfield apps. (Not flow-keyed; pull from the preset directly.)
 
 The flow's `backend.modules` IS the exact set to pass to `databaseProvisionModule`; `backend.preset` is only the smallest covering shipped preset (advisory). If you need a preset not represented by a flow, pull its `modules` array from `constructive/packages/node-type-registry/src/module-presets/<preset>.ts` (the `ModulePreset.modules` field) or via `getModulePreset('<preset>').modules` — but for anything a flow covers, prefer `flows.json` so `check-flows` guards it. Presets are metadata only — what actually installs the modules is passing that flat `string[]` to `databaseProvisionModule`. Order does not matter; provisioning resolves dependencies.
@@ -718,7 +718,7 @@ Per-database endpoints are addressed by a **subdomain that equals the database n
 (db `my_app` → subdomain `my_app`). The endpoints are then:
 
 - `auth-<sub>.localhost:3000/graphql` — users / authentication
-- `admin-<sub>.localhost:3000/graphql` — orgs / members / permissions
+- `admin-<sub>.localhost:3000/graphql` — orgs / members / capabilities
 - **`api-<sub>.localhost:3000/graphql` — your business DATA (NOT `app-public-<sub>`; F2)**
 
 Do **not** invent the subdomain. **Capture it, then verify it from the source of truth:**

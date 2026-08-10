@@ -1,13 +1,13 @@
 # Profiles
 
-Role-based access control via named permission bundles. Profiles let admins define roles (e.g., Editor, Viewer, Manager) as reusable permission sets that can be assigned to memberships.
+Role-based access control via named capability bundles. Profiles let admins define roles (e.g., Editor, Viewer, Manager) as reusable capability sets that can be assigned to memberships.
 
 ## How Profiles Work
 
-- Each profile contains a set of named permissions
-- When a profile is assigned to a membership, its permissions are combined with the member's direct grants
-- **Effective permissions** = `granted` (direct) + `profile.permissions` (from assigned profile)
-- Admins and owners always get all permissions regardless of profile
+- Each profile contains a set of named capabilities
+- When a profile is assigned to a membership, its capabilities are combined with the member's direct grants
+- **Effective capabilities** = `granted` (direct) + `profile.capabilities` (from assigned profile)
+- Admins and owners always get all capabilities regardless of profile
 
 ## Enabling Profiles
 
@@ -65,10 +65,10 @@ When profiles are enabled on an entity type, the following scoped tables are cre
 
 | Table | Purpose |
 |-------|---------|
-| `profiles` | Named permission bundles (`name`, `slug`, `permissions`, `isDefault`, `isSystem`) |
-| `profilePermissions` | Join table linking profiles to individual named permissions |
+| `profiles` | Named capability bundles (`name`, `slug`, `capabilities`, `isDefault`, `isSystem`) |
+| `profileCapabilities` | Join table linking profiles to individual named capabilities |
 | `profileGrants` | Audit log of profile assignments/unassignments to memberships |
-| `profileDefinitionGrants` | Audit log of permission additions/removals from profile definitions |
+| `profileDefinitionGrants` | Audit log of capability additions/removals from profile definitions |
 
 The `profilesModule` metaschema entry tracks all generated table IDs and names:
 
@@ -78,7 +78,7 @@ const profilesModules = await db.profilesModule.findMany({
   select: {
     id: true,
     tableName: true,
-    profilePermissionsTableName: true,
+    profileCapabilitiesTableName: true,
     profileGrantsTableName: true,
     profileDefinitionGrantsTableName: true,
     profileTemplatesTableName: true,
@@ -88,17 +88,17 @@ const profilesModules = await db.profilesModule.findMany({
 }).execute();
 ```
 
-## Memberships and Permissions
+## Memberships and Capabilities
 
 Memberships carry both direct grants and a profile reference:
 
 ```typescript
-// Read an app membership with its permission state
+// Read an app membership with its capability state
 const membership = await db.appMembership.findOne({
   id: membershipId,
   select: {
     id: true,
-    permissions: true,   // effective permissions (direct + profile)
+    capabilities: true,   // effective capabilities (direct + profile)
     granted: true,        // direct grants only
     profileId: true,      // assigned profile (nullable)
     isAdmin: true,
@@ -106,12 +106,12 @@ const membership = await db.appMembership.findOne({
   }
 }).execute();
 
-// Read an org membership with its permission state
+// Read an org membership with its capability state
 const orgMembership = await db.orgMembership.findOne({
   id: orgMembershipId,
   select: {
     id: true,
-    permissions: true,
+    capabilities: true,
     granted: true,
     profileId: true,
     isAdmin: true,
@@ -143,7 +143,7 @@ await db.orgMemberProfile.create({
 
 ## Membership Defaults
 
-Control the initial state of new members (approval, verification) independent of permissions:
+Control the initial state of new members (approval, verification) independent of capabilities:
 
 ```typescript
 // Set membership defaults at app scope
@@ -167,7 +167,7 @@ await db.orgMembershipDefault.create({
 
 ## Key Behaviors
 
-- **Profile + direct grants** — effective permissions are the union of profile permissions and direct grants; revoking a profile does not remove direct grants
+- **Profile + direct grants** — effective capabilities are the union of profile capabilities and direct grants; revoking a profile does not remove direct grants
 - **Default profiles** — when `isDefault: true` is set on a profile, new memberships are automatically assigned that profile
 - **System profiles** — `isSystem: true` profiles are platform-managed and cannot be deleted by users
 - **Audit trail** — profile assignments (`profileGrants`) and definition changes (`profileDefinitionGrants`) are append-only logs with `isGrant` boolean for grant/revoke tracking

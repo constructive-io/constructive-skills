@@ -1,11 +1,11 @@
 ---
 name: constructive-principals-model
-description: Principal identity model — dual-claim identity vs authority, user type 3, permission subsetting via allowedMask, isReadOnly, bypassStepUp, and what meters to the human vs the principal.
+description: Principal identity model — dual-claim identity vs authority, user type 3, capability subsetting via allowedMask, isReadOnly, bypassStepUp, and what meters to the human vs the principal.
 ---
 
 # Principal Identity Model
 
-A principal is a **delegated identity**: a human (or org admin) creates it, and it acts on their behalf with a *subset* of their permissions. This document explains the model from the application layer — you never write SQL to use it.
+A principal is a **delegated identity**: a human (or org admin) creates it, and it acts on their behalf with a *subset* of their capabilities. This document explains the model from the application layer — you never write SQL to use it.
 
 ## Identity vs Authority (dual-claim)
 
@@ -14,9 +14,9 @@ Every authenticated session carries two identities. For a normal human, both are
 | Identity | Resolves to | Used for |
 |----------|-------------|----------|
 | **User** (owner) | Always the human | Billing, metering, rate limits, storage ownership, `created_by`/`updated_by`, ownership policies |
-| **Principal** | The principal (or the human, if not a principal) | Permission checks only |
+| **Principal** | The principal (or the human, if not a principal) | Capability checks only |
 
-The consequence you care about: **when an agent/API-key does something, the money, quota, and audit trail all attach to the owning human**, but *what it is allowed to do* is governed by the principal's own (narrower) permissions.
+The consequence you care about: **when an agent/API-key does something, the money, quota, and audit trail all attach to the owning human**, but *what it is allowed to do* is governed by the principal's own (narrower) capabilities.
 
 For non-principal sessions the two are identical, so there is zero behavioral change for normal users.
 
@@ -32,15 +32,15 @@ A principal is backed by a real user row with `type = 3`:
 
 You rarely touch this directly — `createOrgPrincipal` / `createApiKey` manage it for you. But it's why a principal shows up as a `db.user` row with `type = 3`.
 
-## Permission subsetting
+## Capability subsetting
 
 ```
-principal_permissions = owner_permissions & allowedMask
+principal_capabilities = owner_capabilities & allowedMask
 ```
 
-- `allowedMask = null` → the principal inherits **all** of the owner's permissions.
+- `allowedMask = null` → the principal inherits **all** of the owner's capabilities.
 - A narrower `allowedMask` → the principal gets only the overlap. It can **never** exceed the owner.
-- If the owner later loses a permission (or is removed from an org), the principal loses it automatically. If the owner regains it, the principal regains it (the scoping intent is preserved).
+- If the owner later loses a capability (or is removed from an org), the principal loses it automatically. If the owner regains it, the principal regains it (the scoping intent is preserved).
 
 You almost never need to hand-build a mask. Prefer:
 - `isReadOnly` for "can read but not write" (see below), and
@@ -54,7 +54,7 @@ You almost never need to hand-build a mask. Prefer:
 | `ownerId` | UUID | The owning human |
 | `userId` | UUID | The principal's own identity row (`type = 3`) |
 | `name` | String | Display name, e.g. `'billing-bot'` |
-| `allowedMask` | BitString | Permission subset (null = all of owner's) |
+| `allowedMask` | BitString | Capability subset (null = all of owner's) |
 | `isReadOnly` | Boolean | Entity-scoped read-only flag |
 | `bypassStepUp` | Boolean | Skip MFA step-up (default `true` — principals can't perform MFA) |
 
@@ -82,6 +82,6 @@ Creating, deleting, and issuing keys for principals is guarded by `AuthzHumanOnl
 | Rate limits | Human |
 | Storage ownership | Human |
 | Ownership policies (`AuthzDirectOwner`) | Human |
-| Permission checks (RLS) | Principal's own permissions |
+| Capability checks (RLS) | Principal's own capabilities |
 
 **Peoplestamps vs principalstamps.** These are independent, opt-in blueprint nodes (`DataPeoplestamps` / `DataPrincipalstamps`) — enable either, both, or neither per table. Peoplestamps always attribute to the **human owner** (so billing/ownership/audit stay stable even when an agent acts, and the audit trail survives principal deletion). Principalstamps additionally record **who actually acted** — useful when you need to see that an agent or API key, not the human, performed a write. Principal columns carry no FK to the users table; they hold whatever principal id the session presents.

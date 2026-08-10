@@ -12,7 +12,7 @@ Memberships are the link between a user (actor) and an entity (app, org, custom)
 | `isAdmin` | boolean | Admin role flag |
 | `isOwner` | boolean | Owner role flag |
 | `profileId` | UUID? | Assigned profile (nullable) |
-| `permissions` | string | Effective permissions (resolved from all sources) |
+| `capabilities` | string | Effective capabilities (resolved from all sources) |
 | `granted` | string | Direct grants only |
 | `isReadOnly` | boolean | Read-only flag — blocks all mutations when `true` (see [read-only-access.md](../../constructive-security/references/read-only-access.md)) |
 | `isApproved` | boolean | Whether the membership is active (waitlist gate) |
@@ -36,7 +36,7 @@ await db.query.signUp({
 }).execute();
 // Creates app membership with:
 // - isAdmin: false, isOwner: false
-// - permissions: module defaults + permission defaults
+// - capabilities: module defaults + capability defaults
 // - profileId: default profile (if one exists)
 // - isApproved: per app_membership_defaults setting
 ```
@@ -53,7 +53,7 @@ await db.query.submitOrgInviteCode({
 // - isAdmin: false, isOwner: false
 // - profileId: invite's profileId (if email invite with profile)
 // - isApproved: true if sender has send_approved_invites, else per defaults
-// - permissions: defaults + profile permissions (if profile assigned)
+// - capabilities: defaults + profile capabilities (if profile assigned)
 ```
 
 ### 3. Direct Creation (Admin Action)
@@ -80,7 +80,7 @@ await db.orgMembership.create({
 
 | `isApproved` | Effect |
 |--------------|--------|
-| `true` | Full access per permissions/role |
+| `true` | Full access per capabilities/role |
 | `false` | Waitlisted — RLS denies access to entity resources |
 
 Configure the default for new members:
@@ -119,7 +119,7 @@ await db.orgMembership.update({
 
 | `isVerified` | Effect |
 |--------------|--------|
-| `true` | Full access per permissions/role |
+| `true` | Full access per capabilities/role |
 | `false` | May have restricted access (depends on app's RLS configuration) |
 
 Email invites auto-verify the user's email on claim. Other flows may require explicit verification.
@@ -136,7 +136,7 @@ const members = await db.orgMembership.findMany({
     isAdmin: true,
     isOwner: true,
     profileId: true,
-    permissions: true,
+    capabilities: true,
     granted: true,
     isApproved: true,
     isVerified: true,
@@ -163,7 +163,7 @@ const editors = await db.orgMembership.findMany({
     entityId: { equalTo: orgId },
     profileId: { equalTo: editorProfileId }
   },
-  select: { actorId: true, permissions: true }
+  select: { actorId: true, capabilities: true }
 }).execute();
 ```
 
@@ -180,7 +180,7 @@ Grant history is preserved after removal — the audit trail remains intact.
 
 ## Member Profiles (Display Info)
 
-Separate from permission profiles, **member profiles** store display information:
+Separate from capability profiles, **member profiles** store display information:
 
 ```typescript
 // Create a member profile (display info)
@@ -199,7 +199,7 @@ await db.orgMemberProfile.create({
 }).execute();
 ```
 
-Note: "Member profiles" (display info) are distinct from "profiles" (permission bundles). They serve different purposes — one is for UI/directory, the other is for access control.
+Note: "Member profiles" (display info) are distinct from "profiles" (capability bundles). They serve different purposes — one is for UI/directory, the other is for access control.
 
 ## Membership Settings
 
@@ -210,14 +210,14 @@ Per-entity configuration for membership behavior:
 await db.orgMembershipSetting.update({
   where: { entityId: { equalTo: orgId } },
   data: {
-    inviteProfileAssignmentMode: 'strict'  // strict | permission_only | subset_only
+    inviteProfileAssignmentMode: 'strict'  // strict | capability_only | subset_only
   }
 }).execute();
 ```
 
 | Setting | Options | Description |
 |---------|---------|-------------|
-| `inviteProfileAssignmentMode` | `strict`, `permission_only`, `subset_only` | Controls who can assign profiles via invites |
+| `inviteProfileAssignmentMode` | `strict`, `capability_only`, `subset_only` | Controls who can assign profiles via invites |
 
 ## CLI Usage
 
@@ -225,7 +225,7 @@ await db.orgMembershipSetting.update({
 # List members of an org
 constructive public:org-membership find-many \
   --where.entityId $ORG_ID \
-  --select id,actorId,isAdmin,permissions
+  --select id,actorId,isAdmin,capabilities
 
 # Approve a waitlisted member
 constructive public:org-membership update \

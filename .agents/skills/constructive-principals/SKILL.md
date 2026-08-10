@@ -1,6 +1,6 @@
 ---
 name: constructive-principals
-description: "Principals — scoped sub-identities for API keys and agents. A principal is a delegated identity owned by a human (or org) that authenticates via an API key and operates with a subset of its parent's permissions. Use when asked to 'create an API key', 'issue an agent credential', 'scope an agent to an org', 'entity-scoped API key', 'scope a key to an entity', 'read-only API key', 'revoke an API key', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', or when managing agent/API-key identities via the SDK ORM."
+description: "Principals — scoped sub-identities for API keys and agents. A principal is a delegated identity owned by a human (or org) that authenticates via an API key and operates with a subset of its parent's capabilities. Use when asked to 'create an API key', 'issue an agent credential', 'scope an agent to an org', 'entity-scoped API key', 'scope a key to an entity', 'read-only API key', 'revoke an API key', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', or when managing agent/API-key identities via the SDK ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -8,7 +8,7 @@ metadata:
 
 # Constructive Principals
 
-**Principals** are scoped sub-identities of a human user. They are how you give an **agent** or an **API key** its own identity that acts on a human's behalf while carrying only a *subset* of that human's permissions. A principal never exceeds its owner's access, and everything it does still meters and audits back to the owning human.
+**Principals** are scoped sub-identities of a human user. They are how you give an **agent** or an **API key** its own identity that acts on a human's behalf while carrying only a *subset* of that human's capabilities. A principal never exceeds its owner's access, and everything it does still meters and audits back to the owning human.
 
 This skill covers principals from the application layer — how to create them, issue and revoke their API keys, and scope them to specific orgs, all through the generated **SDK ORM**. It intentionally does not cover the SQL/trigger internals (see the `constructive-db-principals` skill in `constructive-db` for that).
 
@@ -30,7 +30,7 @@ All principals are the same underlying identity (a `user` with `type = 3`). The 
 
 | Term | What it is |
 |------|-----------|
-| **Principal** | The identity record — a scoped sub-identity owned by a human, with a permission subset. |
+| **Principal** | The identity record — a scoped sub-identity owned by a human, with a capability subset. |
 | **API key** | A credential minted *for* a principal. The principal is *who*; the API key is *how it authenticates*. |
 | **Agent** | A principal that also has an `agent_module` record (persona, threads). An agent is a principal + AI context. |
 
@@ -39,9 +39,9 @@ So: "create an API key" and "create an agent credential" both create/attach a pr
 ## Core Model (application view)
 
 - A principal is owned by a human (`ownerId`) and has its own identity user row (`userId`, `type = 3`).
-- Its permissions are `parent_permissions & allowedMask` — permissions can only **shrink**, never exceed the owner's. `allowedMask = null` means "inherit all of the owner's permissions".
+- Its capabilities are `parent_capabilities & allowedMask` — capabilities can only **shrink**, never exceed the owner's. `allowedMask = null` means "inherit all of the owner's capabilities".
 - When the owner gains/loses access (e.g. removed from an org), the principal's access follows automatically.
-- **Identity vs authority:** billing, rate limits, ownership, and `created_by`/`updated_by` always meter to the **human**; only permission checks use the **principal's** own precomputed permissions. For a normal (non-principal) session the two are identical — zero behavioral change.
+- **Identity vs authority:** billing, rate limits, ownership, and `created_by`/`updated_by` always meter to the **human**; only capability checks use the **principal's** own precomputed capabilities. For a normal (non-principal) session the two are identical — zero behavioral change.
 
 > All principal/API-key management is **human-only**: a principal cannot create or manage other principals. Attempting to do so fails with `PRINCIPAL_CANNOT_CREATE_PRINCIPAL`.
 
@@ -55,7 +55,7 @@ The generated auth ORM client (`db`) exposes principals as tables plus a set of 
 |-------|---------|-----------|
 | `db.principal` | The principal identity | `id`, `ownerId`, `userId`, `name`, `allowedMask`, `isReadOnly`, `bypassStepUp` — reads and updates only; `create` currently mismatches the deployed input (see [entity-scoped-keys.md](./references/entity-scoped-keys.md)) |
 | `db.principalEntity` | Org-scoping junction (which orgs a principal may access) | `principalId`, `entityId` |
-| `db.principalScopeOverride` | Per-membership-type permission override | `principalId`, `membershipType`, `allowedMask`, `isAdmin`, `isReadOnly` |
+| `db.principalScopeOverride` | Per-membership-type capability override | `principalId`, `membershipType`, `allowedMask`, `isAdmin`, `isReadOnly` |
 | `db.orgApiKeyList` | Read model of an org's API keys | `keyId`, `name`, `principalId`, `orgId`, `expiresAt`, `revokedAt`, `lastUsedAt`, `mfaLevel`, `accessLevel` |
 
 RLS: you only ever see principals you own (`AuthzDirectOwner` on `ownerId`).
@@ -98,7 +98,7 @@ const { createApiKey } = await db.mutation
 
 ### Create a read-only key
 
-Set `accessLevel: 'read_only'`. The credential runs every request in a PostgreSQL read-only transaction — it physically cannot write, regardless of the owner's permissions. See [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md).
+Set `accessLevel: 'read_only'`. The credential runs every request in a PostgreSQL read-only transaction — it physically cannot write, regardless of the owner's capabilities. See [`constructive-security` → read-only-access.md](../constructive-security/references/read-only-access.md).
 
 ### Scope an agent/key to a specific org
 
@@ -156,7 +156,7 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 
 | File | Content |
 |------|---------|
-| [principal-model.md](./references/principal-model.md) | Identity model — dual-claim (identity vs authority), user type 3, permission subsetting, `allowedMask`, `isReadOnly`, `bypassStepUp`, what meters to human vs principal |
+| [principal-model.md](./references/principal-model.md) | Identity model — dual-claim (identity vs authority), user type 3, capability subsetting, `allowedMask`, `isReadOnly`, `bypassStepUp`, what meters to human vs principal |
 | [api-keys.md](./references/api-keys.md) | API key lifecycle via the ORM — `createApiKey`/`createOrgApiKey`, access levels, MFA level, expiry, the `STEP_UP_REQUIRED` + `verifyPassword` retry, listing via `orgApiKeyList`, revocation, plaintext-once handling |
 | [org-scoping.md](./references/org-scoping.md) | Scoping via `principalEntity`, `principalScopeOverride`, the create-time `entityIds` variant and its probe, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes |
 | [entity-scoped-keys.md](./references/entity-scoped-keys.md) | Ordering recipe for the cross-plane flow — which plane/token each step uses, the three constraints, and the flat `createPrincipal` SDK gap |
@@ -164,7 +164,7 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 ## Cross-References
 
 - **Identity & sessions:** [`constructive-auth`](../constructive-auth/SKILL.md) — how humans authenticate; principals authenticate via API keys instead of passwords/magic links.
-- **Permissions:** [`constructive-access-control`](../constructive-access-control/SKILL.md) — the permission model whose subset a principal carries (`allowedMask`).
+- **Capabilities:** [`constructive-access-control`](../constructive-access-control/SKILL.md) — the capability model whose subset a principal carries (`allowedMask`).
 - **Enforcement:** [`constructive-security`](../constructive-security/SKILL.md) — `AuthzHumanOnly` (blocks principals from managing principals), read-only access, RLS.
 - **Agents:** [`constructive-agents`](../constructive-agents/SKILL.md) — attaching an `agent_module` (persona, threads) to a principal.
 - **Entity types:** [`constructive-entities`](../constructive-entities/SKILL.md) — the multi-tenancy model behind the entity rows that scoped principals are limited to.

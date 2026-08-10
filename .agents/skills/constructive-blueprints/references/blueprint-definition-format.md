@@ -104,7 +104,7 @@ For default storage policies and the full policy format, see [storage-policies.m
 
 `entity_types[]` provisions dynamic entity types **before** tables and relations. Each entry either **creates** a new entity type or **extends** an existing one:
 
-- **Create** (has `name`): provisions a full entity table with membership modules, permissions, and security policies via `entity_type_provision`.
+- **Create** (has `name`): provisions a full entity table with membership modules, capabilities, and security policies via `entity_type_provision`.
 - **Extend** (no `name`, only `prefix`): looks up an existing entity type by prefix (e.g., `"org"`) and adds capabilities like storage without creating a new entity type.
 
 This provides two equivalent paths for org storage — matching the pattern where constraints/indexes have both inline and top-level paths:

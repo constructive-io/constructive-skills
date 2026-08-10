@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, permissions, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, permission defaults, step-up auth, or authorization in blueprints and the ORM."
+description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, capabilities, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, capability defaults, step-up auth, or authorization in blueprints and the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -19,7 +19,8 @@ Use this skill when:
 - Understanding permissive vs restrictive policy composition
 - Configuring storage bucket security policies
 - Working with read-only access (`AuthzNotReadOnly`)
-- Understanding permission defaults and module-level permissions
+- Understanding capability defaults, capability kinds, and module-level capabilities
+- Deciding where to gate access that an owner or admin must not bypass
 - Adding session-level guards (GuardStepUp) that require MFA/password before DML
 
 ## Core Vocabulary
@@ -42,8 +43,8 @@ The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` 
 |---|------|--------|------------|
 | 1 | `AuthzDirectOwner` | Direct personal ownership | `entity_field` |
 | 2 | `AuthzDirectOwnerAny` | Multi-owner OR logic | `entity_fields` (array) |
-| 3 | `AuthzAppMembership` | App-level membership (hardcoded type=1) | optional `permission`/`is_admin` |
-| 4 | `AuthzAppMemberOwner` | Ownership AND current app membership | `owner_field`, optional permission/admin/owner checks |
+| 3 | `AuthzAppMembership` | App-level membership (hardcoded type=1) | optional `capabilities`/`levels`/`is_admin` |
+| 4 | `AuthzAppMemberOwner` | Ownership AND current app membership | `owner_field`, optional capabilities/levels/admin/owner checks |
 | 5 | `AuthzEntityMembership` | Bound membership-to-row | `entity_field`, `membership_type` |
 | 6 | `AuthzMemberOwner` | Ownership AND entity membership | `owner_field`, `entity_field`, `membership_type` |
 | 7 | `AuthzRelatedEntityMembership` | Entity membership via join | `entity_field`, `obj_schema`/`obj_table`/`obj_field` |
@@ -57,7 +58,7 @@ The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` 
 | 15 | `AuthzRelatedMemberList` | Actor in related UUID array | related table ref, `owned_table_key`, `owned_table_ref_key`, `this_object_key` |
 | 16 | `AuthzAllowAll` | Unconditional allow | `{}` |
 | 17 | `AuthzDenyAll` | Generates `FALSE`; use a restrictive policy for a hard deny alongside other policies | `{}` |
-| 18 | `AuthzFilePath` | Path-scoped file sharing (ltree) | path-shares table ref, `permission_field`; optional files table ref |
+| 18 | `AuthzFilePath` | Path-scoped file sharing (ltree) | path-shares table ref, `capability_field`; optional files table ref |
 | 19 | `AuthzNotReadOnly` | Restricts mutations for read-only members | `entity_field`, optional `membership_type` |
 | 20 | `AuthzComposite` | Boolean tree (AND/OR/NOT) of other policies | `AND`/`OR`/`NOT` keywords (or legacy `BoolExpr` AST) |
 | 21 | `AuthzSystemOnly` | Restrict writes to system sessions (triggers/jobs) — `role_type='system'` | `{}` |
@@ -126,9 +127,9 @@ await db.secureTableProvision.create({
 | `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` + policy |
 | `AuthzEntityMembership` | `DataEntityMembership` | `entity_id` + policy |
 
-## Permission Defaults
+## Capability Defaults
 
-Modules auto-register named permissions when installed via blueprint or `entityTypeProvision`. Default access levels are applied automatically.
+Modules auto-register named capabilities when installed via blueprint or `entityTypeProvision`. Default access levels are applied automatically.
 
 | Module | Granted to All Members | Admin-Only |
 |--------|----------------------|------------|
@@ -138,20 +139,34 @@ Modules auto-register named permissions when installed via blueprint or `entityT
 | Storage | `write_files`, `delete_files` | `manage_storage` |
 
 ORM access:
-- **Permissions registry** — `db.appPermission` / `db.orgPermission` (list registered named permissions)
-- **Defaults** — `db.appPermissionDefault` / `db.orgPermissionDefault` (current default permissions for new members)
+- **Capabilities registry** — `db.appCapability` / `db.orgCapability` (list registered named capabilities)
+- **Defaults** — `db.appCapabilityDefault` / `db.orgCapabilityDefault` (current default capabilities for new members)
 - **Grants** — `db.appGrant` / `db.orgGrant` (append-only grant/revoke log per member)
-- **Helpers** — `appPermissionsGetMaskByNames` (names → permission value) / `appPermissionsGetByMask` (permission value → names)
+- **Helpers** — `appCapabilitiesGetMaskByNames` (names → capability value) / `appCapabilitiesGetByMask` (capability value → names)
 
-See [permission-defaults.md](./references/permission-defaults.md) for the full ORM reference with code examples.
+See [capability-defaults.md](./references/capability-defaults.md) for the full ORM reference with code examples.
+
+### Capability kinds
+
+A capability row carries a `kind`: `permission` (a granted access right, the default) or `level` (a trust-ladder rung earned through recorded events — see [`constructive-events`](../constructive-events/SKILL.md)). Both compile into the same mask, so `capabilities` and `levels` on a policy are two spellings of one requirement and may be combined freely. Filter by `kind` in any UI that grants access — a `level` must never be offered as something an operator can hand out.
+
+### Owners and admins satisfy every capability check
+
+A membership created or updated with `isAdmin: true` or `isOwner: true` receives **every** capability in its scope — trust levels included — regardless of defaults, profile, or grants. Consequences for policy design:
+
+- Adding a capability or level requirement to a membership-based policy **never** restricts an owner or admin of that entity.
+- Being intra-realm, this cannot cross an entity boundary: the capability set lives on one membership row naming one actor and one entity.
+- To bind an owner, gate at the enclosing scope (an app-level policy over an org owner), or use a non-membership policy such as `AuthzDirectOwner`, which does not consult the membership capability set at all.
+
+Full semantics: [`constructive-access-control` → admin-owner-member.md](../constructive-access-control/references/admin-owner-member.md#owner-and-admin-hold-every-capability).
 
 ## Profiles
 
-Role-based access control via named permission bundles. Enable via `hasProfiles: true` on `entityTypeProvision`.
+Role-based access control via named capability bundles. Enable via `hasProfiles: true` on `entityTypeProvision`.
 
-- **Effective permissions** = `granted` (direct) + `profile.permissions` (from assigned profile)
+- **Effective capabilities** = `granted` (direct) + `profile.capabilities` (from assigned profile)
 - **Default profile** — set `isDefault: true` on a profile; new memberships are automatically assigned it
-- **ORM tables** (created per scope): `profiles`, `profilePermissions`, `profileGrants`, `profileDefinitionGrants`
+- **ORM tables** (created per scope): `profiles`, `profileCapabilities`, `profileGrants`, `profileDefinitionGrants`
 - **Membership** — each membership carries a `profileId` (nullable); read via `db.appMembership` / `db.orgMembership`
 - **Membership defaults** — `db.appMembershipDefault` / `db.orgMembershipDefault` control initial approval/verification state
 
@@ -267,7 +282,7 @@ Requires recent password/MFA verification before allowing mutations. Blueprint u
 { "$type": "GuardStepUp", "data": { "events": ["INSERT", "DELETE"], "step_up_type": "password" } }
 
 // With watch_fields — only fires when specific columns change
-{ "$type": "GuardStepUp", "data": { "watch_fields": ["bitlen", "permissions"] } }
+{ "$type": "GuardStepUp", "data": { "watch_fields": ["bitlen", "capabilities"] } }
 
 // Compound conditions — require step-up only when role escalates to admin
 { "$type": "GuardStepUp", "data": {
@@ -298,8 +313,8 @@ See [guard-nodes.md](./references/guard-nodes.md) for detailed examples and the 
 | File | Content |
 |------|---------|
 | [authz-types.md](./references/authz-types.md) | All 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, with config shapes and examples |
-| [permission-defaults.md](./references/permission-defaults.md) | Module permission defaults — ORM tables, helper queries, grant/revoke examples |
-| [profiles.md](./references/profiles.md) | Profiles (RBAC) — permission bundles, profile tables, membership integration |
+| [capability-defaults.md](./references/capability-defaults.md) | Module capability defaults — ORM tables, helper queries, grant/revoke examples |
+| [profiles.md](./references/profiles.md) | Profiles (RBAC) — capability bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 | [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers |
 | [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
