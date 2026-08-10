@@ -10,11 +10,12 @@ The supported profiles are:
 
 | Preset | Backend intent |
 |---|---|
+| `minimal` | Core only — users, sessions, RLS. The integration-test baseline, not a product profile |
 | `auth:hardened` | Hardened authentication and application access |
 | `b2b:storage` | Hardened auth, organizations, membership governance, and storage infrastructure |
 | `full` | Complete reference capability set, including billing and notifications modules |
 
-Do not accept removed preset aliases such as `minimal`, `auth:email`, `auth:sso`, `auth:passkey`, or `b2b` in a new brief. If a custom backend composition is required, declare it explicitly through the backend's supported module mechanism rather than inventing another preset name.
+These four are the whole lineup. Do not accept removed preset aliases such as `auth:email`, `auth:email+magic`, `auth:sso`, `auth:passkey`, or `b2b` in a new brief. If a custom backend composition is required, declare it explicitly through the backend's supported module mechanism rather than inventing another preset name.
 
 ## Content presets are a different thing
 
@@ -36,7 +37,7 @@ Content presets are requested as options on a module entry, by slug:
 
 Omitting the option seeds nothing; passing an array instead of a slug supplies the caller's own document inline. As with module presets, do not reconstruct a shipped document in a skill or a brief — name the slug, or capture a tuned one as a new named preset.
 
-**No shipped module preset requests a content preset today**, so a database that needs a trust ladder must name it explicitly, and only `full` installs `events_module` at all. See [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md).
+`auth:hardened`, `b2b:storage` and `full` each install `events_module` carrying the `humanity` ladder, so a database provisioned from any of them can earn `level.reachable` without asking for anything extra. `minimal` installs no events module and has no ladder, deliberately. No shipped preset requests `metered` — name it explicitly, with its limit baseline, where consumption is actually rationed. See [`constructive-events` → trust-ladders.md](../../constructive-events/references/trust-ladders.md).
 
 ## Frontend mapping
 

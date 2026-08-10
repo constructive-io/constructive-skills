@@ -25,7 +25,7 @@ Ask for one by slug in the `events_module` entry of a database's module list:
 
 > **App scope only.** A ladder is seeded at provisioning time, and an entity-scoped ladder would belong to an organization that does not exist yet. Request `scope: "app"`; org-scoped ladders are seeded when the org is created.
 
-> **The events module is what carries levels.** `levels_module` appears in several preset module lists but is not a provisioned module — the levels, requirements, grants, and reward tables all come from `events_module`. A database without an `events_module` entry has no ladder and no way to earn one, whatever else its preset lists.
+> **The events module is what carries levels.** `levels_module` is not a provisioned module — the levels, requirements, grants, and reward tables all come from `events_module`. A database without an `events_module` entry has no ladder and no way to earn one, whatever else its module list says.
 
 ## Shipped Ladders
 
@@ -111,7 +111,7 @@ Prefer this over inlining a large ladder into every provisioning call: the slug 
 
 ## Gotchas
 
-- **No shipped module preset requests a ladder yet.** `auth:hardened`, `b2b:storage` and `full` do not pass `trust_ladder`, and only `full` installs `events_module` at all. Until that changes, a ladder must be requested explicitly in the module list. A freshly provisioned database therefore has **zero** `kind = 'level'` capability rows, and a policy gating on `level.reachable` will never admit anyone.
+- **`minimal` has no ladder.** `auth:hardened`, `b2b:storage` and `full` each install `events_module` with `trust_ladder: 'humanity'`; `minimal` installs no events module at all, by design. A database provisioned from `minimal`, or from a hand-written module list that omits the ladder, has **zero** `kind = 'level'` capability rows, and a policy gating on `level.reachable` will never admit anyone.
 - **Owners and admins hold every level.** Their membership is given the complete capability set, levels included, so they satisfy every rung the moment they are made an owner — including rungs nobody has earned. A ladder cannot gate an owner inside their own entity. See [`constructive-access-control` → admin-owner-member.md](../../constructive-access-control/references/admin-owner-member.md#owner-and-admin-hold-every-capability).
 - **Blueprint `achievements[]` cannot award capabilities.** Its `rewards[]` accepts `limit_credit` and `meter_credit` only. Capability rewards come from the ladder path; an achievement is the credit-granting half of the same machinery.
 - **A level is earned, never granted.** Never offer a `kind = 'level'` capability in a grant or profile picker — filter capability lists by `kind`, or an operator can hand out trust that was supposed to cost something.

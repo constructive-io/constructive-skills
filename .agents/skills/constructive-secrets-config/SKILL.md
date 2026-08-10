@@ -145,10 +145,10 @@ as an app/build-flow bug.
 
 ## 3. Secrets / KMS / API-key surface (`config_secrets_module`)
 
-**Where it comes from.** Every auth preset (`auth:email` and up) provisions **`config_secrets_module`**
+**Where it comes from.** Every auth-carrying preset (`auth:hardened` and up) provisions **`config_secrets_module`**
 (visible in every flow's module list in `references/flow-catalog.md` / `references/flows.json`). It backs
 the encrypted-at-rest secret storage that user **API keys** and secret **reveal** ride on. There is **no
-extra module to add** for the API-key surface beyond `auth:email`.
+extra module to add** for the API-key surface beyond a basic auth module list.
 
 ### 3.1 The `createApiKey` contract (get this wrong → runtime rejection)
 

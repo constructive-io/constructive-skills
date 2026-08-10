@@ -858,7 +858,7 @@ pnpm build
 
 ### Cause
 
-A table declared `policies: [{ $type: 'AuthzEntityMembership', data: { entity_field: 'entity_id', membership_type: 2 }, … }]`, but the app was provisioned with the `auth:email` preset, which has **no** org/b2b/memberships modules. The org-scoped membership SPRT that `AuthzEntityMembership` resolves does not exist, so the construct aborts.
+A table declared `policies: [{ $type: 'AuthzEntityMembership', data: { entity_field: 'entity_id', membership_type: 2 }, … }]`, but the app was provisioned with the `auth:hardened` preset (or a basic auth module list), which has **no** org-scoped memberships modules. The org-scoped membership SPRT that `AuthzEntityMembership` resolves does not exist, so the construct aborts.
 
 ### Solution
 
@@ -875,7 +875,7 @@ nodes: ['DataId', { $type: 'DataTimestamps', data: { include_id: false } }],
 use_rls: true,
 policies: [{ $type: 'AuthzAllowAll', privileges: ['select','insert','update','delete'], permissive: true }],
 
-// ❌ Aborts on auth:email — only valid once the `b2b` org modules are provisioned
+// ❌ Aborts on auth:hardened — only valid once the `b2b:storage` org modules are provisioned
 policies: [{ $type: 'AuthzEntityMembership', data: { entity_field: 'entity_id', membership_type: 2 }, … }],
 ```
 

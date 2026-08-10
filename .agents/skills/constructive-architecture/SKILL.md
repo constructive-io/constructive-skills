@@ -65,7 +65,7 @@ API keys are data-plane credentials: a key minted on one database authenticates 
 
 Phase 2.3 uses **TypeScript Blueprints** (`BlueprintDefinition` from `node-type-registry`) with `@constructive-io/sdk` for programmatic provisioning. Agents write typed schema modules, then run two scripts.
 
-1. Run `pnpm run create-db` — signs up via auth API, provisions database with an **explicit module list** (the `auth:email` list — never `modules: ['all']`, which silently installs nothing; see gotchas.md PROVISION-001), writes credentials to `.env`.
+1. Run `pnpm run create-db` — signs up via auth API, provisions database with an **explicit module list** (the `email-password` flow's module list — never `modules: ['all']`, which silently installs nothing; see gotchas.md PROVISION-001), writes credentials to `.env`.
 2. Run `pnpm run provision`:
    - *(SQL only)* Configure database-level settings (`deterministic_ids`, `simple_schema_names`, `schema_use_underscores`) via `ALTER DATABASE`
    - Run schema modules (each defines a `BlueprintDefinition` and calls `provisionBlueprint()`)
