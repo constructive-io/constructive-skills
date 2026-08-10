@@ -35,14 +35,33 @@ the integration cannot.
 ## Invoices are recorded, not reconciled
 
 Invoice history is a record of what Stripe reported. Nothing checks that the
-amounts agree with what the plan should have cost, and nothing reacts to an
-invoice that stays unpaid beyond a failed-payment status change.
+amounts agree with what the plan should have cost.
 
-**Breaks:** dunning, grace periods, and "your card failed, fix it or lose access"
-are not provided.
+**Breaks:** an invoice for the wrong amount is stored as faithfully as a correct
+one. There is no independent check that a charge matches the plan it was for.
 
-**Instead:** build that on the invoice records and subscription status. The data
-is there; the policy is yours.
+**Instead:** reconcile against the plan's pricing yourself if the amounts matter
+to you. The records carry enough to do it.
+
+Note that this used to say dunning was not provided. It now is — see the section
+below — but reconciliation still is not.
+
+## Dunning is provided; scheduling it is not
+
+A failed payment marks the subscription `past_due`, and a sweep downgrades to the
+free tier once a grace period expires. The default is seven days, and the sweep
+is `billing:sweep_overdue`.
+
+**Breaks:** nothing runs the sweep on a cadence, so an account can sit `past_due`
+forever. Registered is not the same as running.
+
+**Instead:** schedule it, the same way usage reporting has to be scheduled. See
+[`constructive-jobs`](../../constructive-jobs/SKILL.md).
+
+**Why the grace period is a default and not a rule:** seven days is a policy
+choice, and it is passed in. Shortening it to zero downgrades on the first failed
+charge, which is legal and usually a bad idea — a card expiring is the most
+common cause and the customer has not decided to leave.
 
 ## Usage reporting is not scheduled for you
 

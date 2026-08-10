@@ -79,10 +79,17 @@ at checkout time:
 
 | `billingInterval` | Session mode | Result |
 |-------------------|--------------|--------|
-| `one_time` | payment | Credit pack — grants on top of current allowances |
+| `one_time` | payment | Credit pack — grants on top of current allowances¹ |
 | `month`, `year`, … | subscription | Subscription — the plan's allowances become the customer's |
 
 To sell the same plan both ways, give it two pricing rows.
+
+¹ For meters this holds. For **limits** it holds only once the customer has used
+the resource at least once: the `*_limits` row is created lazily and the trigger
+that folds credits in only updates an existing row. Sell a limit pack to a fresh
+account and the credit is written, the webhook returns 200 — and the allowance
+never moves.
+([planning#1506](https://github.com/constructive-io/constructive-planning/issues/1506))
 
 ## After the redirect
 

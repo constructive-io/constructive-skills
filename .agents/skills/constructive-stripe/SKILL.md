@@ -26,11 +26,15 @@ from the code:
    name "…"` — the job retries, exhausts its attempts, and stops. Nothing else
    says so. ([metered-usage.md](./references/metered-usage.md))
 
-3. **Selling top-up credits is currently unsafe.** A customer with 3 free
-   projects who buys 5 more ends up with 5 in total: the purchase destroys the
-   free allowance. Keep that entry point closed until
+3. **A limit pack bought before the resource is used grants nothing.** The
+   `*_limits` row is created lazily, on first use; the trigger that folds
+   credits in only ever `UPDATE`s. Buy 5 projects on a fresh account and the
+   credit row is written, the webhook returns 200, the log says granted — and
+   the allowance stays at the default. The credits are orphaned permanently.
+   Sell limit packs only to accounts that have used the resource, or hold the
+   entry point until
    [planning#1506](https://github.com/constructive-io/constructive-planning/issues/1506)
-   lands.
+   lands. ([checkout.md](./references/checkout.md))
 
 Everything else below is verified end to end against a real Stripe test account
 in `constructive-hub/tests/billing`.

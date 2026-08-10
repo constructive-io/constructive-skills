@@ -39,6 +39,11 @@ plan's ceiling; meter balances get the plan's allowance.
 **One-time (credit pack)** — the plan's allowances are granted *on top of* what
 the customer already has. Buying the same pack twice grants twice.
 
+That is true of meter credits unconditionally, and of limit credits only after
+the customer has used the resource once. Before then the limit row does not
+exist, the credit lands nowhere, and nothing reports a problem
+([planning#1506](https://github.com/constructive-io/constructive-planning/issues/1506)).
+
 The difference matters when pricing a pack: a subscription to a plan with
 `projects: 20` sets the ceiling to 20 no matter what it was; a one-time purchase
 of the same plan adds 20 to it.
