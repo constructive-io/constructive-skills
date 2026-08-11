@@ -24,7 +24,7 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 Run the source preflight, local builds, package registry, block registry, and
 consumer verification exactly as documented in
 [`runtime-contract.md`](../../constructive-blocks/references/runtime-contract.md#pinned-local-consumption-before-release).
-That workflow uses shadcn `4.13.1`, preserves the consumer's aliases, and keeps
+That workflow uses shadcn `4.16.1`, preserves the consumer's aliases, and keeps
 temporary localhost package resolutions out of committed lockfiles.
 
 ## Source or package ownership
@@ -44,6 +44,6 @@ also declare current Constructive packages.
 Public installation is allowed only when a deliberately updated Blocks
 snapshot points to a released commit, sets `publicRegistryReady: true`, and
 passes the full checker. At that point, use the exact namespace and
-`installCommand` returned by the validated catalog. Remove local registry
-settings, regenerate the lockfile from public registries, and reject every
-localhost resolution before committing.
+status-bearing `shadcn@latest` `publicInstall.command` returned by the validated
+catalog. Remove local registry settings, regenerate the lockfile from public
+registries, and reject every localhost resolution before committing.

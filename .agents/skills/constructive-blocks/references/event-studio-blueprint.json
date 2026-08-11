@@ -1,0 +1,438 @@
+{
+  "tables": [
+    {
+      "table_name": "programs",
+      "description": "Org-scoped event programs that group sessions.",
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
+        {
+          "$type": "DataEntityMembership",
+          "data": {
+            "entity_field_name": "org_id"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "name",
+          "type": { "name": "text" },
+          "is_required": true
+        },
+        {
+          "name": "description",
+          "type": { "name": "text" }
+        },
+        {
+          "name": "status",
+          "type": { "name": "text" },
+          "is_required": true,
+          "default": { "value": "draft" },
+          "index": "btree"
+        },
+        {
+          "name": "starts_on",
+          "type": { "name": "date" }
+        },
+        {
+          "name": "ends_on",
+          "type": { "name": "date" }
+        }
+      ],
+      "grants": [
+        {
+          "roles": ["authenticated"],
+          "privileges": [
+            ["select", "*"],
+            ["insert", "*"],
+            ["update", "*"],
+            ["delete", "*"]
+          ]
+        }
+      ],
+      "use_rls": true,
+      "policies": [
+        {
+          "$type": "AuthzEntityMembership",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2
+          },
+          "privileges": ["select", "insert", "update"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_admin": true
+          },
+          "privileges": ["delete"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_owner": true
+          },
+          "privileges": ["delete"]
+        }
+      ]
+    },
+    {
+      "table_name": "sessions",
+      "description": "Scheduled sessions within an event program.",
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
+        {
+          "$type": "DataEntityMembership",
+          "data": {
+            "entity_field_name": "org_id"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "title",
+          "type": { "name": "text" },
+          "is_required": true
+        },
+        {
+          "name": "description",
+          "type": { "name": "text" }
+        },
+        {
+          "name": "status",
+          "type": { "name": "text" },
+          "is_required": true,
+          "default": { "value": "draft" },
+          "index": "btree"
+        },
+        {
+          "name": "starts_at",
+          "type": { "name": "timestamptz" },
+          "index": "btree"
+        },
+        {
+          "name": "ends_at",
+          "type": { "name": "timestamptz" }
+        },
+        {
+          "name": "capacity",
+          "type": { "name": "integer" },
+          "min": 0
+        },
+        {
+          "name": "tags",
+          "type": { "name": "text", "array_dimensions": 1 },
+          "is_required": true,
+          "default": {
+            "value": [],
+            "cast": { "name": "text", "array_dimensions": 1 }
+          },
+          "index": "gin"
+        }
+      ],
+      "grants": [
+        {
+          "roles": ["authenticated"],
+          "privileges": [
+            ["select", "*"],
+            ["insert", "*"],
+            ["update", "*"],
+            ["delete", "*"]
+          ]
+        }
+      ],
+      "use_rls": true,
+      "policies": [
+        {
+          "$type": "AuthzEntityMembership",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2
+          },
+          "privileges": ["select", "insert", "update"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_admin": true
+          },
+          "privileges": ["delete"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_owner": true
+          },
+          "privileges": ["delete"]
+        }
+      ]
+    },
+    {
+      "table_name": "people",
+      "description": "Org-scoped speakers, facilitators, and event contacts.",
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
+        {
+          "$type": "DataEntityMembership",
+          "data": {
+            "entity_field_name": "org_id"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "display_name",
+          "type": { "name": "text" },
+          "is_required": true
+        },
+        {
+          "name": "email",
+          "type": { "name": "citext" },
+          "index": "btree"
+        },
+        {
+          "name": "role",
+          "type": { "name": "text" }
+        }
+      ],
+      "grants": [
+        {
+          "roles": ["authenticated"],
+          "privileges": [
+            ["select", "*"],
+            ["insert", "*"],
+            ["update", "*"],
+            ["delete", "*"]
+          ]
+        }
+      ],
+      "use_rls": true,
+      "policies": [
+        {
+          "$type": "AuthzEntityMembership",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2
+          },
+          "privileges": ["select", "insert", "update"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_admin": true
+          },
+          "privileges": ["delete"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_owner": true
+          },
+          "privileges": ["delete"]
+        }
+      ]
+    },
+    {
+      "table_name": "venues",
+      "description": "Org-scoped physical or virtual session venues.",
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
+        {
+          "$type": "DataEntityMembership",
+          "data": {
+            "entity_field_name": "org_id"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "name",
+          "type": { "name": "text" },
+          "is_required": true
+        },
+        {
+          "name": "address",
+          "type": { "name": "text" }
+        },
+        {
+          "name": "time_zone",
+          "type": { "name": "text" },
+          "is_required": true,
+          "default": { "value": "UTC" }
+        },
+        {
+          "name": "capacity",
+          "type": { "name": "integer" },
+          "min": 0
+        }
+      ],
+      "grants": [
+        {
+          "roles": ["authenticated"],
+          "privileges": [
+            ["select", "*"],
+            ["insert", "*"],
+            ["update", "*"],
+            ["delete", "*"]
+          ]
+        }
+      ],
+      "use_rls": true,
+      "policies": [
+        {
+          "$type": "AuthzEntityMembership",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2
+          },
+          "privileges": ["select", "insert", "update"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_admin": true
+          },
+          "privileges": ["delete"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_owner": true
+          },
+          "privileges": ["delete"]
+        }
+      ]
+    },
+    {
+      "table_name": "session_people",
+      "description": "Explicit relation records between sessions and people.",
+      "nodes": [
+        "DataId",
+        "DataTimestamps",
+        {
+          "$type": "DataEntityMembership",
+          "data": {
+            "entity_field_name": "org_id"
+          }
+        }
+      ],
+      "fields": [
+        {
+          "name": "role",
+          "type": { "name": "text" },
+          "is_required": true,
+          "default": { "value": "speaker" }
+        }
+      ],
+      "grants": [
+        {
+          "roles": ["authenticated"],
+          "privileges": [
+            ["select", "*"],
+            ["insert", "*"],
+            ["update", "*"],
+            ["delete", "*"]
+          ]
+        }
+      ],
+      "use_rls": true,
+      "policies": [
+        {
+          "$type": "AuthzEntityMembership",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2
+          },
+          "privileges": ["select", "insert", "update"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "admin_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_admin": true
+          },
+          "privileges": ["delete"]
+        },
+        {
+          "$type": "AuthzEntityMembership",
+          "policy_name": "owner_delete",
+          "data": {
+            "entity_field": "org_id",
+            "membership_type": 2,
+            "is_owner": true
+          },
+          "privileges": ["delete"]
+        }
+      ]
+    }
+  ],
+  "unique_constraints": [
+    {
+      "table_name": "session_people",
+      "columns": ["session_id", "person_id"]
+    }
+  ],
+  "relations": [
+    {
+      "$type": "RelationBelongsTo",
+      "source_table": "sessions",
+      "target_table": "programs",
+      "field_name": "program_id",
+      "delete_action": "r",
+      "is_required": false
+    },
+    {
+      "$type": "RelationBelongsTo",
+      "source_table": "sessions",
+      "target_table": "venues",
+      "field_name": "venue_id",
+      "delete_action": "n",
+      "is_required": false
+    },
+    {
+      "$type": "RelationBelongsTo",
+      "source_table": "session_people",
+      "target_table": "sessions",
+      "field_name": "session_id",
+      "delete_action": "c",
+      "is_required": true
+    },
+    {
+      "$type": "RelationBelongsTo",
+      "source_table": "session_people",
+      "target_table": "people",
+      "field_name": "person_id",
+      "delete_action": "c",
+      "is_required": true
+    }
+  ]
+}

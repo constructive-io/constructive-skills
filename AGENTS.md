@@ -11,7 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Absorbs | Purpose |
 |-------|---------|---------|
 | **constructive-features** | *(router)* | Maps application capabilities to Blocks feature packs and authoritative domain skills |
-| **constructive-blocks** | Constructive Blocks | Feature packs, Console Kit, registry installation, tenant descriptors, discovery, and runtime contracts |
+| **constructive-blocks** | Constructive Blocks | App Kit composition, feature packs, Console Kit, registry installation, tenant scope, discovery, and runtime contracts |
 | **constructive-builder** | application harness | Agent-driven frontend assembly and acceptance against an existing workspace and already-provisioned tenant |
 | **constructive-blueprints** | blueprint refs from constructive-platform | Declarative schema definition — blueprints, node type registry, presets |
 | **constructive-auth** | auth/device/service refs from constructive-platform, auth-flow from constructive-sdk | Identity, login, sessions, MFA, devices |
@@ -31,7 +31,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-flow-graphs** | graph_module, merkle_store | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | constructive-sdk-i18n | Internationalization — DataI18n, multilingual search, i18n_module |
 | **constructive-history** | *(standalone)* | Row history — DataHistory node, append-only version tables, pg_partman retention, graphile-history (versionAt, versionsBetween, restore) |
-| **constructive-frontend** | *(standalone)* | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| **constructive-frontend** | *(standalone)* | UI primitives, App Kit visual composition, optional Stack navigation, and custom domain UI patterns |
 | **constructive-codegen** | codegen refs from constructive-sdk-graphql | Optional generated clients for stable custom-domain schemas |
 | **constructive-orm** | ORM refs from constructive-sdk-graphql | Optional generated ORM patterns for stable custom-domain schemas |
 | **constructive-hooks** | hooks refs from constructive-sdk-graphql | Optional generated React Query hook patterns for fixed endpoints |

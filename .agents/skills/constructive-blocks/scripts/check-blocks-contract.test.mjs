@@ -1,15 +1,34 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+  assertBriefRoutes,
+  assertEventStudioBlueprint,
   assertSnapshot,
+  filterRegistryItems,
   loadPortableContract,
-  parseArguments
+  parseNpmPackageRequirement,
+  parseArguments,
+  pinInspectorInstallCommand,
+  projectRegistryCatalog,
+  validateRegistryFilters
 } from './check-blocks-contract.mjs';
+import {
+  changedReplacementPaths,
+  parseArguments as parseSyncArguments,
+  repinContract
+} from './sync-blocks-contract.mjs';
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const checker = path.join(scriptDirectory, 'check-blocks-contract.mjs');
@@ -17,6 +36,147 @@ const runtimeReference = path.join(
   scriptDirectory,
   '../references/runtime-contract.md'
 );
+const briefRoutesReference = path.join(
+  scriptDirectory,
+  '../references/brief-to-roots.v1.json'
+);
+const registryCatalogReference = path.join(
+  scriptDirectory,
+  '../references/registry-catalog.v1.json'
+);
+
+test('transactional Blocks contract synchronizer requires an explicit checkout', () => {
+  assert.deepEqual(
+    parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--check']),
+    {
+      blocksRepo: '/tmp/blocks',
+      check: true,
+      repin: false,
+      refreshPackageResolutions: false,
+      help: false
+    }
+  );
+  assert.equal(
+    parseSyncArguments([
+      '--blocks-repo',
+      '/tmp/blocks',
+      '--refresh-package-resolutions'
+    ]).refreshPackageResolutions,
+    true
+  );
+  assert.equal(
+    parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--repin']).repin,
+    true
+  );
+  assert.throws(
+    () => parseSyncArguments([]),
+    /--blocks-repo is required/
+  );
+  assert.throws(
+    () => parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--check', '--check']),
+    /--check may be provided only once/
+  );
+  assert.throws(
+    () => parseSyncArguments(['--blocks-repo', '/tmp/blocks', '--unknown']),
+    /Unknown argument --unknown/
+  );
+});
+
+test('transactional Blocks contract synchronizer repins only release coordinates', () => {
+  const current = {
+    source: { commit: 'old' },
+    release: {
+      testedShadcnVersion: '0.0.0',
+      localConsumption: { testedInstallCommandTemplate: 'old command' }
+    },
+    registry: { testedShadcnVersion: '0.0.0' },
+    preserved: { value: true }
+  };
+
+  assert.deepEqual(repinContract(current), {
+    source: { commit: '1a72e5d95f7ce4a243cd4536ed78c638708d538c' },
+    release: {
+      testedShadcnVersion: '4.16.1',
+      localConsumption: {
+        testedInstallCommandTemplate:
+          'pnpm dlx shadcn@4.16.1 add @constructive/{name}'
+      }
+    },
+    registry: { testedShadcnVersion: '4.16.1' },
+    preserved: { value: true }
+  });
+  assert.equal(current.source.commit, 'old');
+});
+
+test('synchronizer check mode detects generated artifact drift', () => {
+  const stageRoot = mkdtempSync(path.join(tmpdir(), 'blocks-contract-stage-'));
+  const currentRoot = mkdtempSync(path.join(tmpdir(), 'blocks-contract-current-'));
+  const contract = { source: { attestations: { installPlans: [] } } };
+  const generatedPaths = [
+    'references/registry-catalog.v1.json',
+    'references/registry-content.v1.json',
+    'references/package-resolutions.v1.json',
+    'references/install-roots.v1.json'
+  ];
+  try {
+    for (const relativePath of generatedPaths) {
+      for (const root of [stageRoot, currentRoot]) {
+        const filePath = path.join(root, relativePath);
+        mkdirSync(path.dirname(filePath), { recursive: true });
+        writeFileSync(filePath, 'same\n');
+      }
+    }
+    assert.deepEqual(changedReplacementPaths(stageRoot, contract, currentRoot), []);
+    writeFileSync(
+      path.join(stageRoot, 'references/registry-catalog.v1.json'),
+      'changed\n'
+    );
+    assert.deepEqual(changedReplacementPaths(stageRoot, contract, currentRoot), [
+      'references/registry-catalog.v1.json'
+    ]);
+  } finally {
+    rmSync(stageRoot, { recursive: true, force: true });
+    rmSync(currentRoot, { recursive: true, force: true });
+  }
+});
+
+test('npm dependency requirements preserve exact versions while canonicalizing names', () => {
+  assert.deepEqual(parseNpmPackageRequirement('@constructive-io/data@^0.5.0'), {
+    name: '@constructive-io/data',
+    requested: '^0.5.0',
+    exactVersion: null
+  });
+  assert.deepEqual(parseNpmPackageRequirement('@tanstack/react-table@9.0.0-beta.58'), {
+    name: '@tanstack/react-table',
+    requested: '9.0.0-beta.58',
+    exactVersion: '9.0.0-beta.58'
+  });
+  assert.deepEqual(parseNpmPackageRequirement('lucide-react'), {
+    name: 'lucide-react',
+    requested: null,
+    exactVersion: null
+  });
+  assert.equal(
+    pinInspectorInstallCommand(
+      'pnpm dlx shadcn@latest add @constructive/app-kit-data',
+      'app-kit-data'
+    ),
+    'pnpm dlx shadcn@4.16.1 add @constructive/app-kit-data'
+  );
+  assert.throws(
+    () => pinInspectorInstallCommand(
+      'pnpm dlx shadcn@next add @constructive/app-kit-data',
+      'app-kit-data'
+    ),
+    /inspector install command changed/
+  );
+});
+
+function appKitCatalogFixture() {
+  return JSON.parse(readFileSync(registryCatalogReference, 'utf8')).items.filter(
+    (item) => item.meta?.constructive?.family === 'app-kit'
+  );
+}
 
 function runQuery(arguments_) {
   const output = execFileSync(process.execPath, [checker].concat(arguments_), {
@@ -27,17 +187,381 @@ function runQuery(arguments_) {
   return JSON.parse(output);
 }
 
+function runQueryFailure(arguments_) {
+  const result = spawnSync(process.execPath, [checker].concat(arguments_), {
+    cwd: '/',
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  assert.notEqual(result.status, 0, `Expected query to fail: ${arguments_.join(' ')}`);
+  return result.stderr;
+}
+
 test('portable artifacts validate as one complete contract', () => {
   const loaded = loadPortableContract();
-  assert.equal(loaded.snapshot.registry.catalog.itemCount, 102);
+  assert.equal(loaded.snapshot.registry.catalog.itemCount, 123);
   assert.equal(loaded.snapshot.items.length, 19);
   assert.equal(loaded.artifacts.planByItem.size, 19);
-  assert.equal(loaded.artifacts.catalog.items.length, 102);
-  assert.equal(loaded.artifacts.registryContent.records.length, 138);
-  assert.equal(loaded.artifacts.contentBySource.size, 138);
-  assert.equal(loaded.artifacts.packageResolutions.records.length, 10);
-  assert.equal(loaded.artifacts.packageByName.size, 10);
+  assert.equal(
+    loaded.artifacts.catalog.items.length,
+    loaded.snapshot.registry.catalog.itemCount
+  );
+  assert.equal(
+    loaded.artifacts.registryContent.records.length,
+    loaded.artifacts.registryContent.recordCount
+  );
+  assert.equal(
+    loaded.artifacts.contentBySource.size,
+    loaded.artifacts.registryContent.recordCount
+  );
+  assert.equal(
+    loaded.artifacts.packageResolutions.records.length,
+    loaded.artifacts.packageResolutions.recordCount
+  );
+  assert.equal(
+    loaded.artifacts.packageByName.size,
+    loaded.artifacts.packageResolutions.recordCount
+  );
   assert.equal(loaded.snapshot.sourceLimitations.length, 15);
+  assert.equal(loaded.briefRouteById.size, 7);
+  assert.equal(loaded.eventStudioBlueprint.tables.length, 5);
+  for (const rootName of [
+    'app-kit-core',
+    'app-kit-data',
+    'app-kit-board',
+    'app-kit-dashboard',
+    'app-kit-calendar',
+    'app-kit-workflow',
+    'app-kit-event-studio'
+  ]) {
+    const item = loaded.artifacts.catalog.items.find(
+      (candidate) => candidate.name === rootName
+    );
+    assert.ok(item, `Missing ${rootName} from the registry catalog.`);
+    for (const file of item.files) {
+      assert.ok(
+        loaded.artifacts.contentBySource.has(`${rootName}\0${file.path}`),
+        `Missing content attestation for ${rootName}/${file.path}.`
+      );
+    }
+  }
+  for (const packageName of [
+    '@tanstack/charts',
+    '@tanstack/charts-scales',
+    '@tanstack/react-charts',
+    'd3-scale'
+  ]) {
+    assert.ok(
+      loaded.artifacts.packageByName.has(packageName),
+      `Missing package attestation for ${packageName}.`
+    );
+  }
+});
+
+test('App Kit catalog filters use meta.constructive without a parallel root list', () => {
+  const metadata = (overrides) => ({
+    version: 1,
+    family: 'app-kit',
+    kind: 'view',
+    boundary: 'client',
+    provider: 'app-kit',
+    dataShapes: ['collection'],
+    intents: ['inspect'],
+    capabilities: ['records'],
+    ...overrides
+  });
+  const items = [
+    {
+      name: 'app-kit-data',
+      type: 'registry:block',
+      meta: { constructive: metadata({ capabilities: ['records', 'relations'] }) }
+    },
+    {
+      name: 'app-kit-calendar',
+      type: 'registry:block',
+      meta: { constructive: metadata({ dataShapes: ['temporal'], capabilities: ['temporal'] }) }
+    },
+    {
+      name: 'feature-pack-data',
+      type: 'registry:block'
+    }
+  ];
+  assert.deepEqual(
+    filterRegistryItems(items, { family: 'app-kit' }).map((item) => item.name),
+    ['app-kit-data', 'app-kit-calendar']
+  );
+  assert.deepEqual(
+    filterRegistryItems(items, { capability: 'temporal' }).map((item) => item.name),
+    ['app-kit-calendar']
+  );
+  assert.deepEqual(
+    filterRegistryItems(items, {
+      type: 'registry:block',
+      family: 'app-kit',
+      capability: 'relations'
+    }).map((item) => item.name),
+    ['app-kit-data']
+  );
+  assert.deepEqual(validateRegistryFilters(items), {
+    families: ['app-kit'],
+    capabilities: ['records', 'relations', 'temporal']
+  });
+  assert.deepEqual(validateRegistryFilters(items, { family: 'app-kit' }), {
+    families: ['app-kit'],
+    capabilities: ['records', 'relations', 'temporal']
+  });
+  assert.throws(
+    () => validateRegistryFilters(items, { family: 'application-kit' }),
+    /Unknown registry family application-kit.*Available families: app-kit/
+  );
+  assert.throws(
+    () => validateRegistryFilters(items, {
+      family: 'app-kit',
+      capability: 'time-range'
+    }),
+    /Unknown registry capability time-range for family app-kit/
+  );
+
+  const options = parseArguments([
+    '--list-registry',
+    '--family',
+    'app-kit',
+    '--capability',
+    'temporal'
+  ]);
+  assert.equal(options.registryFamily, 'app-kit');
+  assert.equal(options.registryCapability, 'temporal');
+  assert.throws(
+    () => parseArguments(['--registry-item', 'app-kit-data', '--family', 'app-kit']),
+    /valid only with --list-registry/
+  );
+
+  const registryItem = {
+    name: 'app-kit-data',
+    type: 'registry:block',
+    title: 'App Kit Data',
+    description: 'Typed application data views.',
+    meta: {
+      constructive: metadata({
+        kind: 'resource',
+        boundary: 'mixed',
+        capabilities: ['records', 'relations']
+      })
+    }
+  };
+  const projection = projectRegistryCatalog({ items: [registryItem] });
+  assert.deepEqual(
+    projection.items[0].meta.constructive,
+    registryItem.meta.constructive
+  );
+  const invalid = structuredClone(registryItem);
+  delete invalid.meta.constructive.provider;
+  assert.throws(
+    () => projectRegistryCatalog({ items: [invalid] }),
+    /provider must be app-kit/
+  );
+  const invalidFamily = structuredClone(registryItem);
+  invalidFamily.meta.constructive.family = 'platform';
+  assert.throws(
+    () => projectRegistryCatalog({ items: [invalidFamily] }),
+    /family must be app-kit/
+  );
+  const invalidRoot = structuredClone(registryItem);
+  invalidRoot.name = 'app-kit-map';
+  assert.throws(
+    () => projectRegistryCatalog({ items: [invalidRoot] }),
+    /without being an App Kit install root/
+  );
+});
+
+test('loaded catalog backs validated App Kit family and capability queries', () => {
+  const family = runQuery(['--list-registry', '--family', 'app-kit']);
+  assert.deepEqual(
+    family.items.map((item) => item.name),
+    [
+      'app-kit-core',
+      'app-kit-data',
+      'app-kit-board',
+      'app-kit-dashboard',
+      'app-kit-calendar',
+      'app-kit-workflow',
+      'app-kit-event-studio'
+    ]
+  );
+  for (const item of family.items) {
+    assert.doesNotMatch(
+      item.docs,
+      /constructive-io\.github\.io\/blocks\/blocks\/app-kit/
+    );
+    assert.match(item.docs, /appKitDocumentation\.authority/);
+  }
+  const temporal = runQuery([
+    '--list-registry',
+    '--family',
+    'app-kit',
+    '--capability',
+    'temporal'
+  ]);
+  assert.deepEqual(
+    temporal.items.map((item) => item.name),
+    ['app-kit-calendar']
+  );
+  assert.match(
+    runQueryFailure(['--list-registry', '--family', 'application-kit']),
+    /Unknown registry family application-kit.*Available families: app-kit/
+  );
+  assert.match(
+    runQueryFailure([
+      '--list-registry',
+      '--family',
+      'app-kit',
+      '--capability',
+      'time-range'
+    ]),
+    /Unknown registry capability time-range for family app-kit/
+  );
+});
+
+test('brief routes select App Kit by shape instead of Sheets, Console, or review queues', () => {
+  const briefRoutes = JSON.parse(readFileSync(briefRoutesReference, 'utf8'));
+  const catalogItems = appKitCatalogFixture();
+  const briefRouteById = assertBriefRoutes(briefRoutes, catalogItems);
+  for (const route of briefRoutes.cases) {
+    assert.equal(
+      route.expectedRoots[0],
+      route.starterRequested ? 'app-kit-event-studio' : 'app-kit-core'
+    );
+    assert.ok(route.expectedRoots.every((root) => root.startsWith('app-kit-')));
+    assert.ok(route.forbiddenRoots.includes('feature-pack-data'));
+    assert.ok(route.forbiddenRoots.includes('console-kit-nextjs'));
+    if (!route.starterRequested) {
+      assert.ok(route.forbiddenRoots.includes('app-kit-event-studio'));
+    }
+  }
+  assert.ok(
+    briefRouteById.get('intake-approval').forbiddenAssumptions.includes(
+      'review-queue-default'
+    )
+  );
+  assert.deepEqual(
+    briefRouteById.get('event-planning').expectedRoots,
+    [
+      'app-kit-core',
+      'app-kit-data',
+      'app-kit-board',
+      'app-kit-dashboard',
+      'app-kit-calendar',
+      'app-kit-workflow'
+    ]
+  );
+  assert.equal(
+    briefRouteById.get('event-planning').starterRequested,
+    false
+  );
+  assert.deepEqual(
+    briefRouteById.get('event-studio-opt-in').expectedRoots,
+    ['app-kit-event-studio']
+  );
+  assert.equal(
+    briefRouteById.get('event-studio-opt-in').starterRequested,
+    true
+  );
+  assert.equal(
+    briefRouteById.get('event-studio-opt-in').backendPreset,
+    'b2b:storage'
+  );
+
+  const missingOptIn = structuredClone(briefRoutes);
+  missingOptIn.cases.find((route) => route.id === 'event-studio-opt-in')
+    .starterRequested = false;
+  assert.throws(
+    () => assertBriefRoutes(missingOptIn, catalogItems),
+    /only with explicit starterRequested opt-in/
+  );
+
+  const unknownCapability = structuredClone(briefRoutes);
+  unknownCapability.cases.find((route) => route.id === 'service-desk')
+    .capabilities.push('spatial');
+  assert.throws(
+    () => assertBriefRoutes(unknownCapability, catalogItems),
+    /capabilities value spatial is not declared by a selected root/
+  );
+
+  const emptyDataShapes = structuredClone(briefRoutes);
+  emptyDataShapes.cases.find((route) => route.id === 'service-desk')
+    .dataShapes = [];
+  assert.throws(
+    () => assertBriefRoutes(emptyDataShapes, catalogItems),
+    /service-desk\.dataShapes must not be empty/
+  );
+
+  const unsupportedDashboard = structuredClone(briefRoutes);
+  unsupportedDashboard.cases.find((route) => route.id === 'service-desk')
+    .expectedRoots.splice(2, 0, 'app-kit-dashboard');
+  assert.throws(
+    () => assertBriefRoutes(unsupportedDashboard, catalogItems),
+    /app-kit-dashboard has no dataShapes evidence grounded in meta\.constructive\.dataShapes/
+  );
+});
+
+test('Event Studio remains a public org-scoped blueprint without realtime or raw SQL', () => {
+  const loaded = loadPortableContract();
+  assertEventStudioBlueprint(loaded.eventStudioBlueprint);
+
+  const realtimeMutation = structuredClone(loaded.eventStudioBlueprint);
+  realtimeMutation.tables[0].nodes.push('DataRealtime');
+  assert.throws(
+    () => assertEventStudioBlueprint(realtimeMutation),
+    /must not enable realtime/
+  );
+
+  const deleteMutation = structuredClone(loaded.eventStudioBlueprint);
+  deleteMutation.tables[0].policies = deleteMutation.tables[0].policies.filter(
+    (policy) => policy.data?.is_owner !== true
+  );
+  assert.throws(
+    () => assertEventStudioBlueprint(deleteMutation),
+    /is_owner delete policy/
+  );
+
+  const policyNameMutation = structuredClone(loaded.eventStudioBlueprint);
+  const mutatedPolicies = policyNameMutation.tables[0].policies;
+  mutatedPolicies.find((policy) => policy.data?.is_owner === true).policy_name =
+    'admin_delete';
+  assert.throws(
+    () => assertEventStudioBlueprint(policyNameMutation),
+    /distinct policy_name|policy names must be unique/
+  );
+
+  const fieldMutation = structuredClone(loaded.eventStudioBlueprint);
+  fieldMutation.tables.find((table) => table.table_name === 'sessions')
+    .fields.find((field) => field.name === 'description').name = 'summary';
+  assert.throws(
+    () => assertEventStudioBlueprint(fieldMutation),
+    /sessions fields drifted/
+  );
+
+  const uniquenessMutation = structuredClone(loaded.eventStudioBlueprint);
+  uniquenessMutation.unique_constraints = [];
+  assert.throws(
+    () => assertEventStudioBlueprint(uniquenessMutation),
+    /Event Studio relation uniqueness drifted/
+  );
+
+  const deleteActionMutation = structuredClone(loaded.eventStudioBlueprint);
+  deleteActionMutation.relations[0].delete_action = 'RESTRICT';
+  assert.throws(
+    () => assertEventStudioBlueprint(deleteActionMutation),
+    /relation delete actions drifted/
+  );
+
+  const statusMutation = structuredClone(loaded.eventStudioBlueprint);
+  statusMutation.tables.find((table) => table.table_name === 'sessions')
+    .fields.find((field) => field.name === 'status').type.name = 'session_status';
+  assert.throws(
+    () => assertEventStudioBlueprint(statusMutation),
+    /sessions status type drifted/
+  );
 });
 
 test('module endpoint and adapter drift fail closed', () => {
@@ -97,13 +621,20 @@ test('standalone Data conditional configuration remains complete and exact', () 
   );
 });
 
-test('the shadcn CLI policy remains an exact pin', () => {
+test('public shadcn latest stays separate from the exact tested CLI version', () => {
   const loaded = loadPortableContract();
   const mutation = structuredClone(loaded.snapshot);
-  mutation.registry.shadcnVersionPolicy = 'minimum';
+  mutation.registry.testedShadcnVersionPolicy = 'minimum';
   assert.throws(
     () => assertSnapshot(mutation),
-    /shadcnVersionPolicy must be exact/
+    /testedShadcnVersionPolicy must be exact/
+  );
+
+  const publicMutation = structuredClone(loaded.snapshot);
+  publicMutation.registry.publicShadcnTag = '4.13.1';
+  assert.throws(
+    () => assertSnapshot(publicMutation),
+    /publicShadcnTag drifted/
   );
 
   const legacyMutation = structuredClone(loaded.snapshot);
@@ -111,6 +642,29 @@ test('the shadcn CLI policy remains an exact pin', () => {
   assert.throws(
     () => assertSnapshot(legacyMutation),
     /minimumShadcnVersion is forbidden/
+  );
+});
+
+test('App Kit documentation follows the release gate and pins local source', () => {
+  const loaded = loadPortableContract();
+  assert.equal(loaded.snapshot.documentation.appKit.public.status, 'future-only');
+  assert.equal(
+    loaded.snapshot.documentation.appKit.pinnedSource.path,
+    'apps/blocks/src/app/blocks/app-kit/page.tsx'
+  );
+
+  const statusMutation = structuredClone(loaded.snapshot);
+  statusMutation.documentation.appKit.public.status = 'available';
+  assert.throws(
+    () => assertSnapshot(statusMutation),
+    /public documentation status must follow publicRegistryReady/
+  );
+
+  const sourceMutation = structuredClone(loaded.snapshot);
+  sourceMutation.documentation.appKit.pinnedSource.path = 'README.md';
+  assert.throws(
+    () => assertSnapshot(sourceMutation),
+    /pinned documentation source\.path drifted/
   );
 });
 
@@ -265,7 +819,7 @@ test('query mode validates first and is independent of the current directory', (
   assert.equal(item.name, 'app-shell');
   assert.equal(
     item.publicInstall.command,
-    'pnpm dlx shadcn@4.13.1 add @constructive/app-shell'
+    'pnpm dlx shadcn@latest add @constructive/app-shell'
   );
   assert.equal(item.publicInstall.status, 'blocked');
   assert.equal(item.publicInstall.availability, 'future-only');
@@ -335,11 +889,23 @@ test('every query mode exposes the same branch-only installability gate', () => 
     assert.equal(gate.publicInstall.availability, 'future-only');
     assert.match(
       gate.publicInstall.commandTemplate,
-      /shadcn@4\.13\.1 add @constructive\/\{name\}/
+      /shadcn@latest add @constructive\/\{name\}/
     );
+    assert.equal(gate.appKitDocumentation.authority.kind, 'pinned-source');
+    assert.equal(
+      gate.appKitDocumentation.authority.path,
+      'apps/blocks/src/app/blocks/app-kit/page.tsx'
+    );
+    assert.equal(gate.appKitDocumentation.public.status, 'future-only');
+    assert.equal(gate.appKitDocumentation.public.url, null);
     assert.equal(
       gate.pinnedLocalConsumption.sourceCommit,
-      '4f2a789fde9a90c0c6ed5977896493bb4818fa77'
+      '1a72e5d95f7ce4a243cd4536ed78c638708d538c'
+    );
+    assert.equal(gate.pinnedLocalConsumption.testedShadcnVersion, '4.16.1');
+    assert.match(
+      gate.pinnedLocalConsumption.testedInstallCommandTemplate,
+      /shadcn@4\.16\.1 add @constructive\/\{name\}/
     );
     assert.equal(
       gate.pinnedLocalConsumption.consumerIsolation.required,
@@ -373,7 +939,7 @@ test('query surfaces expose only status-bearing publicInstall commands', () => {
   for (const publicInstall of publicInstalls) {
     assert.equal(publicInstall.status, 'blocked');
     assert.equal(publicInstall.availability, 'future-only');
-    assert.match(publicInstall.command, /^pnpm dlx shadcn@4\.13\.1 add @constructive\//);
+    assert.match(publicInstall.command, /^pnpm dlx shadcn@latest add @constructive\//);
     assert.match(publicInstall.reason, /branch-only/);
   }
   for (const item of rootList.items) {
