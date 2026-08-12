@@ -95,7 +95,11 @@ readable identity row whose id is the realm of a write-only secret.
 
 ## Where the internals live
 
-The database-level mechanics — the `(namespace_id, name, realm)` uniqueness with
+Realm is a lane *within* whichever store holds the value, so read
+[`secret-stores.md`](./secret-stores.md) alongside this: the internal stores key a
+lane by scope + name + realm, the namespace-backed infra stores add the namespace.
+
+The database-level mechanics — the uniqueness rules with
 `NULLS NOT DISTINCT`, the getter fallback SQL, the requirements gate, the
 `register_push_channel` RPC, and how cloud functions fetch per-entity realms at
 runtime — are documented in **constructive-db** at

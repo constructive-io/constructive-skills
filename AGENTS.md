@@ -39,7 +39,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-architecture** | *(from sdk-agentic-flow)* | Platform mental model — core model, baseline, endpoint map, provisioning flow, data-module/policy pairing |
 | **constructive-gotchas** | *(from sdk-agentic-flow)* | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) cited by harness tools |
 | **constructive-troubleshooting** | *(from sdk-agentic-flow)* | Failure recipes — exact error strings mapped to root causes and fixes per build phase |
-| **constructive-secrets-config** | *(from sdk-agentic-flow)* | Secrets/config plumbing map — site-domain provisioning, email topology, API-key surface, env keys |
+| **constructive-secrets-config** | *(from sdk-agentic-flow)* | Secrets/config plumbing map — the four durable stores (internal vs namespace-backed infra), site-domain provisioning, email topology, API-key surface, env keys |
 | **constructive-harness** | *(from Constructive harness)* | The harness build workflow — init, brief intake, build-orchestrator state machine, and the typed database/schema/codegen tools (references per phase) |
 
 Each umbrella skill has a `SKILL.md` router and a `references/` directory with detailed topic-specific documentation.
