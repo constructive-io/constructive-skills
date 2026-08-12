@@ -39,7 +39,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-architecture** | Platform mental model — core model, baseline, endpoint map, provisioning flow, data-module/policy pairing |
 | **constructive-gotchas** | Platform gotchas with stable rule IDs (CODEGEN-001, TS-001, SERVER-001, …) |
 | **constructive-troubleshooting** | Failure recipes — exact error strings mapped to root causes and fixes |
-| **constructive-secrets-config** | Secrets/config plumbing — site-domain provisioning, email topology, API-key surface, env keys |
+| **constructive-secrets-config** | Secrets/config plumbing — the four durable stores (internal vs namespace-backed infra), site-domain provisioning, email topology, API-key surface, env keys |
 | **constructive-harness** | The harness build workflow — init, brief intake, build orchestration, and the typed database/schema/codegen tools |
 
 ## Skill Structure
