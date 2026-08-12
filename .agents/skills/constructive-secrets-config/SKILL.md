@@ -33,7 +33,7 @@ metadata:
 |---|------|---------------|------------------------------|
 | **1** | **Site-domain provisioning** | Email links resolve their site from `services_public.domains`; the per-DB provisioner makes API hosts but **no site-domain row** → `"Missing site configuration for email"`. The toolkit now backfills it hands-free. | `scripts/templates/provision/provision.ts` (the live backfill, §1 below) + `troubleshooting.md` → *"Post-Provision: Missing site configuration for email"* (by-hand fallback) |
 | **2** | **Email-services topology** | Four services must all listen: **Mailpit 8025**, **Admin GraphQL 3002**, **send-email-link 8082**, **job-service** (no HTTP port). `SEND_EMAIL_LINK_DRY_RUN` must be `false`. | `SKILL.md` Optional-Extensions *"Email services"* row + `troubleshooting.md` → the four *Post-Provision (Email Services)* sections. Upstream runbook: **`constructive-io/constructive`** (Docker-Compose method). |
-| **3** | **Secrets / KMS / API keys** | Four durable stores, chosen by *secret vs config* × *internal (no namespace) vs infra (projected into Kubernetes)* — see §3.0 + `references/secret-stores.md`. Secret **values never come back out of the SDK/ORM**: PGP-encrypted at rest, resolved only by deployed code. **`createApiKey` is step-up-gated server-side** and accepts only `accessLevel ∈ {read_only, full_access}` — other values raise `INVALID_ACCESS_LEVEL`. Reveal is one-time, step-up first. | `constructive-principals` (API-key lifecycle) + `constructive-auth` (step-up verification) |
+| **3** | **Secrets / KMS / API keys** | Four durable stores, chosen by *secret vs config* × *internal (no namespace) vs infra (projected into Kubernetes)* — see §3.0 + `references/secret-stores.md`. Secret **values never come back out of the SDK/ORM**: encrypted at rest, decryptable only through the trusted runtime secret-resolution path. **`createApiKey` is step-up-gated server-side** and accepts only `accessLevel ∈ {read_only, full_access}` — other values raise `INVALID_ACCESS_LEVEL`. Reveal is one-time, step-up first. | `constructive-principals` (API-key lifecycle) + `constructive-auth` (step-up verification) |
 | **4** | **Env vars / hub `.env` keys** | App `.env` points blocks at the per-DB endpoints (blocks read the **`_GRAPHQL_`** names). Query hostnames by `DATABASE_ID` (§4.3) — never string-build them. The shared hub server needs `API_IS_PUBLIC` / `API_ANON_ROLE` / `API_ROLE_NAME`. | `SKILL.md` S0/S3 (hub + app env) + `gotchas.md` BLOCKS-001 (the `_GRAPHQL_` name trap) + §4.3 below |
 | **5** | **Realms** | Optional nullable `realm` field: one `name` holds many values (per region/tenant-app/user/channel), and an instance (`resource`/`functionDeployment`) selects a lane. `null` = the default lane; reads fall back exact→null. Never synthesize a realm (`realm ?? 'default'`). | `references/realms.md` (SDK/ORM view) + constructive-db `docs/architecture/realms.md` (internals) |
 
@@ -155,7 +155,7 @@ module list.
 
 Four durable stores, chosen on two questions — is the value secret, and does Kubernetes have to see it?
 
-| | secret (PGP-encrypted at rest) | config (plaintext by design) |
+| | secret (encrypted at rest) | config (plaintext by design) |
 |---|---|---|
 | **internal** — in the database, **no namespace** | `internal_secrets_module` | `internal_config_module` |
 | **infra** — namespace-backed, projected into the cluster | `infra_secrets_module` | `infra_config_module` |
@@ -164,7 +164,8 @@ Internal is the default: a value your code reads while it runs never needs a Kub
 for an infra store only when the value must be *mounted* by the cluster (an env var or file a container
 reads at boot, image-pull credentials) — that write projects it into a Kubernetes Secret/ConfigMap.
 
-**Secret values are not retrievable through the SDK/ORM.** They are encrypted at rest with PGP and are
+**Secret values are not retrievable through the SDK/ORM.** They are encrypted at rest, may only be
+decrypted through the trusted runtime secret-resolution path, and are
 never part of a readable row: what you get is the metadata surface (name, realm, provider, labels,
 rotation/retirement timestamps) plus set/rotate/retire/delete. There is no `getSecret`. A value is
 resolved only by trusted code running inside the platform — a deployed function reading it at invocation

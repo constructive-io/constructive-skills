@@ -35,7 +35,8 @@ PKCE) that expire rather than rotate.
 
 ## Secret values do not come back out
 
-Secret values are **encrypted at rest with PGP** and are never part of a readable
+Secret values are **encrypted at rest** and may only be decrypted through the
+trusted runtime secret-resolution path; they are never part of a readable
 row. Through the SDK/ORM you get the metadata surface — name, realm, description,
 labels, annotations, provider, and the rotation/retirement timestamps — plus the
 write surface: set, rotate, retire, delete. There is no read operation that
