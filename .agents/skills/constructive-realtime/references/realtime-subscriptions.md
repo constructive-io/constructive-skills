@@ -88,6 +88,21 @@ This creates:
 }
 ```
 
+### Realtime on a module-generated table
+
+A table you did not declare — the agent module's `agent_message`, the storage module's `files` — takes `DataRealtime` the same way, by referencing the module instead of naming the table:
+
+```json
+{
+  "module": { "type": "agent", "scope": "app", "table": "message" },
+  "nodes": [{ "$type": "DataRealtime", "data": { "operations": ["INSERT", "UPDATE"] } }]
+}
+```
+
+That is how an agent chat becomes live: every message written to a thread reaches subscribers, so a client renders the assistant's reply as it lands instead of polling. The subscriber table inherits the source table's SELECT policies whether they came from the blueprint or from the module's own security, so the thread's access rules carry onto the subscription rather than the lane being open.
+
+Name the table by role rather than by `table_name` + `schema_name`: a `table_name` that matches nothing is a declaration, so a near-miss creates an empty table and puts the realtime lane on that. See [Referencing a module-generated table](../../constructive-blueprints/references/blueprint-definition-format.md#referencing-a-module-generated-table).
+
 ## Ephemeral Realtime
 
 Ephemeral mode (`ephemeral: true`) is designed for high-frequency, low-durability signals — cursor positions, presence indicators, typing status, live counters — where writing every event to `change_log` would create unnecessary WAL/write overhead.

@@ -202,7 +202,8 @@ Each entry in `tables[]` defines one database table:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `table_name` | string | Yes | Database table name — also used as the identifier in relations |
+| `table_name` | string | Yes, unless `module` is given | Database table name — also used as the identifier in relations |
+| `module` | object | No | Reference a table an installed **module** already generated, instead of declaring one (see below). Mutually exclusive with `table_name` |
 | `description` | string | No | Table description. Emitted as `COMMENT ON TABLE` in PostgreSQL. Visible in database tools and introspection. |
 | `schema_name` | string | No | Per-table schema override (e.g. `"app_public"`). Falls back to the `schemaId` param of `constructBlueprint()` |
 | `nodes` | array | Yes | Data behavior node types to apply. **Must start with `DataId`** unless the table intentionally has no primary key |
@@ -213,6 +214,30 @@ Each entry in `tables[]` defines one database table:
 | `indexes` | array | No | Per-table index definitions (see Indexes section) |
 | `full_text_search` | array | No | Per-table FTS definitions (see Full-Text Search section) |
 | `unique_constraints` | array | No | Per-table unique constraint definitions (see Unique Constraints section) |
+
+### Referencing a module-generated table
+
+A table entry normally *declares* a table. A `module` reference instead points at a table an installed module already generated — the agent module's threads and messages, the storage module's files, the memberships module's grants — so the blueprint can attach behaviors, fields, indexes or policies to it. Any node works the same on a module table as on one you declared:
+
+```json
+{
+  "module": { "type": "agent", "scope": "app", "table": "message" },
+  "nodes": [{ "$type": "DataRealtime", "data": { "operations": ["INSERT", "UPDATE"] } }]
+}
+```
+
+| Key | Required | Description |
+|-----|----------|-------------|
+| `type` | Yes | Module type — the module's name without the `_module` suffix (`agent`, `storage`, `memberships`, `limits`, `events`, `site_surface`, …) |
+| `table` | Yes | Which of that module's tables, named by the role it plays rather than the name the install gave it (`message`, not `org_agent_message`) |
+| `scope` | No | Disambiguates when the tenant holds the module at more than one scope (`app`, `org`, `user`, `platform`) |
+| `prefix` | No | Disambiguates two instances at the same scope |
+
+**A reference resolves or raises — it never creates.** That is the reason to prefer it over `table_name` + `schema_name`: `table_name` is a *declaration*, so a name that matches nothing produces a new empty table in the blueprint's own schema, and whatever you attached lands on the table nothing writes to. A `module` reference fails loudly instead — the module is not installed, the reference is ambiguous across instances, or that module generates no such table.
+
+`table` is the **role**, which is stable across instances and prefixes: the agent module's roles are `thread`, `message`, `task`, `prompts`, `plan`, `agent`, `persona`, `resource`; the storage module's are `buckets`, `files`, `file_events`. A module whose install generates one table calls it `table` (`{ "type": "users", "table": "table" }`). Every module records this attribution without code of its own, so the addressable surface is wide — a fully provisioned tenant carries a few hundred module-generated tables across ~60 module types.
+
+**Leave `scope` out only when it cannot be ambiguous.** A tenant holding an app-scoped and an org-scoped agent has two `message` tables, and an unscoped reference raises rather than guessing — which is the point: that is exactly the case where a silent guess would attach realtime, history or search to the other scope's table.
 
 ### Nodes
 
