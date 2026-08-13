@@ -142,6 +142,19 @@ When `has_agents` is enabled, `agent_messages` includes an `agent_id` FK. This a
 - Tasks are attributed via `actor_id`
 - Agent personas define system prompts, model config, and linked resources
 
+### Adding Behaviors to the Module's Tables
+
+The module generates its own tables, so a blueprint adds behavior to them by referencing the module rather than re-declaring a table by name — realtime on messages, history on threads, vector search on resources:
+
+```json
+{
+  "module": { "type": "agent", "scope": "app", "table": "message" },
+  "nodes": [{ "$type": "DataRealtime", "data": { "operations": ["INSERT", "UPDATE"] } }]
+}
+```
+
+`table` is the role (`thread`, `message`, `task`, `prompts`, `plan`, `agent`, `persona`, `resource`), and `scope` is required when the tenant holds the module at more than one scope. See [Referencing a module-generated table](../constructive-blueprints/references/blueprint-definition-format.md#referencing-a-module-generated-table).
+
 ### Module Capabilities
 
 The agent module auto-registers these capabilities on install:
