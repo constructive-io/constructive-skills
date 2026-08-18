@@ -241,6 +241,40 @@ A table entry normally *declares* a table. A `module` reference instead points a
 
 The same reference is accepted wherever a blueprint *names* a module-generated table rather than decorating it: as a relation endpoint (`source_module` / `target_module`, see [Relation Entries](#relation-entries)) and as the referenced table of a policy (`ref_module`, see [Policies](#policies)). So a blueprint can link its own rows to a generated table, link two generated tables to each other, and authorize its rows against one, without any of them spelling the name an install chose.
 
+### Owning a module table's security with `provisions`
+
+An entry's own `policies[]` and `grants[]` **layer onto** whatever the module installed — the additive reading above. To make the declared security a module table's *whole* set instead, put it under `provisions`, keyed by the module's own table keys. The `module` reference then names the **install** and leaves `table` out, because the keys of `provisions` are the tables:
+
+```json
+{
+  "module": { "type": "image", "scope": "org" },
+  "provisions": {
+    "registries": {
+      "policies": [
+        { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"],
+          "data": { "entity_field": "entity_id", "membership_type": 2 } }
+      ],
+      "grants": [
+        { "roles": ["authenticated"], "privileges": [["select", "*"]] },
+        { "roles": ["administrator"], "privileges": [["select", "*"], ["insert", "*"], ["update", "*"], ["delete", "*"]] }
+      ]
+    },
+    "images": {
+      "policies": [
+        { "$type": "AuthzEntityMembership", "privileges": ["select"],
+          "data": { "entity_field": "entity_id", "membership_type": 2 } }
+      ]
+    }
+  }
+}
+```
+
+Ownership is inferred per concern rather than flagged: a non-empty `policies` array under a table key replaces that table's policies, a non-empty `grants` array replaces its grants, a concern left out keeps the module's default, and `nodes`/`fields` stay additive as always. This is the same `provisions` vocabulary the `storage[]`, `namespaces[]`, `functions[]` and `agents[]` entries use, generalized to any module.
+
+An entry carrying `provisions` may not also carry `table_name`, `schema_name`, `module.table`, or its own `policies`/`grants`/`nodes`/`fields` — the keys of `provisions` are where its security lives, so a key that would be ignored is refused instead. Each provision must declare at least one of `policies`, `grants`, `nodes`, `fields`.
+
+Full semantics, validation rules, what replacement removes, and the post-install ORM equivalent: [`constructive-security` → module-table-security.md](../../constructive-security/references/module-table-security.md).
+
 ### Nodes
 
 `nodes[]` entries define data behaviors (column generators, indexes, etc.) from the `node_type_registry`. Each entry is either:

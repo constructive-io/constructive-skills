@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, capabilities, GuardStepUp, read-only access, storage policies, and secureTableProvision. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, capability defaults, step-up auth, or authorization in blueprints and the ORM."
+description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, capabilities, GuardStepUp, read-only access, storage policies, secureTableProvision, and owning the security of a module-generated table. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, capability defaults, step-up auth, replacing a module's default grants or policies (registries, images, repositories, machines), blueprint provisions overrides, or authorization in blueprints and the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -23,6 +23,7 @@ Use this skill when:
 - Deciding where to gate access that an owner or admin must not bypass
 - Adding session-level guards (GuardStepUp) that require MFA/password before DML
 - Protecting individual infrastructure rows from accidental deletion or edits (DataLock)
+- Replacing the grants or policies a module installed on a table it generated (registries, images, repositories, machines, functions)
 
 ## Core Vocabulary
 
@@ -127,6 +128,31 @@ await db.secureTableProvision.create({
 | `AuthzMemberOwner` | `DataMemberOwner` | `owner_id` + `entity_id` + policy |
 | `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` + policy |
 | `AuthzEntityMembership` | `DataEntityMembership` | `entity_id` + policy |
+
+## Owning a Module-Generated Table's Security
+
+A module install ships its tables *and* their default grants and policies. A blueprint can either **layer** onto that or **own** it:
+
+| Blueprint shape | Meaning |
+|---|---|
+| Table entry with `module` + its own `policies[]`/`grants[]` | Additive — declared security is added to the module's defaults |
+| Table entry with `module` + `provisions` (keyed by the module's table keys) | Authoritative — for each concern declared under a key, the declared list becomes that table's whole set |
+
+```json
+{
+  "module": { "type": "image", "scope": "org" },
+  "provisions": {
+    "registries": { "policies": [ "…" ], "grants": [ "…" ] },
+    "images": { "policies": [ "…" ] }
+  }
+}
+```
+
+There is no flag: a non-empty `policies` array under a table key owns that table's policies, a non-empty `grants` array owns its grants, and a concern left out keeps the module's default. The `module` reference names the *install* and omits `table`, because the `provisions` keys are the table keys.
+
+The same thing after provisioning goes through `secureTableProvision`, which accepts the module reference directly (`module` + `owns: ['policies', 'grants']`) instead of a `tableId`/`tableName`.
+
+See [module-table-security.md](./references/module-table-security.md) for the full shape, validation rules, what replacement removes, and the ORM form.
 
 ## Capability Defaults
 
@@ -335,6 +361,7 @@ See [guard-nodes.md](./references/guard-nodes.md) for all options, the SDK lock/
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
 | [guard-nodes.md](./references/guard-nodes.md) | Guard* node family — session-level enforcement triggers — plus `DataLock` row-level locking |
 | [read-only-access.md](./references/read-only-access.md) | Read-only memberships (`isReadOnly`) and read-only API keys (`accessLevel`) |
+| [module-table-security.md](./references/module-table-security.md) | Owning a module-generated table's grants/policies — blueprint `provisions`, `secureTableProvision` with `module`/`owns` |
 
 ## Cross-References
 
