@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "kind": "constructive.blocks-package-resolutions",
-  "sourceCommit": "4f2a789fde9a90c0c6ed5977896493bb4818fa77",
+  "sourceCommit": "1a72e5d95f7ce4a243cd4536ed78c638708d538c",
   "registry": "https://registry.npmjs.org",
-  "recordCount": 10,
+  "recordCount": 25,
   "records": [
     {
       "name": "@base-ui/react",
@@ -12,10 +12,64 @@
       "resolved": "https://registry.npmjs.org/@base-ui/react/-/react-1.6.0.tgz"
     },
     {
+      "name": "@internationalized/date",
+      "version": "3.12.3",
+      "integrity": "sha512-fuLX+3ZKLsxI73y8b01EG/WjHb6gE6weCqlfawPO27kBWGMh9G1yH6Csv1uU7/cac9H2GHmOMt6CjmuQ1aia4Q==",
+      "resolved": "https://registry.npmjs.org/@internationalized/date/-/date-3.12.3.tgz"
+    },
+    {
+      "name": "@remixicon/react",
+      "version": "4.9.0",
+      "integrity": "sha512-5/jLDD4DtKxH2B4QVXTobvV1C2uL8ab9D5yAYNtFt+w80O0Ys1xFOrspqROL3fjrZi+7ElFUWE37hBfaAl6U+Q==",
+      "resolved": "https://registry.npmjs.org/@remixicon/react/-/react-4.9.0.tgz"
+    },
+    {
+      "name": "@tanstack/charts",
+      "version": "0.6.4",
+      "integrity": "sha512-x3kZPcRmZh3GNWvYGf+vb+kK2GFeWv/UBCNdptnq5sc9Au2skjnqLf8rs3Idh1q8VPWjnZI7jgaw0lLLRYt0gw==",
+      "resolved": "https://registry.npmjs.org/@tanstack/charts/-/charts-0.6.4.tgz"
+    },
+    {
+      "name": "@tanstack/charts-scales",
+      "version": "0.6.4",
+      "integrity": "sha512-n98RyrMMf+xMeOnEV4H4cs6X2IbNzyWDEHOJYFaw8+BYt6QNL77CRXzlgTxCvvgnkrbtq5fjKXxRSx5Z+Pmelg==",
+      "resolved": "https://registry.npmjs.org/@tanstack/charts-scales/-/charts-scales-0.6.4.tgz"
+    },
+    {
+      "name": "@tanstack/react-charts",
+      "version": "0.6.4",
+      "integrity": "sha512-seP5Dd+JQAxosikGmUfDWtFxYPZk/0ED8biDLYZUYmUCe00Wtz1oWd3d+xiB1Al7gS0RARd6krcCcai+CKHyMA==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-charts/-/react-charts-0.6.4.tgz"
+    },
+    {
+      "name": "@tanstack/react-form",
+      "version": "1.33.3",
+      "integrity": "sha512-lkzI/y15fHC8lKvzsLXFLLqGWroa+okvV2cKRCGAL+d0Kdf040fdMZbKh6uCXDMc08Ngpl8G3VZFnZ5KVUkUIw==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-form/-/react-form-1.33.3.tgz"
+    },
+    {
       "name": "@tanstack/react-query",
       "version": "5.101.4",
       "integrity": "sha512-yRg2pfOCxIs4ZJW3XYYHU/WgtD04FHSnfHlpRT7h7pR77hwkdRG4wxbKe4aq6P0RvXUTBSQpQeadS1SUYUe+KA==",
       "resolved": "https://registry.npmjs.org/@tanstack/react-query/-/react-query-5.101.4.tgz"
+    },
+    {
+      "name": "@tanstack/react-table",
+      "version": "9.0.0-beta.58",
+      "integrity": "sha512-pvacQiA9pymAivt2dOOsOcnNEp5FMPvX2hjbnkWsh0lvlBtf6mh9bnZ7q14iAakGMiGs+o+/tbSr5jT19XfTgg==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-table/-/react-table-9.0.0-beta.58.tgz"
+    },
+    {
+      "name": "@tanstack/react-virtual",
+      "version": "3.14.9",
+      "integrity": "sha512-qZyr0FZDP8rDC4WBhsryIZmAd9bveJvFGUJJtskWaew6/0dTRS6wZxnR6VQ5bY2KwL3LjerrHqQLk3a0GKcPXQ==",
+      "resolved": "https://registry.npmjs.org/@tanstack/react-virtual/-/react-virtual-3.14.9.tgz"
+    },
+    {
+      "name": "@types/leaflet",
+      "version": "1.9.22",
+      "integrity": "sha512-h3lhECYEKDasG7LFHu+GiHqAvsgLuQvlJvVZzJDGONo3sEL+wUOqSFLnwkZlK0qVxnxbuGFW8iBlJNYs5wgndA==",
+      "resolved": "https://registry.npmjs.org/@types/leaflet/-/leaflet-1.9.22.tgz"
     },
     {
       "name": "class-variance-authority",
@@ -30,22 +84,58 @@
       "resolved": "https://registry.npmjs.org/clsx/-/clsx-2.1.1.tgz"
     },
     {
+      "name": "d3-scale",
+      "version": "4.0.2",
+      "integrity": "sha512-GZW464g1SH7ag3Y7hXjf8RoUuAFIqklOAq3MRl4OaWabTFJY9PN/E1YklhXLh+OQ3fM9yS2nOkCoS+WLZ6kvxQ==",
+      "resolved": "https://registry.npmjs.org/d3-scale/-/d3-scale-4.0.2.tgz"
+    },
+    {
       "name": "graphql",
       "version": "17.0.2",
       "integrity": "sha512-FRWbddMxfkjiB7z+aQDWIR+E34xo9I8c9mtK2RPv8PmMzKRvrdsreHL/Ui/TmwHJfhHChEtsFPyMHKI+xuarQQ==",
       "resolved": "https://registry.npmjs.org/graphql/-/graphql-17.0.2.tgz"
     },
     {
+      "name": "inflekt",
+      "version": "0.7.2",
+      "integrity": "sha512-csXH1tW9nvYmj3WMYCqPenF74l1PNzQG9SyQkpbRw60gC9f6GRSAxtUjepkBMb7m8NpVN+nOHtxHSqf4eh0uLA==",
+      "resolved": "https://registry.npmjs.org/inflekt/-/inflekt-0.7.2.tgz"
+    },
+    {
+      "name": "leaflet",
+      "version": "1.9.4",
+      "integrity": "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==",
+      "resolved": "https://registry.npmjs.org/leaflet/-/leaflet-1.9.4.tgz"
+    },
+    {
       "name": "lucide-react",
-      "version": "1.27.0",
-      "integrity": "sha512-rJicGl/3Fly/E0rOH1YmPZ6e49JCnKknh1ox1vpHnkfjujAkKA6sqUZvH3MTAaXXjgexyUwgNwTJzTtYuAFYJw==",
-      "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.27.0.tgz"
+      "version": "1.28.0",
+      "integrity": "sha512-fARAFJULsGuDDydjp6+6blekG/sBIM29TerzLjc9bQUKAcEfrSc4ZQKb25KRz4OMKd87cZTb5dgq0w/T6KufVg==",
+      "resolved": "https://registry.npmjs.org/lucide-react/-/lucide-react-1.28.0.tgz"
     },
     {
       "name": "motion",
-      "version": "12.42.2",
-      "integrity": "sha512-Atvv11yUKIid41cVrRBDVX5m8tF8kNpExRSlbpt6APClhDjtwQssgFHhQzejxw7/7YYbjHSPKBVbHo05BuJT5Q==",
-      "resolved": "https://registry.npmjs.org/motion/-/motion-12.42.2.tgz"
+      "version": "12.43.0",
+      "integrity": "sha512-BQgQbSa9Hn3/mtbib0MK53y6JSANa+YKUKlaYnWzAVDH424RYQ5LVpV3pNiWH00BA2z4ojsSdMzqT7g2FQwjuQ==",
+      "resolved": "https://registry.npmjs.org/motion/-/motion-12.43.0.tgz"
+    },
+    {
+      "name": "react-aria-components",
+      "version": "1.20.0",
+      "integrity": "sha512-BMbpIgoV9aELeBrB0Y120NgoigHb5OdcJwc+4e7uSnbTbamea6lo+gqcc4LAxzMaK3Jf+7LI1oCDE6yANsmxIQ==",
+      "resolved": "https://registry.npmjs.org/react-aria-components/-/react-aria-components-1.20.0.tgz"
+    },
+    {
+      "name": "react-leaflet",
+      "version": "5.0.0",
+      "integrity": "sha512-CWbTpr5vcHw5bt9i4zSlPEVQdTVcML390TjeDG0cK59z1ylexpqC6M1PJFjV8jD7CF+ACBFsLIDs6DRMoLEofw==",
+      "resolved": "https://registry.npmjs.org/react-leaflet/-/react-leaflet-5.0.0.tgz"
+    },
+    {
+      "name": "sonner",
+      "version": "2.0.7",
+      "integrity": "sha512-W6ZN4p58k8aDKA4XPcx2hpIQXBRAgyiWVkYhT7CvK6D3iAu7xjvVyhQHg2/iaKJZ1XVJ4r7XuwGL+WGEK37i9w==",
+      "resolved": "https://registry.npmjs.org/sonner/-/sonner-2.0.7.tgz"
     },
     {
       "name": "tailwind-merge",

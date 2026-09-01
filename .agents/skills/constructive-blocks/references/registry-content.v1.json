@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "kind": "constructive.blocks-registry-content",
-  "sourceCommit": "4f2a789fde9a90c0c6ed5977896493bb4818fa77",
-  "recordCount": 138,
+  "sourceCommit": "1a72e5d95f7ce4a243cd4536ed78c638708d538c",
+  "recordCount": 371,
   "records": [
     {
       "registryItem": "alert-dialog",
@@ -21,6 +21,210 @@
       "path": "registry/constructive/blocks/app-bar.tsx",
       "type": "registry:component",
       "contentSha256": "240c7dea1ada3acbf0be77e30abbbce247a2a274645db9aab34b980a66f3a26a"
+    },
+    {
+      "registryItem": "app-kit-board",
+      "path": "registry/constructive/blocks/app-kit/board/board.tsx",
+      "type": "registry:component",
+      "contentSha256": "ffecbaff4fddf5f117ccb9fb5aaa084a8395178d3a38a4cccb6d9617f07a0010"
+    },
+    {
+      "registryItem": "app-kit-board",
+      "path": "registry/constructive/blocks/app-kit/board/connected-board.tsx",
+      "type": "registry:component",
+      "contentSha256": "f4cc1f3a0d375383d20bb17cbbef7e9794c38f83e6e7780a2d4e92891ca84f7f"
+    },
+    {
+      "registryItem": "app-kit-board",
+      "path": "registry/constructive/blocks/app-kit/board/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "d8796770950bed9664900477a266a7b18241337f4df5416dafdc482349a11db0"
+    },
+    {
+      "registryItem": "app-kit-calendar",
+      "path": "registry/constructive/blocks/app-kit/calendar/calendar.tsx",
+      "type": "registry:component",
+      "contentSha256": "557d9280edd338ebb21a8715e601a53ed09ae9cef819acecfccf9e8bc7e67127"
+    },
+    {
+      "registryItem": "app-kit-calendar",
+      "path": "registry/constructive/blocks/app-kit/calendar/connected-calendar.tsx",
+      "type": "registry:component",
+      "contentSha256": "8b4e36ec14c46f895b9ab4f44a0daca31503befb6e4d0457a93fae41427593ac"
+    },
+    {
+      "registryItem": "app-kit-calendar",
+      "path": "registry/constructive/blocks/app-kit/calendar/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "2238d1ea141aee647f36cae55a33d05ceee7a9e38a2be09c47d39390eb70681d"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/contracts.ts",
+      "type": "registry:lib",
+      "contentSha256": "5960074760c17abf06d837346e1204cbd98e24134bf6c444711a2456523ab89b"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "5685006a83969b5d5222f5674744c124c9396ff919d058e33b9190b6d421ac03"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/navigation.ts",
+      "type": "registry:lib",
+      "contentSha256": "9f5b9cd09fdcdd82a68f6d3fd81c8b03c5d21fcae1e11b50c1b665027fd1c08c"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/runtime.tsx",
+      "type": "registry:component",
+      "contentSha256": "179c9a6931552012ea9cb482079ee2ab06530efbca7057a0f1279b80e76a8108"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/schema-validation.ts",
+      "type": "registry:lib",
+      "contentSha256": "cd3363daad4d4ddd38ac00dc4c0aad950b3fb3b60812a1bfeca3bd2bce3eeef6"
+    },
+    {
+      "registryItem": "app-kit-core",
+      "path": "registry/constructive/blocks/app-kit/core/scope.ts",
+      "type": "registry:lib",
+      "contentSha256": "ce7b39eb0f639d73b73474701b671600427e4796833d3a6bcd135635bbc2823f"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/connected-dashboard.tsx",
+      "type": "registry:component",
+      "contentSha256": "a9152bb6004c37ea39de9817e89a73ac7da0d756e5e1b7c01468e65a8b523a7d"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/dashboard.tsx",
+      "type": "registry:component",
+      "contentSha256": "bdf70beba80b76c525b30d879d0ea0843c292d222ba8e0bf76f60e1b76aa1b77"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "5176f665c9dcc57c43cba0b1b722652835f3cf06b1f9a3524249eb3da64ffa8a"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/layout-store.ts",
+      "type": "registry:lib",
+      "contentSha256": "bfaa35ac44db3edb1b51a65d6af57d8bfa6023c2bde285da0f8d5c693565ba4b"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/persisted-dashboard.tsx",
+      "type": "registry:component",
+      "contentSha256": "e52d87bcba4b0020eb8416368807952b00f59ba175f38452c4f7306dff3167e4"
+    },
+    {
+      "registryItem": "app-kit-dashboard",
+      "path": "registry/constructive/blocks/app-kit/dashboard/widgets.tsx",
+      "type": "registry:component",
+      "contentSha256": "f27a69338ae3e9d60831fa7bf262928e00496ec6c59d1bfcb77cab3bacc6de77"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/action-bars.tsx",
+      "type": "registry:component",
+      "contentSha256": "58af224233b6aa113a22aaa4c7c74ac74c6aa112f9533162ae529d9b50f3f347"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/collections.tsx",
+      "type": "registry:component",
+      "contentSha256": "7f3297f770a62de0e28563854bd4545783f917a27d658ae91dcc850eb9fa9785"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/controls.tsx",
+      "type": "registry:component",
+      "contentSha256": "df9bb67a813e20f36cbfd4df9af6f303927e0a1bd3095467187da1f7beeadb49"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/detail-form.tsx",
+      "type": "registry:component",
+      "contentSha256": "938a82c12151d23180d5e496dc93831dfd9b33f3edbec7f54a880666fd7c7554"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "79009589f6cbe5de30431631c7e09de73de5fdf7f59420224416b6a549f3ba1d"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/relations.tsx",
+      "type": "registry:component",
+      "contentSha256": "d0b2b0211bc0caea0bad5171d9651dd286c6a9578d3342f5260d2d3214b9afff"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/states.tsx",
+      "type": "registry:component",
+      "contentSha256": "c6c358757b851e74856a3d5c1880cb138a1121d9d4567aa0d6480936b4f88a56"
+    },
+    {
+      "registryItem": "app-kit-data",
+      "path": "registry/constructive/blocks/app-kit/data/types.ts",
+      "type": "registry:lib",
+      "contentSha256": "499c9e014047b66f79f2a785c9a62e78c9f70467d7125cc3b3e8c0bb6e191e50"
+    },
+    {
+      "registryItem": "app-kit-event-studio",
+      "path": "registry/constructive/blocks/app-kit/event-studio/definitions.ts",
+      "type": "registry:lib",
+      "contentSha256": "fc8f04b58055b763e8342a68058290ee193f352e7bc827cded2cc8772304e360"
+    },
+    {
+      "registryItem": "app-kit-event-studio",
+      "path": "registry/constructive/blocks/app-kit/event-studio/event-studio.tsx",
+      "type": "registry:component",
+      "contentSha256": "bb802e73153c4fee8c589f24474b08ca5cafc5d1935aed2381da562dab39716e"
+    },
+    {
+      "registryItem": "app-kit-event-studio",
+      "path": "registry/constructive/blocks/app-kit/event-studio/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "2cdf74d53d811d5ec03d222cc293bfda0279aaf8528a4f1bc86fe7e96e49a6ac"
+    },
+    {
+      "registryItem": "app-kit-event-studio",
+      "path": "registry/constructive/blocks/app-kit/event-studio/state.ts",
+      "type": "registry:lib",
+      "contentSha256": "d4dbec81f7466ad2d9dfb986085763cb5013c4f52416005c1faf448a6f05ecfe"
+    },
+    {
+      "registryItem": "app-kit-workflow",
+      "path": "registry/constructive/blocks/app-kit/workflow/actions.tsx",
+      "type": "registry:component",
+      "contentSha256": "fcaa2f4da063454dc424b601469eddd5a091d2ed6d58b2176d6505df12a3346a"
+    },
+    {
+      "registryItem": "app-kit-workflow",
+      "path": "registry/constructive/blocks/app-kit/workflow/connected-actions.tsx",
+      "type": "registry:component",
+      "contentSha256": "d4434ba35f70f19f414392bcc8354c7850b7b5191d8bc364f2ac13260037c1eb"
+    },
+    {
+      "registryItem": "app-kit-workflow",
+      "path": "registry/constructive/blocks/app-kit/workflow/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "8e3aa7fad79a53463e9e30f353a216c43d632266a7bd82ed2598cc42cd248b23"
+    },
+    {
+      "registryItem": "app-kit-workflow",
+      "path": "registry/constructive/blocks/app-kit/workflow/stepper.tsx",
+      "type": "registry:component",
+      "contentSha256": "b88c6a2cc38576a3201bf0fa888f19414cfff48597f0c2b30cb83b97d14931d6"
     },
     {
       "registryItem": "app-shell",
@@ -161,10 +365,22 @@
       "contentSha256": "241e125f39431085a6002b2302a191aeee6916c137f01b063b2f9c5af33c1b32"
     },
     {
+      "registryItem": "calendar-rac",
+      "path": "registry/constructive/ui/calendar-rac.tsx",
+      "type": "registry:ui",
+      "contentSha256": "d098f561d2135f39bbd5b66a48ee9ed3ccafff78217eb7773fb28d1ae7288d0a"
+    },
+    {
       "registryItem": "card",
       "path": "registry/constructive/ui/card.tsx",
       "type": "registry:ui",
       "contentSha256": "2b199060e9791fe6cf506d06ed7d539a1ea57148e14761e21a09df1351ae4434"
+    },
+    {
+      "registryItem": "chart",
+      "path": "registry/constructive/ui/chart.tsx",
+      "type": "registry:ui",
+      "contentSha256": "9a08f404dd1baf3a131e8e5f662d218c2f24a4a1a4382d97d6ad509a235d3e77"
     },
     {
       "registryItem": "checkbox",
@@ -183,6 +399,12 @@
       "path": "registry/constructive/ui/collapsible.tsx",
       "type": "registry:ui",
       "contentSha256": "9082d74ff03a219502b39cada2e1bdc1af0ec34187fe94d638f2d0e16afdef89"
+    },
+    {
+      "registryItem": "combobox",
+      "path": "registry/constructive/ui/combobox.tsx",
+      "type": "registry:ui",
+      "contentSha256": "daa2ed5a30f5f347396d00fd6d216a60d162ff2d7ed2fa31684961b1a42cb97f"
     },
     {
       "registryItem": "console-feature-catalog",
@@ -380,7 +602,7 @@
       "registryItem": "console-module-data",
       "path": "registry/constructive/blocks/feature-packs/data/data-console-module.tsx",
       "type": "registry:component",
-      "contentSha256": "a61200b5f618e0e686bc580557101c463f16dcc52822a83074e6a4c4153dbd7a"
+      "contentSha256": "906d9a47bf814d9ad17c8881747b58c5f2dedd74a65c712f0e3e4dda04161360"
     },
     {
       "registryItem": "console-module-notifications",
@@ -566,7 +788,7 @@
       "registryItem": "feature-pack-data",
       "path": "registry/constructive/blocks/feature-packs/data/data-feature-pack.tsx",
       "type": "registry:component",
-      "contentSha256": "2cb30b47d4bef39370fd7745a785dd1b2145c0bfd2bd019fd6bbdfe075074cba"
+      "contentSha256": "11fe0720ebafa3a47957c3ae25bb30a7c36cbd097408595cbb91492857e324c5"
     },
     {
       "registryItem": "feature-pack-data",
@@ -645,6 +867,12 @@
       "path": "registry/constructive/ui/field.tsx",
       "type": "registry:ui",
       "contentSha256": "de6f605a8964d71e1c9027a46aa71f9a5359e23522408d669740331f235bde68"
+    },
+    {
+      "registryItem": "form-control",
+      "path": "registry/constructive/ui/form-control.tsx",
+      "type": "registry:ui",
+      "contentSha256": "d72c3a7e207433058b9e7b0eac176a80add45e596311eda1a97e328d7621a949"
     },
     {
       "registryItem": "input-group",
@@ -743,6 +971,12 @@
       "contentSha256": "88d757e3364ba88a4753d82a9466d2aee4d72aa411879a6a6bc99b45ca91732b"
     },
     {
+      "registryItem": "progressive-blur",
+      "path": "registry/constructive/ui/progressive-blur.tsx",
+      "type": "registry:ui",
+      "contentSha256": "4b3e0b1020a4e589a68c33969104646490fb9107c10cf7aabb5403968d598699"
+    },
+    {
       "registryItem": "radio-group",
       "path": "registry/constructive/ui/radio-group.tsx",
       "type": "registry:ui",
@@ -773,6 +1007,1134 @@
       "contentSha256": "8ebfe3498b4351c899dfb4a2b0551e9243e95946fb0e1fa8202e2c5f621cb415"
     },
     {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/adapter/postgraphile-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "e0efb76f807240587ec98afa493762ad3ba5ae533212aeee92bd2e41e4acf89c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/adapter/sheets-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "b31dc48e997c7fc53ea51c3b50b77d442b668be7f9f45a4cdb88baca8a388463"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/adapter/use-sheets-adapter.ts",
+      "type": "registry:lib",
+      "contentSha256": "cabad4885584a2b6351afd8ecc5058877f380dd9c6157a61409aab139d425428"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/advanced.ts",
+      "type": "registry:lib",
+      "contentSha256": "c49d43b363550e53494a15c9419cc5c9be07c7d22b465067356029f02e535c08"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/auth-execute.ts",
+      "type": "registry:lib",
+      "contentSha256": "202e43e34ccb7677a092ee26ccaab3ee56f27e85d8e6a94b410cefb554fc683b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/auth-gate.tsx",
+      "type": "registry:component",
+      "contentSha256": "6c3fef04b29730e687c580f279ade01bfed3fb50ff5214a2214ad364075a2170"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/auth-types.ts",
+      "type": "registry:lib",
+      "contentSha256": "dbdae43d76cd189cc994a9a8f94501ea8bb140840d6dfefaa3a75effbdfa104a"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/hooks/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "1a27f6f11d444584b8aa106e2a3fac47cbdf740d9fc85971e408e18cca36f0ae"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/hooks/use-forgot-password.ts",
+      "type": "registry:lib",
+      "contentSha256": "f987a849df420b7332a9ed9aff7553d31795400c15313cd244f89b8423242e01"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/hooks/use-login.ts",
+      "type": "registry:lib",
+      "contentSha256": "0128599a8c2a6ba14f7717757f6c0fb8dc407f2f2c2a4d61fb80326ec31b39b3"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/hooks/use-register.ts",
+      "type": "registry:lib",
+      "contentSha256": "c967f644cd6a65eb2880cffaecb7de15a4a91ef253085707a23aa94a74afb3a4"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/hooks/use-reset-password.ts",
+      "type": "registry:lib",
+      "contentSha256": "b77f53022a7bd8d3e343f85be321d797fd98e614f71320e79b16faa20094f174"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "bc31ed2db67f9f28bd7771ea52254649fbbeee5bc9da0474ce8ab55f33f42b90"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/auth-error-alert.tsx",
+      "type": "registry:component",
+      "contentSha256": "f609ee1a996be18e4f581be218b5865475abe3a77f759106207a3cbbd49a9fee"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/auth-loading-button.tsx",
+      "type": "registry:component",
+      "contentSha256": "8e4a523db8c51e1f474d7dbbf16cc74406cf76b76bf6b4756e8414b3e0c7fa94"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/auth-screen-header.tsx",
+      "type": "registry:component",
+      "contentSha256": "5ceeaaed45e50171072517a28eb8cb29f31f3399d15a576043ad8d2ce1386ccf"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/auth-screen-layout.tsx",
+      "type": "registry:component",
+      "contentSha256": "b7db7710894d7bc87f1ee0bd48e1c07665149f0cfb1448aca3793aa221eb3657"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/forgot-password-form.tsx",
+      "type": "registry:component",
+      "contentSha256": "f05bba14c6b1ce933b4d901d5fec6392abf053ac14f88a4f6cddc10342cd984c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/form-field.tsx",
+      "type": "registry:component",
+      "contentSha256": "9324a81a74a1f4cf18093e1e3858c21e885a64e0a0627d7d9d66739e10921026"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/login-form.tsx",
+      "type": "registry:component",
+      "contentSha256": "46842f5149e93b914772b8d830e3bf0cce267dc2f9bd18a3358a3e927049d875"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/password-strength.tsx",
+      "type": "registry:component",
+      "contentSha256": "f611dbef860c72521ac21a114f4d9ca91f7bd2fe96efc83ed733112d9d673275"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/register-form.tsx",
+      "type": "registry:component",
+      "contentSha256": "b047aa579c697960062e6cc30fc46b378cfc3b26c28aff8edde765d663ffd87f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/ui/reset-password-form.tsx",
+      "type": "registry:component",
+      "contentSha256": "fa8c61a441b336ec33b12c33340279a0a4b11b92036ddf903e461c03dc0c8478"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/utils/auth-errors.ts",
+      "type": "registry:lib",
+      "contentSha256": "d1888027ec3bc7969f3ed243f476993c5f8b9f93e79aec369ce409218c03c76d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/utils/schemas.ts",
+      "type": "registry:lib",
+      "contentSha256": "c4edc6a174b49cc734b4499b5b3ffb3d7983074af31c140f25cc970973bef1df"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/utils/token-store.ts",
+      "type": "registry:lib",
+      "contentSha256": "8f1840ad5b49528cf0c2ad72db725c4f2de5475799c2690e1a6a629ad8956592"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/auth/utils/validators.ts",
+      "type": "registry:lib",
+      "contentSha256": "97300dd17b31199e34bcff9e05f17ffb4266262c86dc6c5a2678faf2d24f99bf"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/badge-tones.ts",
+      "type": "registry:lib",
+      "contentSha256": "e37012c7e6ba01d24d6f14005c66c4ca2e2b4c6dfec0d6449222e9f2e1960d4e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/cell-props.ts",
+      "type": "registry:lib",
+      "contentSha256": "eaa26476d66594f7218e0218e2f9330276df48d4391d3592f867a5cd51dc42d1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/cell-slots.ts",
+      "type": "registry:lib",
+      "contentSha256": "35e56540282a92b867c719f3b737773f066448eb444fdb126b301f7a13e85f07"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/create-sheets-cell.ts",
+      "type": "registry:lib",
+      "contentSha256": "05d78920e66cc0001618bfdb42dcc71cb7f6808ccff4990582606f854c234644"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/badges.ts",
+      "type": "registry:lib",
+      "contentSha256": "d6d7a563ecdea437bef882005fb71559d22475cce8f0d2b1f7c50db03a4d353a"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/boolean.ts",
+      "type": "registry:lib",
+      "contentSha256": "f79450d184e9949b6ec20988c46ae32831970659a2c95acb9774609555085eda"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/datetime.ts",
+      "type": "registry:lib",
+      "contentSha256": "bf3c598226328e64ef3cdbe8f2d6a076bd8b9a7ae69b0e6ec1f21c7a555b588e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/geometry.ts",
+      "type": "registry:lib",
+      "contentSha256": "878e0359e5b02bca68384b566c8cd2a15f0f5654294fcc2fedb35beea88b9460"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/image.ts",
+      "type": "registry:lib",
+      "contentSha256": "4a94fec07b36561472a6d887e5429ac4024dcacd753c50b54c5eb5e533ac878e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/interval.ts",
+      "type": "registry:lib",
+      "contentSha256": "ed45fe52a1707c813b828154f327145fe35eeaa3c8ebca03359fad3c06917551"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/number.ts",
+      "type": "registry:lib",
+      "contentSha256": "587c21f6daecf426136c6dc37bd9a0823ab14d640e83802c0af0dda00d473b5b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/relation.ts",
+      "type": "registry:lib",
+      "contentSha256": "30e6065340e0d7b954f8c22119a5c2d11c0f292930903e66ca769f73149d395a"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/text.ts",
+      "type": "registry:lib",
+      "contentSha256": "cf27b24904c0b0e19c97a4fc3eeb57694faa7f1c5af380934f4b32fcdfec64b7"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/types.ts",
+      "type": "registry:lib",
+      "contentSha256": "3f77ddc7f280992d849230fc58c6083beb215daf76802c83c6d1dfaf34222105"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/factories/uri.ts",
+      "type": "registry:lib",
+      "contentSha256": "db4e452ed08ff4bf63da93ddd22ad65f41454d665f449deaf748554df992959e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/image-cache.ts",
+      "type": "registry:lib",
+      "contentSha256": "2441787ef4cef8c3c9381db7a8f4b746aabec68509c407a0ee1fb5354c5e821e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/sheets-cell.ts",
+      "type": "registry:lib",
+      "contentSha256": "cefbdcfd7740196312e8ddf08e6ef3264098e4404b1f3fccf3e18501fa1a8300"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/badges-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "f51eb630340b82820f5db1bd519c9b9b359c9ffb358c1efa3380a7e5bba4a2af"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/boolean-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "e98d9e8244ea4fa320653355d674d713014dfff2d6462524983007d2a713e51f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/datetime-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "f51384126f8d8d479e40986a458470531bfad56a64d3ae6ba7ed8042e308206f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/draft-action-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "0eea45c438caf6c5ebeddb843f21ca3061a39f6afdbca26bb53045e4ad4b3d8b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/geometry-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "59969b1636a2690a57938b9d099561bc497da4c8d9382d317739039d6d56588b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/image-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "185df3ab5e270309a141a3c6f1ad20ce11faf5d8c0670da3da8e5b111067de2b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/interval-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "7b8f8ad9eb789a70aa97e893ebe88be0c2b4cfca28ac82023c7a21c309ff4828"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/loading-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "62c48ae1a77ff94f2eb8e0a03fb8c30388033ba24c52bd06070f340fc2be68df"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/number-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "89b6e79d97a508d2449bdcb382158a4b9efc736d303550bc4ce80e557f47d5bf"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/relation-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "9524c8f5438d0148e111656150c34d3e5b5b267462b4984862ecc75ac87db405"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/text-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "0a54f07b0a5d5e766c01458c7ea4f24216a4a2c532037f45668f81473c66c588"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-model/views/uri-view.tsx",
+      "type": "registry:component",
+      "contentSha256": "2daff411a9a17eed159b016191c53c169d88c508e54f8459859b95977df056c0"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/cell-registry-defaults.ts",
+      "type": "registry:lib",
+      "contentSha256": "cd5fceac77b4a1fd35567c8801918a690b53cc991e83608ea56d7df19ee4bf12"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/cell-registry.ts",
+      "type": "registry:lib",
+      "contentSha256": "bfb525dce2ebd4e012bfb07ca4b6405bc31224aa133456785b97c53db6aba78e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/cell-type-groups.ts",
+      "type": "registry:lib",
+      "contentSha256": "8340907ac521a3771d3c4c52086ea66a2e51e4bdc288113189735709c746cddb"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/cell-type-registry.ts",
+      "type": "registry:lib",
+      "contentSha256": "ee98d286bfc10b7d82de2279d9f44e065094374849e4f6d84bcbff54f9d2c194"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/cell-type-resolver.ts",
+      "type": "registry:lib",
+      "contentSha256": "924d90d01e9664d6fa35949e0765f4e91ad613376223340cad860cd26bff93e6"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/define-cell-type.ts",
+      "type": "registry:lib",
+      "contentSha256": "0812923a9e896cd9efbbf74b53bbeb23eae560128f90314ae23a48b00e54db3f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/type-mapping.ts",
+      "type": "registry:lib",
+      "contentSha256": "a4a142290a15de31a50fc1bcafa038d9d202db0fd4e0062e7ffbfaa2a5611c7c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/cell-types/types.ts",
+      "type": "registry:lib",
+      "contentSha256": "97f5b5c5acb34939b70f2f0222227cd2646b0d9ec6928758448906481824c33c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/context.ts",
+      "type": "registry:lib",
+      "contentSha256": "dd9c2df23d39c09f6cd8ae3b090e7d77afba48c3a4845ac174f7caa9d7923e81"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/dispatch.ts",
+      "type": "registry:lib",
+      "contentSha256": "89884c802a5b550daf2f7a52969a43e0902cf3cded3536943ddfe07f5711813f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "c511ed6d1ca026b4b8ffded755095377cf7ef7aa103d50da3435ceac6c39364d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/keybinding.ts",
+      "type": "registry:lib",
+      "contentSha256": "e85651b6008c2a0efb420e66e4e8ef2c1203747ea61485013abc98fe9d89738f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/keymap.ts",
+      "type": "registry:lib",
+      "contentSha256": "0848f4800723066e1707ccbe50803426b68c2187eb02f897f6eb2238c6bc8578"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/registry.ts",
+      "type": "registry:lib",
+      "contentSha256": "51723578f70f7a0ec572a956f9e23099435ccc8ba534ebf5a6588c3cc03c7dee"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/commands/types.ts",
+      "type": "registry:lib",
+      "contentSha256": "195e536e0bf21c9f55e3568ac55fb43b5c4a1150e8457f1648056fc2b434743f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/config/sheets-concurrency.ts",
+      "type": "registry:lib",
+      "contentSha256": "b8fe494cedc9514554572ae8211785b0c4f25402b83ede805da7273c41e3129b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/context/sheets-context.ts",
+      "type": "registry:lib",
+      "contentSha256": "fbca1a2b4e4e717d1cf706683b1d97e580117331717999d2a2a1b37a056a581a"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/context/sheets-execute.ts",
+      "type": "registry:lib",
+      "contentSha256": "3615f980ee18fd27ab3b1941bbec215d91fc8b8125fcd8b4d293ba764e8902ca"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/context/sheets-provider.tsx",
+      "type": "registry:component",
+      "contentSha256": "1e8c52731c6557311562167209f75e88c389b636b2c9355d3dc964957d487cf1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/context/sheets-upload-presigned.ts",
+      "type": "registry:lib",
+      "contentSha256": "99ae5ff396e4c961076aa0ce9ad8ece33b102ca5889f71bfc0d5ccf80fd0b49d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/form-spec-builder.ts",
+      "type": "registry:lib",
+      "contentSha256": "c30f7c65a021c42916057a44a7a88b6f97b269406ad377e09b0f14a3bd9036d9"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "225a3c571fd1cb3ef419ecc3afe69bbb1524afb0fe369476e516cac1c7d4d515"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/metadata-hash.ts",
+      "type": "registry:lib",
+      "contentSha256": "b72009e30e8a8a6beb08c23280dcc4ce878ea8a8ee4efb736375fa2fc373d91d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/mutations.ts",
+      "type": "registry:lib",
+      "contentSha256": "725008892a189d7bdd82bfee086df8ec1b90ee63212f251fc182548c15696d42"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/types.ts",
+      "type": "registry:lib",
+      "contentSha256": "0477a05dffc08abc8f3193910ec7a64841e9b403212d28f7416812173f54712d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/forms/zod-schema.ts",
+      "type": "registry:lib",
+      "contentSha256": "1b4bbb5dbd5997d9656367cdc7f02277618614ac6c16c63f0a07fc2efea656d5"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/array-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "91d463a34037420ac40424c5ae2ad344b68904f0f906f9ca1fa39b451693f795"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/date-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "28de25c097b1566ef2c4264672b9094b851b51663f847e5dc97f85afb4c5ac53"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/edit-intent.ts",
+      "type": "registry:lib",
+      "contentSha256": "8ebe127dc6726b1fa91f33bbb830ee5bc9996fa7cea13111f1c06ccf40086661"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/editor-props.ts",
+      "type": "registry:lib",
+      "contentSha256": "75025db8baaaa5db0df8c700438e6af68a6c142c72562ea5c2de418111c675c1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/editor-registry-dom.ts",
+      "type": "registry:lib",
+      "contentSha256": "da568e84d7926e6f855dc040328cf29e1039d61f2cbef15544a7f131c294d4e2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/geometry-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "b36768e6552cc6aaa0b9e0f96a26f110c54a3d0daf2a1dc28a8407aa484127ff"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/image-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "51a8d90c36c465d6ff9ef29164fac08d409d648edccd03ebe99254ed45c17b63"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/inet-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "4fafa6377815945af930f7b738c230fe8287f20360843d6a10dc6937288e6089"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/interval-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "3f3fc2bcf44d299d104a25e0641c88e49eaee5614139fb96f9548b0c9e1e8632"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/json-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "03f55497c96a9fac454e79135cb6530050b25ccfcfb22601c60b63b3fa9c32f5"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/number-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "4d4974dcef039cdafafe1eb2a66e8e33dd78b0a1cca002ffabc737d74601bf7b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/relation-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "c37f976f89b84df7770146d8ca0b3793e6e2fbb5b3df8b548d50ba1590a8953d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/text-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "925b7cbbcaac6144fdd943bc1ca14dcad398c190ef2fa9e8932babd7dee97e2b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/tsvector-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "41d24a6ae1df079dd04c30ab8f359e1e4943b8d220e28822486d11ad12b21dc3"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/upload-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "f4996936d9eb3e6fe5b2ca2556431ff09690fb698bceb795265507a26ff8905d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/editors/url-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "8c2fe225f804905b771e25dfc698ed1d0c01514746921c0442910c5ff416c19b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/inline-cell-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "37705d76064bb2270bd8a74e31907c122889ff28627319f7609d2ad58c6d9ed4"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/overlay/overlay-manager.tsx",
+      "type": "registry:component",
+      "contentSha256": "b9c38875db56f697034790d6b4d2240273ca3a1aaa940408ca18b4d01761f8d2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/overlay/use-overlay-controller.ts",
+      "type": "registry:lib",
+      "contentSha256": "4bbfa55e12ab67d081823fde604e63c653ea87366915ffa9a16ffd678a501a34"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/sheets-cell-host.tsx",
+      "type": "registry:component",
+      "contentSha256": "a77be73eaac320a009fadd7131b56c9740d88ab680329d858472234b9a4a3a53"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid-dom/use-sheets-content.ts",
+      "type": "registry:lib",
+      "contentSha256": "3b80f353f93361ee45162b0337fce876904095732d36573c0a2283f95e988745"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/cell-routing.ts",
+      "type": "registry:lib",
+      "contentSha256": "de1f70e94622ee11c9a9539654f188569715136dc6bf4a188dc6ccac632f3dae"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/draft-types.ts",
+      "type": "registry:lib",
+      "contentSha256": "b2386bf11ca47abfdb47a895e45a46e1266b7af7f59e946a92e8e122c9e39e0e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/array-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "d38f56dde338d3f3f9c93d8086280de4c43152b368df981444d89e4ff58fb801"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/date-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "0dacd343899e78084c3314e23854dfc27bd4af84189b466fb1f3dffa726293ee"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/editor-focus-trap.tsx",
+      "type": "registry:component",
+      "contentSha256": "5d60f21db983a996ac130051e067e7afd53b1aef7177b1696c3ce9c12e61161b"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/geometry-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "77744ce63a00b31c7d4ac8f89da078263560480e1b3640f4c37dd61d3d8dadee"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/image-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "4530b05edba2183beee420851444c853233b26340b2927eafe3e87f946ec25a1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/inet-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "4c68c21b6cef88a3f496f8bda5d57cf313122a6ca64df9c605c8e7bc839a5122"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/interval-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "4b24df03fbb111a2bbbb0bb3f04d8969f4e0caf5bc812bcc36af2f41f3125840"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/json-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "a8e21c9c3c68fd13d12d357527b561793222aac935abb82b1c8c50e80461f617"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/overlay-presets.ts",
+      "type": "registry:lib",
+      "contentSha256": "ed9fe391779446dc648d9127dc9ccf69078dd5e0c7173f041a0e95a0f891101c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/overlay-viewport-guard.tsx",
+      "type": "registry:component",
+      "contentSha256": "33bdfc36c5dfe8859d47adc2718420f137672bcc9aa97dfcd59e3a9e0f5930a6"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/relation-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "678147e863dca88b234e01bf9b7b7c8c7f9d745cef4cabad6a7d58fabcf757e7"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/relation-record-tooltip.tsx",
+      "type": "registry:component",
+      "contentSha256": "25f26807fcc1eea384828b856546cc31778e2a224b256e589d9e5d249f479b0c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/tsvector-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "a38759e739991924ea24e8104c9b936ba27a949277b2e33b751b62ee7b2c61f5"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/upload-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "a23b70bcf8a6ab4d087621a20a397509c319e377143e22ca28d851a0786e5bcf"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/editors/url-editor.tsx",
+      "type": "registry:component",
+      "contentSha256": "0e69b69ce9aa914e822e3f4bd5f863563a4ff503a95eeb8723bb2b3caa635a50"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/dock-status-bar.tsx",
+      "type": "registry:component",
+      "contentSha256": "8dde3e3c25f3d2c8bf1121cf0348d8f82e68469fa23ca73190cea6b034d0be44"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/editor-error-boundary.tsx",
+      "type": "registry:component",
+      "contentSha256": "af8f6af5e32387dc6fd2ad0817f649c0af865b34f746fad9da4d60d1bbf35ae5"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/feedback-context.tsx",
+      "type": "registry:component",
+      "contentSha256": "4976fe090e586d453f4b0e4ea5b6a825b78b9d3061bac4ffa88e3cac2fcb71c1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/feedback-reducer.ts",
+      "type": "registry:lib",
+      "contentSha256": "af34a5231039fbf5d0704e2365737ecada6757ed94ba835a0cd0ea73e999d231"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/floating-status.tsx",
+      "type": "registry:component",
+      "contentSha256": "3144aae4fa106c701cb50e62f05686fd04b7e648aec201b1a3c28f8acd13511f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "bc6cb6481d6bd102ef55da6b756b6cf14fd317a5398e90da779ef1e694da9e66"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/sheets-error-boundary.tsx",
+      "type": "registry:component",
+      "contentSha256": "e0048588597dcaa11524b4d3296b1e07e9f9189d875cb9e3ff97397a7ec2c150"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/feedback/sheets-error-state.tsx",
+      "type": "registry:component",
+      "contentSha256": "f8f32ebc97653a961dd73184e6598b5a0e33e4fa2c01156b377b7ff243b09d6d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/filter-operators.ts",
+      "type": "registry:lib",
+      "contentSha256": "de2d1cb26f8d2596e04b241e15977e1a3f82deafe0bd182e0cc2be864692b9af"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/grid-cell-types.ts",
+      "type": "registry:lib",
+      "contentSha256": "c423e47bc58911d26027ee51a59f1c7af44a5fcd09a74a2ca6276cc99cefe013"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-batch-commit.ts",
+      "type": "registry:lib",
+      "contentSha256": "78df8c8af3521ec6db9e0086b3993eb75d3c56d660642b5b8508ff3d9c95775c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-cell-editing.ts",
+      "type": "registry:lib",
+      "contentSha256": "8017b515e49e432fe0fd7d38d49b338f145d076a9b0dac536c4a9b36be3788cf"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-draft-rows.ts",
+      "type": "registry:lib",
+      "contentSha256": "6758761a5be09e07b4e16daa2bf940e4ea998715e6f9574dd810184fd33e45c2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-draft-submission.ts",
+      "type": "registry:lib",
+      "contentSha256": "5c15d527f5a1b029f75a7beced55c9c004e4677025b42075ac6a501a038ae484"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-filter-grid.ts",
+      "type": "registry:lib",
+      "contentSha256": "eaf51636a34117794506af34b2811690caf72c683fd397febf9f01cbf9dae64e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-grid-operations.ts",
+      "type": "registry:lib",
+      "contentSha256": "d15aeba230b36e257b03fdae47d1769b3379492631126ef29d33c39eee4879a2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-grid-selection.ts",
+      "type": "registry:lib",
+      "contentSha256": "086c7c5393fd97b3af344f1e6028ce4e65073e69442a2ba82b9d29b266260ddd"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-grid-state.ts",
+      "type": "registry:lib",
+      "contentSha256": "853fb4f3eb672521ba75e5d447181e02d875037c82c64e4a555e8dcd6a61dfa1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-infinite-grid-data.ts",
+      "type": "registry:lib",
+      "contentSha256": "2ab8bee073dc107a057ac0ce3bb399fc0d4b4532cf98b1fa574cb4e5915763f0"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-load-grid.ts",
+      "type": "registry:lib",
+      "contentSha256": "501cb0f53ff34fae4726bf65676623af5224f1968de751d2cdd2e91369433469"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-paginate-grid.ts",
+      "type": "registry:lib",
+      "contentSha256": "d278198870a53499eeba970b116f1a5470df91909820d922a98ef7cf47379256"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/hooks/use-undo-redo.ts",
+      "type": "registry:lib",
+      "contentSha256": "9c431cff237803d538cba63a81f787b067267828dc50c1f0b2e09c9a4d192054"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/row-model.ts",
+      "type": "registry:lib",
+      "contentSha256": "0a923f72b6e13ea471e31c2daee78d6b6f80aa91f868c870f956a2f5be111c84"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.constants.ts",
+      "type": "registry:lib",
+      "contentSha256": "1e6f346a526a9429a1ab1b56272091605ba0b283e8eff3c2e175717f5b679c3e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.context-menu.tsx",
+      "type": "registry:component",
+      "contentSha256": "bd7543b2a082628c0b7a52cda5ad1d81f13444ddf430ef8654bd0ba028c43444"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.controls.tsx",
+      "type": "registry:component",
+      "contentSha256": "03c0977d751e68247ce579ccab128f62d87cffb0265ae227a7eff1c04797146f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.formatters.ts",
+      "type": "registry:lib",
+      "contentSha256": "9f47a301c962d66e412389c895da37cbf0da3fc33f19b1291ce2b32e1b4242ce"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.pagination.tsx",
+      "type": "registry:component",
+      "contentSha256": "e291b5352e7769b61fb5ed5bc5fc902b64fe27bb694b0ec76385cae130060891"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.table-selector.tsx",
+      "type": "registry:component",
+      "contentSha256": "35a6f1aee183c55c6adf5aea35cbbc6916094ea450f2d9e786b125a12f07375f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.theme.ts",
+      "type": "registry:lib",
+      "contentSha256": "4077007803d5a3741be19d6279bd1dd9fce553287657616873ffe63ba5c3c7a1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.tsx",
+      "type": "registry:component",
+      "contentSha256": "622b51c70ca9b34b4f5703c6a13b104fca567137518e599a25b2857985d79ea2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.types.ts",
+      "type": "registry:lib",
+      "contentSha256": "ec63ae93b53fb070845787b3a7a22de1f2a84db78ff3ebab0b81b6b41bac8d8c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/sheets.utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "862bccc4b32cc3e00b367cc50d5398f79a8f7b333b833711c21e2b91426b921f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/grid/use-sheets.ts",
+      "type": "registry:lib",
+      "contentSha256": "e939cd53fe480c7cdcfa8dabd919c78118dd0a6f3db9af5e5f9e36f86ae3e29c"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/orderby-enum-resolution.ts",
+      "type": "registry:lib",
+      "contentSha256": "3989466c43820cad301973f7495d83826d516eea915efaa83ea2e4c4a42dc5cd"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/query-keys.ts",
+      "type": "registry:lib",
+      "contentSha256": "5e17badc755f4d780f375d4941b7ae080fc3fc7a2829467e6c45e1d74ebf2330"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/relation-field-resolution.ts",
+      "type": "registry:lib",
+      "contentSha256": "2628b2bb339b1d9cb09f1b094d28d89cd1eeb3b7720fad2b6e92b4180177dc8e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-relation-columns.ts",
+      "type": "registry:lib",
+      "contentSha256": "11e09bb11b88eb04bd3e5dad358182e95121d26237f42d600c551ac493156de8"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-relation-metadata-cache.ts",
+      "type": "registry:lib",
+      "contentSha256": "e4af7b63d67d1115b16746f040c297b0b568d99225d089be6aeb2504cadd98d7"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-sheets-infinite-table.ts",
+      "type": "registry:lib",
+      "contentSha256": "660077ad92b75c0c9aa84ee6955f1c97654bc1ca29a5344af43a6b86658f2046"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-sheets-meta.ts",
+      "type": "registry:lib",
+      "contentSha256": "134fb8e3d7b5da30e62b85eabdf120b288045dceeb33681e173727c48e172478"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-sheets-table-cursor.ts",
+      "type": "registry:lib",
+      "contentSha256": "5ca42f9a9ee25b7764e46b16d207994c01dfab6a743ea8b688b0995b35a1fcaa"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-sheets-table.ts",
+      "type": "registry:lib",
+      "contentSha256": "2f1292072796547e71a50070dae169f288e0066ffc65e698e97caecbb5b3ecf4"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/hooks/use-sheets-upload.ts",
+      "type": "registry:lib",
+      "contentSha256": "01eb4abe44f8922b23052310f9982e4c84dc0b3f937977e521fb9397c25279c3"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/index.ts",
+      "type": "registry:lib",
+      "contentSha256": "de57e9b5f58e92c6bdc46194751f5aed1f5d0390495204fd7d3ee93f40506bfe"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/row-identity.ts",
+      "type": "registry:lib",
+      "contentSha256": "921fb2fa79eb8b80673a15c8eb35adbde085b567d40e1cb2ea111365f8f7d00f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/selection/cell-extract.ts",
+      "type": "registry:lib",
+      "contentSha256": "ae56765bac37cddc52e32f048c980e02c87eb8ddf0016441b94d59e8c0646ba9"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/selection/fill.ts",
+      "type": "registry:lib",
+      "contentSha256": "511c45d271025b50d04e86c6f6e419389ec11d0a7e945e6c9ab070fa5ea857c9"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/selection/range-set.ts",
+      "type": "registry:lib",
+      "contentSha256": "d227c5188588838b477bc1eb7e15b6f0cf014eb61e58a565fa7374c135a03266"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/selection/selection-model.ts",
+      "type": "registry:lib",
+      "contentSha256": "c6d09f772e36379ad6eca4d33022a3c5ba83f10b90165576a103ffc83593b31e"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/selection/tsv.ts",
+      "type": "registry:lib",
+      "contentSha256": "2db1956ade3f2c489460c048a83f32cfa891795db40fae881028eb6161169fe6"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/store/draft-rows-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "6455f0f3f31d997c5a41b208f3233fdbe329d70880faa14909e51238ccb3cf62"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/store/relation-info-slice.ts",
+      "type": "registry:lib",
+      "contentSha256": "5b16b43baa28a2c6e701092b56978b74e16695fca1f7ee80fde04bcf6090e7f1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/store/sheets-store.ts",
+      "type": "registry:lib",
+      "contentSha256": "63c9b7a65d9dc0eb890f552dfdc73be8d6e353ee950aae55abfcfc34f525f6a6"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/table/features.ts",
+      "type": "registry:lib",
+      "contentSha256": "1d61e2f530ae6d4871636def69d61a457d2aba40f163588b58497d44e72aeac2"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/table/grid-viewport.tsx",
+      "type": "registry:component",
+      "contentSha256": "3980f97518b63af685c966525a89fb86771c6ce6d1710db84caa72a6be68d665"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/table/use-sheets-table-instance.ts",
+      "type": "registry:lib",
+      "contentSha256": "6897a793161bc5e72061c085e2de64d7fe59f44a49f13b5264eef51a4646a5c1"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/cn.ts",
+      "type": "registry:lib",
+      "contentSha256": "572b607d90e5d5658695ce2aac435f9e6ca7ef8e21593bf63bb33a35cdaa5e2d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/file.utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "68651221f735a90febf08c57b1c16c74abfbc1a29bea0fb2f193798e8aff909f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/image-with-fallback.tsx",
+      "type": "registry:component",
+      "contentSha256": "8257f9a8bbe54e908592f9a7372f3ffbbacaa6f92efd9fd6b427e9f1c447f456"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/map-picker.tsx",
+      "type": "registry:component",
+      "contentSha256": "f8f76ca20d5d542161e7f15b017acacbfd6cf14b4ad719a8debb9044902ab8a0"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/motion-config.ts",
+      "type": "registry:lib",
+      "contentSha256": "a9ebb6fb9d36cb271152cf0c28e575097b272080dbc3765add6c59dc65e3e814"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/relation-utils.ts",
+      "type": "registry:lib",
+      "contentSha256": "e487a01043b3ec57133b533ff2df3cbe5b99c0e98c957cd9d59b1854888599b3"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/sheets-i18n.ts",
+      "type": "registry:lib",
+      "contentSha256": "bbfd8c9db0ebb7a3b01506203dd04162886218109cee2ad6135e685c1e7fcb6d"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/sheets-logger.ts",
+      "type": "registry:lib",
+      "contentSha256": "415d96d0e5b1294c2326567a0025f217eeac58239005ad9c2b0641de0551a83f"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/use-color-scheme.ts",
+      "type": "registry:lib",
+      "contentSha256": "dca63023ed840c781c42b9c08269cd1643154e4a4b27ae3a3c2f1b82c6b58015"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/use-image-status.ts",
+      "type": "registry:lib",
+      "contentSha256": "040c9fdf537f1fd4657ed2bc9cf6b33d93c5fc6ca55c629848b6b3a84158a727"
+    },
+    {
+      "registryItem": "sheets",
+      "path": "registry/constructive/blocks/sheets/utils/use-resize-observer.ts",
+      "type": "registry:lib",
+      "contentSha256": "3f8dbfcfac0bf1412f2169d65330e3e1e6e3f33bc1b846d59bf7ee4f664bbf6d"
+    },
+    {
       "registryItem": "sidebar",
       "path": "registry/constructive/ui/sidebar.tsx",
       "type": "registry:ui",
@@ -789,6 +2151,12 @@
       "path": "registry/constructive/lib/slot.tsx",
       "type": "registry:lib",
       "contentSha256": "2f546ed1e9aeba31d1b584ff5d6f9f60745a5fb15af098076505c86026ff4b67"
+    },
+    {
+      "registryItem": "stepper",
+      "path": "registry/constructive/ui/stepper.tsx",
+      "type": "registry:ui",
+      "contentSha256": "79ae150ba039c03e374dd27765cacfaeec337021d80ae4522d218e7e7815fe3a"
     },
     {
       "registryItem": "switch",
@@ -815,6 +2183,36 @@
       "contentSha256": "815b0e5c75769a9dc35767200ba3fd4edc5e262267650878f2a229ce2ced91aa"
     },
     {
+      "registryItem": "toast",
+      "path": "registry/constructive/blocks/toast/index.ts",
+      "type": "registry:component",
+      "contentSha256": "feb28b7946096ab3b5fdf5e632153b2ee5c63f9cdc4eb7e479e6b7e4ea594729"
+    },
+    {
+      "registryItem": "toast",
+      "path": "registry/constructive/blocks/toast/toast-error.tsx",
+      "type": "registry:component",
+      "contentSha256": "73de6e5173da019a6a8069c0531fa804baf6eb192842205a6705f2c56047f2fa"
+    },
+    {
+      "registryItem": "toast",
+      "path": "registry/constructive/blocks/toast/toast-info.tsx",
+      "type": "registry:component",
+      "contentSha256": "0efb0ee1ac9de310b1b0a97370bf1236fa3d536084d3b434ee69029ae3ddd0e0"
+    },
+    {
+      "registryItem": "toast",
+      "path": "registry/constructive/blocks/toast/toast-success.tsx",
+      "type": "registry:component",
+      "contentSha256": "d7ca19e398779c5d1978f58070905712fe58b00332bb05842f72b72cebd11e85"
+    },
+    {
+      "registryItem": "toast",
+      "path": "registry/constructive/blocks/toast/toast-warning.tsx",
+      "type": "registry:component",
+      "contentSha256": "d0c3823cfcb024a3110765fa79eb8dbd8c014195910b6a569e5842b620c1c6b1"
+    },
+    {
       "registryItem": "tooltip",
       "path": "registry/constructive/ui/tooltip.tsx",
       "type": "registry:ui",
@@ -830,7 +2228,7 @@
       "registryItem": "use-mobile",
       "path": "registry/constructive/hooks/use-mobile.ts",
       "type": "registry:hook",
-      "contentSha256": "3469afadf0d9f2e5de6faf482312151d1abaccb511929b6962b890295a1ba061"
+      "contentSha256": "1ba304ed659572c5eba72027298829e65769eae72847d60502d9f197cf8a22f6"
     }
   ]
 }

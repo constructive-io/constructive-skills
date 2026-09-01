@@ -1,17 +1,24 @@
 ---
 name: constructive-crud-stack
-description: Build custom-domain CRUD actions as Stack cards with typed card props, deferred loading, and stacked confirmation. Use the Data feature pack for generic metadata-driven CRUD.
+description: Adapt focused custom-domain CRUD and record details to optional Stack cards with typed card props, deferred loading, and stacked confirmation. Keep App Kit record opening host-controlled and use the Data feature pack only for generic spreadsheet CRUD.
 ---
 
 # Constructive CRUD Stack Cards
 
-Build any create/edit/delete action as a slide-in Stack card. Cancel/Save/Delete CTAs live in a sticky footer. Cards stack naturally — e.g., pushing a confirm-delete card on top of an edit card.
+Use this pattern only after the host chooses Stack as its record-opening
+presentation. A route, dedicated page, or dialog may fit the same resource
+better. Keep `onOpenRecord` host-controlled so changing that presentation does
+not change the App Kit resource contract.
+
+When Stack is selected, render a focused create/edit/delete flow as a slide-in
+card with sticky actions. Cards can compose, such as pushing destructive
+confirmation over an edit card.
 
 ---
 
-## 1. Stack Card Trigger
+## 1. Optional Stack Card Adapter
 
-Every CRUD action opens a card. Push it from any button, row click, or link:
+Adapt the host callback from any button, row, or link:
 
 ```tsx
 'use client';
@@ -245,11 +252,11 @@ stack.push({
 
 ## 8. Data boundary
 
-Use Stack cards for bespoke domain workflows whose field layout and validation
-belong to the application. Use the Data feature pack when the goal is generic
-metadata-driven table CRUD; it already owns the current `_meta` contract,
-standard-introspection reconciliation, row identity, pagination, mutation
-generation, and RLS-aware failure states.
+Use Stack cards for focused domain workflows whose field layout and validation
+belong to the application. Keep App Kit data views in control of typed resource
+identity, queries, forms, relations, semantic actions, and URL state; the Stack
+adapter owns presentation only. Use the Data feature pack when the goal is
+generic spreadsheet-style table CRUD.
 
 If a custom Stack card still needs runtime metadata, follow
 [meta-forms.md](./meta-forms.md): import the contract from

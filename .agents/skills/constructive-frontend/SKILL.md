@@ -1,6 +1,6 @@
 ---
 name: constructive-frontend
-description: "Build polished Constructive application UI with Constructive primitives, Tailwind CSS v4, app shell and app bar composition, CRUD Stack cards, and custom domain views. Use for visual composition, forms, overlays, layout, theming, accessibility, or bespoke domain UI. Use constructive-blocks for feature-pack and Console Kit installation/runtime work."
+description: "Build and polish Constructive application UI with App Kit, Constructive primitives, Tailwind CSS v4, app shell composition, and optional Stack navigation. Use for visual composition, forms, record and collection views, overlays, layout, theming, accessibility, responsive behavior, or bespoke domain UI. Use constructive-blocks to select and install App Kit, platform feature packs, or Console Kit."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -8,7 +8,10 @@ metadata:
 
 # Constructive Frontend
 
-Build and polish custom Constructive application UI. This skill owns visual composition and bespoke domain views; [`constructive-blocks`](../constructive-blocks/SKILL.md) owns the registry, feature packs, Console Kit, tenant descriptors, and runtime integration.
+Build and polish custom Constructive application UI. This skill owns visual
+composition and domain-specific presentation; [`constructive-blocks`](../constructive-blocks/SKILL.md)
+owns App Kit contracts and installation, the registry, platform feature packs,
+Console Kit, tenant descriptors, and runtime integration.
 
 ## When to Apply
 
@@ -16,11 +19,14 @@ Use this skill when:
 
 - Composing pages with Constructive primitives, forms, overlays, tables, or navigation.
 - Customizing the app shell, app bar, typography, color, motion, responsive behavior, or accessibility.
-- Building a bespoke domain screen that does not already exist as a feature pack.
-- Creating CRUD actions with Stack cards.
+- Composing or extending App Kit controlled views around a domain design.
+- Building a bespoke domain screen that does not fit an App Kit view family.
+- Choosing a route, page, dialog, or Stack card for record opening and CRUD.
 - Extending an installed block without changing its endpoint, session, discovery, or store contract.
 
-Use `constructive-blocks` instead when choosing or installing a registry root, mounting Console Kit, supplying tenant endpoints, integrating a feature pack, or diagnosing `ready`, `partial`, or `unavailable` capability state.
+Use `constructive-blocks` first when choosing or installing App Kit roots,
+defining its resource/query/action boundary, mounting Console Kit, integrating a
+feature pack, or diagnosing registry and runtime capability state.
 
 ## Pinned Distribution Boundary
 
@@ -40,7 +46,7 @@ node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/sc
 Then follow the pinned local-consumption workflow in
 [`constructive-blocks/references/runtime-contract.md`](../constructive-blocks/references/runtime-contract.md#pinned-local-consumption-before-release).
 It verifies the exact Blocks commit, builds local registries and packages, and
-installs through shadcn `4.13.1` without treating localhost resolutions as
+installs through shadcn `4.16.1` without treating localhost resolutions as
 release artifacts. Public registry and package installation becomes valid
 only after the Blocks snapshot says `publicRegistryReady: true` and its checker
 passes against that released source.
@@ -56,7 +62,7 @@ install contract.
 
 ## UI Composition
 
-Target Next.js 16 App Router with React Server Components, shadcn `4.13.1`,
+Target Next.js 16 App Router with React Server Components, shadcn `4.16.1`,
 the `base-nova` style, Base UI primitives, Tailwind CSS v4, and Lucide icons.
 Interactive registry components carry `'use client'`; pages and layouts remain
 server components until they need browser state. Compose polymorphic Base UI
@@ -75,29 +81,51 @@ state close to the component that owns it.
 
 ## Custom Domain Data
 
-Start with the Data feature pack when the goal is generic application-table exploration or spreadsheet CRUD. It already uses the current `_meta` contract, standard introspection, explicit endpoints, and authenticated runtime evidence.
+Start with App Kit when the goal is an application around domain records,
+relations, actions, aggregates, boards, or time ranges. Read its
+[composition](../constructive-blocks/references/app-composition.md),
+[resource contract](../constructive-blocks/references/app-resource-contract.md),
+and [view patterns](../constructive-blocks/references/app-view-patterns.md), then
+use the branch-aware App Kit documentation authority returned by the validated
+Blocks catalog for exact APIs before styling the result.
 
-For a bespoke domain screen:
+Use the Data feature pack when the goal is generic application-table
+exploration or spreadsheet-style inline CRUD. It owns its separate Sheets
+metadata and state boundary; do not use it as the default for a domain app.
 
-1. Receive the data endpoint and session through the host's tenant runtime; never derive a related hostname.
-2. After the Blocks local package workflow has installed the pinned package,
-   import the current metadata query and compatibility helpers from
-   `@constructive-io/data` instead of copying a `_meta` query into the app.
-3. Reconcile `_meta` schema facts with standard GraphQL introspection before constructing operations.
-4. Treat runtime reads and mutations as the authority for grants and RLS; do not substitute an operator endpoint when rows are hidden.
-5. Generate a client only when the domain schema is stable and compile-time types are worth the regeneration workflow.
+For an App Kit screen:
 
-See [meta-forms.md](./references/meta-forms.md) for the custom-domain boundary. For optional generated clients, use [`constructive-codegen`](../constructive-codegen/SKILL.md), [`constructive-orm`](../constructive-orm/SKILL.md), or [`constructive-hooks`](../constructive-hooks/SKILL.md).
+1. Receive endpoint and authenticated scope through the host; never derive a
+   related hostname.
+2. Reconcile `_meta` with final GraphQL introspection during generation/build
+   and follow the canonical resource-validation procedure.
+3. Inject abortable SDK, ORM, or GraphQL transport at the documented boundary;
+   do not make views discover schema at runtime.
+4. Preserve the selected controlled/connected ownership when changing visual
+   composition, and treat runtime reads and mutations as authority for grants
+   and RLS.
 
-## CRUD Stack Cards
+Use [meta-forms.md](./references/meta-forms.md) only for a bespoke dynamic
+metadata surface outside App Kit. For generated clients, use
+[`constructive-codegen`](../constructive-codegen/SKILL.md),
+[`constructive-orm`](../constructive-orm/SKILL.md), or
+[`constructive-hooks`](../constructive-hooks/SKILL.md).
 
-Use Stack cards for focused create, edit, and delete workflows that benefit from maintaining page context. Keep destructive confirmation explicit and preserve mobile sheet behavior.
+## Optional CRUD Stack Cards
 
-See [crud-stack.md](./references/crud-stack.md) for the card API and composition pattern. Use the Data feature pack rather than recreating a generic metadata-driven CRUD stack.
+Use Stack cards only when a focused create, edit, detail, or delete flow benefits
+from maintaining page context. Keep record opening host-controlled so the same
+resource can use a route, dedicated page, dialog, or Stack adapter. Preserve
+explicit destructive confirmation and mobile sheet behavior when Stack is
+selected.
+
+See [crud-stack.md](./references/crud-stack.md) for the optional adapter pattern.
+Use App Kit data views for typed domain CRUD and the Data feature pack for
+generic spreadsheet exploration rather than recreating either inside a card.
 
 ## Cross-References
 
-- [`constructive-blocks`](../constructive-blocks/SKILL.md) — exact registry roots, feature packs, Console Kit, runtime, and verification.
+- [`constructive-blocks`](../constructive-blocks/SKILL.md) — App Kit contracts, exact registry roots, platform feature packs, Console Kit, runtime, and verification.
 - [`constructive-builder`](../constructive-builder/SKILL.md) — agent-driven tenant frontend assembly and acceptance against an already-provisioned tenant.
 - [`constructive-security`](../constructive-security/SKILL.md) — RLS and authorization behavior behind application UI.
 - [`constructive-platform`](../constructive-platform/SKILL.md) — public API and deployment configuration.

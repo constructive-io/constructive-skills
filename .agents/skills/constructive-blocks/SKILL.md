@@ -1,6 +1,6 @@
 ---
 name: constructive-blocks
-description: Select, install, compose, integrate, and verify the complete Constructive Blocks registry, its standalone feature packs, and Console Kit. Use when adding Constructive UI primitives, app shell or app bar, billing blocks, standalone feature-pack views, Console modules, backend-aligned presets, a custom tenant console, or the full Next.js Console Kit; when wiring explicit tenant endpoints, sessions, _meta capability evidence, or modular Zustand state; and when diagnosing registry, release, capability, or RLS boundaries.
+description: Select, install, compose, integrate, and verify the Constructive Blocks registry, App Kit, standalone platform feature packs, and Console Kit. Use when an agent builds an arbitrary Constructive-native internal app from typed resources, queries, actions, records, dashboards, boards, calendars, or workflows; when adding Constructive UI primitives, app shell, billing blocks, feature-pack views, Console modules, presets, or Console Kit; and when wiring tenant scope, final-schema evidence, release contracts, or RLS boundaries.
 ---
 
 # Constructive Blocks
@@ -10,12 +10,22 @@ modules, registry roots install frontend source, Console capability discovery
 proves a public GraphQL shape, and authenticated requests establish effective
 PostgreSQL/RLS authority. Keep those as separate facts.
 
+Choose between two orthogonal lanes. Use App Kit to compose an application
+around domain resources and user tasks. Add feature packs or Console Kit only
+when the product also needs their specific platform-capability surfaces.
+Treat `installability.appKitDocumentation.authority` from the validated catalog
+query as authority for exact APIs and exports; this skill owns selection and
+verification procedure. While the release is branch-only, read the returned
+`pinned-source` path from the source-preflighted Blocks checkout. Use the public
+URL only when the query returns `kind: public-url`.
+
 ## Read the pinned contract first
 
 [`references/install-roots.v1.json`](references/install-roots.v1.json) is the
 portable authority for the exact Blocks branch and commit, release state,
 `_meta` contract, endpoint bindings, package versions, source and built-content
-hashes, 19 complete inspector plans, Console runtime invariants, and
+hashes, the branch-aware App Kit documentation source, 19 complete inspector
+plans, Console runtime invariants, and
 structurally scoped source limitations. Use the validated
 queries below for ordinary selection; load the full snapshot only when
 auditing or updating the contract.
@@ -26,16 +36,16 @@ concerns an ordinary registry item:
 ```bash
 node /absolute/path/to/check-blocks-contract.mjs --list-registry
 node /absolute/path/to/check-blocks-contract.mjs --list-registry --type registry:block
+node /absolute/path/to/check-blocks-contract.mjs --list-registry --family app-kit
+node /absolute/path/to/check-blocks-contract.mjs --list-registry --capability temporal
 node /absolute/path/to/check-blocks-contract.mjs --registry-item app-shell
 ```
 
-The 102 entries cover the complete registry: Constructive theme and UI
-primitives, app bar, app shell, billing blocks, standalone feature packs,
-Console modules, presets, and the Next.js Console Kit. The six non-Data
-standalone packs are provider-neutral; Data is adapter-driven and performs
-schema discovery through Sheets. Select by `name`, `type`,
-`categories`, and `docs`; inspect one item for its `dependencies`,
-`devDependencies`, `registryDependencies`, and `files`.
+Use the returned `name`, `type`, `categories`, `docs`, and versioned metadata to
+select candidates. Inspect one item before installation to verify its
+dependencies, file targets, release status, and limitations.
+For App Kit, also resolve the returned
+`installability.appKitDocumentation.authority` before implementing an exact API.
 
 Always use the validated queries for Data. The byte-pinned source catalog and
 plan retain incorrect generic Data documentation as drift evidence; query
@@ -89,16 +99,31 @@ blocked by the nested-store limitation.
 [`references/package-resolutions.v1.json`](references/package-resolutions.v1.json),
 and [`references/install-plans.v1/`](references/install-plans.v1/) remain the
 portable source artifacts behind these deterministic validated queries. The
-content snapshot pins every file body reachable from the 19 install plans, so
-installed-source evidence cannot be satisfied by a fabricated generated item.
+content snapshot pins every file body reachable from the 19 Console plans and
+all seven App Kit roots, so installed-source evidence cannot be satisfied by a
+fabricated generated item.
 The package snapshot pins the exact npm version, SRI, and canonical tarball URL
-for all ten external dependencies; first-party package bytes remain pinned to
-the local Blocks artifacts.
+for every external dependency in those closures; first-party package bytes
+remain pinned to the local Blocks artifacts.
 
 Read
 [`references/runtime-contract.md`](references/runtime-contract.md) when wiring
 standalone Data, Console modules, tenant descriptors, sessions, routing,
 capability evidence, or the host-owned Zustand store.
+
+Read only the App Kit references required by the brief:
+
+| Reference | Load when |
+| --- | --- |
+| [`references/app-composition.md`](references/app-composition.md) | Routing a domain application from intent and data shape |
+| [`references/app-resource-contract.md`](references/app-resource-contract.md) | Defining scope, resources, queries, relations, and final-schema validation |
+| [`references/app-view-patterns.md`](references/app-view-patterns.md) | Selecting controlled and connected data, board, dashboard, or calendar views |
+| [`references/app-actions-workflows.md`](references/app-actions-workflows.md) | Defining semantic actions, invalidation, optimistic behavior, and steps |
+| [`references/app-verification.md`](references/app-verification.md) | Verifying schema, cache isolation, authority, interaction, and installs |
+| [`references/event-studio.md`](references/event-studio.md) | Building the complete Event Studio starter |
+| [`references/event-studio-blueprint.json`](references/event-studio-blueprint.json) | Applying Event Studio's public org-scoped blueprint definition |
+| [`references/app-recipes.md`](references/app-recipes.md) | Adapting compact cross-domain composition recipes |
+| [`references/brief-to-roots.v1.json`](references/brief-to-roots.v1.json) | Auditing deterministic brief-to-root selection fixtures |
 
 Validate the portable contract from any working directory:
 
@@ -128,61 +153,61 @@ The live check deliberately uses the inspector's `--no-build` mode only after
 the aggregate registry, canonical inputs, catalog, and plan bytes match their
 SHA-256 attestations. It never rebuilds or edits Blocks.
 
-When advancing the pinned Blocks commit, regenerate the planned content
-snapshot from a clean worktree, update its attestation in
-`install-roots.v1.json`, then run the full checker. The generator runs the
-pinned `build:registry` command before hashing any file bodies:
+When advancing the pinned Blocks commit, first update the source pin and any
+changed checker invariants as a reviewed source change. Then regenerate the
+catalog, all inspector plans, built-content snapshot, package snapshot, and
+their attestation hashes together from a clean exact checkout. The synchronizer
+builds the registry, writes every result into a same-filesystem scratch area,
+validates that staged contract against Blocks, and rolls back if replacement or
+post-write validation fails:
 
 ```bash
-node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/sync-registry-content.mjs \
+node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/sync-blocks-contract.mjs \
   --blocks-repo /absolute/path/to/blocks
-node /absolute/path/to/constructive-skills/.agents/skills/constructive-blocks/scripts/sync-package-resolutions.mjs
 ```
 
-The package sync resolves npm's current `latest` releases. Review every
-version/SRI/URL diff, rerun the install and typecheck matrix, then update the
-snapshot hash in `install-roots.v1.json`; never refresh it as an unreviewed
-formatting step.
+By default it preserves existing exact package resolution records, which keeps
+pin advancement deterministic. Use `--refresh-package-resolutions` only for an
+intentional dependency-refresh review; that flag resolves npm's current
+`latest` releases, so review every version/SRI/URL diff and rerun the install
+and typecheck matrix. `--check` stages and validates the complete result
+without replacing checked-in files.
 
 ## Choose the smallest owning block
 
-For ordinary application UI, choose directly from the complete registry
-catalog. `app-shell` installs the provider-neutral shell and `app-bar`
-transitively; individual billing roots install only their reviewed dependency
-closure; primitives remain independently installable.
+1. **Choose a lane.** Route domain resources and user tasks through App Kit.
+   Route tenant-platform administration through feature packs or Console Kit.
+   Treat an app that needs both as two explicit selections.
+2. **Discover candidates.** Query `--list-registry --family app-kit` for the
+   application lane or use the catalog/root queries for the platform lane.
+   Match returned metadata and docs to the brief instead of inferring names.
+   Exclude `kind: starter` from ordinary composition; install a starter only
+   when the user explicitly requests that starter or its complete reference
+   application. A deterministic fixture may select one only when its
+   `starterRequested` marker records that explicit opt-in.
+3. **Inspect closure.** Query each candidate item or Console plan and review
+   transitive registry dependencies, files, runtime status, limitations, and
+   installability before writing an install command.
+4. **Check deterministic routing.** Compare arbitrary-app selection with
+   `brief-to-roots.v1.json`. Query the selected preset plan when a backend
+   preset must be mirrored; do not maintain the mapping in application code.
+5. **Keep authority separate.** An install choice does not prove endpoint
+   availability, executable roots, grants, or RLS-visible rows. Verify those
+   after integration.
 
-For feature behavior, choose one ownership boundary:
+For App Kit, installation is only dependency acquisition. Application-owned
+code must import and compose the selected definitions and views into working
+user paths; installed source directories, navigation labels, prose, or empty
+placeholders are never evidence that a capability was implemented.
 
-| Need | Install root |
-| --- | --- |
-| Host-controlled application view | `feature-pack-{id}` |
-| Shell/runtime without a leaf feature | `console-kit-core` |
-| Custom tenant console | Selected `console-module-{id}` roots |
-| Stable backend-aligned composition | `preset-auth-hardened`, `preset-b2b-storage`, or `preset-full` |
-| Complete seven-pack Next.js console | `console-kit-nextjs` |
-
-The seven pack IDs are `data`, `auth`, `users`, `organizations`, `storage`,
-`billing`, and `notifications`. A standalone pack never installs Console Kit
-and never imposes the Console Kit Zustand store. A matching Console module
-installs its standalone view and Console core transitively, then contributes
-Constructive discovery, routing, an adapter, and any module-owned state slice.
-
-Map official backend presets exactly:
-
-- `blank` -> no frontend preset root; start with `console-kit-core` and add
-  only explicitly selected Console modules.
-- `auth:hardened` -> `preset-auth-hardened` -> Data, Auth, Users.
-- `b2b:storage` -> `preset-b2b-storage` -> Data, Auth, Users, Organizations,
-  Storage.
-- `full` -> `preset-full` -> all seven packs.
-
-This mapping selects installed code. It does not prove that a tenant exposes
-the necessary endpoints, roots, metadata, privileges, or RLS-visible rows.
+Select Sheets only for spreadsheet-style inline editing and generic table
+exploration. Do not substitute Console Kit for a domain application shell or
+turn every action flow into a review queue.
 
 ## Respect the branch-only release gate
 
 The pinned source is
-`feat/feature-packs-console-kit@4f2a789fde9a90c0c6ed5977896493bb4818fa77`.
+`feat/app-kit@1a72e5d95f7ce4a243cd4536ed78c638708d538c`.
 The checkout may be that named branch or detached at the exact commit. Its
 publication status is `branch-only`, and
 `release.publicRegistryReady` is `false`. Do not run a public install for these
@@ -212,8 +237,10 @@ Released query surfaces expose `publicInstall` with the command beside its
 `status` and `availability`; execute it only when status is `available`.
 Branch-only responses mark it `blocked` and `future-only`, so use the
 `installability.pinnedLocalConsumption` command template instead. Keep shadcn
-at `4.13.1`; nested dependencies still require the `@constructive` namespace
-when the root is installed by direct URL.
+at the exact returned `testedShadcnVersion` for reproducible branch-local
+diagnostics. Released public commands use `shadcn@latest`; nested dependencies
+still require the `@constructive` namespace when a root is installed by direct
+URL.
 
 ## Integrate the installed owner
 

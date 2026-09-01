@@ -4,7 +4,7 @@
   <img height="150" src="https://raw.githubusercontent.com/constructive-io/constructive/refs/heads/main/assets/logo.svg" />
 </p>
 
-A collection of skills for AI coding agents working with [Constructive](https://constructive.io) tooling. Skills cover application feature packs, Console Kit, PostgreSQL development, authorization, GraphQL workflows, and platform operations.
+A collection of skills for AI coding agents working with [Constructive](https://constructive.io) tooling. Skills cover App Kit application composition, platform feature packs, Console Kit, PostgreSQL development, authorization, GraphQL workflows, and platform operations.
 
 Skills follow the [Agent Skills](https://agentskills.io/) format.
 
@@ -26,8 +26,8 @@ Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; refer
 
 | Skill | Description |
 |-------|-------------|
-| `constructive-features` | Intent router — maps application capabilities to Blocks feature packs and the domain skill that explains the underlying behavior |
-| `constructive-blocks` | Constructive Blocks — feature packs, Console Kit, registry installation, tenant descriptors, capability discovery, and runtime contracts |
+| `constructive-features` | Intent router — maps application briefs to App Kit, optional Blocks capability packs, and authoritative domain skills |
+| `constructive-blocks` | Constructive Blocks — App Kit, feature packs, Console Kit, registry installation, tenant scope, capability discovery, and runtime contracts |
 | `constructive-builder` | Agent-driven tenant frontend harness — assembles and acceptance-checks Blocks against an existing app workspace and already-provisioned tenant |
 | `constructive-blueprints` | Declarative schema definition — blueprints, node type registry, presets |
 | `constructive-auth` | Identity, login, sessions, MFA, devices, auth settings |
@@ -47,7 +47,7 @@ Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; refer
 | `constructive-flow-graphs` | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | `constructive-i18n` | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
 | `constructive-history` | Row history — DataHistory version tables, retention/partitioning, graphile-history (history, versionAt, versionsBetween, restore) |
-| `constructive-frontend` | Constructive UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| `constructive-frontend` | Constructive UI primitives, App Kit visual composition, optional Stack navigation, and custom domain UI patterns |
 | `constructive-codegen` | Optional generated clients for stable, custom domain UI and server workflows |
 | `constructive-orm` | Optional generated ORM patterns for stable custom-domain schemas |
 | `constructive-hooks` | Optional generated React Query hook patterns for fixed endpoints |

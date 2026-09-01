@@ -53,7 +53,7 @@ When you run into issues, read this document for known problems and solutions.
   - No QueryClient set (SDK hooks vs app react-query instance; prefer generating SDK inside app)
   - No redirect after login / no Sidebar entry (router.push in onSuccess, add links in sidebar)
   - UI component import wrong (`@constructive-io/ui/*` vs template `@/components/ui/*`)
-  - Use Stack when template has it (do not create Dialog for CRUD — check `ls .../ui/stack` first; see constructive-frontend / CRUD Stack)
+  - Record-opening surface does not match the host choice (route, page, dialog, or optional Stack adapter; see constructive-frontend / CRUD Stack)
   - SDK query result fields nullable (type errors in form/handler — use `?? ''` or accept nullable type)
   - Invalid UUID error on create/update (relation field `isRequired: false` missing)
   - Used confirm() or alert() for delete (must use template AlertDialog from `@/components/ui/alert-dialog`)
@@ -1901,28 +1901,35 @@ TypeScript compiles and the update mutation succeeds at runtime.
 
 ---
 
-## Phase 3: Use Stack when template has it (do not create Dialog for CRUD panels)
+## Phase 3: Preserve the host-selected record-opening surface
 
 ### Problem
 
-You added or imported a generic Dialog (e.g. `@/components/ui/dialog`) for create/edit panels, and the template already has `@/components/ui/stack`. UI works but does not match the template’s intended pattern (slide-in Stack cards).
+You hard-coded a Dialog or Stack card for record details and CRUD even though
+the application brief or existing host adapter selected another presentation.
 
 ### Cause
 
-SKILL.md Phase 3.5 requires: **before any CRUD UI**, check whether the template has Stack (`ls packages/app/src/components/ui/stack`). If it exists, you must use **Stack Cards** (constructive-frontend / CRUD Stack), not a generic Dialog.
+The record-opening boundary was treated as a component default. App Kit keeps
+`onOpenRecord` host-controlled so routes, dedicated pages, dialogs, and Stack
+cards can share the same typed resource.
 
 ### Solution
 
-1. Run `ls packages/app/src/components/ui/stack` (or your app path). If the directory exists:
-2. Read the **constructive-frontend** skill (CRUD Stack section).
-3. Implement create/edit/delete with `useCardStack()`, `card.push()`, and `CardComponent`. Use stacked confirm-delete for delete, not a separate Dialog.
-4. Do not create or import `@/components/ui/dialog` for CRUD when Stack exists.
-
-If the template has **no** Stack, then use the template’s Dialog/AlertDialog from `@/components/ui/*`.
+1. Read the application brief and existing navigation adapter before choosing a
+   presentation.
+2. Keep App Kit `onOpenRecord` host-controlled.
+3. If the host selects Stack, read the **constructive-frontend** CRUD Stack
+   reference and adapt with `useCardStack()`, `card.push()`, and
+   `CardComponent`.
+4. If the host selects a route, page, or dialog, preserve that choice and use
+   the installed primitives. Keep destructive confirmation explicit in every
+   presentation.
 
 ### Verification
 
-Create/edit/delete use slide-in panels (Stack) when the template has `ui/stack`; no generic Dialog is used for CRUD.
+The same typed resource can open through the selected host adapter, and no view
+component silently imposes Stack or Dialog navigation.
 
 ---
 

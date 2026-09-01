@@ -11,7 +11,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | Skill | Description |
 |-------|-------------|
 | **constructive-features** | Intent router — maps capabilities to Blocks feature packs and authoritative domain skills |
-| **constructive-blocks** | Feature packs, Console Kit, registry installation, tenant descriptors, discovery, and runtime contracts |
+| **constructive-blocks** | App Kit composition, feature packs, Console Kit, registry installation, tenant scope, discovery, and runtime contracts |
 | **constructive-builder** | Agent-driven tenant frontend harness — assembles and acceptance-checks Blocks against an existing workspace and already-provisioned tenant |
 | **constructive-blueprints** | Declarative schema definition — blueprints, node type registry, module presets |
 | **constructive-auth** | Identity, login, sessions, MFA, devices, auth settings, service settings |
@@ -31,7 +31,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
 | **constructive-history** | Row history — DataHistory version tables, retention/partitioning, graphile-history (history, versionAt, versionsBetween, restore) |
-| **constructive-frontend** | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
+| **constructive-frontend** | UI primitives, App Kit visual composition, optional Stack navigation, and custom domain UI patterns |
 | **constructive-codegen** | Optional generated clients for stable custom-domain schemas |
 | **constructive-orm** | Optional generated ORM patterns for stable custom-domain schemas |
 | **constructive-hooks** | Optional generated React Query hook patterns for fixed endpoints |
