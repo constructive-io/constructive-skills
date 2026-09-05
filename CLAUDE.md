@@ -22,6 +22,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-data-modeling** | Tables, fields, relations, constraints, indexes, database provisioning (SDK CRUD) |
 | **constructive-billing** | Billing, limits, plans, credits, feature flags, meters, usage tracking |
 | **constructive-storage** | Uploads, buckets, presigned URLs, file lifecycle, upload-client |
+| **constructive-sites** | Sites — static sites, release manifests and rollback, named previews, versioned pages, Mantra auth pages, content presets, mobile app links and deep links (SDK ORM) |
 | **constructive-search** | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified composite |
 | **constructive-agents** | AI — agent module, LLM providers, RAG pipelines, embeddings, agentic-kit |
 | **constructive-events** | EventTracker, achievements, referrals, invite virality, gamification |
