@@ -54,11 +54,15 @@ You almost never need to hand-build a mask. Prefer:
 | `ownerId` | UUID | The owning human |
 | `userId` | UUID | The principal's own identity row (`type = 3`) |
 | `name` | String | Display name, e.g. `'billing-bot'` |
-| `allowedMask` | BitString | Capability subset (null = all of owner's) |
 | `isReadOnly` | Boolean | Entity-scoped read-only flag |
 | `bypassStepUp` | Boolean | Skip MFA step-up (default `true` — principals can't perform MFA) |
+| `useAdminOwner` | Boolean | Derive authority from the owner's admin membership |
+| `parentPrincipalId` | UUID | Set when this is a child minted by `createChildPrincipal` |
+| `depth` | Int | 0 for a root principal, `parent.depth + 1` for children |
+| `expiresAt` | Datetime | When the principal stops authenticating (children default to their parent's ceiling) |
+| `createdBySessionId` | UUID | The session that minted it (audit) |
 
-`createdAt` / `updatedAt` are read-only.
+`createdAt` / `updatedAt` are read-only. The capability mask is **per scope**: `allowedMask` lives on `principalScopeOverride` rows (one per `membershipType`) and is set through `setPrincipalScope`, not on the principal row itself.
 
 ### `isReadOnly`
 
@@ -70,7 +74,9 @@ Principals cannot complete an interactive MFA step-up (there's no human at the k
 
 ## Human-only management
 
-Creating, deleting, and issuing keys for principals is guarded by `AuthzHumanOnly`: a principal **cannot** manage other principals. If a principal-authenticated session calls `createOrgPrincipal`/`createApiKey`, it fails (`PRINCIPAL_CANNOT_CREATE_PRINCIPAL`). This prevents privilege-escalation chains. See [`constructive-security`](../../constructive-security/SKILL.md).
+Creating, widening, deleting, and issuing standing keys for principals is guarded by `AuthzHumanOnly`: a principal **cannot** manage other principals. If a principal-authenticated session calls `createOrgPrincipal` / `createApiKey` / `setPrincipalScope` / `setPrincipalEntities` / `updatePrincipal` / `createPrincipalFromPreset`, it fails (`PRINCIPAL_CANNOT_CREATE_PRINCIPAL`). This prevents privilege-escalation chains. See [`constructive-security`](../../constructive-security/SKILL.md).
+
+The deliberate exceptions are the two operations that can only **shrink** authority: `createChildPrincipal` (a strictly narrower, ephemeral child of the calling principal) and `mintAccessToken` (a short-lived token for the principal the caller already is). See [delegation.md](./delegation.md) and [access-tokens.md](./access-tokens.md).
 
 ## What meters where
 
