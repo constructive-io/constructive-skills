@@ -34,6 +34,7 @@ Content presets are requested as options on a module entry, by slug:
 |---|---|---|
 | `trust_ladder` on `events_module` | `trust_ladder` | `humanity`, `metered` |
 | `limit_defaults` on `limits_module` | `limit_defaults` | `metered` |
+| *(site content, installed after provisioning)* | `pages`, `robots` | `pages:legal`, `robots:no-ai` — not a module option; installed per site with `db.mutation.sitesInstallContentPreset({ input: { siteId, presetKind, presetSlug } })`, see [`constructive-sites` → pages-and-content-presets.md](../../constructive-sites/references/pages-and-content-presets.md) |
 
 Omitting the option seeds nothing; passing an array instead of a slug supplies the caller's own document inline. As with module presets, do not reconstruct a shipped document in a skill or a brief — name the slug, or capture a tuned one as a new named preset.
 
