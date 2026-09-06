@@ -22,7 +22,7 @@ npx skills add constructive-io/constructive-skills --skill constructive-security
 
 ## Available Skills
 
-Skills are organized into 25 focused skills. Every skill has a `SKILL.md`; references and executable helpers are included only where they add value.
+Skills are organized into 33 focused skills. Every skill has a `SKILL.md`; references and executable helpers are included only where they add value.
 
 | Skill | Description |
 |-------|-------------|
