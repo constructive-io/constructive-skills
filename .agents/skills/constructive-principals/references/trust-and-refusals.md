@@ -1,6 +1,6 @@
 ---
 name: constructive-principals-trust-and-refusals
-description: Trust-gated principal capabilities — the agent trust ladder preset, unlock rewards that withhold bits until a level is earned, expires_interval decay, revoked_by demotion (token.refresh_reused, graphql.error:PRINCIPAL_CHILD_WIDENS), the generic graphql.error event recorded by ErrorEventsPlugin, and the limit_refusals view.
+description: Trust-gated principal capabilities — the agent trust ladder preset, unlock rewards that withhold bits until a level is earned, expires_interval decay, revoked_by demotion (token.refresh_reused, PRINCIPAL_CHILD_WIDENS), refusal events recorded under their error code by ErrorEventsPlugin, and the limit_refusals view.
 ---
 
 # Trust, Unlocks & Refusal Events
@@ -24,7 +24,7 @@ The base fields (`level`, `event`, `metric`, `required_count`, `capability`, `gr
 |-------|------|---------|
 | `period_interval` | interval literal | Counting window for `event` (`'30 days'`); omitted counts for life |
 | `expires_interval` | interval literal | How long a grant of `level` lasts before it lapses; omitted never lapses |
-| `revoked_by` | `string[]` | Event names — or `event_name:payload_code` — whose recording for an actor **revokes** `level` and **resets their progress** toward it (so it is not immediately re-earned) |
+| `revoked_by` | `string[]` | Event names whose recording for an actor **revokes** `level` and **resets their progress** toward it (so it is not immediately re-earned). A refusal's error code *is* its event name, so lifecycle events (`token.refresh_reused`) and error codes (`PRINCIPAL_CHILD_WIDENS`) share one flat list |
 | `unlocks` | `string[]` | Permission names from *this scope's* catalog withheld from principals until they hold `level`. An unknown name **fails the seed** rather than silently un-gating |
 
 `revokeAchievement` (the mutation the ladder uses under the hood) also resets progress, so a manual demotion behaves the same as an event-driven one.
@@ -40,7 +40,7 @@ Shipped trust-ladder preset, requested by slug exactly like `humanity` / `metere
 | Level | Requirement | Decay | Demoted by |
 |-------|-------------|-------|------------|
 | `agent_proven` | 3 × `agent.run.completed` in 30 days | — | — |
-| `agent_trusted` | 10 × `agent.run.completed` in 30 days | `expires_interval: '30 days'` | `token.refresh_reused`, `graphql.error:PRINCIPAL_CHILD_WIDENS` |
+| `agent_trusted` | 10 × `agent.run.completed` in 30 days | `expires_interval: '30 days'` | `token.refresh_reused`, `PRINCIPAL_CHILD_WIDENS` |
 
 **The preset ships no `unlocks`.** Which bits an untrusted agent is denied is the scope administrator's decision — inline the ladder (or capture and re-register it, see the events skill) and name them:
 
@@ -51,7 +51,7 @@ Shipped trust-ladder preset, requested by slug exactly like `humanity` / `metere
     { "level": "agent_proven",  "event": "agent.run.completed", "required_count": 3,  "period_interval": "30 days" },
     { "level": "agent_trusted", "event": "agent.run.completed", "required_count": 10, "period_interval": "30 days",
       "expires_interval": "30 days",
-      "revoked_by": ["token.refresh_reused", "graphql.error:PRINCIPAL_CHILD_WIDENS"],
+      "revoked_by": ["token.refresh_reused", "PRINCIPAL_CHILD_WIDENS"],
       "unlocks": ["manage_services", "manage_domains"] }
   ]
 }]
@@ -65,18 +65,18 @@ Read that as: a principal in this org may not `manage_services` / `manage_domain
 |-------|-------------|---------------|
 | `agent.run.completed` | The scope's invocations ledger when a run finishes | the principal |
 | `token.refresh_reused` | `refreshAccessToken` on replay — recorded through the recorder of **every** entity the principal reaches, because a leaked credential is evidence about the credential, not one scope | the principal |
-| `graphql.error` | `ErrorEventsPlugin` (see below) | the principal (falls back to the human if there is none) |
+| `PRINCIPAL_CHILD_WIDENS` (any error code) | `ErrorEventsPlugin` (see below) | the principal (falls back to the human if there is none) |
 
-## `graphql.error` — the generic refusal event
+## Refusal events — the error code is the event name
 
-Since `@constructive-io/graphql-server` **>= 5.23**, `ErrorEventsPlugin` records one `graphql.error` event per failed mutation **after** the transaction has rolled back, so the evidence survives the refusal that caused it. The payload carries:
+When a mutation is refused, `ErrorEventsPlugin` in `@constructive-io/graphql-server` records one event **after** the transaction has rolled back, so the evidence survives the refusal that caused it. The event is recorded through the scope's events module (`record_error`) under the **error code itself** — `PRINCIPAL_CHILD_WIDENS`, `LIMIT_REACHED`, … exactly as the database raised it. Nothing is prefixed and there is no separate refusal event type: the code you see in the GraphQL error response is the name you put in `revoked_by`.
 
-| Payload key | Value |
+| Event field | Value |
 |-------------|-------|
-| `code` | The application error code, e.g. `PRINCIPAL_CHILD_WIDENS`, `LIMIT_REACHED`, `API_KEY_LIMIT_REACHED` |
-| `operation` | The mutation name that failed |
+| `name` | The application error code, e.g. `PRINCIPAL_CHILD_WIDENS`, `LIMIT_REACHED`, `API_KEY_LIMIT_REACHED` |
+| `payload.operation` | The mutation name that failed |
 
-Ladders match on the pair with the `event:code` syntax in `revoked_by` (`"graphql.error:PRINCIPAL_CHILD_WIDENS"`); a bare `"graphql.error"` would demote on *any* refused mutation, which you almost never want.
+The events module registers every such code as an event type with `category = 'error'` and `feeds_levels = false`, so a refusal can **demote** (via `revoked_by`) but never **earns** ladder progress. Error codes are `UPPER_SNAKE` and lifecycle events are `dotted.lowercase`, so the two never collide in the shared namespace.
 
 Codes worth gating on for an agent ladder:
 
@@ -91,13 +91,13 @@ Only **authenticated mutations** are recorded — query errors and anonymous tra
 
 ## `limit_refusals` — the refusals a tenant can see
 
-Each scope with an events module exposes a **security-invoker view**, `limit_refusals`, granted to `authenticated`. It is the plan/quota/rate family of `graphql.error` rows — `code` in `LIMIT_REACHED`, `RATE_LIMIT_EXCEEDED`, `INVOCATION_RATE_LIMIT_EXCEEDED`, `API_KEY_LIMIT_REACHED`, `IDENTITY_PROVIDER_QUOTA_EXCEEDED` — one row per refusal, so an app can show "who hit which wall and when" without reading the raw ledger.
+Each scope with an events module exposes a **security-invoker view**, `limit_refusals`, granted to `authenticated`. It is the plan/quota/rate family of refusal events — event name in `LIMIT_REACHED`, `RATE_LIMIT_EXCEEDED`, `INVOCATION_RATE_LIMIT_EXCEEDED`, `API_KEY_LIMIT_REACHED`, `IDENTITY_PROVIDER_QUOTA_EXCEEDED` — one row per refusal, so an app can show "who hit which wall and when" without reading the raw ledger.
 
 | Column | Meaning |
 |--------|---------|
 | `id` | Event id |
 | `actorId` | The principal (or human) that was refused |
-| `code` | The refusal code (from the event payload) |
+| `code` | The refusal code (the event name) |
 | `operation` | The mutation that was refused |
 | `count` | Occurrences folded into this row |
 | `createdAt` | When |

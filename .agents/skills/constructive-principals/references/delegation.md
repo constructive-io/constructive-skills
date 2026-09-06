@@ -72,7 +72,7 @@ Generated `Principal` fields that describe the tree (read-only in practice): `pa
 | `membership_settings.allow_principal_delegation` | org | Org-level veto when the caller's credential is org-bound |
 | `membership_settings.allow_principal_owned_api_keys` | org | Whether org principals may hold standing keys at all |
 
-These are tenant-generated settings rows; edit them through the **tenant** ORM the way [`constructive-auth` → auth-settings.md](../../constructive-auth/references/auth-settings.md) edits `db.appSettingsAuth`, not through the platform auth target.
+These are tenant-generated settings rows set at provisioning by `sessions_module` / the org's membership settings. **SDK gap:** neither `app_settings_auth` nor `membership_settings` is a generated ORM model, so there is no supported SDK path to change them after provisioning — see [`constructive-auth` → auth-settings.md](../../constructive-auth/references/auth-settings.md). Do not write SQL against them.
 
 ### Revocation follows the tree
 

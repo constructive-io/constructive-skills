@@ -1,6 +1,6 @@
 ---
 name: constructive-principals
-description: "Principals — scoped sub-identities for API keys and agents: short-lived access tokens with rotating refresh (mintAccessToken/refreshAccessToken), narrow-only child principals (createChildPrincipal), principal presets (createPrincipalFromPreset), API-key TTL caps, cascade revocation, the intent claim, trust-ladder unlocks and the agent ladder, graphql.error refusal events and limit_refusals. Use when asked to 'create an API key', 'issue an agent credential', 'mint an access token', 'refresh token', 'REFRESH_TOKEN_REUSED', 'delegate to a child principal', 'PRINCIPAL_CHILD_WIDENS', 'deploy-bot preset', 'read-only-analyst', 'agent trust ladder', 'unlock a capability', 'scope an agent to an org', 'entity-scoped API key', 'read-only API key', 'revoke an API key', 'revoke a session', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', 'limit_refusals', or when managing agent/API-key identities via the SDK ORM."
+description: "Principals — scoped sub-identities for API keys and agents: short-lived access tokens with rotating refresh (mintAccessToken/refreshAccessToken), narrow-only child principals (createChildPrincipal), principal presets (createPrincipalFromPreset), API-key TTL caps, cascade revocation, the intent claim, trust-ladder unlocks and the agent ladder, refusal events recorded under their error code, and limit_refusals. Use when asked to 'create an API key', 'issue an agent credential', 'mint an access token', 'refresh token', 'REFRESH_TOKEN_REUSED', 'delegate to a child principal', 'PRINCIPAL_CHILD_WIDENS', 'deploy-bot preset', 'read-only-analyst', 'agent trust ladder', 'unlock a capability', 'scope an agent to an org', 'entity-scoped API key', 'read-only API key', 'revoke an API key', 'revoke a session', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', 'limit_refusals', or when managing agent/API-key identities via the SDK ORM."
 metadata:
   author: constructive-io
   version: "1.1.0"
@@ -24,7 +24,7 @@ Use this skill when:
 - Creating a **read-only** credential that physically cannot write
 - Scoping a credential to **specific orgs** (or leaving it unrestricted)
 - **Revoking** a session, key, or principal and understanding what cascades
-- Withholding capabilities from an agent until it has **earned trust** (`agent` ladder, `unlocks`, `revoked_by`) and reading the **refusals** it hit (`graphql.error`, `limit_refusals`)
+- Withholding capabilities from an agent until it has **earned trust** (`agent` ladder, `unlocks`, `revoked_by`) and reading the **refusals** it hit (error-code events, `limit_refusals`)
 - Understanding why a credential can see less than its owning human
 
 ## Principal vs Agent vs API Key
@@ -230,9 +230,9 @@ Revoking disables the credential but keeps the row (with `revokedAt` set) for au
 
 ## Trust & Refusals
 
-A scope's trust ladder can **withhold** capabilities from principals until they earn a level. The shipped `agent` preset (`["events_module", { "scope": "org", "trust_ladder": "agent" }]`) grants `agent_proven` after 3 and `agent_trusted` after 10 `agent.run.completed` events in 30 days; `agent_trusted` lapses after 30 days and is revoked (with progress reset) by `token.refresh_reused` or `graphql.error:PRINCIPAL_CHILD_WIDENS`. Which bits are withheld is yours to name via `unlocks` — the preset ships none.
+A scope's trust ladder can **withhold** capabilities from principals until they earn a level. The shipped `agent` preset (`["events_module", { "scope": "org", "trust_ladder": "agent" }]`) grants `agent_proven` after 3 and `agent_trusted` after 10 `agent.run.completed` events in 30 days; `agent_trusted` lapses after 30 days and is revoked (with progress reset) by `token.refresh_reused` or `PRINCIPAL_CHILD_WIDENS`. Which bits are withheld is yours to name via `unlocks` — the preset ships none.
 
-Refused mutations are recorded as `graphql.error` events (`payload.code`, `payload.operation`) by `ErrorEventsPlugin` (graphql-server ≥ 5.23) after rollback, and the quota family is exposed through the tenant's `limit_refusals` view. See [trust-and-refusals.md](./references/trust-and-refusals.md).
+Refused mutations are recorded by `ErrorEventsPlugin` after rollback as events whose **name is the error code itself** (`PRINCIPAL_CHILD_WIDENS`, `LIMIT_REACHED`, … with `payload.operation`) — nothing prefixed, so `revoked_by` is one flat list of event names — and the quota family is exposed through the tenant's `limit_refusals` view. See [trust-and-refusals.md](./references/trust-and-refusals.md).
 
 ## References
 
@@ -240,7 +240,7 @@ Refused mutations are recorded as `graphql.error` events (`payload.code`, `paylo
 |------|---------|
 | [access-tokens.md](./references/access-tokens.md) | `mintAccessToken` / `refreshAccessToken` inputs and records, TTL ceilings (`access_token_duration`, `refresh_token_duration`, `max_session_chain_age`), the `intent` and lineage claims, replay detection (`REFRESH_TOKEN_REUSED`), cascade revocation (`revokeSession` / `signOut` / `revokeApiKey`), API-key TTL caps |
 | [delegation.md](./references/delegation.md) | `createChildPrincipal` narrow-only rules and errors, the settings that gate delegation, `createPrincipalFromPreset`, the `read-only-analyst` / `deploy-bot` presets, human-only widening (`setPrincipalScope`, `setPrincipalEntities`, `updatePrincipal`) |
-| [trust-and-refusals.md](./references/trust-and-refusals.md) | Trust-gated authority (`unlocks`, `expires_interval`, `revoked_by`, `period_interval`), the `agent` ladder preset, `graphql.error` via `ErrorEventsPlugin`, the `limit_refusals` view |
+| [trust-and-refusals.md](./references/trust-and-refusals.md) | Trust-gated authority (`unlocks`, `expires_interval`, `revoked_by`, `period_interval`), the `agent` ladder preset, error-code refusal events via `ErrorEventsPlugin`, the `limit_refusals` view |
 | [principal-model.md](./references/principal-model.md) | Identity model — dual-claim (identity vs authority), user type 3, capability subsetting, `allowedMask`, `isReadOnly`, `bypassStepUp`, what meters to human vs principal |
 | [api-keys.md](./references/api-keys.md) | API key lifecycle via the ORM — `createApiKey`/`createOrgApiKey`, access levels, MFA level, expiry, the `STEP_UP_REQUIRED` + `verifyPassword` retry, listing via `orgApiKeyList`, revocation, plaintext-once handling |
 | [org-scoping.md](./references/org-scoping.md) | Scoping via `principalEntity`, `principalScopeOverride`, the create-time `entityIds` variant and its probe, empty-means-unrestricted semantics, and how scoping follows the owner's membership changes |

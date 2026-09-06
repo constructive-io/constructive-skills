@@ -78,7 +78,7 @@ Both tokens are returned **once**. Store the refresh token server-side; never lo
 | Exchange switched off per tenant | `auth_settings.allow_token_exchange = false` → `TOKEN_EXCHANGE_DISABLED` |
 | Caller credential must itself be exchangeable | `CREDENTIAL_NOT_EXCHANGEABLE` |
 
-These `auth_settings` columns live on the tenant's `app_settings_auth` row and are edited the same way as the MFA toggles in [`constructive-auth` → auth-settings.md](../../constructive-auth/references/auth-settings.md) (`db.appSettingsAuth.update({ data: { ... } })` on the **tenant** ORM). Do not try to set them through the platform auth target.
+These `auth_settings` columns live on the tenant's `app_settings_auth` row, set at provisioning by `sessions_module`. **SDK gap:** `app_settings_auth` is not a generated ORM model in any target, so there is no supported SDK path to change them afterwards — see [`constructive-auth` → auth-settings.md](../../constructive-auth/references/auth-settings.md). Do not write SQL against it.
 
 ## Refresh (rotate)
 
