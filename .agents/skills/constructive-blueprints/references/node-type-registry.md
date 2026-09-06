@@ -43,6 +43,7 @@ Source: `constructive-db/packages/node-type-registry/src/`
 | `CheckLessThan` | CHECK constraint: column < value, or column_a < column_b |
 | `CheckNotEqual` | CHECK constraint: column_a != column_b (prevents self-referencing) |
 | `CheckOneOf` | CHECK constraint: column IN ('value1', 'value2', ...) |
+| `CheckOwnedRelation` | Same-owner guard for typed pointer columns that cannot be a physical FK (target is a catalog projection, or spans planes): a BEFORE INSERT OR UPDATE trigger requires every set pointer to resolve, through a link table carrying `(owner_scope, owner_key)`, to a row owned by the same scope owner as the referencing row. Parameters: `link_schema_name`, `owner_scope`, `owner_key_field_name` (null for a global scope), `pointers[] { field_name, link_table_name, target_type_field_name?, target_type_value?, allow_owner_tier?, allow_frame_chain? }`, `arity` (`exactly_one` default — polymorphic target; `all` — junction / mandatory belongs-to; `any` — optional pointers), `required_error` (default `OWNED_RELATION_TARGET_REQUIRED`), `denied_error` (default `OWNED_RELATION_TARGET_NOT_OWNED`), optional `trigger_function_schema` / `trigger_function_name` / `trigger_name`. Visibility/publication flags are never an authorization input; every identifier is validated against the metaschema before emission |
 
 ## Relation Nodes
 
