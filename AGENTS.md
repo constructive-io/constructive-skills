@@ -22,6 +22,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
 | **constructive-billing** | constructive-sdk-billing, constructive-sdk-limits | Billing, limits, plans, credits, feature flags, meters |
 | **constructive-storage** | constructive-sdk-uploads | Uploads, buckets, presigned URLs, file lifecycle |
+| **constructive-sites** | sites-*/mantra skills from constructive-db | Sites — static sites, releases/rollback, previews, versioned pages, Mantra, content presets, app links and deep links (SDK ORM) |
 | **constructive-search** | search refs from constructive-sdk-graphql, graphile-postgis | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified |
 | **constructive-agents** | constructive-sdk-ai | AI — agent module, LLM, RAG, embeddings, agentic-kit |
 | **constructive-events** | constructive-sdk-events | EventTracker, achievements, referrals, invite virality |
