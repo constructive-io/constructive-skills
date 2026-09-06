@@ -31,6 +31,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-jobs** | Background jobs — JobTrigger, Process* wrappers, Knative worker, scheduling |
 | **constructive-flow-graphs** | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | Internationalization — DataI18n, multilingual search, lang_column, i18n_module |
+| **constructive-functions** | Customer-authored functions & trigger attachments — `db.function` (sql/plpgsql/trigger kinds, validated `bodyAst`, `apiExposed`), `db.trigger` attachments (`events`, `whenAst`) |
 | **constructive-history** | Row history — DataHistory version tables, retention/partitioning, graphile-history (history, versionAt, versionsBetween, restore) |
 | **constructive-frontend** | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
 | **constructive-codegen** | Optional generated clients for stable custom-domain schemas |
