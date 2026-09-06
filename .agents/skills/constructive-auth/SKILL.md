@@ -1,9 +1,9 @@
 ---
 name: constructive-auth
-description: "Configure Constructive identity, sign-up, sign-in, recovery, sessions, MFA, devices, identity linking, CAPTCHA, rate limits, cookie auth, and service-level authentication behavior. Use for auth policy and backend capability questions. Use constructive-blocks for installing the Authentication feature pack or Console Kit auth module."
+description: "Configure Constructive identity, sign-up, sign-in, recovery, sessions, MFA, devices, identity linking, CAPTCHA, rate limits, cookie auth, and service-level authentication behavior (databaseSetting/apiSetting feature flags and request-protection bounds, webauthnSetting). Use for auth policy and backend capability questions, or when asked to 'disable introspection', 'set a rate limit', 'statement timeout', 'maxQueryDepth', 'enableBilling', 'link identity', 'passkeys'. Use constructive-blocks for installing the Authentication feature pack or Console Kit auth module."
 metadata:
   author: constructive-io
-  version: "2.0.0"
+  version: "2.1.0"
 ---
 
 # Constructive Auth
@@ -32,7 +32,7 @@ See [auth-flow.md](./references/auth-flow.md) for the custom-client boundary and
 
 ## Auth Settings
 
-`app_settings_auth` controls authentication behavior exposed by the installed backend modules:
+`app_settings_auth` (private auth schema, **no generated ORM model** — provisioning-time settings; see the SDK-gap note in the reference) controls authentication behavior exposed by the installed backend modules:
 
 - **MFA:** `require_mfa`, supported factors, backup codes, step-up window, and challenge expiry.
 - **Anonymous sessions:** `allow_anonymous_sessions` for explicitly designed pre-auth use cases.
@@ -49,9 +49,17 @@ Device tracking can combine trusted-device recognition, MFA on a new device, and
 
 See [device-settings.md](./references/device-settings.md) for the composition matrix and [service-settings.md](./references/service-settings.md) for service-level routing, RLS, WebAuthn, and public-key configuration.
 
+## Service Settings and Request Protection
+
+`db.databaseSetting` (one row per database) and `db.apiSetting` (per-API override) carry the feature flags (`enableRealtime`, `enableBulk`, `enableBilling`, `enableIntrospection`, …) and the **request-protection bounds** (`statementTimeoutMs`, `maxConcurrentRequests`, `maxQueueWaitMs`, `rateLimitRpm`, `rateLimitBurst`, `maxQueryDepth`, `maxQueryCost`, `maxPageSize`, `maxRequestBytes`, `lockTimeoutMs`, `idleInTransactionTimeoutMs`). Bounds are a lower-only cascade: `null` inherits the platform default, an API row may only tighten the database row, and the platform ceiling is a code constant. `enableIntrospection` defaults to `true` — turning it off is the opt-in.
+
+Passkeys: `db.webauthnSetting` (RP config) and `auth.webauthnCredential` (a user's credentials) are ORM models; the register/sign-in ceremonies have **no generated operation** (SDK gap).
+
+See [service-settings.md](./references/service-settings.md) for the field tables and update examples.
+
 ## Identity Linking
 
-Identity linking associates multiple authentication providers with one user while preserving collision and primary-method policy. `allow_link_by_email` controls whether a matching provider email may offer linking; `enforce_primary_auth_method` controls whether sign-in is restricted to the user's primary method.
+Identity linking associates multiple authentication providers with one user while preserving collision and primary-method policy. `allow_link_by_email` controls whether a matching provider email may offer linking; `enforce_primary_auth_method` controls whether sign-in is restricted to the user's primary method. Both toggles are provisioning-time settings with no generated ORM field (SDK gap); the client-callable operation is `auth.mutation.linkIdentity`, and `auth.identityProvider` exposes `enabled`/`displayName` per provider.
 
 See [identity-linking.md](./references/identity-linking.md) for operation behavior and error handling.
 
@@ -62,7 +70,7 @@ See [identity-linking.md](./references/identity-linking.md) for operation behavi
 | [auth-flow.md](./references/auth-flow.md) | Explicit endpoints, session boundary, and auth acceptance scenarios |
 | [auth-settings.md](./references/auth-settings.md) | MFA, anonymous sessions, CAPTCHA, cookie auth, and rate limits |
 | [device-settings.md](./references/device-settings.md) | Device tracking, trusted devices, and approval gates |
-| [service-settings.md](./references/service-settings.md) | Service-level auth, WebAuthn, CORS, and RLS configuration |
+| [service-settings.md](./references/service-settings.md) | `databaseSetting`/`apiSetting` flags and request-protection bounds, WebAuthn, CORS, RLS, pubkey |
 | [identity-linking.md](./references/identity-linking.md) | Identity linking and account collision behavior |
 
 ## Cross-References

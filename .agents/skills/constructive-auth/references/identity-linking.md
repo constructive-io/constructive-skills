@@ -167,47 +167,46 @@ erDiagram
 
 ## Configuration
 
-### Enable linking for a provider
+### Identity providers (`auth.identityProvider`)
 
-```sql
--- Allow Google sign-ins to offer linking when email matches existing account
-UPDATE auth_private.identity_providers
-SET allow_link_by_email = true
-WHERE slug = 'google';
-```
-
-### Disable primary auth enforcement (allow any linked method to sign in)
-
-```sql
-UPDATE auth_private.app_settings_auth
-SET enforce_primary_auth_method = false;
-```
-
-## SDK Usage
+The generated auth ORM exposes the provider catalog with four writable fields — `slug`, `kind`, `displayName`, `enabled`:
 
 ```typescript
 import { createClient as createAuthClient } from '@constructive-db/sdk/auth';
 
-const auth = createAuthClient({ endpoint });
+const auth = createAuthClient({ endpoint: authEndpoint, token });
 
-// 1. Try OAuth sign-in
-try {
-  const result = await auth.mutation.signInIdentity({
-    input: { service: 'facebook', identifier: fbUserId, details: fbProfile }
-  }).execute();
-  // Success — user is signed in
-} catch (err) {
-  if (err.message.includes('IDENTITY_LINK_AVAILABLE')) {
-    // 2. Prompt user to sign in with existing method
-    const signIn = await auth.mutation.signIn({
-      input: { email, password }
-    }).execute();
+const { identityProviders } = await auth.identityProvider
+  .findMany({ select: { slug: true, kind: true, displayName: true, enabled: true } })
+  .unwrap();
 
-    // 3. Link the new provider
-    await auth.mutation.linkIdentity({
-      input: { service: 'facebook', identifier: fbUserId, details: fbProfile }
-    }).execute();
-    // Facebook is now linked — future logins work
-  }
-}
+// Turn a provider off (sign_in_identity then raises IDENTITY_PROVIDER_NOT_CONFIGURED)
+await auth.identityProvider
+  .update({ where: { id: googleProviderId }, data: { enabled: false }, select: { id: true, enabled: true } })
+  .unwrap();
 ```
+
+### SDK gaps — the two linking toggles
+
+`allow_link_by_email` (per provider) and `enforce_primary_auth_method` (app-wide auth settings) are **not** fields on any generated ORM model (`IdentityProviderPatch` has no `allowLinkByEmail`; there is no `appSettingsAuth`/`authSetting` model in the auth target). Both are set at provision time by `sessions_module`; changing them after provisioning has no supported SDK path. Do not document raw SQL for them — flag it as an SDK gap.
+
+## SDK Usage
+
+`sign_in_identity` runs **server-side** in the OAuth callback (the Mantra `/auth/callback` route or the platform's `express-context` auth surface); it is not a generated ORM mutation. The frontend sees its error code on the callback response. The only client-callable half of the flow is `linkIdentity`:
+
+```typescript
+// Generated input: LinkIdentityInput { service: string; identifier: string; details?: Record<string, unknown> }
+// Payload: { result: boolean | null }
+
+// After the callback returned IDENTITY_LINK_AVAILABLE, the user signs in with
+// their primary method (password/magic link/etc.) — then, as that user:
+const { linkIdentity } = await auth.mutation
+  .linkIdentity(
+    { input: { service: 'facebook', identifier: fbUserId, details: fbProfile } },
+    { select: { result: true } },
+  )
+  .unwrap();
+// linkIdentity.result === true — the next Facebook callback signs the user in
+```
+
+`linkIdentity` requires an authenticated session with a fresh step-up (`STEP_UP_REQUIRED` otherwise — see the `constructive-security` skill for `GuardStepUp`).
