@@ -2,7 +2,7 @@
 
 Comprehensive reference for authentication and session configuration in the Constructive platform. All settings live on the `app_settings_auth` singleton table, provisioned by `sessions_module`.
 
-All examples below use the codegen'd ORM. No raw SQL.
+**SDK gap:** `app_settings_auth` lives in the private auth schema and is **not** a generated ORM model in any target (`constructive-sdk`, `@constructive-db/sdk/auth`, `/api`) — there is no `db.appSettingsAuth`. Its values are set at provisioning by `sessions_module`/the auth blueprint preset and are read by the auth operations (`signIn`, `completeMfaChallenge`, `requestCrossOriginToken`, …). The tables below document what each field controls so you can reason about behavior; do not write ORM or SQL against them. What *is* ORM-exposed on the auth target: `auth.userSettingsSecurity` (per-user MFA state) and the auth mutations listed in `auth-flow.md`.
 
 ---
 
@@ -20,25 +20,7 @@ Seven toggles on `app_settings_auth` control multi-factor authentication:
 | `step_up_window` | interval | `30 minutes` | How long a step-up verification remains valid |
 | `mfa_challenge_expiry` | interval | `5 minutes` | How long an MFA challenge token remains valid after password verification |
 
-### Enabling MFA via ORM
 
-```ts
-import { db } from './orm';
-
-// Enable mandatory MFA with TOTP + email, 15-min step-up window
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: {
-    requireMfa: true,
-    allowTotpMfa: true,
-    allowEmailMfa: true,
-    allowSmsMfa: false,
-    allowBackupCodes: true,
-    stepUpWindow: '15 minutes',
-    mfaChallengeExpiry: '5 minutes'
-  }
-});
-```
 
 ---
 
@@ -50,12 +32,6 @@ await db.appSettingsAuth.update({
 
 Anonymous sessions create a session record with `user_id = NULL` and `is_anonymous = true`. They are commonly used for CSRF token issuance before login and shopping cart persistence.
 
-```ts
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: { allowAnonymousSessions: false }
-});
-```
 
 ---
 
@@ -68,15 +44,6 @@ await db.appSettingsAuth.update({
 
 The secret key should be stored as a `simple_secret` (not in `app_settings_auth`).
 
-```ts
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: {
-    enableCaptcha: true,
-    captchaSiteKey: '6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'
-  }
-});
-```
 
 ---
 
@@ -94,20 +61,6 @@ await db.appSettingsAuth.update({
 
 When `enable_cookie_auth = true`, the server sets a session cookie on sign-in instead of returning a bearer token in the response body. Requires `require_csrf_for_auth = true` for security.
 
-```ts
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: {
-    enableCookieAuth: true,
-    cookieSecure: true,
-    cookieSamesite: 'strict',
-    cookieDomain: '.myapp.com',
-    cookieHttponly: true,
-    cookieMaxAge: '7 days',
-    cookiePath: '/'
-  }
-});
-```
 
 ---
 
@@ -122,17 +75,6 @@ await db.appSettingsAuth.update({
 | `remember_me_duration` | interval | `30 days` | Extended session duration for remember-me logins |
 | `default_credential_duration` | interval | `1 hour` | Default bearer token credential expiration |
 
-```ts
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: {
-    sessionIdleTimeout: '2 hours',
-    maxSessionsPerUser: 5,
-    allowMultipleSessions: true,
-    defaultSessionDuration: '1 week'
-  }
-});
-```
 
 ---
 
@@ -144,12 +86,6 @@ await db.appSettingsAuth.update({
 
 When enabled, the `request_cross_origin_token` / `sign_in_cross_origin` flow allows transferring a session from one domain to another (e.g. `app.example.com` → `admin.example.com`).
 
-```ts
-await db.appSettingsAuth.update({
-  where: { id: settingsId },
-  data: { allowCrossOriginToken: false }
-});
-```
 
 ---
 
@@ -166,23 +102,9 @@ Provides a `check_rate_limit` function that enforces sliding-window rate limits 
 
 **Gate:** `rate_limit_meters_module` — included in `full` preset.
 
-### Configuring via ORM
 
-Rate limit meters are provisioned as part of `databaseProvisionModule`. Once provisioned, configure window limits per plan:
+Rate limit meters are provisioned as part of `databaseProvisionModule`. **SDK gap:** `rate_window_limits`, `rate_limit_overrides` and `rate_limit_state` have no generated ORM model (only the module's `rateWindowLimitsTableId`/`rateWindowLimitsTableName` wiring appears on `rateLimitMetersModule`); per-plan window limits cannot be configured through the SDK today.
 
-```ts
-// Set rate limits for a plan tier
-await db.rateWindowLimits.create({
-  data: {
-    planId: planId,
-    meterSlug: 'api_calls',
-    windowPeriod: '1 hour',
-    scope: 'actor',
-    maxRequests: 1000,
-    lockoutDuration: '15 minutes'
-  }
-});
-```
 
 ---
 

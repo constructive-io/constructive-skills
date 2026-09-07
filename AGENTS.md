@@ -22,6 +22,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-data-modeling** | constructive-sdk-tables, fields, relations, constraints, indexes, sdk-database | Tables, fields, relations, constraints, indexes (SDK CRUD) |
 | **constructive-billing** | constructive-sdk-billing, constructive-sdk-limits | Billing, limits, plans, credits, feature flags, meters |
 | **constructive-storage** | constructive-sdk-uploads | Uploads, buckets, presigned URLs, file lifecycle |
+| **constructive-sites** | sites-*/mantra skills from constructive-db | Sites — static sites, releases/rollback, previews, versioned pages, Mantra, content presets, app links and deep links (SDK ORM) |
 | **constructive-search** | search refs from constructive-sdk-graphql, graphile-postgis | All search strategies — tsvector, BM25, trigram, pgvector, PostGIS, unified |
 | **constructive-agents** | constructive-sdk-ai | AI — agent module, LLM, RAG, embeddings, agentic-kit |
 | **constructive-events** | constructive-sdk-events | EventTracker, achievements, referrals, invite virality |
@@ -30,6 +31,7 @@ A collection of skills for AI coding agents working with Constructive tooling. S
 | **constructive-jobs** | *(standalone)* | Background jobs, JobTrigger, Knative worker pipeline |
 | **constructive-flow-graphs** | graph_module, merkle_store | Graph module + merkle store (SDK-authorable) with FBP spec links |
 | **constructive-i18n** | constructive-sdk-i18n | Internationalization — DataI18n, multilingual search, i18n_module |
+| **constructive-functions** | *(standalone)* | Customer-authored functions & trigger attachments — `db.function` (sql/plpgsql/trigger kinds, validated `bodyAst`, `apiExposed`), `db.trigger` attachments (`events`, `whenAst`) |
 | **constructive-history** | *(standalone)* | Row history — DataHistory node, append-only version tables, pg_partman retention, graphile-history (versionAt, versionsBetween, restore) |
 | **constructive-frontend** | *(standalone)* | UI primitives, visual composition, CRUD Stack cards, and custom domain UI patterns |
 | **constructive-codegen** | codegen refs from constructive-sdk-graphql | Optional generated clients for stable custom-domain schemas |
