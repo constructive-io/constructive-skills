@@ -92,7 +92,7 @@ These are different schemas, but they share the same Constructive-managed prefix
 | `DataId` | Any | `id` |
 | `DataDirectOwner` | `AuthzDirectOwner` | `id`, `owner_id` |
 | `DataEntityMembership` | `AuthzEntityMembership` | `id`, `entity_id` |
-| `DataOwnershipInEntity` | `AuthzEntityMembership` (and/or `AuthzDirectOwner`) | `id`, `owner_id`, `entity_id` |
+| `DataOwnershipInEntity` | `AuthzEntityMembership` (and/or `AuthzMemberOwner` for an owner-only arm) | `id`, `owner_id`, `entity_id` |
 | `DataTimestamps` | Any | `id`, `created_at`, `updated_at` |
 | `DataPeoplestamps` | Any | `id`, `created_by`, `updated_by` |
 | `DataPrincipalstamps` | Any | `id`, `created_by_principal`, `updated_by_principal` |
@@ -110,19 +110,20 @@ Notes:
 
 Read the `constructive-security` skill for the full list of 14 valid Authz* policy types, their configs, and semantics. Read the `constructive-db-data-modules` skill for the Data* → Authz* pairing table.
 
-There is no `AuthzOwnershipInEntity` type. `DataOwnershipInEntity` pairs with `AuthzEntityMembership` and/or `AuthzDirectOwner`.
+There is no `AuthzOwnershipInEntity` type. `DataOwnershipInEntity` pairs with `AuthzEntityMembership` and/or `AuthzMemberOwner`. Do not pair it with a bare `AuthzDirectOwner`: permissive policies are ORed, so the owner arm would keep granting access after the owner is removed from the entity. `AuthzDirectOwner` is for personal tables with no membership context.
 
 Prefer `AuthzEntityMembership` over `AuthzMembership` for entity-scoped app data.
 
 ### Common Policy Configurations (Quick Reference)
 
-For the full 14-type reference including `AuthzComposite`, read the `constructive-security` skill. Below are the 6 types most likely needed in typical apps.
+For the full 14-type reference including `AuthzComposite`, read the `constructive-security` skill. Below are the 7 types most likely needed in typical apps.
 
 | policyType | policyData | Use Case |
 |---|---|---|
 | `AuthzEntityMembership` | `{ "entity_field": "entity_id", "membership_type": 2 }` | Org-scoped data: all org members can access. Default choice for most app tables |
-| `AuthzDirectOwner` | `{ "entity_field": "owner_id" }` | Personal data: only the row creator can access |
-| `AuthzDirectOwnerAny` | `{ "entity_fields": ["sender_id", "receiver_id"] }` | Multi-owner: any of the listed user fields grants access |
+| `AuthzDirectOwner` | `{ "entity_field": "owner_id" }` | Personal data with no membership context: only the row creator can access. Not for membership-scoped tables — use `AuthzMemberOwner` / `AuthzAppMemberOwner` there |
+| `AuthzMemberOwner` | `{ "owner_field": "owner_id", "entity_field": "entity_id", "membership_type": 2 }` | Owner-private rows inside an org: creator can access only while still a member |
+| `AuthzDirectOwnerAny` | `{ "entity_fields": ["sender_id", "receiver_id"] }` | Multi-owner: any of the listed user fields grants access (same membership caveat as `AuthzDirectOwner`) |
 | `AuthzAllowAll` | `{}` | Public reference data. WARNING: any authenticated user can read AND write |
 | `AuthzPublishable` | `{}` | Draft/published gating. Combine with an identity policy |
 | `AuthzDenyAll` | `{}` | Explicitly block a privilege |

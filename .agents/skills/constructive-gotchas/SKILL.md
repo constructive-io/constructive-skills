@@ -94,6 +94,18 @@ If you copy-edit the example verbatim, you will carry over generic tables into y
 
 > `AuthzDirectOwner`'s config key is **`entity_field`** (value = the owner column, e.g. `'owner_id'`), NOT `owner_field` (that belongs to `AuthzMemberOwner` / `AuthzPeerOwnership` / `AuthzRelatedPeerOwnership` / `AuthzOrgHierarchy`). Using `owner_field` triggers `MISSING_REQUIRED_FIELD`.
 
+## RLS-POLICY-002
+
+**Never put a bare `AuthzDirectOwner` / `AuthzDirectOwnerAny` on a table that also has a membership policy.** Permissive policies are ORed, so an "owner OR org member" pair means a user removed from the org keeps reading and editing every row they authored — authorship outlives membership. The platform does not reject this at write time; it is your responsibility. Fix by making the owner arm a compound member-owner policy:
+
+| Row shape | Use |
+|---|---|
+| App-global row, owner column only | `AuthzAppMemberOwner { owner_field }` |
+| `entity_id` (or `organization_id`, …) on the row | `AuthzMemberOwner { owner_field, entity_field, membership_type \| entity_type }` |
+| Entity reached through a related table (FK hop) | `AuthzRelatedMemberOwner { owner_field, entity_field, obj_* }` |
+
+`AuthzDirectOwner` stays correct only for personal tables with no membership context (the RLS-POLICY-001 org-less default) or where the owner is legitimately not a member (pending membership self-read, invite receiver, share grantee).
+
 ## RLS-USERS-UPDATE-001
 
 `updateUser` returns **200 but persists 0 rows** (silent no-op) on the dynamically-provisioned per-tenant `users` table. The dynamic provisioner enables RLS + a column UPDATE grant to `authenticated` (username/display_name/profile_picture) but emits ONLY an `auth_sel` SELECT policy and **no UPDATE policy**, so RLS rejects every update. This is deterministic (verified identical across tenants) and is **not expressible in the blueprint** — `users` is module-owned.

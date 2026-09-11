@@ -200,7 +200,7 @@ Limit visibility to a fixed number of levels:
 
 ### Composing with Other Policies
 
-`AuthzOrgHierarchy` is typically combined with `AuthzDirectOwner` (so users always see their own rows) and scoped to an entity:
+`AuthzOrgHierarchy` is typically combined with `AuthzMemberOwner` (so users see their own rows while they remain a member of the entity) and scoped to an entity. Use `AuthzMemberOwner` rather than a bare `AuthzDirectOwner` here: the rows are entity-scoped, and a bare owner arm would keep granting access after the user leaves the org.
 
 ```jsonc
 // Full pattern: own rows + hierarchy visibility
@@ -216,9 +216,9 @@ Limit visibility to a fixed number of levels:
       }
     },
     {
-      "$type": "AuthzDirectOwner",
+      "$type": "AuthzMemberOwner",
       "operations": ["select", "update", "delete"],
-      "data": { "entity_field": "owner_id" }
+      "data": { "owner_field": "owner_id", "entity_field": "entity_id", "membership_type": 2 }
     },
     {
       "$type": "AuthzAllowAll",

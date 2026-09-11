@@ -26,8 +26,10 @@ When `has_storage: true`, the system creates two tables per entity type, prefixe
 | **files** | `data_room_files` | `actor_id`, `is_public`, `key`, `mime_type`, `size` | Individual file records |
 
 **Column availability matters for policy scoping:**
-- **Buckets** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
-- **Files** has `is_public` and `actor_id` — supports `AuthzPublishable` and `AuthzDirectOwner`
+- **Buckets** has `is_public` and `actor_id` — supports `AuthzPublishable` and the owner policies (`actor_id` is provenance only; the defaults do not grant bucket authorship)
+- **Files** has `is_public` and `actor_id` — supports `AuthzPublishable` and the owner policies
+
+> **Authorship must be membership-fenced.** Storage tables always carry a membership policy, so an author arm must be `AuthzAppMemberOwner` (app-level storage) or `AuthzMemberOwner` (entity-scoped storage), never a bare `AuthzDirectOwner`. Permissive policies are ORed: a bare owner policy would let a removed member keep updating and deleting the files they uploaded.
 
 ## Configuring storage policies
 
@@ -46,7 +48,7 @@ The blueprint `storage` key provisions app-level storage (Phase 0.5). Bucket see
     ],
     "policies": [
       { "$type": "AuthzAppMembership", "privileges": ["select", "insert"] },
-      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "data": {"entity_field": "actor_id"} }
+      { "$type": "AuthzAppMemberOwner", "privileges": ["update", "delete"], "tables": ["files"], "data": {"owner_field": "actor_id"} }
     ],
     "upload_url_expiry_seconds": 1800,
     "download_url_expiry_seconds": 3600,
@@ -76,8 +78,9 @@ Entity-scoped storage is provisioned via `entity_types[]` with `has_storage: tru
       "has_storage": true,
       "storage_config": {
         "policies": [
-          { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-          { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
+          { "$type": "AuthzEntityMembership", "privileges": ["select", "insert"] },
+          { "$type": "AuthzMemberOwner", "privileges": ["update", "delete"], "tables": ["files"],
+            "data": { "owner_field": "actor_id", "entity_field": "owner_id", "entity_type": "data_room" } }
         ]
       }
     }
@@ -99,8 +102,9 @@ await db.entityTypeProvision.create({
     hasStorage: true,
     storageConfig: {
       policies: [
-        { $type: 'AuthzEntityMembership', privileges: ['select', 'insert', 'update', 'delete'] },
-        { $type: 'AuthzDirectOwner', privileges: ['update', 'delete'], tables: ['files'] },
+        { $type: 'AuthzEntityMembership', privileges: ['select', 'insert'] },
+        { $type: 'AuthzMemberOwner', privileges: ['update', 'delete'], tables: ['files'],
+          data: { owner_field: 'actor_id', entity_field: 'owner_id', entity_type: 'data_room' } },
       ],
     },
   },
@@ -179,14 +183,12 @@ When `policies` is `NULL` or omitted, `apply_storage_security` applies **sensibl
 
 | Table | Policy | Privileges | Suffix | Purpose |
 |-------|--------|-----------|--------|---------|
-| **Buckets** | `AuthzPublishable` (`is_public`) | `select` | `pub` | Public buckets readable by any authenticated user |
-| **Buckets** | Membership | `select`, `insert` | `mem` | Members can list and create buckets |
-| **Buckets** | `AuthzDirectOwner` (`actor_id`) | `update`, `delete` | `own` | Only the creator can modify/delete a bucket |
+| **Buckets** | Membership | `select` | `mem` | Members can resolve buckets (no `AuthzPublishable` arm — `is_public` describes how objects are served, not who sees the row) |
+| **Buckets** | Membership + `is_admin`/`is_owner` | `insert`, `update`, `delete` | `adm` | Buckets belong to the scope owner; management is admin-gated, never actor authorship |
 | **Files** | `AuthzPublishable` (`is_public`) | `select` | `pub` | Public files readable by any authenticated user |
-| **Files** | Membership | `select`, `insert` | `mem` | Members can view and upload files |
-| **Files** | `AuthzDirectOwner` (`actor_id`) | `update`, `delete` | `own` | Only the uploader can modify/delete their own files |
-| **Upload requests** | Membership | `select`, `insert`, `update` | `mem` | Members can create and manage upload requests |
-| **Upload requests** | `AuthzDirectOwner` (`actor_id`) | `select`, `insert`, `update` | `own` | Users primarily manage their own requests |
+| **Files** | Membership | `select`, `insert` | `mem` | Members can view and upload files (with `restrict_reads`, SELECT requires the `read_files` capability) |
+| **Files** | Compound member-owner (`actor_id`) | `update`, `delete` | `own` | Uploader can modify/delete their own files **while still a member**: `AuthzMemberOwner` (entity scopes), `AuthzAppMemberOwner` (app/platform), `AuthzRelatedMemberOwner` (database scope) |
+| **Files** | Membership + capability | `update` / `delete` | escalation | Members holding `write_files` / `delete_files` (or `is_admin` at global scopes) can manage anyone's files |
 
 ### Membership policy type (auto-selected)
 
@@ -200,10 +202,10 @@ The system automatically uses the correct membership policy type based on the st
 
 ### What this means in practice
 
-- **Any authenticated member** can view and upload files/buckets (via membership SELECT + INSERT)
-- **Only the creator** (matched by `actor_id`) can update or delete their own files/buckets (via AuthzDirectOwner UPDATE + DELETE)
-- **Public content** (rows where `is_public = true`) is readable by any authenticated user (via AuthzPublishable SELECT)
-- **No user can modify another user's files** — cross-user update/delete is blocked
+- **Any authenticated member** can view buckets and view/upload files (via membership SELECT + INSERT)
+- **The uploader** (matched by `actor_id`) can update or delete their own files, but only while they remain a member — authorship never survives losing membership (compound member-owner UPDATE + DELETE)
+- **Privileged members** (`write_files` / `delete_files` capability, or admins) can manage anyone's files; bucket management is admin-only
+- **Public content** (files where `is_public = true`) is readable by any authenticated user (via AuthzPublishable SELECT)
 
 ### Full replacement semantics
 
@@ -275,7 +277,8 @@ Only the file owner (the user who uploaded it) can update/delete their files. Ot
   "storage_config": {
     "policies": [
       { "$type": "AuthzEntityMembership", "privileges": ["select"] },
-      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
+      { "$type": "AuthzMemberOwner", "privileges": ["update", "delete"], "tables": ["files"],
+        "data": { "owner_field": "actor_id", "entity_field": "owner_id", "entity_type": "data_room" } }
     ]
   }
 }
@@ -283,7 +286,7 @@ Only the file owner (the user who uploaded it) can update/delete their files. Ot
 
 **Use case:** Personal documents, private uploads in a shared workspace, compliance/diligence files that are per-user.
 
-**Note:** `AuthzDirectOwner` is scoped to `["files"]` because it uses the `actor_id` column, which only exists on the files table.
+**Note:** the owner policy is scoped to `["files"]` because it uses the `actor_id` column, which only exists on the files table. It is `AuthzMemberOwner`, not `AuthzDirectOwner`, so an uploader who leaves the entity loses access to their files.
 
 ### 4. Full CRUD with owner delete + public read
 
@@ -297,7 +300,8 @@ The "kitchen sink" — entity members get full CRUD, published content is public
     "policies": [
       { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
       { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] },
-      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"], "tables": ["files"] }
+      { "$type": "AuthzMemberOwner", "privileges": ["update", "delete"], "tables": ["files"],
+        "data": { "owner_field": "actor_id", "entity_field": "owner_id", "entity_type": "data_room" } }
     ]
   }
 }
@@ -325,7 +329,8 @@ Any `Authz*` node type from the registry can be used. The most relevant ones for
 | Type | When to use | Required columns | Scope with `tables` |
 |------|------------|-----------------|---------------------|
 | `AuthzEntityMembership` | Members of the entity can access (most common) | `owner_id` | All three |
-| `AuthzDirectOwner` | Only the uploader/owner can access | `actor_id` (files), `owner_id` (buckets) | `["files"]` or `["buckets", "files"]` |
+| `AuthzMemberOwner` / `AuthzAppMemberOwner` | Only the uploader can access, and only while a member (entity-scoped / app-level storage) | `actor_id` + `owner_id` (files) | `["files"]` |
+| `AuthzDirectOwner` | **Avoid on storage tables** — bare ownership survives membership removal; use the member-owner types above | `actor_id` | — |
 | `AuthzPublishable` | Published files are publicly readable (SELECT only) | `is_public` | `["buckets", "files"]` |
 | `AuthzAppMembership` | App-level membership gate (hardcoded type=1) | — | All three |
 | `AuthzAllowAll` | No restrictions (use sparingly) | — | All three |
