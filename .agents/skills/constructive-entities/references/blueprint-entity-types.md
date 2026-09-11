@@ -144,8 +144,9 @@ Each entry in a table's `policies` array is a policy object:
 "provisions": {
   "files": {
     "policies": [
-      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-      { "$type": "AuthzDirectOwner", "privileges": ["update", "delete"] }
+      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert"] },
+      { "$type": "AuthzMemberOwner", "privileges": ["update", "delete"],
+        "data": { "owner_field": "actor_id", "entity_field": "owner_id", "entity_type": "data_room" } }
     ]
   },
   "buckets": {
@@ -163,14 +164,14 @@ Each entry in a table's `policies` array is a policy object:
 }
 ```
 
-**Important:** `AuthzPublishable` requires an `is_public` column and `AuthzDirectOwner` requires an `actor_id` column — scope them to tables that have these columns (buckets and files have both).
+**Important:** `AuthzPublishable` requires an `is_public` column and the owner policies require an `actor_id` column — scope them to tables that have these columns (buckets and files have both). Use `AuthzMemberOwner` (or `AuthzAppMemberOwner` for app-level storage), never a bare `AuthzDirectOwner`, for the uploader arm: files are membership-scoped, and a bare owner policy would let a removed member keep managing the files they uploaded.
 
 ### Defaults (when `provisions` is omitted)
 
 When `provisions` is absent (or a table key has no `policies`), these defaults are applied automatically:
-- `AuthzPublishable` → buckets (SELECT), files (SELECT, INSERT)
-- Membership policy → buckets/files (full CRUD)
-- `AuthzDirectOwner` → files (UPDATE, DELETE)
+- `AuthzPublishable` → files (SELECT)
+- Membership policy → buckets (SELECT; INSERT/UPDATE/DELETE require `is_admin`/`is_owner`), files (SELECT, INSERT; UPDATE/DELETE via `write_files`/`delete_files` capability)
+- Compound member-owner (`AuthzMemberOwner` at entity scopes) → files (UPDATE, DELETE) — the uploader manages their own files only while still a member
 
 When a table key **does** include `policies[]`, defaults are skipped **for that table only** — other tables still get defaults. It's per-table replacement, not all-or-nothing.
 

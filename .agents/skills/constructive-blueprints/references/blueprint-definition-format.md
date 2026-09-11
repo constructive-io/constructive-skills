@@ -301,7 +301,7 @@ Common table node types are summarized below. Use [node-type-registry.md](./node
 | `DataId` | `id uuid PRIMARY KEY DEFAULT uuidv7()` | `field_name` (default `'id'`) | — |
 | `DataDirectOwner` | `owner_id uuid NOT NULL` + FK to users + index | `owner_field_name` (default `'owner_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzDirectOwner` |
 | `DataEntityMembership` | `entity_id uuid NOT NULL` + FK to users + index | `entity_field_name` (default `'entity_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzEntityMembership` |
-| `DataOwnershipInEntity` | Both `owner_id` and `entity_id` + FKs | `include_user_fk` (default `true`) | `AuthzDirectOwner` + `AuthzEntityMembership` |
+| `DataOwnershipInEntity` | Both `owner_id` and `entity_id` + FKs | `include_user_fk` (default `true`) | `AuthzEntityMembership` (+ `AuthzMemberOwner` for an owner-only arm; never a bare `AuthzDirectOwner`, which would outlive membership removal) |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 

@@ -51,6 +51,6 @@ await db.entityTypeProvision.create({
 When `policies` is omitted, the system applies:
 - `AuthzEntityMembership` — entity members can access
 - `AuthzPublishable` — published files visible to all
-- `AuthzDirectOwner` — file owner has full access
+- `AuthzMemberOwner` — the uploader can update/delete their own files while they remain a member (never a bare `AuthzDirectOwner`, which would survive membership removal)
 
 See `constructive-security` for the full Authz* type reference and `constructive-storage` for the upload pipeline.

@@ -28,6 +28,15 @@ Each mechanism is described as:
 
 **Avoid when:**
 - Ownership can be an organization (or user-as-org) and you want "org members can access." Prefer `AuthzEntityMembership` (org scope) instead.
+- **The row is membership-scoped** — it lives inside an org/entity/app and the owner is only supposed to see it *while they are a member*. Permissive policies are ORed, so a bare `AuthzDirectOwner` beside `AuthzEntityMembership`/`AuthzAppMembership` lets a removed member keep reading and editing every row they authored. Use the compound owner policies instead, which require ownership **and** current membership:
+
+| Where the membership lives | Use instead of `AuthzDirectOwner` |
+|---|---|
+| App-global rows (no entity column) | `AuthzAppMemberOwner` |
+| `entity_id` (or similar) is on the row | `AuthzMemberOwner` |
+| Entity is reached through a related table (FK hop) | `AuthzRelatedMemberOwner` |
+
+`AuthzDirectOwner` remains correct for personal, user-bound tables that have no membership context (emails, devices, credentials, settings) and for rows whose owner is *not* a member by construction (a pending membership row the applicant must read, an invite receiver, a share grantee).
 
 ---
 
@@ -44,6 +53,9 @@ Each mechanism is described as:
 
 **Use when:**
 - A record has multiple relevant user id columns and any of them confer access.
+
+**Avoid when:**
+- The row is membership-scoped. Like `AuthzDirectOwner`, this is a bare ownership check and does not consult membership, so it survives revocation. Fence each owner column with `AuthzMemberOwner` / `AuthzAppMemberOwner` (one policy per column, or an `AuthzComposite` `OR` of them) when the owners are expected to be current members.
 
 ---
 
@@ -847,11 +859,13 @@ When Constructive Authz policies compile to PostgreSQL RLS, their interaction de
 "Owner OR org admin can see" — add two separate permissive policies. PostgreSQL automatically ORs them:
 
 ```
-Policy 1 (permissive): AuthzDirectOwner { entity_field: "owner_id" }
+Policy 1 (permissive): AuthzMemberOwner { owner_field: "owner_id", entity_field: "organization_id", membership_type: 2 }
 Policy 2 (permissive): AuthzEntityMembership { entity_field: "organization_id", membership_type: 2, is_admin: true }
 
-Effective rule: row.owner_id = actor OR actor is admin of row.organization_id
+Effective rule: (row.owner_id = actor AND actor is member of row.organization_id) OR actor is admin of row.organization_id
 ```
+
+> Because permissive policies are ORed, the owner arm must be `AuthzMemberOwner` (not `AuthzDirectOwner`) whenever the sibling policy is membership-based; otherwise a user removed from the org keeps access to the rows they created. The same applies to every example below.
 
 **AND composition (permissive + restrictive):**
 "Org members can access, but only while the row's time window is active" — add membership as permissive and the time constraint as restrictive:
@@ -867,24 +881,24 @@ Effective rule: actor is member of row.entity_id AND now() is within [starts_at,
 "Owner OR org member can access, but only if the row is published":
 
 ```
-Policy 1 (permissive):  AuthzDirectOwner { entity_field: "owner_id" }
+Policy 1 (permissive):  AuthzMemberOwner { owner_field: "owner_id", entity_field: "organization_id", membership_type: 2 }
 Policy 2 (permissive):  AuthzEntityMembership { entity_field: "organization_id", membership_type: 2 }
 Policy 3 (restrictive): AuthzPublishable {}
 
-Effective rule: (row.owner_id = actor OR actor is member of row.organization_id) AND row.is_published = true
+Effective rule: (member-owner OR actor is member of row.organization_id) AND row.is_published = true
 ```
 
 **4 policies (2 permissive + 2 restrictive):**
 "Owner OR org member can access, but only if published AND within the time window":
 
 ```
-Policy 1 (permissive):  AuthzDirectOwner { entity_field: "owner_id" }
+Policy 1 (permissive):  AuthzMemberOwner { owner_field: "owner_id", entity_field: "organization_id", membership_type: 2 }
 Policy 2 (permissive):  AuthzEntityMembership { entity_field: "organization_id", membership_type: 2 }
 Policy 3 (restrictive): AuthzPublishable {}
 Policy 4 (restrictive): AuthzTemporal { valid_from_field: "available_from", valid_until_field: "available_until" }
 
 Effective rule: (P1 OR P2) AND R3 AND R4
-             = (owner OR org member) AND is_published AND now() in time window
+             = (member-owner OR org member) AND is_published AND now() in time window
 ```
 
 Notice the pattern: permissive/restrictive composition always produces `(P1 OR P2 OR ... Pn) AND R1 AND R2 AND ... Rm`. This is powerful but **limited to a single grouping shape**.
@@ -893,10 +907,10 @@ Notice the pattern: permissive/restrictive composition always produces `(P1 OR P
 
 Permissive/restrictive composition cannot express arbitrary boolean groupings. Consider:
 
-"Access is allowed if (org member AND published) OR (direct owner AND within time window)":
+"Access is allowed if (org member AND published) OR (member-owner AND within time window)":
 
 ```
-Desired: (AuthzEntityMembership AND AuthzPublishable) OR (AuthzDirectOwner AND AuthzTemporal)
+Desired: (AuthzEntityMembership AND AuthzPublishable) OR (AuthzMemberOwner AND AuthzTemporal)
 ```
 
 This requires OR-ing two AND-groups — impossible with flat permissive/restrictive policies (which always produce a single `(any P) AND (all R)` shape). Use `AuthzComposite`:
@@ -912,7 +926,7 @@ This requires OR-ing two AND-groups — impossible with flat permissive/restrict
     },
     {
       "AND": [
-        { "AuthzDirectOwner": { "entity_field": "owner_id" } },
+        { "AuthzMemberOwner": { "owner_field": "owner_id", "entity_field": "organization_id", "membership_type": 2 } },
         { "AuthzTemporal": { "valid_from_field": "starts_at", "valid_until_field": "ends_at" } }
       ]
     }

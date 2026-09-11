@@ -70,6 +70,8 @@ The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` 
 | 25 | `AuthzColumnSecurity` | Guard selected INSERT/UPDATE column writes with a nested Authz node or immutability rule | `columns`, `rule`, `authz`/`values`/`allowed` |
 | — | `AuthzHumanOnly` | Platform-applied guard that blocks principals from sensitive mutations | Not registry-selectable |
 
+> **Ownership on membership-scoped tables:** never put a bare `AuthzDirectOwner` / `AuthzDirectOwnerAny` on a table that also has a membership policy (`AuthzAppMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`). Permissive policies are ORed, so the owner arm survives membership removal — a user kicked out of the org still reads and edits everything they authored. Use the compound owner policies: `AuthzAppMemberOwner` (app-global rows), `AuthzMemberOwner` (`entity_id` on the row), `AuthzRelatedMemberOwner` (entity reached via a related table). `AuthzDirectOwner` is for personal tables with no membership context (emails, devices, settings) and for rows whose owner is legitimately not a member (pending membership self-read, invite receiver, share grantee). Nothing enforces this at write time — it is a documented convention.
+
 See [authz-types.md](./references/authz-types.md) for full config shapes, semantics, and examples.
 
 ## `AuthzAppMembership` vs `AuthzEntityMembership`
@@ -126,7 +128,7 @@ await db.secureTableProvision.create({
 | Policy Type | Data Node | Creates |
 |-------------|-----------|---------|
 | `AuthzMemberOwner` | `DataMemberOwner` | `owner_id` + `entity_id` + policy |
-| `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` + policy |
+| `AuthzDirectOwner` | `DataDirectOwner` | `owner_id` + policy (personal tables only — see the ownership note above) |
 | `AuthzEntityMembership` | `DataEntityMembership` | `entity_id` + policy |
 
 ## Owning a Module-Generated Table's Security
