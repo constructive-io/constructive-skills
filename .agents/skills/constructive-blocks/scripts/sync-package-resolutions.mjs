@@ -6,6 +6,8 @@ import path from 'node:path';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 
+import { parseNpmPackageRequirement } from './check-blocks-contract.mjs';
+
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const skillDirectory = path.resolve(scriptDirectory, '..');
 const referencesDirectory = path.join(skillDirectory, 'references');
@@ -27,22 +29,36 @@ function readJson(filePath, label) {
 
 function expectedExternalPackages(contract) {
   const firstParty = new Set(contract.release.packages.map((entry) => entry.name));
-  const names = new Set();
+  const requirements = new Map();
   for (const attestation of contract.source.attestations.installPlans) {
     const plan = readJson(
       path.join(skillDirectory, attestation.path),
       'install plan ' + attestation.item
     );
     for (const dependency of plan.composition.npmDependencies) {
-      if (!firstParty.has(dependency.name)) {
-        names.add(dependency.name);
+      const requirement = parseNpmPackageRequirement(dependency.name);
+      if (firstParty.has(requirement.name)) continue;
+      if (requirement.requested !== null && requirement.exactVersion === null) {
+        fail(
+          'External package ' + requirement.name +
+          ' uses unsupported non-exact requirement ' + requirement.requested + '.'
+        );
       }
+      const versions = requirements.get(requirement.name) ?? new Set();
+      versions.add(requirement.exactVersion);
+      requirements.set(requirement.name, versions);
     }
   }
-  return Array.from(names).sort((left, right) => left.localeCompare(right));
+  return Array.from(requirements, ([name, versions]) => {
+    const exactVersions = Array.from(versions).filter((version) => version !== null);
+    if (new Set(exactVersions).size > 1) {
+      fail('Package ' + name + ' has conflicting exact requirements.');
+    }
+    return { name, exactVersion: exactVersions[0] ?? null };
+  }).sort((left, right) => left.name.localeCompare(right.name));
 }
 
-async function resolutionForPackage(name) {
+async function resolutionForPackage(name, exactVersion) {
   const response = await fetch(registryOrigin + '/' + encodeURIComponent(name), {
     headers: { accept: 'application/vnd.npm.install-v1+json' }
   });
@@ -50,7 +66,7 @@ async function resolutionForPackage(name) {
     fail('npm registry request failed for ' + name + ' with HTTP ' + response.status + '.');
   }
   const packument = await response.json();
-  const version = packument?.['dist-tags']?.latest;
+  const version = exactVersion ?? packument?.['dist-tags']?.latest;
   const release = typeof version === 'string' ? packument?.versions?.[version] : null;
   const integrity = release?.dist?.integrity;
   const resolved = release?.dist?.tarball;
@@ -74,10 +90,10 @@ async function resolutionForPackage(name) {
 }
 
 const contract = readJson(contractPath, 'install-roots contract');
-const names = expectedExternalPackages(contract);
+const requirements = expectedExternalPackages(contract);
 const records = [];
-for (const name of names) {
-  records.push(await resolutionForPackage(name));
+for (const { name, exactVersion } of requirements) {
+  records.push(await resolutionForPackage(name, exactVersion));
 }
 const snapshot = {
   schemaVersion: 1,

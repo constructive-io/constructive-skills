@@ -3,8 +3,8 @@
   "kind": "constructive.blocks-install-roots",
   "source": {
     "repository": "https://github.com/constructive-io/blocks",
-    "branch": "feat/feature-packs-console-kit",
-    "commit": "4f2a789fde9a90c0c6ed5977896493bb4818fa77",
+    "branch": "feat/app-kit",
+    "commit": "1a72e5d95f7ce4a243cd4536ed78c638708d538c",
     "inspector": {
       "schemaVersion": 1,
       "kind": "constructive.console-kit-install-roots",
@@ -22,44 +22,48 @@
       "algorithm": "sha256",
       "aggregateRegistry": {
         "path": "apps/registry/registry.json",
-        "sha256": "c936b8230cef7ca78c6ad9557ac0975e839ad361be3a90e4358b846b105558d8"
+        "sha256": "55c93aaa98cfd8f1cdc0acb85e5abb422a0436d3137441105f24b2eb009049c4"
       },
       "registryCatalog": {
         "path": "references/registry-catalog.v1.json",
-        "sha256": "84ce9d2b9728b3d62cb6b9e48ec2cd12153ea657490c419e68f849f672be3d1f"
+        "sha256": "4a5fd029f66e146b4218e47f86ba35fcbbf2572faaa274fc0a3c30088304ba66"
       },
       "registryContent": {
         "path": "references/registry-content.v1.json",
-        "sha256": "df0376b1eeeca8d271a91c962b829365e989df35750058b348c4bd779e5e3517"
+        "sha256": "15908ba4f3c30d4b0da8424f796df1a376f7f24f58a23554ad2282812a829ec4"
       },
       "packageResolutions": {
         "path": "references/package-resolutions.v1.json",
-        "sha256": "4cccce553d5c9dec6f11ca0b2b1ec7ea987e2f7308d46bd0e804f8a725147044"
+        "sha256": "b2243347053c6cb2298147f50d6a2502a158a2d891e1fc3bac4923ad799c7cad"
       },
       "canonicalFiles": [
         {
           "path": "package.json",
-          "sha256": "23b937b73c59eb348753fcbc4358253aeea5b11f9969864b7138ae281cdfe1a0"
+          "sha256": "c229ac9ac05af4a752ec22ed5dba912380f66d7bd65057a77f0a5a865a2b72a1"
         },
         {
           "path": "apps/registry/package.json",
-          "sha256": "0263177a6461eb7223fc33c5725bba85053e5ea34a814a4b1ba5371220badcfb"
+          "sha256": "6e0d7140478d98d7271de4e8ff24001c65a299672ca3f34b250e5a30f973ebb0"
         },
         {
           "path": "apps/registry/scripts/build.ts",
-          "sha256": "b8ad62ecf1e0a71503d1bd1da80b067f1b1377c4bddf5085e0c96c6bb7222be3"
+          "sha256": "e56a8694093ae590884cfe78779f868b4032a2da57076ec147a69d8e49ee2494"
         },
         {
           "path": "packages/ui/registry.json",
-          "sha256": "095ab3caba8b5155dbce0585c09f36810d11801bcb8773954543946a6a2de104"
+          "sha256": "f15437373c77caa09a92fa5b077f757f0cdd64a27c77e1444412a3f82bef227f"
         },
         {
           "path": "apps/blocks/registry.json",
-          "sha256": "169b49db903fe9af3cff736138fca8d5da295438e760d6c4f4853ecc5372b040"
+          "sha256": "cbe89216a09780463262fe10284e3b5d6b7cb3d67e35853005d4bb105b62c79f"
+        },
+        {
+          "path": "apps/blocks/src/app/blocks/app-kit/page.tsx",
+          "sha256": "9bce8d78d2f951416fa43385937add24c27a3cb881ec56f8b1bf5cd36e37c740"
         },
         {
           "path": "scripts/inspect-console-kit.ts",
-          "sha256": "227b742500fd81b8908d5c19e052c40898991d1bdf49223399c09c48610bd446"
+          "sha256": "22b32cdb69e3a2162a11930d72d718b1ecd8480c06340d62d0c303e72f8f0be7"
         },
         {
           "path": "apps/blocks/src/feature-packs/catalog.ts",
@@ -95,7 +99,7 @@
         },
         {
           "path": "packages/data/package.json",
-          "sha256": "6f807b216dace7cc2fe5cd92fcdb6f9b4d005fb0edace67d51735286a841e796"
+          "sha256": "930a0f1139db5f990d04e3f920f3954a6e16b5ed20ff290512bf59c466368572"
         },
         {
           "path": "packages/data/src/meta-query.ts",
@@ -107,7 +111,7 @@
         },
         {
           "path": "packages/sheets/package.json",
-          "sha256": "b2696df554c8339844a46cfed6f19df699c2b1ba12fab6f7962bbfc1b5f964f3"
+          "sha256": "a35cccdb3dab5b0ea6954affe26e6822c09f4b40ca10cee22429874a7840d05b"
         },
         {
           "path": "packages/sheets/src/context/sheets-context.ts",
@@ -115,7 +119,7 @@
         },
         {
           "path": "packages/sheets/src/context/sheets-execute.ts",
-          "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+          "sha256": "3615f980ee18fd27ab3b1941bbec215d91fc8b8125fcd8b4d293ba764e8902ca"
         },
         {
           "path": "packages/sheets/src/auth/auth-execute.ts",
@@ -135,11 +139,11 @@
         },
         {
           "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
-          "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+          "sha256": "e0efb76f807240587ec98afa493762ad3ba5ae533212aeee92bd2e41e4acf89c"
         },
         {
           "path": "packages/ui/package.json",
-          "sha256": "25bb3f7c9faa713107d90dff57adacad6b3a0b877f92261ceb70cca7ffb09989"
+          "sha256": "708c76d09f324cdea3fd8a294e5bd687e78fb69a7589cd81f9af4668ea10fcf0"
         },
         {
           "path": "packages/ui/src/components/sidebar.tsx",
@@ -155,11 +159,11 @@
         },
         {
           "path": "packages/ui/src/index.ts",
-          "sha256": "7fb432a69eee6f08229043cecf3bdf47b51c5dfaa2831de1ffcb28d8fee810c5"
+          "sha256": "d13b47b8f5dccb02099d6eb8c1a89b59d11650474524400491c76869aa1900ae"
         },
         {
           "path": "packages/schema-builder/package.json",
-          "sha256": "e02d5d8d7e4e6cf2ef5f6bc7f257919f8e3017c371909e46cba4b83cc410453d"
+          "sha256": "555af70a66c0ccf56f16606af8c71aaa0805a3d98d4c22f03a02d88f5c8504e3"
         },
         {
           "path": "apps/blocks/src/blocks/feature-packs/data/data-feature-pack.tsx",
@@ -290,97 +294,97 @@
         {
           "item": "console-kit-core",
           "path": "references/install-plans.v1/console-kit-core.json",
-          "sha256": "5244d84e0e4888225bc7e0d4adf769e2ce1e26b8459e4d0d2ab5d1bf0d138968"
+          "sha256": "99ba624565edf8e5f5061afc4796c33dd193253b9442eb3a901295e80507f2e7"
         },
         {
           "item": "console-kit-nextjs",
           "path": "references/install-plans.v1/console-kit-nextjs.json",
-          "sha256": "8efe2a3e0614916906d08db100dee4dc562a68785453b2e692e749c149aba17d"
+          "sha256": "fbeed09b27a1c0858fe369a27467bed2eed559802cf86f6414740552dc2eddbb"
         },
         {
           "item": "console-module-auth",
           "path": "references/install-plans.v1/console-module-auth.json",
-          "sha256": "26ef98810fe46f7cc20bccb19ac75925aae13e89c3acdbe4e8446bae148d9abe"
+          "sha256": "a4fa3d1b48fc0ee038ffc132fe1d9a50a4d017e069a007dee3d111a344ab6e9f"
         },
         {
           "item": "console-module-billing",
           "path": "references/install-plans.v1/console-module-billing.json",
-          "sha256": "d15bf94159034cca954c329f8fd5bd9f5269f5ab5a7d8f6c76d1d78e6ebe92ec"
+          "sha256": "3b420f8bb6ba86ff0a943c3abb12922e6a0c8f610a55a741c94e214d4fb8df3b"
         },
         {
           "item": "console-module-data",
           "path": "references/install-plans.v1/console-module-data.json",
-          "sha256": "05d4877fa294e24f3cb73ba1ae60067569b842c13fbb446f98f2a385ea18fff5"
+          "sha256": "fd9830c4f19702ed25f4fb087ba2907e6768ad188bb4726d6664dff6858aa03d"
         },
         {
           "item": "console-module-notifications",
           "path": "references/install-plans.v1/console-module-notifications.json",
-          "sha256": "dfc2646ec940e762e8ad1d3e10a3f6d87419ea8e0f78a48c511510cd1ac6a36d"
+          "sha256": "48596bfdd151391f59e9bf1849a68d6901b121f4359bf894c94e6bb0f7af7ebe"
         },
         {
           "item": "console-module-organizations",
           "path": "references/install-plans.v1/console-module-organizations.json",
-          "sha256": "c48c228cd57d69bc08c2f802a2909ad498f11c91ac567353d2ed8f60120e9ab6"
+          "sha256": "277f8823ad07f1e285c932c4fab629ce8264d465cfcce32867f3eb39c9181087"
         },
         {
           "item": "console-module-storage",
           "path": "references/install-plans.v1/console-module-storage.json",
-          "sha256": "6eae680af0e48a0cff82c9048bb578e4e912fc508fd793426b18f474e5d0feb2"
+          "sha256": "da09bc13a0007638d04e0e0a17ce24e8a000f35e0549897e0e59c6054a3d1f92"
         },
         {
           "item": "console-module-users",
           "path": "references/install-plans.v1/console-module-users.json",
-          "sha256": "2dc40e24a79c1f7d8a1a632ad44606118b36f509ec07c464acd9d1e61583036e"
+          "sha256": "622e869c96bb9eb8aa2d1a898093e7dac177db8ecedf7b6ff9f4ad45ec9ffe50"
         },
         {
           "item": "feature-pack-auth",
           "path": "references/install-plans.v1/feature-pack-auth.json",
-          "sha256": "bbf4a8e9e0fde6ac950d03d36863026fb7621e7b0a46ab970ef543b43c624506"
+          "sha256": "2beb9aaec013747942f8aa5fc19d95427c3899d26ff4bb4e767ecffed81e4b09"
         },
         {
           "item": "feature-pack-billing",
           "path": "references/install-plans.v1/feature-pack-billing.json",
-          "sha256": "db4e4b528bd624ab072574a540656e0f6c637b0c90bb3fe7bd9010ea7972d322"
+          "sha256": "e0420dcfa4a41bd52ef08039dfff3960cd78d169212491037ceea5995001808b"
         },
         {
           "item": "feature-pack-data",
           "path": "references/install-plans.v1/feature-pack-data.json",
-          "sha256": "60b8cb0d7a69487225a4dd244bb37fcaf73c27968bbe74144b6ea61a16059d5a"
+          "sha256": "158c549f952d1017c42ac625cfb36fdc8c1b4161e5400bd94e0c9a74a36c1f5f"
         },
         {
           "item": "feature-pack-notifications",
           "path": "references/install-plans.v1/feature-pack-notifications.json",
-          "sha256": "db7bb7227b51c42ce43b07229e29225c928e544fbd22516fa20a2442e3935615"
+          "sha256": "71cccfcfbcd48aac9ae05a2fb01a37f881add15ef9cf1fdb11c6db3272e98f8c"
         },
         {
           "item": "feature-pack-organizations",
           "path": "references/install-plans.v1/feature-pack-organizations.json",
-          "sha256": "9d1d14ece5f438e8c4d29f0b7257e7466a3f96a335bc074ab6a946901280e1dc"
+          "sha256": "14ed1faf5b76eece952e6325cbd154c4d0eb41039a43c28e5337082235176e15"
         },
         {
           "item": "feature-pack-storage",
           "path": "references/install-plans.v1/feature-pack-storage.json",
-          "sha256": "5261a3e9145d113ad3cc03e45e11edbde7e9fbf025d3188ce097bd72d6ee15be"
+          "sha256": "b2478f019c18fb2ca427427cdb32cd25c740e562ee1043ae5490eb1dce41dcc9"
         },
         {
           "item": "feature-pack-users",
           "path": "references/install-plans.v1/feature-pack-users.json",
-          "sha256": "946ee2328e1823e29b5253338b6c984d33231dba2539329f773a73d400c3a7d1"
+          "sha256": "38e69edfb2073d6910765843922d0067a2c43bb3647a974b2e0ef20c1b5f6cb8"
         },
         {
           "item": "preset-auth-hardened",
           "path": "references/install-plans.v1/preset-auth-hardened.json",
-          "sha256": "042ac311ea165aac996dcab89e3cf309118f2b3e12601a34d8a04bef29881562"
+          "sha256": "eae85c94268c930ed993676d474b248bd6f8b5926479c806c572b4f2e1425195"
         },
         {
           "item": "preset-b2b-storage",
           "path": "references/install-plans.v1/preset-b2b-storage.json",
-          "sha256": "b0036470ef8ea29bc04ec248c77c808c43409a1dae1063d40607de6b8dd0d7cb"
+          "sha256": "d3cbff7babe99ba89acc55f8dd62a7c9ced312835bf6269c77f8f9126a45e6a6"
         },
         {
           "item": "preset-full",
           "path": "references/install-plans.v1/preset-full.json",
-          "sha256": "554904aae57c5444f2eaade918de8f8ee3f93bff1075170c96ee583954d9f921"
+          "sha256": "8e8c2bf3b3ec1d35b965c23d2fa7ff4a342a3eade593463881702774b34014be"
         }
       ]
     }
@@ -390,42 +394,42 @@
     "publicRegistryReady": false,
     "packageManager": "pnpm@10.28.0",
     "nodeEngine": ">=24.0.0",
-    "shadcnVersion": "4.13.1",
+    "testedShadcnVersion": "4.16.1",
     "packages": [
       {
         "name": "@constructive-io/ui",
-        "version": "0.5.0",
+        "version": "0.8.0",
         "snapshotStatus": "branch-only",
         "manifestSource": {
           "path": "packages/ui/package.json",
-          "sha256": "25bb3f7c9faa713107d90dff57adacad6b3a0b877f92261ceb70cca7ffb09989"
+          "sha256": "708c76d09f324cdea3fd8a294e5bd687e78fb69a7589cd81f9af4668ea10fcf0"
         }
       },
       {
         "name": "@constructive-io/data",
-        "version": "0.2.0",
+        "version": "0.5.0",
         "snapshotStatus": "branch-only",
         "manifestSource": {
           "path": "packages/data/package.json",
-          "sha256": "6f807b216dace7cc2fe5cd92fcdb6f9b4d005fb0edace67d51735286a841e796"
+          "sha256": "930a0f1139db5f990d04e3f920f3954a6e16b5ed20ff290512bf59c466368572"
         }
       },
       {
         "name": "@constructive-io/sheets",
-        "version": "0.5.0",
+        "version": "0.8.1",
         "snapshotStatus": "branch-only",
         "manifestSource": {
           "path": "packages/sheets/package.json",
-          "sha256": "b2696df554c8339844a46cfed6f19df699c2b1ba12fab6f7962bbfc1b5f964f3"
+          "sha256": "a35cccdb3dab5b0ea6954affe26e6822c09f4b40ca10cee22429874a7840d05b"
         }
       },
       {
         "name": "@constructive-io/schema-builder",
-        "version": "0.1.0",
+        "version": "0.4.1",
         "snapshotStatus": "branch-only",
         "manifestSource": {
           "path": "packages/schema-builder/package.json",
-          "sha256": "e02d5d8d7e4e6cf2ef5f6bc7f257919f8e3017c371909e46cba4b83cc410453d"
+          "sha256": "555af70a66c0ccf56f16606af8c71aaa0805a3d98d4c22f03a02d88f5c8504e3"
         }
       }
     ],
@@ -461,16 +465,30 @@
       "consumerWorkspace": "disposable-or-isolated-worktree",
       "localLockfilePolicy": "The local install necessarily records localhost tarball resolutions; never commit its temporary .npmrc or lockfile.",
       "promotionRule": "After public release, remove local registry settings, regenerate the lockfile from public registries, reject every localhost reference, then commit or merge the consumer.",
-      "installCommandTemplate": "pnpm dlx shadcn@4.13.1 add @constructive/{name}",
+      "testedInstallCommandTemplate": "pnpm dlx shadcn@4.16.1 add @constructive/{name}",
       "localInstallCommandTemplate": "pnpm --dir <blocks-repo>/apps/registry exec shadcn add @constructive/{name} --cwd <consumer-repo> --yes",
       "maintainerVerificationCommand": "SMOKE_CASE=app-shell,billing-settings-page,feature-pack-data,preset-b2b-storage,console-kit-nextjs pnpm --dir <blocks-repo> --filter @constructive-io/registry smoke:install"
+    }
+  },
+  "documentation": {
+    "appKit": {
+      "public": {
+        "url": "https://constructive-io.github.io/blocks/blocks/app-kit/",
+        "status": "future-only"
+      },
+      "pinnedSource": {
+        "path": "apps/blocks/src/app/blocks/app-kit/page.tsx",
+        "sha256": "9bce8d78d2f951416fa43385937add24c27a3cb881ec56f8b1bf5cd36e37c740"
+      }
     }
   },
   "registry": {
     "namespace": "@constructive",
     "urlTemplate": "https://constructive-io.github.io/blocks/r/{name}.json",
-    "shadcnVersion": "4.13.1",
-    "shadcnVersionPolicy": "exact",
+    "publicShadcnTag": "latest",
+    "publicInstallCommandTemplate": "pnpm dlx shadcn@latest add @constructive/{name}",
+    "testedShadcnVersion": "4.16.1",
+    "testedShadcnVersionPolicy": "exact",
     "queryOverrides": [
       {
         "item": "feature-pack-data",
@@ -491,7 +509,7 @@
     ],
     "catalog": {
       "path": "references/registry-catalog.v1.json",
-      "itemCount": 102,
+      "itemCount": 123,
       "projection": [
         "name",
         "type",
@@ -503,7 +521,8 @@
         "devDependencies",
         "registryDependencies",
         "files",
-        "installCommand"
+        "installCommand",
+        "meta.constructive"
       ]
     },
     "componentsJson": {
@@ -541,42 +560,268 @@
     },
     "sheetsAdapterSource": {
       "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
-      "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+      "sha256": "e0efb76f807240587ec98afa493762ad3ba5ae533212aeee92bd2e41e4acf89c"
     },
     "requirements": {
-      "queryType": { "typeName": "Query", "fields": ["_meta"] },
-      "metaSchema": { "typeName": "MetaSchema", "fields": ["tables"] },
+      "queryType": {
+        "typeName": "Query",
+        "fields": [
+          "_meta"
+        ]
+      },
+      "metaSchema": {
+        "typeName": "MetaSchema",
+        "fields": [
+          "tables"
+        ]
+      },
       "metaTable": {
         "typeName": "MetaTable",
-        "fields": ["name", "schemaName", "query", "fields", "inflection", "indexes", "constraints", "foreignKeyConstraints", "primaryKeyConstraints", "uniqueConstraints", "relations", "storage", "search", "i18n", "realtime", "scope"]
+        "fields": [
+          "name",
+          "schemaName",
+          "query",
+          "fields",
+          "inflection",
+          "indexes",
+          "constraints",
+          "foreignKeyConstraints",
+          "primaryKeyConstraints",
+          "uniqueConstraints",
+          "relations",
+          "storage",
+          "search",
+          "i18n",
+          "realtime",
+          "scope"
+        ]
       },
-      "metaTableQuery": { "typeName": "MetaQuery", "fields": ["all", "one", "create", "update", "delete"] },
+      "metaTableQuery": {
+        "typeName": "MetaQuery",
+        "fields": [
+          "all",
+          "one",
+          "create",
+          "update",
+          "delete"
+        ]
+      },
       "metaField": {
         "typeName": "MetaField",
-        "fields": ["name", "type", "isNotNull", "hasDefault", "isPrimaryKey", "isForeignKey", "description", "enumValues"]
+        "fields": [
+          "name",
+          "type",
+          "isNotNull",
+          "hasDefault",
+          "isPrimaryKey",
+          "isForeignKey",
+          "description",
+          "enumValues"
+        ]
       },
-      "metaEnum": { "typeName": "MetaEnum", "fields": ["name", "values"] },
-      "metaType": { "typeName": "MetaType", "fields": ["pgType", "gqlType", "isArray", "isNotNull", "hasDefault", "subtype", "encoding"] },
-      "metaEncoding": { "typeName": "MetaScalarEncoding", "fields": ["kind", "elementType", "dimensions", "geometrySubtype", "srid", "dotPath"] },
-      "metaIndex": { "typeName": "MetaIndex", "fields": ["name", "isUnique", "isPrimary", "columns", "fields"] },
-      "metaPrimaryKey": { "typeName": "MetaPrimaryKeyConstraint", "fields": ["name", "fields"] },
-      "metaUnique": { "typeName": "MetaUniqueConstraint", "fields": ["name", "fields"] },
-      "metaForeignKey": { "typeName": "MetaForeignKeyConstraint", "fields": ["name", "fields", "referencedTable", "referencedFields", "refFields", "refTable"] },
-      "metaRefTable": { "typeName": "MetaRefTable", "fields": ["name"] },
-      "metaConstraints": { "typeName": "MetaConstraints", "fields": ["primaryKey", "unique", "foreignKey"] },
-      "metaInflection": { "typeName": "MetaInflection", "fields": ["tableType", "allRows", "connection", "edge", "filterType", "orderByType", "conditionType", "patchType", "createInputType", "createPayloadType", "updatePayloadType", "deletePayloadType"] },
-      "metaRelations": { "typeName": "MetaRelations", "fields": ["belongsTo", "has", "hasOne", "hasMany", "manyToMany"] },
-      "metaBelongsTo": { "typeName": "MetaBelongsToRelation", "fields": ["fieldName", "isUnique", "type", "keys", "references"] },
-      "metaHas": { "typeName": "MetaHasRelation", "fields": ["fieldName", "isUnique", "type", "keys", "referencedBy"] },
-      "metaManyToMany": { "typeName": "MetaManyToManyRelation", "fields": ["fieldName", "type", "junctionTable", "junctionLeftConstraint", "junctionLeftKeyAttributes", "junctionRightConstraint", "junctionRightKeyAttributes", "leftKeyAttributes", "rightKeyAttributes", "rightTable"] },
-      "metaStorage": { "typeName": "MetaStorage", "fields": ["isFilesTable", "isBucketsTable"] },
-      "metaSearch": { "typeName": "MetaSearch", "fields": ["algorithms", "columns", "hasUnifiedSearch", "config"] },
-      "metaSearchColumn": { "typeName": "MetaSearchColumn", "fields": ["name", "algorithm"] },
-      "metaSearchConfig": { "typeName": "MetaSearchConfig", "fields": ["weights", "boostRecent", "boostRecencyField", "boostRecencyDecay"] },
-      "metaI18n": { "typeName": "MetaI18n", "fields": ["translationTable", "translatableFields"] },
-      "metaI18nField": { "typeName": "MetaI18nField", "fields": ["name", "type"] },
-      "metaRealtime": { "typeName": "MetaRealtime", "fields": ["subscriptionFieldName"] },
-      "metaScope": { "typeName": "MetaScope", "fields": ["scope", "tier", "keyColumn", "entityTable", "source"] }
+      "metaEnum": {
+        "typeName": "MetaEnum",
+        "fields": [
+          "name",
+          "values"
+        ]
+      },
+      "metaType": {
+        "typeName": "MetaType",
+        "fields": [
+          "pgType",
+          "gqlType",
+          "isArray",
+          "isNotNull",
+          "hasDefault",
+          "subtype",
+          "encoding"
+        ]
+      },
+      "metaEncoding": {
+        "typeName": "MetaScalarEncoding",
+        "fields": [
+          "kind",
+          "elementType",
+          "dimensions",
+          "geometrySubtype",
+          "srid",
+          "dotPath"
+        ]
+      },
+      "metaIndex": {
+        "typeName": "MetaIndex",
+        "fields": [
+          "name",
+          "isUnique",
+          "isPrimary",
+          "columns",
+          "fields"
+        ]
+      },
+      "metaPrimaryKey": {
+        "typeName": "MetaPrimaryKeyConstraint",
+        "fields": [
+          "name",
+          "fields"
+        ]
+      },
+      "metaUnique": {
+        "typeName": "MetaUniqueConstraint",
+        "fields": [
+          "name",
+          "fields"
+        ]
+      },
+      "metaForeignKey": {
+        "typeName": "MetaForeignKeyConstraint",
+        "fields": [
+          "name",
+          "fields",
+          "referencedTable",
+          "referencedFields",
+          "refFields",
+          "refTable"
+        ]
+      },
+      "metaRefTable": {
+        "typeName": "MetaRefTable",
+        "fields": [
+          "name"
+        ]
+      },
+      "metaConstraints": {
+        "typeName": "MetaConstraints",
+        "fields": [
+          "primaryKey",
+          "unique",
+          "foreignKey"
+        ]
+      },
+      "metaInflection": {
+        "typeName": "MetaInflection",
+        "fields": [
+          "tableType",
+          "allRows",
+          "connection",
+          "edge",
+          "filterType",
+          "orderByType",
+          "conditionType",
+          "patchType",
+          "createInputType",
+          "createPayloadType",
+          "updatePayloadType",
+          "deletePayloadType"
+        ]
+      },
+      "metaRelations": {
+        "typeName": "MetaRelations",
+        "fields": [
+          "belongsTo",
+          "has",
+          "hasOne",
+          "hasMany",
+          "manyToMany"
+        ]
+      },
+      "metaBelongsTo": {
+        "typeName": "MetaBelongsToRelation",
+        "fields": [
+          "fieldName",
+          "isUnique",
+          "type",
+          "keys",
+          "references"
+        ]
+      },
+      "metaHas": {
+        "typeName": "MetaHasRelation",
+        "fields": [
+          "fieldName",
+          "isUnique",
+          "type",
+          "keys",
+          "referencedBy"
+        ]
+      },
+      "metaManyToMany": {
+        "typeName": "MetaManyToManyRelation",
+        "fields": [
+          "fieldName",
+          "type",
+          "junctionTable",
+          "junctionLeftConstraint",
+          "junctionLeftKeyAttributes",
+          "junctionRightConstraint",
+          "junctionRightKeyAttributes",
+          "leftKeyAttributes",
+          "rightKeyAttributes",
+          "rightTable"
+        ]
+      },
+      "metaStorage": {
+        "typeName": "MetaStorage",
+        "fields": [
+          "isFilesTable",
+          "isBucketsTable"
+        ]
+      },
+      "metaSearch": {
+        "typeName": "MetaSearch",
+        "fields": [
+          "algorithms",
+          "columns",
+          "hasUnifiedSearch",
+          "config"
+        ]
+      },
+      "metaSearchColumn": {
+        "typeName": "MetaSearchColumn",
+        "fields": [
+          "name",
+          "algorithm"
+        ]
+      },
+      "metaSearchConfig": {
+        "typeName": "MetaSearchConfig",
+        "fields": [
+          "weights",
+          "boostRecent",
+          "boostRecencyField",
+          "boostRecencyDecay"
+        ]
+      },
+      "metaI18n": {
+        "typeName": "MetaI18n",
+        "fields": [
+          "translationTable",
+          "translatableFields"
+        ]
+      },
+      "metaI18nField": {
+        "typeName": "MetaI18nField",
+        "fields": [
+          "name",
+          "type"
+        ]
+      },
+      "metaRealtime": {
+        "typeName": "MetaRealtime",
+        "fields": [
+          "subscriptionFieldName"
+        ]
+      },
+      "metaScope": {
+        "typeName": "MetaScope",
+        "fields": [
+          "scope",
+          "tier",
+          "keyColumn",
+          "entityTable",
+          "source"
+        ]
+      }
     },
     "documents": {
       "metaQuery": {
@@ -650,19 +895,123 @@
         "requiredPayloadFields"
       ],
       "documents": [
-        ["admin", "Mutation.updateAppMembership", "UpdateAppMembershipInput", "appMembership", ["id"]],
-        ["admin", "Mutation.createAppOwnerGrant", "CreateAppOwnerGrantInput", "appOwnerGrant", ["id"]],
-        ["admin", "Mutation.createAppAdminGrant", "CreateAppAdminGrantInput", "appAdminGrant", ["id"]],
-        ["admin", "Mutation.createAppGrant", "CreateAppGrantInput", "appGrant", ["id"]],
-        ["admin", "Mutation.createAppProfileGrant", "CreateAppProfileGrantInput", "appProfileGrant", ["id"]],
-        ["admin", "Mutation.createAppProfileDefinitionGrant", "CreateAppProfileDefinitionGrantInput", "appProfileDefinitionGrant", ["id"]],
-        ["admin", "Mutation.createAppPermissionDefaultGrant", "CreateAppPermissionDefaultGrantInput", "appPermissionDefaultGrant", ["id"]],
-        ["admin", "Mutation.createAppProfile", "CreateAppProfileInput", "appProfile", ["id"]],
-        ["admin", "Mutation.updateAppProfile", "UpdateAppProfileInput", "appProfile", ["id"]],
-        ["admin", "Mutation.deleteAppProfile", "DeleteAppProfileInput", "appProfile", ["id"]],
-        ["admin", "Mutation.createAppInvite", "CreateAppInviteInput", "appInvite", ["id"]],
-        ["admin", "Mutation.updateAppInvite", "UpdateAppInviteInput", "appInvite", ["id"]],
-        ["admin", "Mutation.deleteAppInvite", "DeleteAppInviteInput", "appInvite", ["id"]]
+        [
+          "admin",
+          "Mutation.updateAppMembership",
+          "UpdateAppMembershipInput",
+          "appMembership",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppOwnerGrant",
+          "CreateAppOwnerGrantInput",
+          "appOwnerGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppAdminGrant",
+          "CreateAppAdminGrantInput",
+          "appAdminGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppGrant",
+          "CreateAppGrantInput",
+          "appGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppProfileGrant",
+          "CreateAppProfileGrantInput",
+          "appProfileGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppProfileDefinitionGrant",
+          "CreateAppProfileDefinitionGrantInput",
+          "appProfileDefinitionGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppPermissionDefaultGrant",
+          "CreateAppPermissionDefaultGrantInput",
+          "appPermissionDefaultGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppProfile",
+          "CreateAppProfileInput",
+          "appProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateAppProfile",
+          "UpdateAppProfileInput",
+          "appProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.deleteAppProfile",
+          "DeleteAppProfileInput",
+          "appProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createAppInvite",
+          "CreateAppInviteInput",
+          "appInvite",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateAppInvite",
+          "UpdateAppInviteInput",
+          "appInvite",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.deleteAppInvite",
+          "DeleteAppInviteInput",
+          "appInvite",
+          [
+            "id"
+          ]
+        ]
       ]
     },
     "organizations-enabled-actions": {
@@ -683,29 +1032,215 @@
         "requiredPayloadFields"
       ],
       "documents": [
-        ["admin", "Mutation.updateOrgMembership", "UpdateOrgMembershipInput", "orgMembership", ["id"]],
-        ["admin", "Mutation.deleteOrgMembership", "DeleteOrgMembershipInput", "orgMembership", ["id"]],
-        ["admin", "Mutation.createOrgAdminGrant", "CreateOrgAdminGrantInput", "orgAdminGrant", ["id"]],
-        ["admin", "Mutation.createOrgOwnerGrant", "CreateOrgOwnerGrantInput", "orgOwnerGrant", ["id"]],
-        ["admin", "Mutation.createOrgGrant", "CreateOrgGrantInput", "orgGrant", ["id"]],
-        ["admin", "Mutation.createOrgProfileGrant", "CreateOrgProfileGrantInput", "orgProfileGrant", ["id"]],
-        ["admin", "Mutation.createOrgProfileDefinitionGrant", "CreateOrgProfileDefinitionGrantInput", "orgProfileDefinitionGrant", ["id"]],
-        ["admin", "Mutation.createOrgProfile", "CreateOrgProfileInput", "orgProfile", ["id"]],
-        ["admin", "Mutation.updateOrgProfile", "UpdateOrgProfileInput", "orgProfile", ["id"]],
-        ["admin", "Mutation.deleteOrgProfile", "DeleteOrgProfileInput", "orgProfile", ["id"]],
-        ["admin", "Mutation.createOrgMemberProfile", "CreateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
-        ["admin", "Mutation.updateOrgMemberProfile", "UpdateOrgMemberProfileInput", "orgMemberProfile", ["id"]],
-        ["admin", "Mutation.updateOrgMembershipSetting", "UpdateOrgMembershipSettingInput", "orgMembershipSetting", ["id"]],
-        ["admin", "Mutation.updateOrgMembershipDefault", "UpdateOrgMembershipDefaultInput", "orgMembershipDefault", ["id"]],
-        ["admin", "Mutation.createOrgChartEdgeGrant", "CreateOrgChartEdgeGrantInput", "orgChartEdgeGrant", ["id"]],
-        ["admin", "Mutation.createOrgInvite", "CreateOrgInviteInput", "orgInvite", ["id"]],
-        ["admin", "Mutation.deleteOrgInvite", "DeleteOrgInviteInput", "orgInvite", ["id"]],
-        ["auth", "Mutation.deleteUser", "DeleteUserInput", "user", ["id"]],
-        ["auth", "Mutation.updateUser", "UpdateUserInput", "user", ["id"]],
-        ["auth", "Mutation.revokeOrgApiKey", "RevokeOrgApiKeyInput", null, ["result"]],
-        ["auth", "Mutation.deleteOrgPrincipal", "DeleteOrgPrincipalInput", null, ["result"]],
-        ["auth", "Mutation.createOrgPrincipal", "CreateOrgPrincipalInput", null, ["result"]],
-        ["auth", "Mutation.createUser", "CreateUserInput", "user", ["id", "type", "username"]]
+        [
+          "admin",
+          "Mutation.updateOrgMembership",
+          "UpdateOrgMembershipInput",
+          "orgMembership",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.deleteOrgMembership",
+          "DeleteOrgMembershipInput",
+          "orgMembership",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgAdminGrant",
+          "CreateOrgAdminGrantInput",
+          "orgAdminGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgOwnerGrant",
+          "CreateOrgOwnerGrantInput",
+          "orgOwnerGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgGrant",
+          "CreateOrgGrantInput",
+          "orgGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgProfileGrant",
+          "CreateOrgProfileGrantInput",
+          "orgProfileGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgProfileDefinitionGrant",
+          "CreateOrgProfileDefinitionGrantInput",
+          "orgProfileDefinitionGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgProfile",
+          "CreateOrgProfileInput",
+          "orgProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateOrgProfile",
+          "UpdateOrgProfileInput",
+          "orgProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.deleteOrgProfile",
+          "DeleteOrgProfileInput",
+          "orgProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgMemberProfile",
+          "CreateOrgMemberProfileInput",
+          "orgMemberProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateOrgMemberProfile",
+          "UpdateOrgMemberProfileInput",
+          "orgMemberProfile",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateOrgMembershipSetting",
+          "UpdateOrgMembershipSettingInput",
+          "orgMembershipSetting",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.updateOrgMembershipDefault",
+          "UpdateOrgMembershipDefaultInput",
+          "orgMembershipDefault",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgChartEdgeGrant",
+          "CreateOrgChartEdgeGrantInput",
+          "orgChartEdgeGrant",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.createOrgInvite",
+          "CreateOrgInviteInput",
+          "orgInvite",
+          [
+            "id"
+          ]
+        ],
+        [
+          "admin",
+          "Mutation.deleteOrgInvite",
+          "DeleteOrgInviteInput",
+          "orgInvite",
+          [
+            "id"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.deleteUser",
+          "DeleteUserInput",
+          "user",
+          [
+            "id"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.updateUser",
+          "UpdateUserInput",
+          "user",
+          [
+            "id"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.revokeOrgApiKey",
+          "RevokeOrgApiKeyInput",
+          null,
+          [
+            "result"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.deleteOrgPrincipal",
+          "DeleteOrgPrincipalInput",
+          null,
+          [
+            "result"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.createOrgPrincipal",
+          "CreateOrgPrincipalInput",
+          null,
+          [
+            "result"
+          ]
+        ],
+        [
+          "auth",
+          "Mutation.createUser",
+          "CreateUserInput",
+          "user",
+          [
+            "id",
+            "type",
+            "username"
+          ]
+        ]
       ]
     }
   },
@@ -1710,7 +2245,7 @@
       "executeType": "SheetsExecuteFn",
       "executeSource": {
         "path": "packages/sheets/src/context/sheets-execute.ts",
-        "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+        "sha256": "3615f980ee18fd27ab3b1941bbec215d91fc8b8125fcd8b4d293ba764e8902ca"
       },
       "requiredConfigFields": [
         "endpoint",
@@ -1830,7 +2365,7 @@
         },
         {
           "path": "packages/sheets/src/context/sheets-execute.ts",
-          "sha256": "7eccc6b1014c029b7e5f5dc2c41258b7d0aeaf51cb2d51560dfc5e4cf1bfbd5a"
+          "sha256": "3615f980ee18fd27ab3b1941bbec215d91fc8b8125fcd8b4d293ba764e8902ca"
         },
         {
           "path": "packages/sheets/src/hooks/use-sheets-meta.ts",
@@ -1838,7 +2373,7 @@
         },
         {
           "path": "packages/sheets/src/adapter/postgraphile-adapter.ts",
-          "sha256": "d1788090e210eb86e28ab75a0c000430dc1b013b9e787fe6b118c553661fd3c6"
+          "sha256": "e0efb76f807240587ec98afa493762ad3ba5ae533212aeee92bd2e41e4acf89c"
         }
       ],
       "sourceLimitationIds": [
@@ -2650,11 +3185,11 @@
             },
             {
               "id": "storage.buckets.path-2",
-          "verificationProfile": "tenant-runtime",
-          "endpointKinds": [
-            "storage",
-            "admin",
-            "data"
+              "verificationProfile": "tenant-runtime",
+              "endpointKinds": [
+                "storage",
+                "admin",
+                "data"
               ],
               "evidence": {
                 "type": "compatible-meta-contract",
@@ -2694,11 +3229,11 @@
             },
             {
               "id": "storage.files.path-2",
-          "verificationProfile": "tenant-runtime",
-          "endpointKinds": [
-            "storage",
-            "admin",
-            "data"
+              "verificationProfile": "tenant-runtime",
+              "endpointKinds": [
+                "storage",
+                "admin",
+                "data"
               ],
               "evidence": {
                 "type": "compatible-meta-contract",
@@ -3880,7 +4415,7 @@
       "presetProfiles": [
         "full"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-nextjs"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-kit-nextjs"
     },
     {
       "name": "preset-auth-hardened",
@@ -3895,7 +4430,7 @@
       "presetProfiles": [
         "auth-hardened"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-auth-hardened"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-auth-hardened"
     },
     {
       "name": "preset-b2b-storage",
@@ -3912,7 +4447,7 @@
       "presetProfiles": [
         "b2b-storage"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-b2b-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-b2b-storage"
     },
     {
       "name": "preset-full",
@@ -3931,7 +4466,7 @@
       "presetProfiles": [
         "full"
       ],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/preset-full"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/preset-full"
     },
     {
       "name": "console-kit-core",
@@ -3940,7 +4475,7 @@
       "description": "The leaf-independent Console Kit shell, runtime, discovery, and single modular Zustand store.",
       "featurePacks": [],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-kit-core"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-kit-core"
     },
     {
       "name": "console-module-data",
@@ -3951,7 +4486,7 @@
         "data"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-data"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-data"
     },
     {
       "name": "console-module-auth",
@@ -3962,7 +4497,7 @@
         "auth"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-auth"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-auth"
     },
     {
       "name": "console-module-users",
@@ -3973,7 +4508,7 @@
         "users"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-users"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-users"
     },
     {
       "name": "console-module-organizations",
@@ -3984,7 +4519,7 @@
         "organizations"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-organizations"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-organizations"
     },
     {
       "name": "console-module-storage",
@@ -3995,7 +4530,7 @@
         "storage"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-storage"
     },
     {
       "name": "console-module-billing",
@@ -4006,7 +4541,7 @@
         "billing"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-billing"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-billing"
     },
     {
       "name": "console-module-notifications",
@@ -4017,7 +4552,7 @@
         "notifications"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/console-module-notifications"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/console-module-notifications"
     },
     {
       "name": "feature-pack-data",
@@ -4028,7 +4563,7 @@
         "data"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-data"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-data"
     },
     {
       "name": "feature-pack-auth",
@@ -4039,7 +4574,7 @@
         "auth"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-auth"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-auth"
     },
     {
       "name": "feature-pack-users",
@@ -4050,7 +4585,7 @@
         "users"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-users"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-users"
     },
     {
       "name": "feature-pack-organizations",
@@ -4061,7 +4596,7 @@
         "organizations"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-organizations"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-organizations"
     },
     {
       "name": "feature-pack-storage",
@@ -4072,7 +4607,7 @@
         "storage"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-storage"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-storage"
     },
     {
       "name": "feature-pack-billing",
@@ -4083,7 +4618,7 @@
         "billing"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-billing"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-billing"
     },
     {
       "name": "feature-pack-notifications",
@@ -4094,7 +4629,7 @@
         "notifications"
       ],
       "presetProfiles": [],
-      "installCommand": "pnpm dlx shadcn@4.13.1 add @constructive/feature-pack-notifications"
+      "installCommand": "pnpm dlx shadcn@4.16.1 add @constructive/feature-pack-notifications"
     }
   ],
   "featurePackManifests": [
