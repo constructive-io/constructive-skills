@@ -215,7 +215,7 @@ async function multiTableRAG(question: string): Promise<RAGResult[]> {
 Three ways to get vectors onto rows — all through the SDK, never raw SQL:
 
 1. **Background (recommended for tables with Search* nodes):** `SearchUnified` / `SearchVector` enqueue an embedding job on insert/update; clients only write text columns.
-2. **Server-side on write (`graphile-llm`):** send text in the `{column}Text` companion field:
+2. **Server-side on write (`graphile-llm`):** send text in the `{column}Text` companion field (only on tables without a physical `embedding_text` column — on `SearchUnified` tables that name is the text column itself and option 1 applies):
 
    ```typescript
    await db.contact.update({

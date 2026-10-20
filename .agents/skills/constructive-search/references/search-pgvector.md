@@ -235,7 +235,7 @@ const result = await db.document.findMany({
 
 **Pattern:**
 - Condition: `vector` + camelCase(column name) — accepts `{ vector, metric?, distance? }` input, or `{ text, metric?, distance? }` when `graphile-llm` is enabled
-- Text input (with `graphile-llm`): camelCase(column name) + `Text` on create/update inputs (e.g. `embeddingText`)
+- Text input (with `graphile-llm`): camelCase(column name) + `Text` on create/update inputs (e.g. `embeddingText`), unless a physical column already uses that name
 - Distance: camelCase(column name) + `VectorDistance`
 - OrderBy: SCREAMING_SNAKE(column name) + `_VECTOR_DISTANCE_ASC` / `_VECTOR_DISTANCE_DESC`
 
@@ -264,7 +264,7 @@ Common models: OpenAI `text-embedding-3-small` (1536d) / `text-embedding-3-large
 
 ### Server-side on write (`{column}Text`)
 
-With `graphile-llm` enabled, every vector column gets a `{column}Text` companion on create/update inputs. The server embeds the text and stores the vector:
+With `graphile-llm` enabled, vector columns get a `{column}Text` companion on create/update inputs. The server embeds the text and stores the vector:
 
 ```typescript
 await db.document.create({
@@ -277,6 +277,8 @@ await db.document.create({
 ```
 
 `embeddingText` and `embedding` are mutually exclusive on the same input.
+
+No companion is added when a real column already has that name — e.g. `SearchUnified` creates an `embedding_text` column, so on those tables `embeddingText` is that plain text column and the background job (below) does the embedding.
 
 ### Background embedding (Search* blueprint nodes)
 
