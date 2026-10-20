@@ -7,7 +7,20 @@ Use the codegen'd ORM to build Retrieval-Augmented Generation (RAG) pipelines. T
 1. **Vector column** provisioned on your table (via `@constructive-io/sdk` — see `constructive-agents` skill)
 2. **HNSW index** created on the embedding column
 3. **Optional generated SDK** for a stable custom-domain schema (see [`constructive-codegen`](../../constructive-codegen/SKILL.md))
-4. **Ollama** (or another provider) running for embeddings and chat
+4. **An embedding provider** (e.g. Ollama) — either reachable from your app (raw-vector mode) or configured on the server for `graphile-llm` (server-side mode)
+
+## Choose an Embedding Mode
+
+RAG works in either mode; both are supported and can be mixed per application:
+
+| | Raw vectors (client-managed) | Server-side (`graphile-llm`) |
+|---|---|---|
+| Query input | `vectorEmbedding: { vector: number[] }` | `vectorEmbedding: { text }`, `unifiedSearch: '...'`, or `ragQuery(prompt:)` |
+| Who calls the model | Your app / worker (e.g. agentic-kit) | The GraphQL server |
+| Plugin needed | None | `graphile-llm` (`enableTextSearch`; `enableRag` for `ragQuery`) |
+| Use when | Bring-your-own model, image vectors, no LLM plugin | You want clients to send only text |
+
+See [search-pgvector.md](./search-pgvector.md#server-side-embedding-graphile-llm) for plugin configuration.
 
 ## Vector Search via ORM
 
@@ -52,9 +65,42 @@ const results = await db.document.findMany({
 const similarity = Math.max(0, 1 - (node.embeddingVectorDistance / 2.0));
 ```
 
-## Single-Table RAG
+## Server-Side RAG (`ragQuery`)
 
-The simplest RAG pattern: embed question → vector search → format context → LLM answer.
+With `graphile-llm` and `enableRag: true`, the server does the whole loop — embed the prompt, search chunks of `@hasChunks` tables, assemble context, call the chat model:
+
+```typescript
+const result = await db.query.ragQuery(
+  { prompt: 'What is machine learning?', contextLimit: 5, minSimilarity: 0.3 },
+  {
+    select: {
+      answer: true,
+      tokensUsed: true,
+      sources: { select: { content: true, similarity: true, tableName: true, parentId: true } },
+    },
+  }
+).execute();
+```
+
+Arguments: `prompt` (required), `contextLimit`, `minSimilarity`, `systemPrompt` — omitted values fall back to the preset's `ragDefaults`. Requires both `defaultEmbedder` and `defaultChatCompleter`.
+
+## Text Retrieval + Your Own LLM
+
+Let the server embed the question, then generate the answer yourself:
+
+```typescript
+const results = await db.document.findMany({
+  where: { vectorEmbedding: { text: question, metric: 'COSINE', distance: 2.0 } },
+  first: 5,
+  select: { id: true, title: true, content: true, embeddingVectorDistance: true },
+}).execute();
+```
+
+Swap this retrieval into any of the client-managed examples below to drop the client-side `generateEmbedding` call.
+
+## Single-Table RAG (raw vectors)
+
+The client-managed pattern: embed question → vector search → format context → LLM answer.
 
 ```typescript
 import OllamaClient from '@agentic-kit/ollama';
@@ -103,7 +149,7 @@ async function ragQuery(question: string): Promise<string> {
 }
 ```
 
-## Multi-Table RAG
+## Multi-Table RAG (raw vectors)
 
 Search across multiple entity types in parallel, merge results by distance:
 
@@ -166,7 +212,19 @@ async function multiTableRAG(question: string): Promise<RAGResult[]> {
 
 ## Embedding Ingestion
 
-Store embeddings via ORM update (not raw SQL):
+Three ways to get vectors onto rows — all through the SDK, never raw SQL:
+
+1. **Background (recommended for tables with Search* nodes):** `SearchUnified` / `SearchVector` enqueue an embedding job on insert/update; clients only write text columns.
+2. **Server-side on write (`graphile-llm`):** send text in the `{column}Text` companion field:
+
+   ```typescript
+   await db.contact.update({
+     where: { id },
+     data: { embeddingText: `${firstName} ${lastName}. ${bio}` },
+   }).execute();
+   ```
+
+3. **Raw vectors (client-managed):** generate the vector yourself and write `embedding`:
 
 ```typescript
 async function embedRecords(
@@ -204,7 +262,7 @@ await embedRecords(
 
 ## Combining Vector Search with Text Search
 
-Use pgvector alongside `unifiedSearch` for hybrid retrieval:
+Use pgvector alongside `unifiedSearch` for hybrid retrieval. With `graphile-llm` enabled, `unifiedSearch: 'machine learning'` alone already embeds the string server-side and adds pgvector to the fan-out — the explicit `vectorEmbedding` below is the raw-vector form:
 
 ```typescript
 // Hybrid: vector similarity + keyword matching

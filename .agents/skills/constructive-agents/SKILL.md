@@ -36,8 +36,26 @@ Blueprint (SearchUnified / SearchVector / ProcessFileEmbedding / ProcessChunks)
     → Job enqueued via app_jobs
       → Worker: embed_record / process_file_embedding / generate_chunks
         → ORM queries with vectorEmbedding filter
-          → RAG: retrieve context → feed to LLM via agentic-kit
+          → RAG: retrieve context → feed to LLM
+
+Request-time (graphile-llm, optional):
+  client sends text → GraphQL server embeds it
+    * vectorEmbedding: { text }   — similarity search
+    * unifiedSearch: '...'        — pgvector joins the fan-out
+    * {column}Text on mutations   — embed on write
+    * ragQuery(prompt:)           — embed → retrieve chunks → chat model
 ```
+
+## Embedding Modes
+
+Two supported modes; choose per application (they share the same columns and indexes):
+
+| Mode | Client sends | Embedding done by | Requires |
+|------|--------------|-------------------|----------|
+| **Raw vectors** | `number[]` | Your code (e.g. agentic-kit) | Nothing extra |
+| **Server-side** | Text only | GraphQL server (`graphile-llm`) and the background worker | `graphile-llm` with an embedding provider (`enableRag` for `ragQuery`) |
+
+Background embedding of stored rows (Search* nodes) works in either mode. Details: [search-pgvector.md](../constructive-search/references/search-pgvector.md#server-side-embedding-graphile-llm).
 
 ## Search* Blueprint Nodes
 
@@ -110,12 +128,26 @@ const response = await agent.generate({ prompt: 'Summarize this document...' });
 
 ## RAG Pattern
 
+Server-side (`graphile-llm` with `enableRag: true`) — one call, the client sends only text:
+
+```typescript
+const result = await db.query.ragQuery(
+  { prompt: query, contextLimit: 5 },
+  { select: { answer: true, sources: { select: { content: true, similarity: true } } } }
+).execute();
+```
+
+Retrieve on the server, generate yourself — pass `text` (server embeds) or `vector` (raw, client-embedded):
+
 ```typescript
 // 1. Retrieve context via ORM
-const docs = await db.document.findMany({
-  where: { vectorEmbedding: { similarTo: queryEmbedding, first: 5 } },
+const result = await db.document.findMany({
+  where: { vectorEmbedding: { text: query, metric: 'COSINE' } }, // or { vector: queryEmbedding, metric: 'COSINE' }
+  orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
+  first: 5,
   select: { content: true, title: true },
 }).execute();
+const docs = result.data?.documents?.nodes ?? [];
 
 // 2. Feed to LLM
 const answer = await agent.generate({

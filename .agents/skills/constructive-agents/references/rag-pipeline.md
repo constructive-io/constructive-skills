@@ -10,17 +10,22 @@ Build Retrieval-Augmented Generation pipelines using Search* blueprint nodes, th
 Blueprint (SearchUnified node)
   → construct_blueprint() creates vector column, HNSW index, stale triggers, job triggers
   → Row changes fire stale trigger → embed_record job enqueued
-  → Graphile Worker embeds via @agentic-kit/ollama → writes back via ORM
+  → Worker embeds the row → writes the vector back
   → ORM queries with vectorEmbedding filter → context → LLM generation
 ```
+
+Queries can supply the search vector in either mode:
+
+- **Server-side (`graphile-llm`):** `vectorEmbedding: { text }`, `unifiedSearch`, or `ragQuery(prompt:)` — the GraphQL server embeds; the client never handles vectors.
+- **Raw vectors:** the client embeds the question (e.g. with agentic-kit) and passes `vectorEmbedding: { vector }`. Always available, with or without the plugin.
 
 ### Components
 
 1. **Blueprint**: SearchUnified / SearchVector nodes declare vector columns + indexes + stale tracking
 2. **Codegen**: `@constructive-io/graphql-codegen` generates typed ORM with vector query support (see `constructive-codegen` skill — [codegen.md](../../constructive-codegen/references/codegen.md))
 3. **Worker**: Graphile Worker `embed_record` task handles embedding generation + chunking
-4. **Query**: ORM `vectorEmbedding` filter + distance ordering
-5. **Generation**: agentic-kit feeds retrieved context to LLM
+4. **Query**: ORM `vectorEmbedding` filter (`text` or `vector`) + distance ordering
+5. **Generation**: `ragQuery` on the server, or agentic-kit feeding retrieved context to an LLM
 
 ---
 
@@ -72,8 +77,10 @@ The `embed_record` Graphile Worker task handles embedding automatically when `en
 5. Embeds summary into parent record
 6. Sets `{field_name}_updated_at = NOW()`
 
+Clients never call an embedding model in this flow — they write ordinary text columns. If you set `enqueue_job: false` and run your own embedder instead (raw-vector mode), the pattern looks like:
+
 ```typescript
-// Worker task (simplified from agentic-db/packages/worker)
+// Self-managed embedding (raw-vector mode)
 import OllamaClient from '@agentic-kit/ollama';
 
 const ollamaClient = new OllamaClient(process.env.OLLAMA_URL || 'http://localhost:11434');
@@ -93,6 +100,26 @@ await db.document.update({
 ---
 
 ## Step 3: Retrieve Context via ORM
+
+### Server-side embedding (`graphile-llm`)
+
+```typescript
+async function retrieveContext(question: string, limit = 5): Promise<string> {
+  const result = await db.document.findMany({
+    where: {
+      vectorEmbedding: { text: question, metric: 'COSINE', distance: 0.5 },
+    },
+    orderBy: 'EMBEDDING_VECTOR_DISTANCE_ASC',
+    first: limit,
+    select: { content: true, embeddingVectorDistance: true },
+  }).execute();
+
+  if (!result.ok) return '';
+  return result.data.documents.nodes.map(d => d.content).join('\n\n');
+}
+```
+
+### Raw vectors (client-side embedding)
 
 ```typescript
 import OllamaClient from '@agentic-kit/ollama';
@@ -211,7 +238,20 @@ async function multiTableSearch(query: string) {
 
 ---
 
-## Step 5: Generate Response with agentic-kit
+## Step 5: Generate the Response
+
+### Server-side (`ragQuery`)
+
+With `enableRag: true` (and `@hasChunks` tables), retrieval and generation both run on the server:
+
+```typescript
+const result = await db.query.ragQuery(
+  { prompt: question, contextLimit: 5, minSimilarity: 0.3 },
+  { select: { answer: true, sources: { select: { content: true, similarity: true, tableName: true } } } }
+).execute();
+```
+
+### Client-side with agentic-kit
 
 ```typescript
 import { createOllamaKit } from 'agentic-kit';
@@ -279,6 +319,8 @@ Chunk tables are auto-created via `chunkTable()` in the blueprint definition.
 - **Use SearchUnified** for tables that need the full search stack (embedding + BM25 + FTS + trigram)
 - **Use SearchVector** for standalone embedding columns or secondary embeddings
 - **Set `enqueue_job: false`** on SearchVector if you handle embedding externally (e.g. image embeddings)
+- **Prefer `text:` / `ragQuery`** when `graphile-llm` is enabled so clients send text, not vectors; keep raw `vector:` for bring-your-own-model cases
+- **Use one model per column** — the server embedder, the worker and any raw vectors you write must agree on model and dimensions
 - **Match dimensions** to your embedding model (768 for nomic-embed-text)
 - **Use `distance` threshold** in ORM queries to filter low-quality matches
 
@@ -293,6 +335,7 @@ Chunk tables are auto-created via `chunkTable()` in the blueprint definition.
 | `{field}_updated_at` stays NULL | Worker not processing jobs; check graphile-worker logs |
 | Dimension mismatch | Ensure SearchVector `dimensions` matches embedding model output (768 for nomic-embed-text) |
 | Irrelevant RAG responses | Lower similarity threshold, improve chunking, check source_fields |
+| No `text` field on `VectorNearbyInput` / no `ragQuery` | `graphile-llm` not loaded, or `enableTextSearch` / `enableRag` off |
 
 ## Cross-References
 
