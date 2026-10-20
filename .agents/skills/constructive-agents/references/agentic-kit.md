@@ -109,6 +109,8 @@ await kit.generate(
 
 ## Embeddings
 
+> Client-side embedding is the **raw-vector mode**: your code calls the model and passes `number[]` to the ORM. It works with or without the server LLM plugin. If `graphile-llm` is enabled on the GraphQL server, you can instead send text (`vectorEmbedding: { text }`, `unifiedSearch`, `{column}Text`, `ragQuery`) and skip these calls — see [search-pgvector.md](../../constructive-search/references/search-pgvector.md#server-side-embedding-graphile-llm).
+
 Use `OllamaClient` directly for embedding generation:
 
 ```typescript

@@ -43,6 +43,8 @@ const results = await db.article.findMany({
 }).execute();
 ```
 
+With `graphile-llm` enabled (the Constructive preset default), the string is also embedded server-side so pgvector participates. Without it, `unifiedSearch` covers the text algorithms and you pass raw vectors via `vectorEmbedding: { vector }` — both modes are supported; see [search-pgvector.md](./references/search-pgvector.md#two-ways-to-supply-vectors).
+
 ## Blueprint Nodes
 
 ### SearchUnified (full stack — recommended for most tables)
