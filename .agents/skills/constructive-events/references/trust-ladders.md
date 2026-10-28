@@ -4,7 +4,7 @@ A **trust ladder** is a set of rungs that turn recorded evidence into access. Ea
 
 It is the same machinery as [achievements.md](./achievements.md) — levels, requirements, rewards — with one addition: a rung can reward a **capability** rather than a credit, which is what makes an earned level enforceable by RLS instead of merely displayable.
 
-A ladder is *content*, not code: it is a document of rows seeded into the tenant's own levels tables at provisioning. Two are shipped, and a tenant can author or retune its own.
+A ladder is *content*, not code: it is a document of rows seeded into the tenant's own levels tables at provisioning. Three are shipped (`humanity` and `metered` below, `agent` in [`constructive-principals` → trust-and-refusals.md](../../constructive-principals/references/trust-and-refusals.md)), and a tenant can author or retune its own.
 
 ## Requesting a Ladder
 
@@ -20,10 +20,11 @@ Ask for one by slug in the `events_module` entry of a database's module list:
 | Value of `trust_ladder` | Result |
 |---|---|
 | omitted | Nothing is seeded — the levels tables exist and stay empty |
-| a slug (`"humanity"`, `"metered"`) | The shipped ladder of that name is seeded |
+| a slug (`"humanity"`, `"metered"`, `"agent"`, or a saved preset) | The ladder of that name is seeded |
+| an array of slugs (`["humanity", "agent"]`) | Each named ladder, concatenated in order, so one scope climbs both |
 | an array of rungs | The caller's own ladder, inline |
 
-> **App scope only.** A ladder is seeded at provisioning time, and an entity-scoped ladder would belong to an organization that does not exist yet. Request `scope: "app"`; org-scoped ladders are seeded when the org is created.
+> **When it is seeded depends on scope.** At `scope: "app"` the rungs are seeded once, at provisioning. At `scope: "org"` every rung belongs to an organization that does not exist yet, so the ladder is fixed at provisioning and seeded into each organization when it is created. Every org gets its own copy, including orgs created later. Editing the preset afterwards does not change what an already-provisioned database's new orgs receive.
 
 > **The events module is what carries levels.** The levels, requirements, grants, and reward tables all come from `events_module`. A database without an `events_module` entry has no ladder and no way to earn one.
 
@@ -98,6 +99,12 @@ Each rung of an inline ladder takes:
 | `group` | no | Rungs sharing a group are *alternatives*: any one satisfies the level, and they pay their reward once |
 | `limit` | no | Default-limit name this rung deposits credits into |
 | `limit_amount` | no | Credits deposited into `limit`; defaults to 0 |
+| `period_interval` | no | Counting window for `event` (`"30 days"`); omitted counts for life |
+| `expires_interval` | no | How long a grant of `level` lasts before it lapses |
+| `revoked_by` | no | Event names that revoke `level` and reset progress toward it |
+| `unlocks` | no | Permissions withheld from principals until they hold `level` |
+
+The last four are covered in [`constructive-principals` → trust-and-refusals.md](../../constructive-principals/references/trust-and-refusals.md).
 
 Two rungs of the same `level` with **no** `group` are *conjunctive* — both are required. That is the difference between "verify email **or** phone" and "be 30 days old **and** have completed 25 actions".
 
@@ -105,13 +112,18 @@ The `capability` a rung names must already exist as a capability row with `kind 
 
 ## Retuning a Ladder
 
-The numbers in a ladder are product decisions, so they are rows a tenant can change, not a generator it must fork. A database that has tuned its own rungs can capture them back out as a document and register it as a named preset, which later databases can then request by slug exactly like a shipped one.
+The numbers in a ladder are product decisions, so they are rows a tenant can change, not a generator it must fork. The tenant's usage API exposes both directions:
+
+- `seedTrustLadder(ladder)` seeds a ladder document into a database provisioned without one, or re-tunes the current one. It is idempotent: re-seeding the same document changes nothing, and changed `required_count`s are updated in place.
+- `captureTrustLadder()` returns the database's current rungs as the same document shape `seedTrustLadder` and the `trust_ladder` option take.
+
+A captured document can be registered as a named `trust_ladder` content preset. Saving one is a platform-catalog write, not a tenant one. Later databases can then request it by slug exactly like a shipped one. At org scope both operations also take the organization's id.
 
 Prefer this over inlining a large ladder into every provisioning call: the slug is versioned content, an inline array is a copy.
 
 ## Gotchas
 
-- **`minimal` has no ladder.** `auth:hardened`, `b2b:storage` and `full` each install `events_module` with `trust_ladder: 'humanity'`; `minimal` installs no events module at all, by design. A database provisioned from `minimal`, or from a hand-written module list that omits the ladder, has **zero** `kind = 'level'` capability rows, and a policy gating on `level.reachable` will never admit anyone.
+- **`minimal` has no ladder.** `auth:hardened`, `b2b:storage`, `b2b:saas` and `full` each install `events_module` with `trust_ladder: 'humanity'`; `minimal` installs no events module at all, by design. A database provisioned from `minimal`, or from a hand-written module list that omits the ladder, has **zero** `kind = 'level'` capability rows, and a policy gating on `level.reachable` will never admit anyone.
 - **Owners and admins hold every level.** Their membership is given the complete capability set, levels included, so they satisfy every rung the moment they are made an owner — including rungs nobody has earned. A ladder cannot gate an owner inside their own entity. See [`constructive-access-control` → admin-owner-member.md](../../constructive-access-control/references/admin-owner-member.md#owner-and-admin-hold-every-capability).
 - **Blueprint `achievements[]` cannot award capabilities.** Its `rewards[]` accepts `limit_credit` and `meter_credit` only. Capability rewards come from the ladder path; an achievement is the credit-granting half of the same machinery.
 - **A level is earned, never granted.** Never offer a `kind = 'level'` capability in a grant or profile picker — filter capability lists by `kind`, or an operator can hand out trust that was supposed to cost something.
