@@ -57,8 +57,9 @@ A **trust ladder** is a set of rungs that turn recorded evidence into access —
 |---|---|---|
 | `humanity` | Does this account belong to someone? | `reachable` (email **or** phone **or** captcha) → `profile_complete` badge |
 | `metered` | How much may this account consume? | `reachable` → `accountable` → `established` → `trusted` → `vouched`, each buying limit capacity |
+| `agent` | Has this agent earned more authority? | `agent_proven` → `agent_trusted` (decays, demoted by misuse); org scope — see [`constructive-principals`](../constructive-principals/references/trust-and-refusals.md) |
 
-Humans, bots and agents climb identically — nothing in a ladder asserts humanity, it accumulates evidence that costs something to fake. **No shipped module preset requests a ladder yet**, so it must be named explicitly today. Full rung tables, rung fields, and the `metered` limit baseline: [trust-ladders.md](./references/trust-ladders.md).
+Humans, bots and agents climb identically — nothing in a ladder asserts humanity, it accumulates evidence that costs something to fake. The `auth:hardened`, `b2b:storage`, `b2b:saas` and `full` presets request `humanity` (at app scope, and at org scope too in all but `auth:hardened`); `blank` and `minimal` request none. Full rung tables, rung fields, and the `metered` limit baseline: [trust-ladders.md](./references/trust-ladders.md).
 
 ## Levels and Capabilities
 
