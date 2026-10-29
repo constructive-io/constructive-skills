@@ -696,10 +696,35 @@ Each entry in `relations[]` defines a relationship between two tables:
 | `field_name` | string | No | FK column name on the source table |
 | `delete_action` | string | No | FK delete action (e.g. `CASCADE`, `SET NULL`, `RESTRICT`) |
 | `is_required` | boolean | No | Whether the FK is NOT NULL (default: `true`) |
+| `scope_fields` | string[] | No | `RelationBelongsTo` only: columns both tables carry that the referenced row must share (see below) |
 | `junction_table_name` | string | No | For ManyToMany: name of the junction table |
 | `data` | object | No | Junction table config (see below) |
 
 \* Each end is given exactly one way: `source_table` **or** `source_module`, `target_table` **or** `target_module`. Supplying both for the same end is rejected at authoring time.
+
+### Where FK and ownership columns are declared
+
+- **Ownership columns** (`owner_id`, `entity_id`) come from ownership nodes such as `DataOwnershipInEntity` or `DataDirectOwner`. Don't list them in `fields[]`.
+- **Ordinary FK columns** come from their `relations[]` entry, which creates the column, its NOT NULL, the constraint and an index. Don't also list them in `fields[]`; a `fields[]` entry whose `is_required` disagrees with the relation is rejected.
+- **List a column in `fields[]` only** when a node on the same table needs it before relations run (e.g. the parent FK `DataInheritFromParent` copies through), or when it is a deliberate pointer with no FK.
+
+### Scoped relations
+
+A plain `RelationBelongsTo` only checks that the referenced row exists. `scope_fields` also requires it to share the listed columns, so a row in one org can't point at another org's row, or a card at another project's stage:
+
+```json
+{
+  "$type": "RelationBelongsTo",
+  "source_table": "project_contacts",
+  "target_table": "project_stages",
+  "field_name": "stage_id",
+  "delete_action": "SET NULL",
+  "is_required": false,
+  "scope_fields": ["project_id"]
+}
+```
+
+This adds a composite FK `(stage_id, project_id) -> project_stages(id, project_id)` and the unique key it needs on the target, both hidden from the API. `SET NULL` clears only `field_name`. Every scope column must exist on both tables and be NOT NULL on the source; a nullable one is rejected, because Postgres skips a composite FK check when any column is NULL.
 
 ### Relating to a module-generated table
 
