@@ -137,8 +137,9 @@ do {
     id: constructionId,
     select: { status: true, tableMap: true, error: true }
   }).execute();
-} while (construction.status === 'pending' || construction.status === 'constructing');
+} while (construction?.status === 'pending' || construction?.status === 'constructing');
 
+if (!construction) throw new Error(`construction ${constructionId} is not visible to this user`);
 if (construction.status === 'failed') throw new Error(JSON.stringify(construction.error));
 const tableIds = construction.tableMap; // { "products": "<uuid>", "categories": "<uuid>" }
 
@@ -169,7 +170,7 @@ constructive public:blueprint-construction get <construction-id>
    - Applies grants for each `grants[].roles[]` x `grants[].privileges[]` combination
    - Applies policies for each entry in `policies[]`
    - Enables RLS if `use_rls` is true (default) or if any policies are defined
-   - Records table in `blueprint_construction` for state tracking
+   - Adds the table to the construction's `table_map`
 5. **Phase 2 — Relations:** For each entry in `definition.relations[]`:
    - Resolves `source_table` and `target_table` to table IDs
    - Creates the relation (FK or junction table)
@@ -222,7 +223,7 @@ constructive public:copy-template-to-blueprint \
 
 **Behavior:**
 1. Checks visibility: owners can always copy their own templates; others require `public` visibility
-2. Creates a new `blueprint` with `status = 'draft'`, copying the template's definition
+2. Creates a new `blueprint`, copying the template's definition (nothing is provisioned until `constructBlueprint()` is called)
 3. Increments the template's `copy_count`
 4. Returns the new blueprint ID
 

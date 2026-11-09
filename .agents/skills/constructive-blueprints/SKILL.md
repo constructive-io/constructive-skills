@@ -57,7 +57,7 @@ blueprint.definition (JSONB)
 `constructBlueprint()` is asynchronous: it snapshots the definition into a
 `blueprint_construction` row and enqueues the build, which takes 15–40 s for the
 curated blueprints. Read the row until its `status` leaves `pending` /
-`constructing` — see [blueprints.md](./references/blueprints.md#constructblueprintblueprintid-schemaid).
+`constructing` — see the `constructBlueprint` section of [blueprints.md](./references/blueprints.md).
 
 ### Merkle Hashing
 

@@ -884,7 +884,7 @@ The `schemas/core.ts` template already ships the owner-scoped default. Remember 
 ### Verification
 
 ```bash
-# Re-run provision; the construct should report status: completed and create the table.
+# Re-run provision; poll the blueprint_construction row until status is constructed — the table now exists.
 pnpm run provision
 ```
 
