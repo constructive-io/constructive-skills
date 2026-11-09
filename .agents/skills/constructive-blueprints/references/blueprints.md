@@ -16,19 +16,22 @@ Two-layer model:
 1. Create template (or browse marketplace)
 2. Copy template → blueprint (via copyTemplateToBlueprint)
 3. Customize blueprint definition (optional)
-4. Execute blueprint -> provisions tables, relations, indexes, FTS, unique constraints (via constructBlueprint)
-5. Run introspection + codegen -> typed SDK with RLS
+4. Request construction (via constructBlueprint) -> a construction id, returned at once
+5. Wait for the blueprint_construction row to reach `constructed` -> tables, relations, indexes, FTS, unique constraints exist
+6. Run introspection + codegen -> typed SDK with RLS
 ```
 
 ## How Blueprints Provision
 
-When you call `constructBlueprint()`, the system handles everything declaratively:
+`constructBlueprint()` records a construction request and returns its id at once; a background job then builds the definition declaratively:
 
 1. **Tables** are created with their fields, nodes, grants, policies, and RLS
 2. **Relations** (BelongsTo, HasOne, HasMany, ManyToMany) are created between tables
 3. **Indexes**, **full-text search**, and **unique constraints** are applied
 
-All operations are **idempotent** — calling `constructBlueprint()` twice with the same definition is safe (the second call is a no-op).
+The build takes 15–40 s for the curated blueprints — longer than a GraphQL request may run — so the mutation never waits for it. Poll the `blueprint_construction` row (see below) until `status` is `constructed` or `failed` before running introspection or codegen.
+
+All build steps are **idempotent** — a second construction of the same definition is safe (it changes nothing).
 
 Authorization is enforced automatically — a user can only provision into databases they own.
 
@@ -85,10 +88,6 @@ An owned, executable blueprint scoped to a specific database.
 | `description` | text | Optional description |
 | `definition` | jsonb | Mutable blueprint definition (declarative JSONB format) |
 | `template_id` | uuid | Source template ID if copied (NULL if built from scratch) |
-| `status` | text | `draft`, `constructed`, or `failed` |
-| `constructed_at` | timestamptz | When constructBlueprint() succeeded |
-| `error_details` | text | Error message if status is `failed` |
-| `constructed_definition` | jsonb | Immutable snapshot of definition at construct-time |
 | `definition_hash` | uuid | Merkle root hash of definition (backend-computed) |
 | `table_hashes` | jsonb | Per-table content hashes keyed by table_name (backend-computed) |
 
@@ -100,37 +99,64 @@ An owned, executable blueprint scoped to a specific database.
 
 ## blueprint_construction
 
-Tracks the state of each table during blueprint construction. One row per table in the blueprint.
+One row per construction request: what `constructBlueprint()` creates and returns the id of, and where the build's outcome lands. A blueprint can be constructed more than once (into different schemas, or again after a failure); each request is its own row.
 
 ### Key columns
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `id` | uuid | Auto-generated primary key |
+| `id` | uuid | The construction id `constructBlueprint()` returns |
 | `blueprint_id` | uuid | FK to `blueprint(id)` |
-| `table_name` | text | The table_name from the definition |
-| `table_id` | uuid | The provisioned table's UUID |
-| `status` | text | `pending`, `constructed`, or `failed` |
+| `database_id` | uuid | Database the tables are provisioned into |
+| `schema_id` | uuid | Schema the tables land in (the `schemaId` argument) |
+| `status` | text | `pending` → `constructing` → `constructed` or `failed` |
+| `constructed_definition` | jsonb | Snapshot of `blueprint.definition` taken when the request was recorded; the build runs from this, so later edits to the blueprint do not reach a request already queued |
+| `table_map` | jsonb | `{ "<table_name>": "<table uuid>" }` for every table the build created; `{}` until `constructed` |
+| `error` | jsonb | The coded error the build raised, when `failed`; `null` otherwise |
+| `constructed_at` | timestamptz | When the build finished successfully |
+
+Read it through the ORM as `db.blueprintConstruction` (owners see their own database's rows).
 
 ## Functions
 
 ### constructBlueprint(blueprintId, schemaId)
 
-Executes a draft blueprint, provisioning real database tables and relations across 7 phases.
+Requests a build of a blueprint and returns the construction id at once. The build itself — provisioning real database tables and relations across the phases below — runs in the background as the `blueprint:construct` job, under the requesting user's identity, and takes 15–40 s for the curated blueprints.
 
 ```typescript
-// ORM
-const result = await db.mutation.constructBlueprint({
+// ORM — the mutation returns the construction id, not the tables
+const { result: constructionId } = await db.mutation.constructBlueprint({
   input: { blueprintId: '<UUID>', schemaId: '<UUID>' }
 }).execute();
 
+// Wait for the build: poll the construction row until it settles
+let construction;
+do {
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  construction = await db.blueprintConstruction.findOne({
+    id: constructionId,
+    select: { status: true, tableMap: true, error: true }
+  }).execute();
+} while (construction?.status === 'pending' || construction?.status === 'constructing');
+
+if (!construction) throw new Error(`construction ${constructionId} is not visible to this user`);
+if (construction.status === 'failed') throw new Error(JSON.stringify(construction.error));
+const tableIds = construction.tableMap; // { "products": "<uuid>", "categories": "<uuid>" }
+
 // CLI
 constructive public:construct-blueprint --input.blueprintId <UUID> --input.schemaId <UUID>
+# prints the construction id; then
+constructive public:blueprint-construction get <construction-id>
 ```
 
-**Behavior:**
-1. Validates blueprint exists and status is `draft`
-2. **Phase 0 — Entity Types:** For each entry in `definition.entity_types[]`:
+**Behavior of the mutation (synchronous part):**
+1. Validates the blueprint exists and the caller may provision into its database
+2. Snapshots `blueprint.definition` into a new `blueprint_construction` row with `status = 'pending'` and `constructed_definition` set
+3. Enqueues one `blueprint:construct` job for that row (job key `blueprint:construct:<construction id>`, a single attempt) attributed to the requester
+4. Returns the construction id
+
+**Behavior of the build (the job):** moves the row to `constructing`, then:
+1. **Phase 0 — Entity Types:** For each entry in `definition.entity_types[]`:
    - Creates dynamic entity types (channels, teams, data rooms) via `entity_type_provision`
    - Provisions membership tables, capabilities, and entity-scoped storage
 3. **Phase 0.5 — Storage:** For each entry in `definition.storage[]`:
@@ -144,7 +170,7 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
    - Applies grants for each `grants[].roles[]` x `grants[].privileges[]` combination
    - Applies policies for each entry in `policies[]`
    - Enables RLS if `use_rls` is true (default) or if any policies are defined
-   - Records table in `blueprint_construction` for state tracking
+   - Adds the table to the construction's `table_map`
 5. **Phase 2 — Relations:** For each entry in `definition.relations[]`:
    - Resolves `source_table` and `target_table` to table IDs
    - Creates the relation (FK or junction table)
@@ -154,12 +180,12 @@ constructive public:construct-blueprint --input.blueprintId <UUID> --input.schem
    - Creates tsvector column + GIN index + auto-update trigger
 8. **Phase 5 — Unique Constraints:** For each entry in `definition.unique_constraints[]` (or per-table `unique_constraints[]`):
    - Creates unique constraints on the resolved columns
-9. **On success:** Sets `status = 'constructed'`, saves `constructed_definition`
-10. **On failure:** Sets `status = 'failed'`, saves `error_details`. Returns NULL.
+9. **On success:** Sets the construction row's `status = 'constructed'`, fills `table_map` and `constructed_at`
+10. **On failure:** Rolls the build back (no half-built tables), sets `status = 'failed'` and stores the coded error in `error`. The job is not retried; fix the definition and call `constructBlueprint()` again for a new construction row.
 
-**Idempotency:** All phases are idempotent — calling `constructBlueprint()` twice with the same definition is safe. The second call is a no-op.
+**Idempotency:** The build steps are idempotent — constructing the same definition twice is safe; the second build changes nothing.
 
-**Returns:** `jsonb` table_name_map (e.g. `{"products": "uuid", "categories": "uuid"}`) or NULL on failure.
+**Returns:** `uuid` — the construction id. The table map lives on the construction row (`table_map`, e.g. `{"products": "uuid", "categories": "uuid"}`) once `status` is `constructed`.
 
 ### resolveBlueprintTable(databaseId, tableName, schemaName)
 
@@ -197,7 +223,7 @@ constructive public:copy-template-to-blueprint \
 
 **Behavior:**
 1. Checks visibility: owners can always copy their own templates; others require `public` visibility
-2. Creates a new `blueprint` with `status = 'draft'`, copying the template's definition
+2. Creates a new `blueprint`, copying the template's definition (nothing is provisioned until `constructBlueprint()` is called)
 3. Increments the template's `copy_count`
 4. Returns the new blueprint ID
 

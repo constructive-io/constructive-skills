@@ -297,7 +297,7 @@ Each billing period:
 
 ## Provisioning Order
 
-`constructBlueprint()` processes achievements in Phase 7:
+The build that `constructBlueprint()` enqueues processes achievements in Phase 7:
 1. Resolves the `events_module` for the given `entity_prefix` + `membership_type`
 2. Creates the level definition (name, description, priority)
 3. Creates one `level_requirement` per requirement entry (event_name + count)

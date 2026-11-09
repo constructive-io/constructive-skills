@@ -1032,14 +1032,17 @@ const { blueprintId } = await db.mutation.copyTemplateToBlueprint({
   },
 }).execute();
 
-// Execute the blueprint
-const refMap = await db.mutation.constructBlueprint({
+// Request the build — returns a construction id at once; the tables are built in the background
+const { result: constructionId } = await db.mutation.constructBlueprint({
   input: {
     blueprintId: blueprintId,
     schemaId: schemaId,
   },
 }).execute();
-// result = { "categories": "uuid", "products": "uuid", "orders": "uuid" }
+
+// Poll db.blueprintConstruction until status is 'constructed' (or 'failed'); then
+// tableMap = { "categories": "uuid", "products": "uuid", "orders": "uuid" }
+// See blueprints.md → constructBlueprint for the polling loop.
 ```
 
 ### CLI
@@ -1058,10 +1061,13 @@ constructive public:copy-template-to-blueprint \
   --input.databaseId <UUID> \
   --input.ownerId <UUID>
 
-# Execute
+# Request the build (prints the construction id)
 constructive public:construct-blueprint \
   --input.blueprintId <UUID> \
   --input.schemaId <UUID>
+
+# Poll until status is constructed (table_map filled) or failed (error filled)
+constructive public:blueprint-construction get <construction-id>
 ```
 
 ### Querying hashes for comparison

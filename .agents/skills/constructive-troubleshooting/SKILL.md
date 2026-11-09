@@ -33,7 +33,7 @@ When you run into issues, read this document for known problems and solutions.
 - **Phase 2.3**
   - `__dirname` undefined in ESM scripts
   - Workaround schema name has hash (query real schema name with psql first)
-  - `constructBlueprint` fails `NOT_FOUND (memberships_module)` (AuthzEntityMembership on an org-less app — use AuthzDirectOwner/AuthzAllowAll)
+  - the `blueprint_construction` row settles `failed` with `NOT_FOUND (memberships_module)` (AuthzEntityMembership on an org-less app — use AuthzDirectOwner/AuthzAllowAll)
 - **Phase 2.4** (Optional - skip in most cases, boilerplate includes codegen)
   - SDK build missing dependencies
   - `makage` missing `tsconfig.esm.json` / `README.md`
@@ -854,7 +854,7 @@ pnpm build
 
 ### Problem
 
-`constructBlueprint` returns `status: failed` with `errorDetails: "NOT_FOUND (memberships_module)"`, and the table is **never created** (not a silent 0-row — a hard abort).
+`constructBlueprint` returns a construction id, and the `blueprint_construction` row then settles at `status: failed` with `error` carrying `NOT_FOUND (memberships_module)`; the table is **never created** (not a silent 0-row — a hard abort).
 
 ### Cause
 
@@ -884,7 +884,7 @@ The `schemas/core.ts` template already ships the owner-scoped default. Remember 
 ### Verification
 
 ```bash
-# Re-run provision; the construct should report status: completed and create the table.
+# Re-run provision; poll the blueprint_construction row until status is constructed — the table now exists.
 pnpm run provision
 ```
 

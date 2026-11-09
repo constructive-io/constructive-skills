@@ -26,7 +26,7 @@ Use this skill when:
 
 ```
 Blueprint (SearchUnified / SearchVector / ProcessFileEmbedding / ProcessChunks)
-  → construct_blueprint() creates:
+  → construct_blueprint() enqueues the build, which creates:
     * vector(N) column + HNSW index
     * embedding_text composite + concat trigger (SearchUnified)
     * stale-marking triggers + enqueue_embedding job trigger
