@@ -854,7 +854,7 @@ pnpm build
 
 ### Problem
 
-`constructBlueprint` returns `status: failed` with `errorDetails: "NOT_FOUND (memberships_module)"`, and the table is **never created** (not a silent 0-row — a hard abort).
+`constructBlueprint` returns a construction id, and the `blueprint_construction` row then settles at `status: failed` with `error` carrying `NOT_FOUND (memberships_module)`; the table is **never created** (not a silent 0-row — a hard abort).
 
 ### Cause
 

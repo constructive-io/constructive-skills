@@ -43,13 +43,21 @@ See [blueprint-definition-format.md](./references/blueprint-definition-format.md
 
 ```
 blueprint.definition (JSONB)
-  → construct_blueprint()
-    → Phase 0: entity_type_provision (entity_types[])
-    → Phase 0.5: storage provisioning
-    → Phase 1: secure_table_provision (tables[] with nodes/fields/policies)
-    → Phase 2: relation_provision (relations[])
-    → Phase 3: post-processing (achievements, limits, jobs)
+  → constructBlueprint()            returns a construction id at once
+    → blueprint_construction row    status: pending
+    → blueprint:construct job       status: constructing
+      → Phase 0: entity_type_provision (entity_types[])
+      → Phase 0.5: storage provisioning
+      → Phase 1: secure_table_provision (tables[] with nodes/fields/policies)
+      → Phase 2: relation_provision (relations[])
+      → Phase 3: post-processing (achievements, limits, jobs)
+    → status: constructed (table_map filled) | failed (error filled)
 ```
+
+`constructBlueprint()` is asynchronous: it snapshots the definition into a
+`blueprint_construction` row and enqueues the build, which takes 15–40 s for the
+curated blueprints. Read the row until its `status` leaves `pending` /
+`constructing` — see [blueprints.md](./references/blueprints.md#constructblueprintblueprintid-schemaid).
 
 ### Merkle Hashing
 

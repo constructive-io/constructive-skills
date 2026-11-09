@@ -595,14 +595,16 @@ const { blueprintId } = await db.mutation.copyTemplateToBlueprint({
   },
 }).execute();
 
-// 3. Execute — Phase 0 provisions channel entity type, then tables/relations
-const result = await db.mutation.constructBlueprint({
+// 3. Request the build — returns a construction id; the background build runs
+//    Phase 0 (channel entity type), then tables/relations
+const { result: constructionId } = await db.mutation.constructBlueprint({
   input: {
     blueprintId,
     schemaId,
   },
 }).execute();
-// result = { "channels": "<uuid>", "messages": "<uuid>" }
+// Poll db.blueprintConstruction({ id: constructionId }) until status is 'constructed';
+// its tableMap = { "channels": "<uuid>", "messages": "<uuid>" }
 ```
 
 ## CLI: Create a Blueprint with Membership Types
