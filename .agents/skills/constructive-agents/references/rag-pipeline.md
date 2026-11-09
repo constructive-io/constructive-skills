@@ -8,7 +8,7 @@ Build Retrieval-Augmented Generation pipelines using Search* blueprint nodes, th
 
 ```
 Blueprint (SearchUnified node)
-  → construct_blueprint() creates vector column, HNSW index, stale triggers, job triggers
+  → construct_blueprint() enqueues the build; it creates vector column, HNSW index, stale triggers, job triggers
   → Row changes fire stale trigger → embed_record job enqueued
   → Worker embeds the row → writes the vector back
   → ORM queries with vectorEmbedding filter → context → LLM generation

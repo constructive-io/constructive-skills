@@ -321,7 +321,7 @@ An entity type can have both `has_storage` + `storage` AND `agents` simultaneous
 }
 ```
 
-This provisions both `storage_module` and `agent_module` for the entity type. The `construct_blueprint` function forwards `agents`, `namespaces`, and `functions` configs to `entity_type_provision`.
+This provisions both `storage_module` and `agent_module` for the entity type. The build `construct_blueprint` enqueues forwards `agents`, `namespaces`, and `functions` configs to `entity_type_provision`.
 
 ## Namespaces Config
 
@@ -528,7 +528,7 @@ const definition: BlueprintDefinition = {
 };
 ```
 
-**Key:** Use `entity_type: 'channel'` (the prefix string) instead of a hardcoded `membership_type` integer. `constructBlueprint()` resolves the prefix to the correct `membership_type` number at construction time, since Phase 0 has already provisioned the type. This avoids fragile numeric references that depend on provisioning order.
+**Key:** Use `entity_type: 'channel'` (the prefix string) instead of a hardcoded `membership_type` integer. The build resolves the prefix to the correct `membership_type` number, since its Phase 0 has already provisioned the type. This avoids fragile numeric references that depend on provisioning order.
 
 `target_table: 'channels'` works because `entity_types` entries are processed in Phase 0 and their entity tables are added to the `table_map` before Phase 1 (tables) and Phase 2 (relations).
 

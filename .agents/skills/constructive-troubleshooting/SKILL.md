@@ -33,7 +33,7 @@ When you run into issues, read this document for known problems and solutions.
 - **Phase 2.3**
   - `__dirname` undefined in ESM scripts
   - Workaround schema name has hash (query real schema name with psql first)
-  - `constructBlueprint` fails `NOT_FOUND (memberships_module)` (AuthzEntityMembership on an org-less app — use AuthzDirectOwner/AuthzAllowAll)
+  - the `blueprint_construction` row settles `failed` with `NOT_FOUND (memberships_module)` (AuthzEntityMembership on an org-less app — use AuthzDirectOwner/AuthzAllowAll)
 - **Phase 2.4** (Optional - skip in most cases, boilerplate includes codegen)
   - SDK build missing dependencies
   - `makage` missing `tsconfig.esm.json` / `README.md`
