@@ -94,8 +94,8 @@ For storage tables — extract text from files, generate embeddings:
 
 ```json
 { "$type": "ProcessFileEmbedding", "data": {
-  "source_field": "file_url",
-  "mime_types": ["application/pdf", "text/plain"]
+  "mime_patterns": ["application/pdf", "text/%"],
+  "extraction": {}
 }}
 ```
 

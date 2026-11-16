@@ -87,7 +87,7 @@ See `constructive-search` skill for configuration details.
 |------|-------------|
 | `ProcessFileEmbedding` | Extract text from files (PDF, DOCX, etc.), generate embeddings |
 | `ProcessImageEmbedding` | Generate embeddings from images (multi-modal) |
-| `ProcessImageVersions` | Generate image variants (thumbnails, resized versions) |
+| `ProcessImageVersions` | Generate image variants (thumbnails, resized versions). Runs by default on an `image` field; `versions` is optional (default ladder) |
 | `ProcessChunks` | Split text into chunks, embed each chunk separately |
 | `ProcessExtraction` | Extract structured data from files |
 

@@ -172,7 +172,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['image/%'],
       dimensions: 512,
-      task_identifier: 'process_image_embedding',
+      task_identifier: 'embedding:process_file_embedding',
     }},
   ],
 }
@@ -190,7 +190,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
-      task_identifier: 'process_document_extraction',
+      task_identifier: 'document:extract_file_text',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
@@ -221,7 +221,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       field_name: 'image_embedding',
       mime_patterns: ['image/%'],
       dimensions: 512,
-      task_identifier: 'process_image_embedding',
+      task_identifier: 'embedding:process_file_embedding',
     }},
 
     // Pipeline 2: Text extraction + chunked embeddings for documents
@@ -229,7 +229,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       field_name: 'document_embedding',
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
-      task_identifier: 'process_document_extraction',
+      task_identifier: 'document:extract_file_text',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
@@ -261,7 +261,8 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
 | `metric` | `'cosine'` \| `'l2'` \| `'ip'` | `'cosine'` | Distance metric |
 | `index_options` | object | `{}` | Index tuning params (e.g. `{m: 16, ef_construction: 64}`) |
 | `mime_patterns` | string[] | `['image/%']` | MIME LIKE patterns (OR'd together) |
-| `task_identifier` | string | `'process_file_embedding'` | Job task name |
+| `task_identifier` | string | `'embedding:process_file_embedding'` (extract mode: `'document:extract_file_text'`) | Job task name |
+| `embedding_model` | string | — | Optional. Unset, the model is resolved when the job runs: tenant `EMBEDDING_MODEL` config, else the platform's; none set fails the job (422) |
 | `events` | string[] | `['INSERT']` | Trigger events |
 | `payload_custom` | object | `{file_id: 'id', key: 'key', mime_type: 'mime_type', bucket_id: 'bucket_id'}` | Payload mapping |
 | `trigger_conditions` | object \| array | — | Additional compound conditions (AND'd with MIME filter) |
@@ -272,10 +273,12 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
 
 ## ProcessImageEmbedding Blueprint Node
 
+> For an `image` / `upload` field on your own table, state the lane on the field instead (`"processing": { "embedding": true }`); image versions run by default. See [`constructive-storage` → file-columns.md](../constructive-storage/references/file-columns.md).
+
 Image-specific preset of ProcessFileEmbedding. Delegates entirely to ProcessFileEmbedding with image-oriented defaults.
 
 ```typescript
-// Minimal — uses all defaults (512d CLIP, image/%, process_image_embedding)
+// Minimal — uses all defaults (512 dimensions, image/%)
 {
   ref: 'files',
   table_name: 'files',
@@ -291,7 +294,7 @@ Image-specific preset of ProcessFileEmbedding. Delegates entirely to ProcessFile
 | Parameter | ProcessImageEmbedding default | ProcessFileEmbedding default |
 |-----------|---------------------------|---------------------------|
 | `dimensions` | `512` | `768` |
-| `task_identifier` | `'process_image_embedding'` | `'process_file_embedding'` |
+| `task_identifier` | `'embedding:process_file_embedding'` | `'embedding:process_file_embedding'` |
 | `mime_patterns` | `['image/%']` | `['image/%']` |
 
 All ProcessFileEmbedding parameters are accepted and forwarded through. You can use ProcessImageEmbedding with `extraction` to enable OCR-based text extraction from images.

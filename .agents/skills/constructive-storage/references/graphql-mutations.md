@@ -109,6 +109,8 @@ query {
 
 Returns a URL for any file that has a `key` value. Returns `null` if the file has no key.
 
+`downloadUrl` is on files-table rows. For an `image` / `upload` column on one of your own tables use `<col>Url(width)` and `<col>Versions` — see [file-columns.md](./file-columns.md).
+
 ---
 
 ## Bucket Resolution Logic
