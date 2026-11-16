@@ -40,7 +40,7 @@ Client                    GraphQL Server              S3/MinIO
 
 | Package | Purpose |
 |---------|---------|
-| `graphile-presigned-url-plugin` | `requestUploadUrl` mutation, `downloadUrl` computed field |
+| `graphile-presigned-url-plugin` | `requestUploadUrl` mutation, `downloadUrl` computed field on files tables, `<col>Url(width)` / `<col>Versions` on `image` / `upload` columns |
 | `graphile-bucket-provisioner-plugin` | Auto-provisions S3 buckets on row creation |
 | `graphile-upload-plugin` | GraphQL `Upload` scalar for stream-based uploads |
 | `@constructive-io/upload-client` | Client orchestrator: hash → requestUploadUrl → PUT |
@@ -63,6 +63,7 @@ Entity-scoped buckets are provisioned via `has_storage: true` on entity types �
 | [client-usage.md](./references/client-usage.md) | Upload client library usage and patterns |
 | [graphql-mutations.md](./references/graphql-mutations.md) | GraphQL mutation reference for uploads |
 | [server-setup.md](./references/server-setup.md) | Server-side plugin configuration |
+| [file-columns.md](./references/file-columns.md) | `image` / `upload` columns on your own tables — default image versions, `processing`, `<col>Url(width)` / `<col>Versions` |
 
 ## Cross-References
 

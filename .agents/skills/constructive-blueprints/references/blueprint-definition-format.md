@@ -426,7 +426,7 @@ Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enab
 
 | Node Type | Purpose | `data` options |
 |-----------|---------|----------------|
-| `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'process_image_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'embedding:process_file_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
 
 #### Internationalization
 
@@ -528,6 +528,8 @@ See [realtime-subscriptions.md](../../constructive-realtime/references/realtime-
   "type": { "name": "text" }
 }
 ```
+
+An `image` or `upload` field also takes `processing` (`false`, or an object of lanes: `versions`, `embedding`, `extraction`). An `image` field renders versions by default. See [`constructive-storage` → file-columns.md](../../constructive-storage/references/file-columns.md).
 
 The `type` property is a **FieldType object** with the following shape:
 
