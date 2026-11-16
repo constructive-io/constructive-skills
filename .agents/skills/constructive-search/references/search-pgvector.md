@@ -286,7 +286,7 @@ No companion is added when a real column already has that name — e.g. `SearchU
 
 ### Which model, and searching across a model change
 
-- `embedding_model` on `SearchVector` / `SearchUnified` / the `Process*Embedding` nodes is optional. Unset, the worker uses the tenant's `EMBEDDING_MODEL` config, else the platform's; with none set the job fails (422).
+- `embedding_model` on `SearchVector` / `SearchUnified` / the `Process*Embedding` nodes is optional. Unset, the worker uses the tenant's `EMBEDDING_MODEL` config, else the platform's; with none set the job fails (422). Image bytes use `EMBEDDING_IMAGE_MODEL` in the same order.
 - A vector field created by these nodes gets a sibling `<field>_model` text column (read-only through the API) recording the model that produced each row's vector.
 - Search by `text` is model-aware: the server embeds the text with the column's model and compares only rows whose `<field>_model` matches. Rows embedded with another model are skipped, not ranked badly.
 - Passing a raw `vector`: also pass `model` in the same filter input, otherwise rows of every model are compared.

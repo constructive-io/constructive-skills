@@ -39,8 +39,8 @@ not in a second column.
 | `extraction` | `upload` | off | Extracted text in `<field>_text`, metadata in `<field>_metadata` |
 | `embedding` | `upload` | off | Vector of the file in `<field>_embedding` |
 
-- A value is `true`, `false`, or an object of the matching `Process*` node's
-  parameters. `processing: false` runs nothing.
+- A value is `true`, `false`, an object of the matching `Process*` node's
+  parameters, or (for `versions`) the list of versions. `processing: false` runs nothing.
 - Don't state the same lane twice (on the field and as a `Process*` node naming
   the field) — provisioning raises.
 - Embedding is not available on array columns.

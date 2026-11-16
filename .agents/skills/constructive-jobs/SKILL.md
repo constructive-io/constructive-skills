@@ -172,7 +172,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['image/%'],
       dimensions: 512,
-      task_identifier: 'process_image_embedding',
+      task_identifier: 'embedding:process_file_embedding',
     }},
   ],
 }
@@ -190,7 +190,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
     { $type: 'ProcessFileEmbedding', data: {
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
-      task_identifier: 'process_document_extraction',
+      task_identifier: 'document:extract_file_text',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
@@ -221,7 +221,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       field_name: 'image_embedding',
       mime_patterns: ['image/%'],
       dimensions: 512,
-      task_identifier: 'process_image_embedding',
+      task_identifier: 'embedding:process_file_embedding',
     }},
 
     // Pipeline 2: Text extraction + chunked embeddings for documents
@@ -229,7 +229,7 @@ Multiple instances can coexist on the same table with different MIME scopes, fie
       field_name: 'document_embedding',
       mime_patterns: ['application/pdf', 'text/%', 'application/vnd.openxmlformats-officedocument.*'],
       dimensions: 768,
-      task_identifier: 'process_document_extraction',
+      task_identifier: 'document:extract_file_text',
       extraction: {
         text_field: 'extracted_text',
         metadata_field: 'extracted_metadata',
