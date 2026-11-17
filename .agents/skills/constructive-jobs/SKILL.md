@@ -1,6 +1,6 @@
 ---
 name: constructive-jobs
-description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks composition wrappers, payload strategies, the Knative worker pipeline, scheduled jobs, and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks in blueprints."
+description: "Background job system — JobTrigger blueprint node for enqueuing jobs on row changes (with compound conditions support: AND/OR/NOT combinators, column-aware type resolution), ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks composition wrappers, payload strategies, the compute worker pipeline, scheduled jobs (Postgres-owned clock), and the app_jobs database extension. Use when asked to 'trigger a job', 'enqueue a background task', 'add a job trigger', 'run a function on row change', 'schedule a job', 'compound conditions', 'file embedding trigger', 'image embedding trigger', 'multi-modal embedding', or when working with JobTrigger/ProcessFileEmbedding/ProcessImageEmbedding/ProcessChunks in blueprints."
 metadata:
   author: constructive-io
   version: "2.0.0"
@@ -8,7 +8,7 @@ metadata:
 
 # Constructive Jobs
 
-Background job infrastructure for the Constructive platform. Declaratively attach triggers to tables that enqueue jobs when rows change, processed by the Knative worker stack.
+Background job infrastructure for the Constructive platform. Declaratively attach triggers to tables that enqueue jobs when rows change, processed by the compute worker.
 
 ## When to Apply
 
@@ -25,9 +25,9 @@ Background job infrastructure for the Constructive platform. Declaratively attac
 Table row change (INSERT/UPDATE/DELETE)
   --> PostgreSQL AFTER trigger (created by JobTrigger node)
     --> app_jobs.add_job(task_identifier, payload)
-      --> knative-job-worker polls app_jobs.jobs
-        --> POST ${KNATIVE_SERVICE_URL}/${task_identifier}
-          --> Knative function handles the job
+      --> compute worker claims the job from app_jobs.jobs
+        --> POST to the function's service URL
+          --> the function handles the job
 ```
 
 The database extension `pgpm-database-jobs` provides:
@@ -351,55 +351,27 @@ The chunks table gets:
 | `enqueue_chunking_job` | boolean | `true` | Auto-enqueue chunking job |
 | `chunking_task_name` | string | `'generate_chunks'` | Job task name |
 
-## Knative Worker Stack
+## Compute Worker
 
-The runtime consists of three packages:
-
-| Package | Role |
-|---------|------|
-| `@constructive-io/knative-job-service` | Orchestrator — starts worker + callback server + scheduler |
-| `@constructive-io/knative-job-worker` | Polls `app_jobs.jobs`, POSTs to function URL |
-| `@constructive-io/knative-job-fn` | Express app factory for function handlers |
+Jobs are run by the compute worker (`@constructive-db/compute-worker`, `compute/services/worker` in constructive-db). There is no separate job-service, scheduler or function-framework package.
 
 ### Job Flow
 
 1. **Trigger fires** -> inserts row into `app_jobs.jobs`
-2. **Worker polls** -> picks up job by `task_identifier`
-3. **Worker POSTs** -> `${KNATIVE_SERVICE_URL}/${task_identifier}` with JSON payload
+2. **Worker claims** -> picks up the job by `task_identifier`
+3. **Worker POSTs** -> the function's service URL with the JSON payload
 4. **Function executes** -> returns success/failure
-5. **Worker updates** -> marks job as complete or failed (retries up to `max_attempts`)
+5. **Worker updates** -> marks the job complete or failed (retries up to `max_attempts`)
 
-Headers sent to the function:
-- `X-Worker-Id` — worker instance identifier
-- `X-Job-Id` — job row ID
-- `X-Database-Id` — database context (nullable)
-- `X-Actor-Id` — user who triggered the job (nullable)
-
-### Key Environment Variables
-
-| Variable | Description |
-|----------|-------------|
-| `KNATIVE_SERVICE_URL` | Base URL for Knative functions |
-| `JOBS_SCHEMA` | Schema name (default: `app_jobs`) |
-| `JOBS_SUPPORT_ANY` | Accept all task types (`true`/`false`) |
-| `JOBS_SUPPORTED` | Comma-separated task list (when `JOBS_SUPPORT_ANY=false`) |
+Headers sent to the function include `X-Worker-Id`, `X-Job-Id`, `X-Invocation-Id`, `X-Attempt`, and the job's identity (database, actor, principal, entity, scope) as signed internal identity headers.
 
 ## Scheduled Jobs
 
-For recurring jobs, use `app_jobs.add_scheduled_job()` or the `runtime_schedules` table (in agentic-db):
+Postgres owns the clock. A recurring job is a row in `app_jobs.scheduled_jobs` whose `next_run_at` is the durable schedule. The compute worker only supplies a heartbeat: every `SCHEDULE_CLOCK_INTERVAL_MS` (default 10 s) it calls `fire_due_scheduled_jobs(batch_size)`, which spawns a job for each due row and advances its `next_run_at`. Any number of workers can run the clock at once; row locks decide which worker fires which schedule. A schedule whose function has no definition yet is deferred (no job spawned, no attempt spent) instead of failing.
 
-```sql
--- database_id and actor_id are read from JWT claims automatically
-SELECT app_jobs.add_scheduled_job(
-  identifier := 'daily_report',
-  payload := '{"report_type": "daily"}'::json,
-  schedule_info := json_build_object(
-    'rule', '0 9 * * *'  -- 9 AM daily
-  )
-);
-```
+Schedules are registered at provisioning time by the modules that need them (the `register_scheduled_job` provisioning action), not at runtime by an app.
 
-The scheduler component in `knative-job-service` evaluates cron expressions and enqueues jobs at the appropriate times.
+**SDK gap:** there is no SDK/ORM operation for an app builder to create or remove a recurring schedule. Do not author SQL against `app_jobs` to work around it.
 
 ## References
 

@@ -354,11 +354,11 @@ for port in 3002 8082; do
   fi
 done
 
-# Check job-service (no HTTP port)
-if pgrep -f "knative-job-service" > /dev/null; then
-  echo "✅ job-service - Running"
+# Check the compute worker (no HTTP port) — started by `fun compute` as compute-service
+if pgrep -f "services/gateway/dist/run.js" > /dev/null; then
+  echo "✅ compute-service (job worker) - Running"
 else
-  echo "❌ job-service - Not running"
+  echo "❌ compute-service (job worker) - Not running"
 fi
 ```
 
@@ -429,35 +429,29 @@ Jobs are being added to the queue but not processed. send-email-link never recei
 
 ### Solution
 
-**Step 1: Check job-service is running:**
+The job worker is `@constructive-db/compute-service` (`compute/services/gateway` in constructive-db) running with `COMPUTE_ROLE=worker`; there is no separate `knative-job-service` any more. Locally, `fun compute` starts it alongside the functions.
+
+**Step 1: Check the worker is running:**
 
 ```bash
-pgrep -f "knative-job-service" || echo "Not running!"
+pgrep -f "services/gateway/dist/run.js" || echo "Not running!"
 ```
 
-**Step 2: Check logs:**
+On the local k8s floor the worker is instead the `compute-worker` StatefulSet in the `constructive-functions` namespace:
 
 ```bash
-tail -f /tmp/job-service.log
-# Should see: "worker-0 connected and looking for jobs..."
+kubectl -n constructive-functions get pods -l app=compute-worker
 ```
 
-**Step 3: Verify environment variables:**
+**Step 2: Check its output** (`fun compute` prefixes the worker's lines with `[compute-service]`):
 
-The most important variable is `INTERNAL_GATEWAY_DEVELOPMENT_MAP`:
-
-```bash
-export INTERNAL_GATEWAY_DEVELOPMENT_MAP='{"send-email-link":"http://localhost:8082"}'
+```
+compute-service-local connected and looking for jobs (concurrency N)...
 ```
 
-**Step 4: Restart job-service if needed:**
+**Step 3: Check the function's URL resolves.** The worker resolves a task's URL from the resolved deployment's `service_url`, then `INTERNAL_GATEWAY_DEVELOPMENT_MAP` (dev only), then `COMPUTE_GATEWAY_URL` / `INTERNAL_GATEWAY_URL`. `fun compute` builds the development map from the functions it starts, so a missing entry usually means the function was not started (`fun compute --only=<name>` starts only that one).
 
-```bash
-pkill -f "knative-job-service"
-cd $CONSTRUCTIVE_PATH/jobs/knative-job-service
-# Set all env vars...
-nohup node dist/run.js > /tmp/job-service.log 2>&1 &
-```
+**Step 4: Restart:** stop and re-run `fun compute`.
 
 ---
 

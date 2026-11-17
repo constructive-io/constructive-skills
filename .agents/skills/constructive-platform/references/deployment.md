@@ -14,7 +14,7 @@ How to deploy the Constructive platform — local development with Docker Compos
 
 Use this skill when:
 - Setting up the Constructive monorepo for local development
-- Running Docker Compose services (Postgres, MinIO, API servers)
+- Running Docker Compose services (Postgres, RustFS)
 - Building the Constructive Docker image
 - Deploying database migrations to local or remote Postgres
 - Understanding the Makefile targets and service architecture
@@ -30,7 +30,7 @@ Use this skill when:
 ### Quick Start
 
 ```bash
-# 1. Start Postgres and MinIO containers
+# 1. Start Postgres and RustFS containers
 make up
 # OR: docker-compose up -d
 
@@ -55,39 +55,18 @@ make down
 
 | Service | Container | Image | Port | Purpose |
 |---------|-----------|-------|------|---------|
-| `postgres` | `postgres` | `ghcr.io/constructive-io/docker/postgres-plus:17` | 5432 | PostgreSQL database |
-| `minio` | `minio` | `minio/minio` | 9000 | S3-compatible object storage |
+| `postgres` | `postgres` | `docker.io/constructiveio/postgres-plus:18` | 5432 | PostgreSQL database |
+| `rustfs` | `rustfs` | `rustfs/rustfs` | 9000 (API), 9001 (console) | S3-compatible object storage |
 
 **Postgres credentials:** `postgres` / `password` (local dev only)
 
-### Application Services (docker-compose.jobs.yml)
+### Application Servers
 
-| Service | Container | Port | Purpose |
-|---------|-----------|------|---------|
-| `constructive-admin-server` | `constructive-admin-server` | 3002 | Internal admin GraphQL API (header-based routing) |
-| `constructive-server` | `constructive-server` | 3000 | Public GraphQL API (domain-based routing) |
-| `send-email-link` | `send-email-link` | — | Email function (invite, password reset, verification) |
+There is no compose file for the application servers. Run the GraphQL server from the CLI (`cnc server`); `docker-compose.ai.yml` only runs a local Ollama.
 
-### Running Application Services
+## Postgres Image
 
-The application services require a built Docker image:
-
-```bash
-# Build the constructive image
-docker-compose -f docker-compose.jobs.yml build
-
-# Start all application services
-docker-compose -f docker-compose.jobs.yml up -d
-```
-
-## Postgres Images
-
-| Image | Use Case |
-|-------|----------|
-| `ghcr.io/constructive-io/docker/postgres-plus:17` | **Recommended** — includes all extensions needed by constructive |
-| `docker.io/constructiveio/postgres-plus:18` | Lightweight alternative with common extensions |
-
-**PostgreSQL 17+ is required** for `security_invoker` views. Older images will fail with "unrecognized parameter security_invoker" errors.
+Use `docker.io/constructiveio/postgres-plus:18` (the image `docker-compose.yml` and `pgpm docker start` use). The platform requires PostgreSQL 18; "unrecognized parameter security_invoker" means an older container is still running — recreate it with `pgpm docker start --image docker.io/constructiveio/postgres-plus:18 --recreate`.
 
 ## Database Deployment
 
@@ -161,7 +140,7 @@ docker build -t constructive:dev .
 
 | Target | Command | Purpose |
 |--------|---------|---------|
-| `make up` | `docker-compose up -d` | Start Postgres + MinIO |
+| `make up` | `docker-compose up -d` | Start Postgres + RustFS |
 | `make down` | `docker-compose down -v` | Stop and clean up |
 | `make ssh` | `docker exec -it postgres /bin/bash` | Shell into Postgres container |
 | `make roles` | `pgpm admin-users bootstrap/add` | Bootstrap database roles |

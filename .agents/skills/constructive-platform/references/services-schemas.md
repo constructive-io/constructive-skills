@@ -2,9 +2,9 @@
 name: constructive-services-schemas
 description: >
   Create and configure Constructive services (APIs), attach database schemas to them,
-  set up domains, API modules, and schema grants using the @constructive-io/sdk TypeScript SDK.
+  route hostnames to them, and manage schema grants using the @constructive-io/sdk TypeScript SDK.
   Use when: "create an API", "set up a service", "attach schema to API", "configure domains",
-  "add API module", "grant schema access", "set up service routing".
+  "route a hostname to an API", "grant schema access", "set up service routing".
 compatibility: Node.js 18+, @constructive-io/sdk
 metadata:
   author: constructive-io
@@ -20,8 +20,7 @@ Configure Constructive services (APIs), attach database schemas, set up domain r
 Use this skill when:
 - Creating a new API service for a Constructive database
 - Attaching database schemas to an API to expose them via GraphQL
-- Setting up domain/subdomain routing for APIs and sites
-- Adding configuration modules to an API
+- Routing a hostname to an API or site
 - Granting role-based access to schemas
 - Querying existing APIs with their attached schemas and domains
 
@@ -36,21 +35,21 @@ Database (top-level container)
 │   └── ApiSchema (join: links Schema ↔ Api)
 ├── Api (service endpoint with role-based access)
 │   ├── ApiSchema (which schemas this API exposes)
-│   ├── ApiModule (named JSON config blobs)
-│   └── Domain (routing: subdomain.domain → this API)
-├── Site (website metadata: title, logo, favicon, etc.)
-│   └── Domain (routing: subdomain.domain → this site)
-└── Domain (maps subdomain + domain to an Api and/or Site)
+│   ├── ApiSetting (per-API feature flags and request bounds)
+│   └── CorsSetting (per-API CORS origins)
+├── Site (web property; metadata on SiteMetadatum)
+├── Domain (a claimed hostname)
+└── Route (domain + path → an Api, Site, function, bucket, ...)
 ```
 
 ### Key Relationships
 
 | Entity | Purpose | Key Fields |
 |--------|---------|------------|
-| **Api** | A service endpoint | `databaseId`, `name`, `roleName`, `anonRole`, `isPublic` |
+| **Api** | A service endpoint | `databaseId`, `name`, `roleName`, `anonRole`, `isPublished`, `serviceHostname` |
 | **ApiSchema** | Links an Api to a Schema | `databaseId`, `apiId`, `schemaId` |
-| **ApiModule** | Named JSON config for an Api | `databaseId`, `apiId`, `name`, `data` |
-| **Domain** | Routes subdomain.domain → Api/Site | `databaseId`, `apiId`, `siteId`, `subdomain`, `domain` |
+| **Domain** | A claimed hostname | `databaseId`, `hostname`, `managed`, `isWildcard`, `verificationStatus` |
+| **Route** | Hostname + path → target | `databaseId`, `domainId`, `path`, `targetApiId`, `targetSiteId`, ... |
 | **Schema** | Database schema container | `databaseId`, `name`, `schemaName` |
 | **SchemaGrant** | Grants a role access to a schema | `databaseId`, `schemaId`, `granteeName` |
 
@@ -79,7 +78,7 @@ const result = await sdk.api
       name: 'public',        // required: API name
       roleName: 'authenticated', // role for authenticated users
       anonRole: 'anonymous',    // role for anonymous access
-      isPublic: true,           // whether the API is publicly accessible
+      isPublished: true,        // whether other scopes may see and route to this API
     },
     select: { id: true, name: true, databaseId: true },
   })
@@ -97,10 +96,12 @@ const api = result.data.createApi.api;
 - `name` (string) — API name (e.g., `"public"`, `"admin"`, `"meta"`)
 
 ### Optional fields:
-- `dbname` (string) — database name override
 - `roleName` (string) — role for authenticated users (e.g., `"authenticated"`, `"administrator"`)
 - `anonRole` (string) — role for anonymous access (e.g., `"anonymous"`, `"administrator"`)
-- `isPublic` (boolean) — whether the API is publicly accessible
+- `isPublished` (boolean) — whether other scopes may see and route to this API surface
+- `config` (JSON) — module-specific configuration for this API surface
+
+`serviceHostname` is read-only: the API's platform-issued hostname (a managed, verified domain routed to it).
 
 ## Attaching Schemas to an API
 
@@ -143,79 +144,34 @@ for (const schemaId of schemaIds) {
 }
 ```
 
-## Setting Up Domains
+## Routing a Hostname to an API
 
-Domains route `subdomain.domain` to an API and/or Site. Create the domain first, then link it to an API.
-
-### Step 1: Create domains
+Routing is two rows: a **domain** (a claimed hostname) and a **route** (`domainId` + `path` → a target). The hostname-claim verbs (`domainsAssignSubdomain` under a published managed domain, custom-domain verification) are documented in [`constructive-sites`](../../constructive-sites/SKILL.md).
 
 ```typescript
-const domainResult = await sdk.domain
+// 1. Claim a hostname under a published managed apex
+const { domainsAssignSubdomain } = await sdk.mutation
+  .domainsAssignSubdomain(
+    { input: { apex: 'apps.example.com', label: 'api' } },
+    { select: { result: { select: { id: true, hostname: true } } } },
+  )
+  .unwrap();
+const domainId = domainsAssignSubdomain.result.id;
+
+// 2. Route it to the API (path defaults to '/')
+await sdk.route
   .create({
-    data: {
-      databaseId,
-      subdomain: 'api',       // the subdomain part
-      domain: 'example.com',  // the domain part
-    },
-    select: { id: true, subdomain: true, domain: true },
+    data: { databaseId, domainId, targetApiId: api.id },
+    select: { id: true, path: true },
   })
-  .execute();
-
-if (!domainResult.ok) {
-  throw new Error(`createDomain failed: ${JSON.stringify(domainResult.errors)}`);
-}
-
-const domain = domainResult.data.createDomain.domain;
+  .unwrap();
 ```
 
-### Step 2: Link domain to an API
+Routes are unique per `(domainId, path, method)`; the longest matching path prefix wins, so one hostname can serve an API at `/graphql` and a site at `/`.
 
-```typescript
-const updateResult = await sdk.domain
-  .update({
-    where: { id: domain.id },
-    data: { apiId: api.id },
-    select: { id: true, apiId: true },
-  })
-  .execute();
-```
+## Per-API Settings
 
-### Required fields for `domain.create`:
-- `databaseId` (string)
-
-### Optional fields:
-- `apiId` (string) — link to an API at creation time
-- `siteId` (string) — link to a Site
-- `subdomain` (string) — e.g., `"api"`, `"app"`, `"admin"`
-- `domain` (string) — e.g., `"example.com"`, `"localhost"`
-
-## Adding API Modules
-
-API modules attach named JSON configuration to an API.
-
-```typescript
-const moduleResult = await sdk.apiModule
-  .create({
-    data: {
-      databaseId,
-      apiId: api.id,
-      name: 'cors_config',       // required: module name
-      data: {                     // required: JSON config data
-        allowedOrigins: ['https://app.example.com'],
-        allowedMethods: ['GET', 'POST'],
-        maxAge: 86400,
-      },
-    },
-    select: { id: true, name: true },
-  })
-  .execute();
-```
-
-### Required fields for `apiModule.create`:
-- `databaseId` (string)
-- `apiId` (string) — the API this module belongs to
-- `name` (string) — module name
-- `data` (JSON object) — module configuration
+Per-API feature flags and request-protection bounds live on `sdk.apiSetting`, and per-API CORS origins on `sdk.corsSetting` — see `constructive-auth` (`references/service-settings.md`).
 
 ## Granting Schema Access
 
@@ -242,7 +198,7 @@ const grantResult = await sdk.schemaGrant
 
 ## Querying APIs with Relations
 
-### List all APIs with their schemas and domains
+### List all APIs with their schemas and settings
 
 ```typescript
 const apis = await sdk.api
@@ -252,7 +208,8 @@ const apis = await sdk.api
       name: true,
       roleName: true,
       anonRole: true,
-      isPublic: true,
+      isPublished: true,
+      serviceHostname: true,
       apiSchemas: {
         select: {
           id: true,
@@ -261,11 +218,11 @@ const apis = await sdk.api
           },
         },
       },
-      domains: {
-        select: { id: true, subdomain: true, domain: true },
+      apiSetting: {
+        select: { enableRealtime: true, maxQueryDepth: true },
       },
-      apiModules: {
-        select: { id: true, name: true, data: true },
+      corsSettings: {
+        select: { id: true, allowedOrigins: true },
       },
     },
   })
@@ -316,7 +273,7 @@ const schemaResult = await sdk.schema
 
 ## Complete End-to-End Example
 
-This example shows a full service setup workflow: create a database, set up multiple APIs with different roles, attach schemas, configure domains, and add site metadata.
+This example shows a full service setup workflow: create a database, set up multiple APIs with different roles, attach schemas, route hostnames, and create a site.
 
 ```typescript
 import { createClient } from '@constructive-io/sdk';
@@ -343,21 +300,19 @@ const publicSchema = database.schemas?.nodes?.find(
   (s) => s.name === 'public'
 );
 
-// 2. Create domains for routing
-const subdomains = ['api', 'app', 'meta'];
+// 2. Claim one hostname per surface under a published managed apex
 const domains: Record<string, string> = {};
-
-for (const subdomain of subdomains) {
-  const domainResult = await sdk.domain
-    .create({
-      data: { databaseId, subdomain, domain: 'localhost' },
-      select: { id: true },
-    })
-    .execute();
-  domains[subdomain] = domainResult.data.createDomain.domain.id;
+for (const label of ['api', 'app', 'meta']) {
+  const { domainsAssignSubdomain } = await sdk.mutation
+    .domainsAssignSubdomain(
+      { input: { apex: 'apps.example.com', label } },
+      { select: { result: { select: { id: true, hostname: true } } } },
+    )
+    .unwrap();
+  domains[label] = domainsAssignSubdomain.result.id;
 }
 
-// 3. Helper: create an API, attach schemas, and link a domain
+// 3. Helper: create an API, attach schemas, and route a hostname to it
 async function setupApi(opts: {
   name: string;
   roleName: string;
@@ -373,7 +328,7 @@ async function setupApi(opts: {
         name: opts.name,
         roleName: opts.roleName,
         anonRole: opts.anonRole,
-        isPublic: true,
+        isPublished: true,
       },
       select: { id: true, name: true },
     })
@@ -391,11 +346,10 @@ async function setupApi(opts: {
       .execute();
   }
 
-  // Link domain to this API
-  await sdk.domain
-    .update({
-      where: { id: opts.domainId },
-      data: { apiId: api.id },
+  // Route the hostname to this API
+  await sdk.route
+    .create({
+      data: { databaseId, domainId: opts.domainId, targetApiId: api.id },
       select: { id: true },
     })
     .execute();
@@ -419,7 +373,7 @@ await setupApi({
   domainId: domains['meta'],
 });
 
-// 5. Create a site and link it to the app domain
+// 5. Create a site and route the app hostname to it
 const siteResult = await sdk.site
   .create({
     data: {
@@ -431,10 +385,9 @@ const siteResult = await sdk.site
   })
   .execute();
 
-await sdk.domain
-  .update({
-    where: { id: domains['app'] },
-    data: { siteId: siteResult.data.createSite.site.id },
+await sdk.route
+  .create({
+    data: { databaseId, domainId: domains['app'], targetSiteId: siteResult.data.createSite.site.id },
     select: { id: true },
   })
   .execute();
@@ -448,8 +401,8 @@ await sdk.domain
 await sdk.api
   .update({
     where: { id: apiId },
-    data: { isPublic: false, anonRole: 'authenticated' },
-    select: { id: true, isPublic: true },
+    data: { isPublished: false, anonRole: 'authenticated' },
+    select: { id: true, isPublished: true },
   })
   .execute();
 ```
@@ -465,12 +418,12 @@ await sdk.apiSchema
   .execute();
 ```
 
-### Delete a domain
+### Stop routing a hostname
 
 ```typescript
-await sdk.domain
+await sdk.route
   .delete({
-    where: { id: domainId },
+    where: { id: routeId },
     select: { id: true },
   })
   .execute();
@@ -497,13 +450,13 @@ A single database typically has several APIs with different access levels:
 
 ### Domain routing pattern
 
-Each API gets its own subdomain:
+Each API gets its own hostname, routed with one `route` row:
 
-| Subdomain | Domain | Linked To |
-|-----------|--------|-----------|
-| `api` | `example.com` | `public` API |
-| `app` | `example.com` | Site (frontend) |
-| `meta` | `example.com` | `meta` API |
+| Hostname | Route target |
+|----------|--------------|
+| `api.example.com` | `targetApiId` → `public` API |
+| `app.example.com` | `targetSiteId` → Site (frontend) |
+| `meta.example.com` | `targetApiId` → `meta` API |
 
 ## Error Handling
 

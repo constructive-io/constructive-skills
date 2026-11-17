@@ -35,6 +35,53 @@ Anonymous sessions create a session record with `user_id = NULL` and `is_anonymo
 
 ---
 
+## Invite-only Sign-up
+
+| Field | Type | Default | Purpose |
+|-------|------|---------|---------|
+| `sign_up_requires_invite` | boolean | `false` | Public sign-up requires a valid app invite token |
+
+When `true`, `signUp`, `signUpMagicLink` and `signUpSms` refuse a call without `inviteToken` with `SIGN_UP_REQUIRES_INVITE`. Internal provisioning of users (e.g. provisioning a user for an invite) is not gated.
+
+```ts
+await auth.mutation
+  .signUp({ input: { email, password, inviteToken } })
+  .execute();
+```
+
+## Pending Password Until Email Verification
+
+Password sign-up never signs anyone in, and answers every address the same way, so the call does not reveal whether an address is free, claimed or verified. Only the inbox learns which:
+
+- An address with no proof yet: the password is kept **pending**, bound to the verification token mailed with it. Only `verifyEmail` spending that token makes it the account's password; nothing signs in before that.
+- A second sign-up on an address an unproven account claims replaces the pending password and mails a fresh link; the earlier link stops working, so whoever proves the address gets the password chosen by the sign-up that mailed the link they used.
+- A verified holder is told someone tried to sign up with the address.
+- An `inviteToken` addressed to the email is proof, so the password goes live at once.
+
+## Sign-in Screen Options — `signInOptions`
+
+A signed-out sign-in screen reads which methods to render from the `signInOptions` query, which returns the `app_settings_auth` switches plus the enabled identity providers (`{ slug, kind, display_name }` only — never a URL, client id or secret):
+
+```ts
+const { data } = await auth.query
+  .signInOptions({
+    select: {
+      allowSignUp: true,
+      allowPasswordSignIn: true,
+      allowMagicLinkSignIn: true,
+      allowWebauthnSignIn: true,
+      signUpRequiresInvite: true,
+      enableCaptcha: true,
+      identityProviders: true,
+    },
+  })
+  .execute();
+```
+
+Fields: `allowSignUp`, `allowPasswordSignIn` / `allowPasswordSignUp`, `allowMagicLinkSignIn` / `allowMagicLinkSignUp`, `allowEmailOtpSignIn`, `allowSmsSignIn` / `allowSmsSignUp`, `allowWebauthnSignIn` / `allowWebauthnSignUp` / `allowWebauthnUsernameless`, `allowIdentitySignIn` / `allowIdentitySignUp`, `allowAnonymousSessions`, `enableCaptcha`, `requireMfa`, `signUpRequiresInvite`, `identityProviders`.
+
+---
+
 ## CAPTCHA / reCAPTCHA
 
 | Field | Type | Default | Purpose |

@@ -1,39 +1,22 @@
 # Server Setup & Configuration
 
+The server holds only the object-store **credentials**. Every other storage coordinate — endpoint, provider, region, public URL prefix, CORS origins, limits — is a column on the `storage_module` row, so it belongs to the database, not to the server's environment.
+
 ## PostGraphile Preset — Presigned URL Plugin
 
-The presigned URL plugin adds `requestUploadUrl` and the `downloadUrl` computed field.
+`PresignedUrlPreset` adds the per-files-table `upload<FilesType>` / `upload<FilesType>s` mutations, the `downloadUrl` field on files tables, `maxBulkFiles` on bucket tables, and `<col>Url(width)` / `<col>Versions` on `image` / `upload` columns.
 
 ```typescript
 import { PresignedUrlPreset } from 'graphile-presigned-url-plugin';
-import { S3Client } from '@aws-sdk/client-s3';
 
 const preset: GraphileConfig.Preset = {
   extends: [
     PresignedUrlPreset({
-      // S3 config — lazy getter avoids reading env vars at import time
-      s3: () => ({
-        client: new S3Client({
-          region: process.env.AWS_REGION || 'us-east-1',
-          endpoint: process.env.CDN_ENDPOINT || 'http://localhost:9000',
-          forcePathStyle: true, // required for MinIO
-          credentials: {
-            accessKeyId: process.env.AWS_ACCESS_KEY!,
-            secretAccessKey: process.env.AWS_SECRET_KEY!,
-          },
-        }),
-        bucket: process.env.BUCKET_NAME || 'my-uploads',
-        endpoint: process.env.CDN_ENDPOINT,
-        publicUrlPrefix: process.env.CDN_PUBLIC_URL, // for public file downloadUrl
+      // Lazy getter: a server that never touches storage never needs the credentials
+      credentials: () => ({
+        accessKeyId: process.env.STORAGE_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.STORAGE_SECRET_ACCESS_KEY!,
       }),
-
-      // Optional: per-database bucket naming (multi-tenant)
-      resolveBucketName: (databaseId) => `app-${databaseId}`,
-
-      // Optional: lazy-provision S3 buckets on first upload
-      ensureBucketProvisioned: async (bucketName, accessType, databaseId, allowedOrigins) => {
-        // create bucket with correct CORS + policies
-      },
     }),
   ],
 };
@@ -43,68 +26,22 @@ const preset: GraphileConfig.Preset = {
 
 | Option | Type | Description |
 |--------|------|-------------|
-| `s3` | `S3Config \| () => S3Config` | S3 client + bucket config (static or lazy getter) |
-| `resolveBucketName` | `(databaseId) => string` | Custom S3 bucket name per database (multi-tenant) |
-| `ensureBucketProvisioned` | `(name, type, dbId, origins) => Promise<void>` | Lazy-provision callback on first upload |
-
-### `S3Config` Fields
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `client` | `S3Client` | Yes | AWS SDK v3 S3 client instance |
-| `bucket` | `string` | Yes | S3 bucket name |
-| `endpoint` | `string` | No | S3/MinIO endpoint URL |
-| `region` | `string` | No | AWS region |
-| `forcePathStyle` | `boolean` | No | Required for MinIO (`true`) |
-| `publicUrlPrefix` | `string` | No | CDN URL prefix for public file downloads |
+| `credentials` | `StorageCredentials \| () => StorageCredentials` | `{ accessKeyId, secretAccessKey }` for the platform object store (static or lazy getter) |
+| `fileRefDomains` | `readonly string[]` | Optional. The jsonb domains whose columns get `<col>Url` / `<col>Versions`. Defaults to `image`, `upload`. |
 
 ---
 
 ## PostGraphile Preset — Bucket Provisioner Plugin
 
-Auto-provisions S3 buckets when bucket rows are created via GraphQL mutations.
-
 ```typescript
 import { BucketProvisionerPreset } from 'graphile-bucket-provisioner-plugin';
 
 const preset: GraphileConfig.Preset = {
-  extends: [
-    BucketProvisionerPreset({
-      connection: () => ({
-        provider: 'minio',
-        region: process.env.AWS_REGION || 'us-east-1',
-        endpoint: process.env.CDN_ENDPOINT || 'http://localhost:9000',
-        accessKeyId: process.env.AWS_ACCESS_KEY!,
-        secretAccessKey: process.env.AWS_SECRET_KEY!,
-      }),
-      allowedOrigins: ['https://app.example.com'],
-      autoProvision: true,    // wrap create* mutations on @storageBuckets tables
-      versioning: false,       // S3 bucket versioning
-      bucketNamePrefix: 'myapp', // "myapp-public", "myapp-private"
-    }),
-  ],
+  extends: [BucketProvisionerPreset()],
 };
 ```
 
-### Plugin Options (`BucketProvisionerPluginOptions`)
-
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `connection` | `StorageConnectionConfig \| () => StorageConnectionConfig` | — | S3 credentials and endpoint |
-| `allowedOrigins` | `string[]` | — | CORS origins for browser uploads |
-| `autoProvision` | `boolean` | `true` | Auto-provision on create mutations |
-| `versioning` | `boolean` | `false` | Enable S3 bucket versioning |
-| `bucketNamePrefix` | `string` | — | Prefix for S3 bucket names |
-| `resolveBucketName` | `(key, dbId) => string` | — | Custom name resolver (overrides prefix) |
-
-### CORS Resolution Hierarchy
-
-Most specific wins:
-1. **Bucket-level** `allowed_origins` column on the bucket row
-2. **Storage module-level** `allowed_origins` column on `storage_module`
-3. **Plugin config** `allowedOrigins`
-
-Set `['*']` for fully open CDN/public mode.
+It has **no options**. It only adds the `provisionBucket` mutation, which re-requests the `storage:provision_bucket` job for a bucket. That job — not the GraphQL server — creates the physical bucket, applies CORS and versioning, and records the bucket's physical name. Inserting a bucket row enqueues the same job.
 
 ---
 
@@ -113,11 +50,8 @@ Set `['*']` for fully open CDN/public mode.
 ```typescript
 const preset: GraphileConfig.Preset = {
   extends: [
-    PresignedUrlPreset({ s3: () => s3Config }),
-    BucketProvisionerPreset({
-      connection: () => connectionConfig,
-      allowedOrigins: ['https://app.example.com'],
-    }),
+    PresignedUrlPreset({ credentials: () => storageCredentials }),
+    BucketProvisionerPreset(),
     // ... other presets
   ],
 };
@@ -131,50 +65,53 @@ The plugins use smart tags to discover storage tables:
 
 | Tag | Applied to | Purpose |
 |-----|-----------|---------|
-| `@storageBuckets` | Buckets table | Bucket provisioner wraps create/update mutations |
-| `@storageFiles` | Files table | `downloadUrl` computed field is added |
+| `@storageBuckets` | Buckets table | Pairs the buckets table with its files table; `maxBulkFiles` field |
+| `@storageFiles` | Files table | `upload<FilesType>` mutations and the `downloadUrl` computed field |
 
-These tags are set automatically by the storage module generator in constructive-db via SQL comments:
-```sql
-COMMENT ON TABLE buckets IS E'@storageBuckets\nStorage buckets table';
-COMMENT ON TABLE files IS E'@storageFiles\nStorage files table';
-```
+The storage module generator sets these tags on the tables it creates; you never write them yourself.
 
 ---
 
 ## Environment Variables
 
 ```bash
-# S3/MinIO connection
-CDN_ENDPOINT=http://localhost:9000     # S3-compatible endpoint
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY=minioadmin              # MinIO default credentials
-AWS_SECRET_KEY=minioadmin
-BUCKET_NAME=my-uploads                 # Default S3 bucket name
-BUCKET_PROVIDER=minio                  # "minio" | "s3" | "gcs"
-
-# Public URL
-CDN_PUBLIC_URL=http://localhost:9000   # URL prefix for public file downloads
+STORAGE_ACCESS_KEY_ID=...       # object-store credentials
+STORAGE_SECRET_ACCESS_KEY=...
 ```
+
+These are the only storage env vars. The local stack's object store is RustFS (the `rustfs` service in the constructive `docker-compose.yml`, ports 9000/9001).
 
 ---
 
+## Object-Store Coordinates (per storage module)
+
+| Column | Purpose |
+|--------|---------|
+| `endpoint` | S3 API endpoint presigned URLs are signed for (NULL = AWS S3 regional endpoint) |
+| `public_url_prefix` | URL prefix for public `downloadUrl`s (e.g. a CDN domain) |
+| `provider` | Storage provider type (e.g. `rustfs`, `s3`) |
+| `region` | Object-store region |
+| `allowed_origins` | Default CORS origins for every bucket of this module (`['*']` = open/CDN mode) |
+
+A NULL coordinate on a tenant's storage module inherits the platform database's platform storage module. The credentials only sign for that platform object store, so a tenant module that sets its own `endpoint` / `provider` / `region` is refused with `STORAGE_CONNECTION_OVERRIDE_REFUSED`; a platform row missing them fails with `STORAGE_CONNECTION_NOT_CONFIGURED`.
+
 ## Configurable Defaults (per storage module)
 
-These defaults are stored in the `storage_module` table and can be overridden per-database:
+These are also `storage_module` columns; NULL means the default:
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `upload_url_expiry_seconds` | 900 (15 min) | Presigned PUT URL lifetime |
+| `upload_url_expiry_seconds` | 900 (15 min) | Presigned PUT URL lifetime; also how long a `requested` row waits for its bytes |
 | `download_url_expiry_seconds` | 3600 (1 hr) | Presigned GET URL lifetime |
-| `default_max_file_size` | 200 MB | Max file size (bucket-level overrides this) |
+| `default_max_file_size` | 200 MB | Max file size for every bucket of this module; a bucket's `max_file_size` can only lower it |
 | `max_filename_length` | 1024 | Max filename characters |
+| `max_bulk_files` | 100 | Max files per bulk upload call |
+| `max_bulk_total_size` | 1 GB | Max total bytes per bulk upload call |
+| `confirm_upload_delay` | 30 seconds | Delay before the confirm job first checks the object |
 | `cache_ttl_seconds` | 300 (dev) / 3600 (prod) | Storage module config cache TTL |
 
 ---
 
 ## Storage Module Cache
 
-The presigned URL plugin caches storage module configs in an LRU cache (max 50 entries) to avoid re-querying metaschema on every request. Cache TTL is 5 minutes in development, 1 hour in production.
-
-Bucket configs are also cached per `(databaseId, bucketKey, ownerId)` tuple.
+The presigned URL plugin caches storage module configs in an LRU cache (max 50 entries) to avoid re-querying on every request. Cache TTL is 5 minutes in development, 1 hour in production.

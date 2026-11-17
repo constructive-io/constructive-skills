@@ -138,7 +138,7 @@ A fallback pool shared across meters. A meter opts in by setting `credit_cost > 
 
 - `limit_caps_defaults` — per-scope default values for all limit nodes
 - `limit_caps` — per-entity overrides (e.g., "this org gets 100 projects")
-- Plans are expressed as cap table presets applied to entities
+- Plans bundle limits, meter quotas and caps; subscribing an entity cascades them — see [plans.md](./references/plans.md)
 
 ## Billing Provider Bridge
 
@@ -153,6 +153,7 @@ A fallback pool shared across meters. A meter opts in by setting `credit_cost > 
 | File | Content |
 |------|---------|
 | [limits.md](./references/limits.md) | Full limits reference (blueprint nodes, ORM ops, cap tables) |
+| [plans.md](./references/plans.md) | Plans, plan caps/meter limits/pricing, subscriptions and the cascade |
 | [billing.md](./references/billing.md) | Billing meters, credits, usage, universal credits |
 | [warning-system.md](./references/warning-system.md) | Usage warnings and threshold alerts |
 | [category-meter.md](./references/category-meter.md) | Category-based meter grouping |
