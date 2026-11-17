@@ -243,7 +243,7 @@ sdk.schemaGrant.delete({
 
 ## Site
 
-A web property. Branding and SEO fields (`title`, `description`, `ogImage`, `favicon`, `appleTouchIcon`, `logo`, `canonicalUrl`, `robots`) live on its `siteMetadatum` row, not on the site. See [`constructive-sites`](../../constructive-sites/SKILL.md) for provisioning, releases and previews.
+A web property. The site row carries its own `name`, `title` and `description`; branding and SEO fields (`ogImage`, `favicon`, `appleTouchIcon`, `logo`, `canonicalUrl`, `robots`, plus a metadata `title` / `description`) live on its `siteMetadatum` row. See [`constructive-sites`](../../constructive-sites/SKILL.md) for provisioning, releases and previews.
 
 ### Fields
 

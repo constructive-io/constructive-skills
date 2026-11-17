@@ -107,7 +107,7 @@ under the **Post-Provision (Email Services)** sections.
 | **Mailpit** | **8025** (UI) / 1025 (SMTP) | `curl -s http://localhost:8025 \| head -5` | Local SMTP sink + web inbox — where delivered mail lands |
 | **Admin GraphQL** | **3002** | `lsof -i:3002 \| grep LISTEN` | The private admin endpoint the email path calls (see start-command caveat below) |
 | **send-email-link** | **8082** | `lsof -i:8082 \| grep LISTEN` | Renders + sends the actual email link |
-| **job-service** | *(no HTTP port)* | `pgrep -f "knative-job-service"` | Drains the queue and calls send-email-link |
+| **compute worker** (`fun compute` → compute-service) | *(no HTTP port)* | `pgrep -f "services/gateway/dist/run.js"` | Drains the job queue and calls send-email-link |
 
 > **All four must be listening.** A missing piece is a *silent* failure — mail just never appears in
 > Mailpit. The diagnostic ladder (which one is down, log paths, env) is in `troubleshooting.md` →

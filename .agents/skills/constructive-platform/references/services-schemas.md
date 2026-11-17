@@ -300,8 +300,17 @@ const publicSchema = database.schemas?.nodes?.find(
   (s) => s.name === 'public'
 );
 
-// 2. Hostnames already claimed for this database (see "Routing a Hostname to an API")
-const domains: Record<string, string> = { api: apiDomainId, app: appDomainId, meta: metaDomainId };
+// 2. Claim one hostname per surface under a published managed apex
+const domains: Record<string, string> = {};
+for (const label of ['api', 'app', 'meta']) {
+  const { domainsAssignSubdomain } = await sdk.mutation
+    .domainsAssignSubdomain(
+      { input: { apex: 'apps.example.com', label } },
+      { select: { result: { select: { id: true, hostname: true } } } },
+    )
+    .unwrap();
+  domains[label] = domainsAssignSubdomain.result.id;
+}
 
 // 3. Helper: create an API, attach schemas, and route a hostname to it
 async function setupApi(opts: {
