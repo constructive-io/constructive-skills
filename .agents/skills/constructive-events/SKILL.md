@@ -45,6 +45,8 @@ Table row change
 | **period_interval** | Event type config | Auto-reset counts for recurring achievements |
 | **trust_ladder** | `events_module` option | Seed a ladder of rungs that earn capability bits and capacity |
 
+A refused authenticated mutation is recorded as an event too: the GraphQL server records it through the module's `record_error` under the **error code itself** as the event name (e.g. `PRINCIPAL_CHILD_WIDENS`), registered as category `error` so it never feeds a level. Use the code in a level's `revoked_by` — see [`constructive-principals` → trust-and-refusals.md](../constructive-principals/references/trust-and-refusals.md).
+
 ## Trust Ladders
 
 A **trust ladder** is a set of rungs that turn recorded evidence into access — the same levels/requirements/rewards machinery as `achievements[]`, with rungs that reward a *capability* rather than a credit. Request one by slug when the events module is provisioned:
