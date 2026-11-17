@@ -50,7 +50,6 @@ Database-wide feature flags plus the scope-wide layer of the **request-protectio
 | `enableAggregates` | `false` | Aggregate queries (sum, avg, min, max) |
 | `enablePostgis` | `true` | PostGIS spatial types and operators |
 | `enableSearch` | `true` | Unified search (tsvector, BM25, pg_trgm, pgvector) |
-| `enableDirectUploads` | `true` | Direct (multipart) file upload mutations |
 | `enablePresignedUploads` | `true` | Presigned URL upload flow |
 | `enableManyToMany` | `true` | Many-to-many relationship queries |
 | `enableConnectionFilter` | `true` | Connection filter (`where` argument) |
@@ -58,10 +57,10 @@ Database-wide feature flags plus the scope-wide layer of the **request-protectio
 | `enableLlm` | `false` | LLM/AI integration features |
 | `enableRealtime` | `false` | Realtime subscriptions (cursor-tracked change delivery) |
 | `enableBulk` | `false` | Bulk mutations (insert, upsert, update, delete) |
+| `enableI18N` | `false` | Internationalization plugin (`localeStrings` field, translation table discovery) — see `constructive-i18n` |
 | `enableBilling` | `false` | Billing activation gate — financial provider actions are refused while `false` |
 | `enableIntrospection` | `true` | GraphQL introspection. Stored default is the permissive end; turning it **off** is the opt-in |
 
-`enable_i18n` exists in the module definition but is not present in the current generated `DatabaseSetting` type — confirm with introspection before relying on it (see `constructive-i18n`).
 
 ### Request-protection bounds (nullable; `null` = inherit the platform default)
 
@@ -81,7 +80,7 @@ Every bound is a **lower-only cascade**: effective value = `clamp(LEAST(apiSetti
 | `maxPageSize` | integer | Maximum connection page size |
 | `maxRequestBytes` | integer | Maximum request body size |
 
-Other fields: `options` (jsonb), `annotations`, `labels` (jsonb), `createdAt`, `updatedAt`.
+Other fields: `creditsPerCent` (how many universal credits one cent buys; `1` = credits are cents — see `constructive-billing`), `options` (jsonb), `annotations`, `labels` (jsonb), `createdAt`, `updatedAt`.
 
 ```ts
 // The row is created at provisioning — read it, then update in place.
@@ -112,7 +111,7 @@ await db.databaseSetting
 
 ## api_settings — `db.apiSetting`
 
-Per-API overrides. Same fields as `db.databaseSetting` (minus `enableBilling`, `annotations`, `labels`) plus `apiId`, all **nullable** — `null` means inherit from the database row; an explicit value overrides it, and for the request-protection bounds it may only lower the effective value.
+Per-API overrides. Same fields as `db.databaseSetting` (minus `enableBilling`, `creditsPerCent`, `annotations`, `labels`) plus `apiId`, all **nullable** — `null` means inherit from the database row; an explicit value overrides it, and for the request-protection bounds it may only lower the effective value.
 
 ```ts
 await db.apiSetting

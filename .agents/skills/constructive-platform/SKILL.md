@@ -26,15 +26,15 @@ Use this skill when:
 
 ## Services & Schemas
 
-- Create and configure API services, attach database schemas, set up domain/subdomain routing, and manage schema grants
-- Entity hierarchy: Database > Schema > Api > ApiSchema, ApiModule, Domain, Site
-- Full CRUD via ORM for Api, ApiSchema, ApiModule, Domain, SchemaGrant, and Site entities
+- Create and configure API services, attach database schemas, route hostnames to them (domain + route), and manage schema grants
+- Entity hierarchy: Database > Schema > Api > ApiSchema, ApiSetting, CorsSetting; Domain > Route; Site
+- Full CRUD via ORM for Api, ApiSchema, Domain, Route, SchemaGrant, and Site entities
 
 See [services-schemas.md](./references/services-schemas.md) for details. See [services-schemas-entity-fields.md](./references/services-schemas-entity-fields.md) for the full field reference.
 
 ## Deployment
 
-- Local development with Docker Compose (Postgres, MinIO, application servers)
+- Local development with Docker Compose (Postgres, RustFS object storage)
 - Database deployment with pgpm: bootstrap roles, deploy modules, verify, and revert
 - Docker image build process: multi-stage build, CLI shims (`constructive`, `cnc`, `pgpm`)
 - Makefile targets, environment variables, networking, and troubleshooting

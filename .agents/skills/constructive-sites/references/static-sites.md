@@ -71,7 +71,7 @@ await db.siteErrorPage
 
 ## Upload content
 
-Files go into the site's bucket through the storage presigned-upload flow (`requestUploadUrl` → `PUT` → done) documented in [`constructive-storage`](../../constructive-storage/SKILL.md). For a bucket-root site, object keys are the served paths (`index.html`, `assets/app.js`). For a released site, bytes live at `cas/sha256/<sha256>` and the manifest maps paths to hashes — see [releases-and-previews.md](./releases-and-previews.md).
+Files go into the site's bucket through the storage presigned-upload flow (`upload<FilesType>` → `PUT` with `uploadHeaders` → confirm) documented in [`constructive-storage`](../../constructive-storage/SKILL.md). For a bucket-root site, object keys are the served paths (`index.html`, `assets/app.js`). For a released site, bytes live at `cas/sha256/<sha256>` and the manifest maps paths to hashes — see [releases-and-previews.md](./releases-and-previews.md).
 
 A route whose bucket has nothing uploaded yet serves 404 — the "site exists, nothing uploaded" state, not an error.
 

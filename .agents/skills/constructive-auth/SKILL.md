@@ -36,6 +36,7 @@ See [auth-flow.md](./references/auth-flow.md) for the custom-client boundary and
 
 - **MFA:** `require_mfa`, supported factors, backup codes, step-up window, and challenge expiry.
 - **Anonymous sessions:** `allow_anonymous_sessions` for explicitly designed pre-auth use cases.
+- **Sign-up gate and sign-in screen:** `sign_up_requires_invite` (invite-only sign-up via `inviteToken`), the pending password that only `verifyEmail` activates, and the `signInOptions` query a signed-out screen renders from.
 - **CAPTCHA:** `enable_captcha` and the public site key.
 - **Cookie auth:** `enable_cookie_auth` for browser session transport.
 - **Cross-origin behavior:** service-level origin and token settings.

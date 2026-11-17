@@ -13,20 +13,20 @@ The core service entity. Defines a GraphQL API endpoint with role-based access c
 | `id` | `string` | auto | UUID primary key |
 | `databaseId` | `string` | yes | Parent database UUID |
 | `name` | `string` | yes | API name (e.g., `"public"`, `"admin"`) |
-| `dbname` | `string` | no | Database name override |
 | `roleName` | `string` | no | Role for authenticated users |
 | `anonRole` | `string` | no | Role for anonymous access |
-| `isPublic` | `boolean` | no | Whether API is publicly accessible |
+| `isPublished` | `boolean` | no | Whether other scopes may see and route to this API surface |
+| `config` | `JSON` | no | Module-specific configuration for this API surface |
+| `serviceHostname` | `string` | read-only | The platform-issued hostname: a managed, verified domain routed to this API |
+| `createdAt` / `updatedAt` | `string` | auto | Timestamps |
 
 ### Relations (available via `select`)
 
 | Relation | Type | Description |
 |----------|------|-------------|
-| `database` | `Database` | Parent database |
-| `rlsModule` | `RlsModule` | Row-level security module |
-| `apiModules` | `ApiModule[]` (connection) | Config modules attached to this API |
 | `apiSchemas` | `ApiSchema[]` (connection) | Schemas exposed by this API |
-| `domains` | `Domain[]` (connection) | Domains routing to this API |
+| `apiSetting` | `ApiSetting` | Per-API feature flags and request bounds (see `constructive-auth`) |
+| `corsSettings` | `CorsSetting[]` (connection) | Per-API CORS origins |
 
 ### Filter Fields (`ApiFilter`)
 
@@ -95,89 +95,57 @@ sdk.apiSchema.delete({ where: { id: apiSchemaId }, select: { ... } })
 
 ---
 
-## ApiModule
+## Domain
 
-Named JSON configuration blob attached to an API. Used for custom configuration like CORS, rate limiting, feature flags, etc.
+A claimed hostname. Claim one with the verbs in [`constructive-sites`](../../constructive-sites/SKILL.md) (e.g. `domainsAssignSubdomain`); what it serves is decided by its routes.
 
 ### Fields
 
-| Field | Type | Required on Create | Description |
-|-------|------|-------------------|-------------|
-| `id` | `string` | auto | UUID primary key |
-| `databaseId` | `string` | yes | Parent database UUID |
-| `apiId` | `string` | yes | The API this module belongs to |
-| `name` | `string` | yes | Module name (e.g., `"cors_config"`) |
-| `data` | `JSON` | yes | Module configuration (arbitrary JSON object) |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | UUID primary key |
+| `databaseId` | `string` | Parent database UUID |
+| `hostname` | `string` | The hostname (e.g. `"api.example.com"`) |
+| `parentHostname` | `string` | The apex it was claimed under |
+| `managed` | `boolean` | Whether the platform manages the hostname |
+| `isWildcard` | `boolean` | Wildcard hostname |
+| `isPublished` | `boolean` | Whether other scopes may see and route to it |
+| `verificationStatus` / `verifiedAt` | `string` | Ownership verification state |
+| `tlsStatus` / `tlsReadyAt` / `tlsSecretName` | `string` | Certificate state |
+| `config` | `JSON` | Domain configuration |
 
 ### Relations (available via `select`)
 
 | Relation | Type | Description |
 |----------|------|-------------|
-| `api` | `Api` | The parent API |
-| `database` | `Database` | Parent database |
-
-### CRUD Operations
-
-```typescript
-// Create
-sdk.apiModule.create({
-  data: { databaseId, apiId, name: 'my_module', data: { key: 'value' } },
-  select: { id: true, name: true },
-})
-
-// Update module data
-sdk.apiModule.update({
-  where: { id: moduleId },
-  data: { data: { key: 'new-value' } },
-  select: { id: true },
-})
-```
+| `routes` | `Route[]` (connection) | Routes serving this hostname |
+| `domainVerifications` | `DomainVerification[]` (connection) | Verification attempts |
+| `domainEvents` | `DomainEvent[]` (connection) | Domain lifecycle events |
 
 ---
 
-## Domain
+## Route
 
-Maps a subdomain + domain combination to an API and/or Site for routing.
-
-### Fields
+Maps `domainId` + `path` (+ optional `method`) to one target. Unique per `(domainId, path, method)`; the longest matching path prefix wins.
 
 | Field | Type | Required on Create | Description |
 |-------|------|-------------------|-------------|
-| `id` | `string` | auto | UUID primary key |
 | `databaseId` | `string` | yes | Parent database UUID |
-| `apiId` | `string` | no | API to route to |
-| `siteId` | `string` | no | Site to route to |
-| `subdomain` | `string` | no | Subdomain (e.g., `"api"`, `"app"`) |
-| `domain` | `string` | no | Domain (e.g., `"example.com"`) |
-
-### Relations (available via `select`)
-
-| Relation | Type | Description |
-|----------|------|-------------|
-| `api` | `Api` | The linked API (if any) |
-| `database` | `Database` | Parent database |
-| `site` | `Site` | The linked site (if any) |
-
-### CRUD Operations
+| `domainId` | `string` | yes | Domain whose hostname this route serves |
+| `path` | `string` | no | Path prefix (default `'/'`); must begin with `/`, no trailing slash |
+| `method` | `string` | no | Uppercase HTTP method; NULL matches any |
+| `priority` | `number` | no | Higher wins between otherwise-equal matches |
+| `isActive` | `boolean` | no | Inactive routes are excluded from resolution |
+| `anonymous` | `boolean` | no | Answers callers with no identity (target function must declare `anonymous_callable`) |
+| `targetApiId` / `targetSiteId` / `targetFunctionId` / `targetBucketId` / `targetServiceId` / `targetRedirectId` | `string` | one | What the route serves |
+| `servingSiteId` | `string` | no | Site whose surface the route serves |
+| `previewRef` | `string` | no | Site preview this route serves; NULL = the published release |
 
 ```typescript
-// Create with immediate API link
-sdk.domain.create({
-  data: { databaseId, subdomain: 'api', domain: 'example.com', apiId: api.id },
-  select: { id: true },
+sdk.route.create({
+  data: { databaseId, domainId, targetApiId: api.id },
+  select: { id: true, path: true },
 })
-
-// Create first, link later
-const domain = await sdk.domain.create({
-  data: { databaseId, subdomain: 'app', domain: 'example.com' },
-  select: { id: true },
-}).unwrap();
-
-await sdk.domain.update({
-  where: { id: domain.createDomain.domain.id },
-  data: { siteId: site.id },
-  select: { id: true },
-}).execute();
 ```
 
 ---
@@ -275,36 +243,35 @@ sdk.schemaGrant.delete({
 
 ## Site
 
-Website metadata container for branding, SEO, and asset references.
+A web property. Branding and SEO fields (`title`, `description`, `ogImage`, `favicon`, `appleTouchIcon`, `logo`, `canonicalUrl`, `robots`) live on its `siteMetadatum` row, not on the site. See [`constructive-sites`](../../constructive-sites/SKILL.md) for provisioning, releases and previews.
 
 ### Fields
 
-| Field | Type | Required on Create | Description |
-|-------|------|-------------------|-------------|
-| `id` | `string` | auto | UUID primary key |
-| `databaseId` | `string` | yes | Parent database UUID |
-| `title` | `string` | no | Site title |
-| `description` | `string` | no | Site description |
-| `ogImage` | `Image` | no | OpenGraph image (`{ url, mime }`) |
-| `favicon` | `string` | no | Favicon URL |
-| `appleTouchIcon` | `Image` | no | Apple touch icon (`{ url, mime }`) |
-| `logo` | `Image` | no | Logo image (`{ url, mime }`) |
-| `dbname` | `string` | no | Database name |
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | UUID primary key |
+| `databaseId` | `string` | Parent database UUID |
+| `name` | `string` | Site name |
+| `title` | `string` | Site title |
+| `description` | `string` | Site description |
+| `bucketId` | `string` | Bucket a static site serves from |
+| `activeCommitId` | `string` | Active release (null = serve the bucket root) |
+| `isPublished` | `boolean` | Whether the site is routable |
+| `resourceId` / `installationId` / `installationMemberSlug` | `string` | Service-backed (SSR) site wiring |
 
 ### Relations (available via `select`)
 
 | Relation | Type | Description |
 |----------|------|-------------|
-| `database` | `Database` | Parent database |
-| `app` | `App` | Associated mobile app |
-| `domains` | `Domain[]` (connection) | Domains routing to this site |
-| `siteMetadata` | `SiteMetadatum[]` (connection) | Additional metadata |
-| `siteModules` | `SiteModule[]` (connection) | Config modules |
-| `siteThemes` | `SiteTheme[]` (connection) | Theme configurations |
+| `siteMetadatum` | `SiteMetadatum` | Branding and SEO metadata |
+| `siteWebConfig` | `SiteWebConfig` | Serving rules |
+| `siteRelease` | `SiteRelease` | Release state |
+| `routesByServingSiteId` | `Route[]` (connection) | Routes serving this site |
+| `pages`, `siteAppLinks`, `siteDeepLinks`, `siteErrorPages`, `siteModules`, `siteThemes` | connections | Owned rows |
 
 ### Image Type
 
-Image fields accept an object with `url` and `mime`:
+Image fields on `siteMetadatum` accept an object with `url` and `mime`:
 
 ```typescript
 {
@@ -339,4 +306,3 @@ Top-level container for all entities.
 | `sites` | `Site[]` (connection) | Site configurations |
 | `tables` | `Table[]` (connection) | All tables |
 | `apiSchemas` | `ApiSchema[]` (connection) | All API-schema links |
-| `apiModules` | `ApiModule[]` (connection) | All API modules |

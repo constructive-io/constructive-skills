@@ -16,7 +16,9 @@ This file defines `getEnvVars()` which maps `process.env` keys to the `PgpmOptio
 ...(process.env.PGPORT && { port: parseEnvNumber(process.env.PGPORT) }),
 ```
 
-Covers: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `DB_*`, `SERVER_*`, `PORT`, `BUCKET_*`, `AWS_*`, `MINIO_*`, `DEPLOYMENT_*`, `JOBS_*`, `SMTP_*`, `PGPM_ERROR_*`
+Covers: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `PGROOTDATABASE`, `PGTEMPLATE`, `DB_*`, `SERVER_*`, `PORT`, `STORAGE_ACCESS_KEY_ID`, `STORAGE_SECRET_ACCESS_KEY`, `DEPLOYMENT_*`, `MIGRATIONS_*`, `SMTP_*`, `PGPM_ERROR_*`, `PGPM_ENGINE`, `PGPM_EXTENSIONS_DIR`
+
+Object-store endpoint, provider, region and public URL prefix are not env vars: they are columns on the `storage_module` row (see `constructive-storage`).
 
 ### GraphQL-Specific Env Vars
 
@@ -24,13 +26,13 @@ Covers: `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`, `DB_*`, `SERVE
 
 This file defines `getGraphQLEnvVars()` which adds GraphQL/Constructive-specific env vars on top of the core PGPM set.
 
-Covers: `GRAPHILE_SCHEMA`, `FEATURES_*`, `API_*`
+Covers: `GRAPHILE_*`, `FEATURES_*`, `API_*`, `EMBEDDER_*`, `CHAT_*`, `SMS_*`
 
 ## Type Definitions
 
 The TypeScript interfaces that define the shape of these options:
 
-- **`PgpmOptions`** — `pgpm/types/src/options.ts`
+- **`PgpmOptions`** — `pgpm/types/src/pgpm.ts`
 - **`ConstructiveOptions`** — `graphql/types/src/constructive.ts`
 - **`GraphileOptions`** — `graphql/types/src/graphile.ts`
 - **`PgConfig`** — `pgpm/types/src/pg.ts`

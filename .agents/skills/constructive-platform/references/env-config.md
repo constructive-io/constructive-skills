@@ -1,6 +1,6 @@
 ---
 name: constructive-env
-description: Unified environment configuration for Constructive and PGPM projects — typed defaults, env var parsing, config file discovery, and hierarchical option merging. Use when asked to "configure environment", "set env vars", "manage defaults", "use getEnvOptions", "configure database connection", "set up server config", "configure SMTP", "configure CDN", "manage configuration hierarchy", or when working with @pgpmjs/env or @constructive-io/graphql-env.
+description: Unified environment configuration for Constructive and PGPM projects — typed defaults, env var parsing, config file discovery, and hierarchical option merging. Use when asked to "configure environment", "set env vars", "manage defaults", "use getEnvOptions", "configure database connection", "set up server config", "configure SMTP", "configure storage credentials", "manage configuration hierarchy", or when working with @pgpmjs/env or @constructive-io/graphql-env.
 compatibility: Node.js 18+, @pgpmjs/env, @constructive-io/graphql-env
 metadata:
   author: constructive-io
@@ -14,7 +14,7 @@ Unified, type-safe environment configuration for all Constructive and PGPM proje
 ## When to Apply
 
 Use this skill when:
-- Configuring database connections, server settings, CDN, SMTP, or jobs programmatically
+- Configuring database connections, server settings, object-store credentials, or SMTP programmatically
 - Understanding how environment variables map to typed configuration objects
 - Writing code that needs to read environment-aware configuration
 - Choosing between `@pgpmjs/env` and `@constructive-io/graphql-env`
@@ -113,12 +113,15 @@ interface PgpmOptions {
   db?: Partial<PgTestConnectionOptions>;  // DB config, roles, connections
   pg?: Partial<PgConfig>;                 // PostgreSQL connection (host, port, user, etc.)
   server?: ServerOptions;                 // HTTP server (host, port, trustProxy, origin)
-  cdn?: CDNOptions;                       // S3/MinIO file storage
+  storage?: StorageCredentialOptions;     // Object-store credentials (coordinates live in storage_module)
   deployment?: DeploymentOptions;         // Migration deployment settings
   migrations?: MigrationOptions;          // Code generation settings
-  jobs?: JobsConfig;                      // Job worker/scheduler config
   errorOutput?: ErrorOutputOptions;       // Error formatting
   smtp?: SmtpOptions;                     // Email configuration
+  extensionsDir?: string;                 // Where `pgpm install` puts modules (default: extensions)
+  engine?: string;                        // Migration backend name (default: pg)
+  engines?: Record<string, PgpmEngineConfig>; // Engine definitions
+  driver?: PgpmDriverConfig;              // Pluggable migration backend
 }
 ```
 
