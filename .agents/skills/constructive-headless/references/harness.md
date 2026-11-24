@@ -29,6 +29,8 @@ export CONSTRUCTIVE_MODULES_ENDPOINT="$CONSTRUCTIVE_DEVNET_MODULES_ENDPOINT"
 
 Pin skill sources when reproducibility matters via `AGENT_SKILLS_REPO` and `AGENT_SKILLS_PIN`.
 
+For a program that drives Pi, `agent --mode rpc --no-session` accepts Pi RPC commands. The `0.19.51` wrapper emits plain-text startup messages on stdout before the RPC responses. Account for those lines when decoding its output.
+
 ## Match the available tools to the workflow
 
 The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. For a terminal build, follow the [Constructive Harness](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-harness) workflow once those tools are registered. When moving a workflow from Airpage, check which tool calls and local project or chat features it depends on. Those capabilities depend on the host as well as the installed skills. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
