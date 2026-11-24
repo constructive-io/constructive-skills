@@ -1,6 +1,6 @@
 ---
 name: constructive-harness
-description: The Constructive harness workflow — building an app under the harness host (desktop, CLI, or other adapters of @agentic-kit/harness). Covers project init (.constructive/ bootstrap), brief intake (BRIEF.md + feature_list.json), the build-orchestrator state machine, and the typed database/schema/codegen tools (provision_database, provision_blueprint, add_relation, add_policies, run_codegen, run_preflight, field/template/record tools). Load when working in a harness-driven Constructive project — at session start, when .constructive/ is missing or the brief is empty, when choosing the next build step, or before any database, schema, or codegen action.
+description: The Constructive harness workflow for hosts that supply the project templates and feature verification scripts. Covers project init, brief intake, build orchestration, and typed database/schema/codegen tools (provision_database, provision_blueprint, add_relation, add_policies, run_codegen). Load when choosing the next build step in a harness-driven project or before using its database, schema, or codegen tools.
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -8,7 +8,7 @@ metadata:
 
 # constructive-harness — the harness build workflow
 
-You're in a project driven by the Constructive harness: the host registers typed database tools and tracks build progress in `.constructive/feature_list.json`. This umbrella skill routes the whole workflow; read only the reference that matches the current state.
+The workflow below requires a host that supplies the project templates and verification scripts for `.constructive/feature_list.json`. The published terminal CLI registers the shared tools but does not supply that bundle. If it is missing, skip init, brief intake, and the orchestrator; use [references/tools.md](references/tools.md) for the tools registered by your host.
 
 ## Which reference to read
 

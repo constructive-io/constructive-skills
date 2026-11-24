@@ -4,6 +4,7 @@ You're loaded because `.constructive/` is missing in the current project. Your o
 
 ## Before you start
 
+- Use this workflow only when the path in step 2 resolves to a directory containing the full template bundle. The terminal CLI does not ship or substitute these templates. If the path is unresolved or files are missing, do not create a partial harness skeleton; use [tools.md](tools.md) for the host's available tools instead.
 - `pwd` to confirm the working directory.
 - Verify `.constructive/` really is absent: `[ -d .constructive ] && echo EXISTS || echo MISSING`. If `EXISTS`, you were routed here in error — re-run the [build-orchestrator.md](build-orchestrator.md) decision tree.
 
@@ -15,7 +16,7 @@ You're loaded because `.constructive/` is missing in the current project. Your o
    mkdir -p .constructive
    ```
 
-2. **Copy the harness templates verbatim.** The harness host materializes them and substitutes the real path below at load time:
+2. **Copy the harness templates verbatim** from the path provided by the host:
 
    ```
    {{HARNESS_TEMPLATES_DIR}}
