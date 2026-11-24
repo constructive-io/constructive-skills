@@ -22,10 +22,11 @@ npx skills add constructive-io/constructive-skills --skill constructive-security
 
 ## Available Skills
 
-Skills are organized into 33 focused skills. Every skill has a `SKILL.md`; references and executable helpers are included only where they add value.
+Skills are organized into 34 focused skills. Every skill has a `SKILL.md`, with references and executable helpers where useful.
 
 | Skill | Description |
 |-------|-------------|
+| [`constructive-headless`](.agents/skills/constructive-headless/SKILL.md) | Connect an agent or script to hosted devnet without Airpage. Includes a public connection profile, API checks, and guidance for choosing a domain skill or the terminal harness. |
 | `constructive-features` | Intent router — maps application capabilities to Blocks feature packs and the domain skill that explains the underlying behavior |
 | `constructive-blocks` | Constructive Blocks — feature packs, Console Kit, registry installation, tenant descriptors, capability discovery, and runtime contracts |
 | `constructive-builder` | Agent-driven tenant frontend harness — assembles and acceptance-checks Blocks against an existing app workspace and already-provisioned tenant |
