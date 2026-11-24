@@ -30,12 +30,13 @@ Use this skill when:
 
 The `definition` JSONB contains:
 - `entity_types[]` — Phase 0 entity provisioning (channels, teams, data rooms)
-- `storage` — Phase 0.5 app-level storage config
+- `storage[]` — Phase 0.5 app-level storage config
 - `tables[]` with `nodes[]`, `fields[]`, `policies[]` (using `$type` discriminators)
 - `relations[]` — inter-table relationships
 - `achievements[]` — gamification levels and rewards
-- `limit_caps_defaults` — per-scope default caps
-- `membership_types[]` — scope configurations (app, org, custom)
+- `full_text_searches[]` — full-text search indexes (also accepted per table)
+
+Declare custom membership scopes in `entity_types[]`. Configure default caps as `limits_module` options at database provisioning, not as blueprint keys.
 
 See [blueprint-definition-format.md](./references/blueprint-definition-format.md) for the full spec.
 

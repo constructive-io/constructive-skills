@@ -98,26 +98,22 @@ Use `AuthzComposite` only when flat composition is insufficient (e.g., `(A AND B
 One call to create fields, grants, policies, and enable RLS:
 
 ```typescript
-const grant_privileges = [
-  ['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*'],
-] as unknown as Record<string, unknown>;
-
-const policy_data: Record<string, unknown> = {
-  entity_field: 'entity_id',
-  membership_type: 2,
-};
-
 await db.secureTableProvision.create({
   data: {
     databaseId: '<database-id>',
+    schemaId: '<schema-id>',
     tableName: 'projects',
-    nodeType: 'DataEntityMembership',
+    nodes: ['DataId', { $type: 'DataEntityMembership', data: { include_id: false } }],
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: grant_privileges,
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: policy_data,
+    grants: [{
+      roles: ['authenticated'],
+      privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']],
+    }],
+    policies: [{
+      $type: 'AuthzEntityMembership',
+      privileges: ['select', 'insert', 'update', 'delete'],
+      data: { entity_field: 'entity_id', membership_type: 2 },
+    }],
   },
   select: { id: true, tableId: true, outFields: true },
 }).execute();
@@ -273,10 +269,10 @@ await db.table.update({
 
 ## Storage Policies
 
-Configurable per-bucket RLS via `storage_config.policies[]` on entity_type_provision:
-- `tables` key scopes to `"buckets"` or `"files"` (logical names)
-- `is_public` controls S3 bucket ACL; `policies` controls RLS
-- Default (no explicit policies): membership + AuthzPublishable + AuthzDirectOwner
+Configurable storage-table RLS via `storage[].provisions.<table>.policies` on entity provisioning:
+- Use logical table keys `buckets` and `files`.
+- A bucket's `is_public` controls object read access; policies control database rows.
+- Without an override, the module installs its default policies.
 
 See [storage-policies.md](./references/storage-policies.md) for typical combinations.
 

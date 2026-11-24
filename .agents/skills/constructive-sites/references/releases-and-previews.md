@@ -1,67 +1,33 @@
 # Releases, rollback, previews, time travel
 
-A deploy is **bytes + one manifest**. File bytes go to the site's bucket at `cas/sha256/<hash>`; a single `siteRelease.manifest` lists every logical path. Writing the manifest auto-commits into the site's own merkle store, so the returned `commitId` **is** the release id. Publishing is `site.activeCommitId = <commit>`; rollback is the same write with an older commit. A preview is a named ref at a commit, served on its own hostname. Nothing is overwritten and no page rows are written — a 50k-file build is 50k objects and one row.
+A deploy is **bytes + one manifest**. The site-scoped upload mutation allocates managed object keys; a single `siteRelease.manifest` lists every logical path. Writing the manifest auto-commits into the site's own merkle store, so the returned `commitId` **is** the release id. Publishing is `site.activeCommitId = <commit>`; rollback is the same write with an older commit. A preview is a named ref at a commit, served on its own hostname. Nothing is overwritten and no page rows are written — a 50k-file build is 50k objects and one row.
 
 ## Deploy → publish
 
 ```typescript
-// 1. bytes: upload each file to cas/sha256/<sha256 of its bytes> in the site's bucket
-//    (presigned upload — constructive-storage). Bytes already present can be skipped: that is the dedupe.
+import { deploySite } from '@constructive-io/site-deploy';
 
-// 2. manifest: one row per site; the versioning trigger commits it and stamps commitId back.
-const { createSiteRelease } = await db.siteRelease
-  .create({
-    data: {
-      siteId,
-      databaseId,
-      manifest: {
-        files: {
-          'index.html': { hash: '9a3f…', content_type: 'text/html', size: 2841 },
-          'assets/app.4f2c.js': { hash: '1be5…', content_type: 'application/javascript', size: 91043 },
-        },
-        file_count: 2,
-        total_bytes: 93884,
-      },
-    },
-    select: { id: true, commitId: true, storeId: true },
-  })
-  .unwrap();
-const release = createSiteRelease.siteRelease;
-if (!release.commitId || !release.storeId) throw new Error('release was not versioned');
-
-// 3. publish: one pointer move, atomic for every in-flight visitor
-await db.site
-  .update({
-    where: { id: siteId },
-    data: { activeCommitId: release.commitId },
-    select: { id: true, activeCommitId: true },
-  })
-  .unwrap();
+const release = await deploySite({
+  api, // authenticated GraphQL executor for the endpoint exposing site upload and release
+  siteId,
+  databaseId,
+  source: './dist',
+  publish: true,
+});
 ```
 
-`siteRelease` is one row per site (unique on `siteId`). **Re-deploying updates that row** — each write is a new commit, which is what builds history:
+Use the authenticated endpoint that exposes both `upload<Prefix>SiteFiles` and site release mutations. The [site deploy client](https://github.com/constructive-io/constructive/tree/main/packages/site-deploy) hashes the files, registers their logical paths, uploads only missing bytes and waits for confirmation before writing the manifest. It never PUTs to a caller-chosen `cas/` key. Missing upload mutation or permission means the endpoint cannot deploy; leave the live release unchanged.
 
-```typescript
-const { updateSiteRelease } = await db.siteRelease
-  .update({
-    where: { id: release.id },
-    data: { manifest: nextManifest },
-    select: { commitId: true },
-  })
-  .unwrap();
-const nextCommitId = updateSiteRelease.siteRelease.commitId!;
-```
-
-Until step 3 the new release exists and serves to nobody.
+`siteRelease` is one row per site. Redeploying updates that row and creates a new commit. Omit `publish` to leave the live pointer unchanged; the returned `commitId` can be published later or assigned to a preview.
 
 ## Rollback and deploy history
 
-Rollback is step 3 with a previous commit. History is the store's commit chain:
+Roll back by setting the active pointer to a previous commit. Get `storeId` from the site's release row and read the store's commit chain:
 
 ```typescript
 const { commits } = await db.commit
   .findMany({
-    where: { storeId: { equalTo: release.storeId } },
+    where: { storeId: { equalTo: storeId } },
     orderBy: ['DATE_DESC'],
     first: 20,
     select: { id: true, date: true, message: true, parentIds: true },
