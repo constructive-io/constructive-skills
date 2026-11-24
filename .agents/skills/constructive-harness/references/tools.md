@@ -65,13 +65,13 @@ Never scaffold a `packages/provision` package, write a `create-db.ts`, or run me
 
 ## Schema — `provision_blueprint`
 
-Goal shape: every entity from the BRIEF gets a table granted to `authenticated` and protected by an `AuthzEntityMembership` policy.
+Goal shape: every app entity gets a table granted to `authenticated` and protected by an `AuthzEntityMembership` policy.
 
-- Collect entities from `feature_list.json` (`*-crud-ui` features carry an `entity` field), normalize to lowercase plural, cross-reference the BRIEF for fields and relations.
+- In a templated project, collect entities from `feature_list.json` (`*-crud-ui` features carry an `entity` field) and cross-reference `BRIEF.md` for fields and relations. Without the template bundle, use the entity list, fields, and relationships from your intake notes; neither file is required. Normalize entity names to lowercase plural in either case.
 - **All related tables in a SINGLE call** so relations construct together — for a small app that is one call for the whole schema.
 - Pass the plain shape only: `table_name`, `fields` (bare-string types like `'text'` are fine — the tool normalizes), required/default markers, and a `belongs_to` from child to parent for each relation (`many_to_many` creates the junction). Do **not** specify grants, `DataId`/`DataEntityMembership`/`DataTimestamps` nodes, or policy `$type` plumbing — the tool injects all of it and runs the async construction poll.
 - Never name a table `users` (built-in). For what each Data\*/Search\*/etc node module generates, load `constructive-blueprints` (see its `references/node-type-registry.md`).
-- An `already exists` error means the table is constructed — verify (`verify-feature.sh blueprint-schemas` reads the construction `tableMap` from the modules endpoint, never psql — `SQL-001`) instead of re-running (`THRASH-001`).
+- An `already exists` error means the table is constructed — verify instead of re-running (`THRASH-001`). Use `verify-feature.sh blueprint-schemas` when the verification scripts are available, or `describe_schema` to inspect the live schema. Never use psql (`SQL-001`).
 - A relation that surfaces **after** tables exist: use `add_relation` (adds the FK column or junction table without recreating anything).
 
 ## Policies — `add_policies`
