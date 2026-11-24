@@ -61,7 +61,7 @@ One call creates and binds the project's database. The root `.env` binding conta
 - **Idempotency (`PROVISION-RERUN-001`):** with `.env` already bound, a live account-owned binding no-ops with a skip note; a dead binding or one owned by a different account errors and points at reprovision; an unreachable backend means retry later, never reprovision. Never delete `.env` keys by hand to force re-provisioning, and never re-run "to make sure".
 - **Reprovision flow** (dead/foreign binding, or an explicit clean-rebuild ask — warn that records do not carry over): `provision_database` with the same `database_name` + `reprovision: true` (old keys archived as comments; the old database is never deleted server-side) → `provision_blueprint` (the new database is empty) → `run_codegen`.
 
-Never scaffold a `packages/provision` package, write a `create-db.ts`, or run membership/email SQL by hand — that procedural path is gone.
+For the typed `provision_database` path, do not scaffold a `packages/provision` package, write a `create-db.ts`, or apply the SQL-only membership/email workarounds documented for the separate script-based provisioner.
 
 ## Schema — `provision_blueprint`
 
