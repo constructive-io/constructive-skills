@@ -8,7 +8,7 @@ The Constructive harness registers typed tools that own the entire database/sche
 |---|---|
 | Backend reachability + host CLIs | `run_preflight` |
 | Bootstrap a database for the project | `provision_database` |
-| Inspect the live schema (read-only) | `describe_schema` |
+| Inspect the provisioned schema on the control plane (read-only) | `describe_schema` |
 | Create entity tables (+ grants, policies, standard columns) | `provision_blueprint` |
 | Add a relation between **existing** tables | `add_relation` |
 | Table templates | `list_templates`, `apply_template`, `create_template`, `update_template`, `delete_template` |
@@ -65,11 +65,11 @@ Never scaffold a `packages/provision` package, write a `create-db.ts`, or run me
 
 ## Schema — `provision_blueprint`
 
-Goal shape: every entity from the BRIEF gets a table granted to `authenticated` and protected by an `AuthzEntityMembership` policy.
+Give each table an RLS policy for its access model. Use `AuthzEntityMembership` for shared entity data and an appropriate owner policy for private records.
 
 - Collect entities from `feature_list.json` (`*-crud-ui` features carry an `entity` field), normalize to lowercase plural, cross-reference the BRIEF for fields and relations.
 - **All related tables in a SINGLE call** so relations construct together — for a small app that is one call for the whole schema.
-- Pass the plain shape only: `table_name`, `fields` (bare-string types like `'text'` are fine — the tool normalizes), required/default markers, and a `belongs_to` from child to parent for each relation (`many_to_many` creates the junction). Do **not** specify grants, `DataId`/`DataEntityMembership`/`DataTimestamps` nodes, or policy `$type` plumbing — the tool injects all of it and runs the async construction poll.
+- Follow the registered tool schema. Supply `table_name`, fields (bare-string types like `'text'` are fine), required/default markers, and any relations. The terminal CLI requires an explicit `policies` field per table. Supply the policy `$type` and configuration for the intended access model. The tool expands these into grants and standard nodes, then polls for construction.
 - Never name a table `users` (built-in). For what each Data\*/Search\*/etc node module generates, load `constructive-blueprints` (see its `references/node-type-registry.md`).
 - An `already exists` error means the table is constructed — verify (`verify-feature.sh blueprint-schemas` reads the construction `tableMap` from the modules endpoint, never psql — `SQL-001`) instead of re-running (`THRASH-001`).
 - A relation that surfaces **after** tables exist: use `add_relation` (adds the FK column or junction table without recreating anything).
@@ -154,7 +154,7 @@ Some `constructive-*` docs were written for a script-driven repo. Wherever they 
 | Script-era prose says | Under the Constructive harness, do |
 |---|---|
 | Run `scaffold-provision.mjs` / provision script templates / `packages/provision` | `provision_database`, then `provision_blueprint` |
-| Hand-write a `BlueprintDefinition` / raw GraphQL provisioning mutations | `provision_blueprint` (plain table shapes only) |
+| Hand-write a `BlueprintDefinition` / raw GraphQL provisioning mutations | `provision_blueprint` (use the registered tool schema) |
 | Run `pgpm init` / pgpm scaffolding | Hand-write the two workspace-shell files; `run_codegen` scaffolds `packages/app` |
 | Run codegen scripts / `pnpm codegen` by hand / edit codegen config | `run_codegen` |
 | Inspect or fix via `psql` / ad hoc SQL | `describe_schema`, the schema tools, `verify-feature.sh` |

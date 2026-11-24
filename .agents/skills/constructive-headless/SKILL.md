@@ -28,7 +28,7 @@ bash "$skill_dir/scripts/devnet-check.sh" whoami
 bash "$skill_dir/scripts/devnet-check.sh" databases
 ```
 
-`probe` checks GraphQL reachability without credentials, `whoami` returns the caller's user ID, and `databases` returns the first five visible databases plus pagination information. The last two use the platform credential. Report the verified realm and outcome. An empty list can reflect row-level permissions. For clients without a shell, use the [HTTP API examples](references/api-access.md).
+Start with `probe` to check GraphQL reachability. When `CONSTRUCTIVE_DEVNET_PLATFORM_TOKEN` is available, use `whoami` to verify identity before calling `databases`, which returns the first five visible databases plus pagination information. If the token is missing, report the required variable and which checks you completed. An empty list can reflect row-level permissions. For clients without a shell, use the [HTTP API examples](references/api-access.md).
 
 ## Choose the Next Guide
 

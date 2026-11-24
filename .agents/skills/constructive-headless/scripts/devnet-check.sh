@@ -13,7 +13,9 @@ query() {
 }
 
 platform_query() {
-  printf 'Authorization: Bearer %s\n' "${CONSTRUCTIVE_DEVNET_PLATFORM_TOKEN:?Inject the devnet platform credential}" |
+  local token
+  token=${CONSTRUCTIVE_DEVNET_PLATFORM_TOKEN:?Inject the devnet platform credential}
+  printf 'Authorization: Bearer %s\n' "$token" |
     query "$1" "$2" --header @-
 }
 

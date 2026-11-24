@@ -37,4 +37,26 @@ The terminal CLI loads a `constructive-skills` source and its local overlay. The
 
 The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, `add_records`, and `run_codegen`. If the host lacks `run_preflight`, run `devnet-check.sh probe` for network reachability and check the local CLIs your build needs. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
 
-To qualify an Electron-free build, start from an empty checkout, provision a disposable devnet database with the supported typed tools, verify the served schema and one scoped CRUD flow, then build or publish the app as requested. Keep the generated environment binding with credentials out of version control. Record which host, skill revision, endpoints, and operations passed. Test any required Airpage-specific behavior separately.
+## Build a first private table
+
+1. In a clean checkout, use the approval-capable CLI to run `provision_database` for a disposable devnet database. Record its database ID and explicit auth and data endpoints. Keep the generated environment binding with credentials out of version control.
+2. Run `describe_schema`, then use `provision_blueprint` with the registered tool schema. This example fits a standalone personal expense log. Each user owns their own rows. For membership-scoped data, choose an owner policy that also enforces membership. [Policy types](https://github.com/constructive-io/constructive-skills/blob/main/.agents/skills/constructive-security/references/authz-types.md)
+3. Verify `expenses` on the served data endpoint. Use a tenant user to create and read a test row, then verify a second tenant user and an anonymous client cannot read it. Build the frontend after the tenant flow works. Record which host, endpoints, and operations passed.
+
+Example `provision_blueprint` input for the terminal CLI tool schema:
+
+```json
+{
+  "name": "private_expenses",
+  "description": "A standalone personal expense log.",
+  "definition": {
+    "tables": [
+      {
+        "table_name": "expenses",
+        "fields": [{ "name": "description", "type": "text", "is_required": true }],
+        "policies": [{ "$type": "AuthzDirectOwner", "data": { "entity_field": "owner_id" } }]
+      }
+    ]
+  }
+}
+```
