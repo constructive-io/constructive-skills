@@ -68,7 +68,7 @@ await db.project.update({
 }).unwrap();
 ```
 
-Every model method returns a `QueryBuilder`. Use `.execute()` for the `QueryResult` discriminated union or call `.unwrap()`, `.unwrapOr()`, or `.unwrapOrElse()` directly on the builder. List data remains under the generated GraphQL field, such as `projectsResult.projects.nodes`. Never interpret an empty collection as proof that the schema lacks rows—the active identity's RLS policy may be filtering them.
+Every model method returns a `QueryBuilder`. Use `.execute()` for the `QueryResult` discriminated union or call `.unwrap()`, `.unwrapOr()`, or `.unwrapOrElse()` directly on the builder. List data remains under the generated GraphQL field, such as `projectsResult.projects.nodes`. Never interpret an empty collection as proof that the schema lacks rows—the active identity's RLS policy may be filtering them. Similarly, an `update` or `delete` blocked by RLS returns a `null` payload row with no GraphQL error (unlike `create`, which raises an RLS error)—always check the returned row for `null` before treating the write as persisted.
 
 ## Pagination
 

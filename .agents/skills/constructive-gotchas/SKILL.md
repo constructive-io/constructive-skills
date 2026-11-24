@@ -106,6 +106,10 @@ If you copy-edit the example verbatim, you will carry over generic tables into y
 
 `AuthzDirectOwner` stays correct only for personal tables with no membership context (the RLS-POLICY-001 org-less default) or where the owner is legitimately not a member (pending membership self-read, invite receiver, share grantee).
 
+## RLS-UPDATE-NULL-001
+
+**An `UPDATE` or `DELETE` blocked by RLS returns a `null` payload row with no GraphQL `errors` (intended PostgreSQL RLS behavior).** For example, `updateComment` against a row the caller cannot update returns `{"updateComment":{"comment":null}}` with no `errors`, whereas a blocked `INSERT` raises an RLS error (`new row violates row-level security policy`). PostgreSQL evaluates `USING` as a row filter on `UPDATE`/`DELETE`, so an unauthorized target matches 0 rows rather than throwing. Always check the returned payload row for `null` (do not treat `errors === undefined` or a resolved `.unwrap()` as proof the write persisted).
+
 ## RLS-USERS-UPDATE-001
 
 `updateUser` returns **200 but persists 0 rows** (silent no-op) on the dynamically-provisioned per-tenant `users` table. The dynamic provisioner enables RLS + a column UPDATE grant to `authenticated` (username/display_name/profile_picture) but emits ONLY an `auth_sel` SELECT policy and **no UPDATE policy**, so RLS rejects every update. This is deterministic (verified identical across tenants) and is **not expressible in the blueprint** — `users` is module-owned.

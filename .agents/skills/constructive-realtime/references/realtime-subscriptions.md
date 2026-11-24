@@ -210,8 +210,8 @@ await db.databaseSetting.update({
   select: { id: true },
 }).execute();
 
-// Or via CLI
-cnc database-setting update --enable-realtime true
+// Or via the generated SDK CLI (csdk)
+csdk database-setting update --enable-realtime true
 ```
 
 ## GraphQL Subscription API
