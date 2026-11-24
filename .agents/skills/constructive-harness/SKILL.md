@@ -8,7 +8,7 @@ metadata:
 
 # constructive-harness — the harness build workflow
 
-The workflow below requires a host that supplies the project templates and verification scripts for `.constructive/feature_list.json`. The published terminal CLI registers the shared tools but does not supply that bundle. If it is missing, skip the template-based init, file-writing brief intake, and orchestrator steps. Before provisioning a schema, capture the app summary, entities, fields, and relationships in your working notes from the user's request; ask for any missing details needed to define the schema. Use [references/tools.md](references/tools.md) for the tools registered by your host.
+The full workflow requires the project templates and feature verification scripts. The published terminal CLI does not ship that bundle. Skip init if the templates are unavailable, and skip orchestration if the verification scripts are unavailable. If `.constructive/BRIEF.md` and `.constructive/feature_list.json` already exist, brief intake can still fill them in. Otherwise, capture the app's kebab-case slug, summary, entities, fields, and relationships in your working notes from the user's request; ask for any missing details needed to define the schema. Use [references/tools.md](references/tools.md) for the tools registered by your host.
 
 ## Which reference to read
 

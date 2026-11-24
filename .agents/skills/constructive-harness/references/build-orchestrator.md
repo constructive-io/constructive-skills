@@ -1,6 +1,6 @@
 # Build Orchestrator (router)
 
-Use this router only when the host supplies the [harness template bundle](init.md), including the feature verification scripts. It tracks build progress in `.constructive/feature_list.json`. If the host does not supply the bundle, use [tools.md](tools.md) directly instead.
+Use this router only when the project has `.constructive/feature_list.json` and the feature verification scripts from the [harness template bundle](init.md). Otherwise, capture the app slug, entities, fields, and relationships in intake notes and use [tools.md](tools.md) directly.
 
 ## Decision tree
 

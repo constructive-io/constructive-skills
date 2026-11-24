@@ -38,8 +38,18 @@ In a workspace with the harness template bundle, a successful preflight is follo
 
 The project root needs `pgpm.json` + `pnpm-workspace.yaml`. **Hand-write them; never run `pgpm init`** (`PGPM-001` — its CLI hangs in the non-TTY shell, and nothing in the harness needs it):
 
+Use the kebab-case app slug from `.constructive/feature_list.json` (`brief.name`) when present, or set `SLUG` from your intake notes before running this block.
+
 ```bash
-SLUG="$(node -e 'console.log(JSON.parse(require("fs").readFileSync(".constructive/feature_list.json")).brief.name)')"
+(
+set -e
+if [ -z "${SLUG:-}" ] && [ -f .constructive/feature_list.json ]; then
+  SLUG="$(node -e 'console.log(require("./.constructive/feature_list.json").brief?.name ?? "")')"
+fi
+if ! [[ "${SLUG:-}" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "Set SLUG to the kebab-case app name from the brief or intake notes." >&2
+  exit 1
+fi
 cat > pgpm.json <<EOF
 { "name": "$SLUG", "version": "0.0.1", "license": "UNLICENSED", "workspaces": ["packages/*"] }
 EOF
@@ -48,6 +58,7 @@ packages:
   - "packages/*"
 EOF
 pnpm install
+)
 ```
 
 Keep exactly `workspaces: ["packages/*"]` and the `packages/*` glob — downstream steps depend on those shapes. Do not add database modules or extra `packages/*` entries here. This feature is non-backend: it proceeds even during an outage (`BLOCKED-PROCEED-001`).
