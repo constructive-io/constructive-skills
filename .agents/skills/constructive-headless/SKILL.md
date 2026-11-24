@@ -33,4 +33,4 @@ Start with `probe` to check GraphQL reachability. When `CONSTRUCTIVE_DEVNET_PLAT
 ## Choose the Next Guide
 
 - [Capability map](references/capabilities.md) routes data, schema, frontend, auth, storage, publishing, compute, and agent tasks to their existing skills.
-- [Headless harness and Airpage](references/harness.md) explains the terminal CLI, its devnet configuration, the skills Desktop ships, and which behaviors belong to Desktop.
+- [Headless harness and Airpage](references/harness.md) explains the terminal CLI, its devnet configuration, and how to build a first private table.

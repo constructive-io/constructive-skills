@@ -17,7 +17,12 @@ npx --yes --package=@agentic-kit/cli -- agent skills list
 npx --yes --package=@agentic-kit/cli -- agent login
 ```
 
-Choose `devnet` at login. This flow signs in to Constructive and creates a stored CLI API key. For CI or an isolated test, set `AGENT_HOME` to a dedicated state directory. The CLI accepts a separate model-provider credential through Pi. Use `agent` for interactive work and `agent -p '<prompt>'` for one-shot execution. Use an interactive or approval-capable host for operations that ask for confirmation.
+Choose `devnet` at login. This flow signs in to Constructive and creates a stored CLI API key. For CI or an isolated test, set `AGENT_HOME` to a dedicated state directory. The CLI accepts a separate model-provider credential through Pi. Use an interactive or approval-capable host for operations that ask for confirmation.
+
+```bash
+npx --yes --package=@agentic-kit/cli -- agent
+npx --yes --package=@agentic-kit/cli -- agent -p '<prompt>'
+```
 
 For a runner with an existing scoped session, inject `CONSTRUCTIVE_USER_ID` and `CONSTRUCTIVE_ACCESS_TOKEN` together. The CLI accepts `CONSTRUCTIVE_API_KEY` as an optional additional credential. A bearer used for direct HTTP can be an API key alone. The CLI's environment path also needs the user ID and session access token. Set both CLI endpoints from the public profile. [CLI credential resolution](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/credentials.ts)
 
@@ -29,13 +34,13 @@ export CONSTRUCTIVE_MODULES_ENDPOINT="$CONSTRUCTIVE_DEVNET_MODULES_ENDPOINT"
 
 Pin skill sources when reproducibility matters via `AGENT_SKILLS_REPO` and `AGENT_SKILLS_PIN`.
 
-For a program that drives Pi, `agent --mode rpc --no-session` accepts Pi RPC commands. The `0.19.51` wrapper emits plain-text startup messages on stdout before the RPC responses. Account for those lines when decoding its output.
+For a program that drives Pi, `npx --yes --package=@agentic-kit/cli -- agent --mode rpc --no-session` accepts Pi RPC commands. The `0.19.51` wrapper emits plain-text startup messages on stdout before the RPC responses. Account for those lines when decoding its output.
 
 ## Match the available tools to the workflow
 
-The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. For a terminal build, follow the [Constructive Harness](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-harness) workflow once those tools are registered. When moving a workflow from Airpage, check which tool calls and local project or chat features it depends on. Those capabilities depend on the host as well as the installed skills. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
+The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. The [Constructive Harness workflow](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-harness) expects a host that materializes the project templates and registers `run_preflight`. For the published terminal CLI, use the standalone walkthrough below. It uses the shared tools directly. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
 
-The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, `add_records`, and `run_codegen`. If the host lacks `run_preflight`, run `devnet-check.sh probe` for network reachability and check the local CLIs your build needs. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
+The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, `add_records`, and `run_codegen`. Run `devnet-check.sh probe` to check network reachability. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
 
 ## Build a first private table
 
