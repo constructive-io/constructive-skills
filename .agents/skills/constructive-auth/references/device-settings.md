@@ -132,16 +132,19 @@ if (deviceApprovalRequired) {
 // Store outDeviceToken in client storage for future sign-ins
 ```
 
-### Sign-up (auto-approves first device)
+### Sign-up, then sign in
+
+`signUp` takes no device token and returns no session: its payload has only `clientMutationId`, so the answer is the
+same whether or not the address already has an account. The device is registered when the user signs in.
 
 ```typescript
-const result = await authDb.mutation.signUp(
-  { input: { email, password, deviceToken: '<opaque-token>' } },
-  { select: { outDeviceToken: true, accessToken: true } }
+await authDb.mutation.signUp(
+  { input: { email, password } },
+  { select: { clientMutationId: true } }
 ).execute();
 
-// First device is auto-approved (approval_method = 'auto')
-// Store outDeviceToken for future sign-ins
+// Verify the email (verifyEmail), then call signIn with deviceToken as shown above
+// and store the outDeviceToken it returns.
 ```
 
 ### Approve a device
