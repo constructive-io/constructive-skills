@@ -138,10 +138,11 @@ if (deviceApprovalRequired) {
 same whether or not the address already has an account. The device is registered when the user signs in.
 
 ```typescript
+// unwrap() throws on a failed sign-up (closed, rate-limited, weak password)
 await authDb.mutation.signUp(
   { input: { email, password } },
   { select: { clientMutationId: true } }
-).execute();
+).unwrap();
 
 // Verify the email (verifyEmail), then call signIn with deviceToken as shown above
 // and store the outDeviceToken it returns.

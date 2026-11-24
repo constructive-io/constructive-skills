@@ -744,7 +744,8 @@ Cannot query field "accessToken" on type "SignUpPayload".
 
 `signUp` returns nothing but `clientMutationId`: no `ok`, `errors`, `result` or `accessToken`. Sign-up never signs
 anyone in and answers the same whether or not the address already has an account, so nobody can use it to probe which
-emails exist. A failure (sign-up closed, rate limit, weak password) arrives as a GraphQL error.
+emails exist. A failure (sign-up closed, rate limit, weak password) comes back as GraphQL errors: `.execute()`
+resolves to `{ ok: false, errors }` without throwing, and `.unwrap()` throws.
 
 ### Solution
 
@@ -754,14 +755,14 @@ await authDb.mutation
   .signUp({ input: { email, password } }, { select: { ok: true, errors: true } })
   .execute();
 
-// ✅ Correct: sign up, verify the email, then sign in for the token
+// ✅ Correct: sign up (unwrap() throws if it failed), verify the email, then sign in for the token
 await authDb.mutation
   .signUp({ input: { email, password } }, { select: { clientMutationId: true } })
-  .execute();
+  .unwrap();
 // ...user clicks the verification link (or call verifyEmail)...
 const signIn = await authDb.mutation
   .signIn({ input: { email, password } }, { select: { result: { select: { accessToken: true } } } })
-  .execute();
+  .unwrap();
 ```
 
 ### Verification
