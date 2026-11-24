@@ -143,19 +143,13 @@ durable fix is upstream).
 
 ## FIELD-TYPE-001
 
-Text default values in blueprint fields must be wrapped in single quotes inside the JSON double quotes, because the `defaultValue` is a raw SQL expression:
+Blueprint fields take a structured `type` and an optional structured `default`. JSONB keys are not transformed by GraphQL.
 
 ```json
-{ "name": "status", "type": "text", "defaultValue": "'pending'" }
+{ "name": "status", "type": { "name": "text" }, "default": { "value": "pending" } }
 ```
 
-Common mistakes:
-
-- `"defaultValue": "pending"` — missing single quotes; PostgreSQL interprets `pending` as a column name and provisioning fails.
-- `"defaultValue": "'true'"` for a boolean field — use `"defaultValue": "true"` (no single quotes) for `boolean` type.
-- `"defaultValue": "'0'"` for an integer field — use `"defaultValue": "0"` (no single quotes) for `integer` type.
-
-Rule: single-quote wrappers are only needed for `text` type defaults. Numeric, boolean, and function defaults (`now()`, `uuid_generate_v4()`) are bare SQL.
+Do not send a string type, raw SQL, `defaultValue`, or `default_value` in `fields[]`. For literals use JSON values (`true`, `0`, `"pending"`); for a function default use e.g. `{ "function": "now" }`. The separate `db.field.create` ORM input uses the name `defaultValue` for the same structured value.
 
 ## SQL-001
 

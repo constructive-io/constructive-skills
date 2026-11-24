@@ -1,6 +1,6 @@
 ---
 name: constructive-sites
-description: "Sites — provision and serve web properties through the SDK ORM: one-call bucket-backed static sites (sitesProvisionStaticSite), immutable release manifests and rollback (siteRelease, activeCommitId, getSiteReleaseManifest), named preview hostnames (provisionSitePreview, setSitePreview, getSitePreviewCommit, deleteSitePreview), Merkle-versioned pages (db.page, pagePublished), Mantra auth/legal pages (sitesInstallMantra), content presets (sitesInstallContentPreset — pages:legal, robots:no-ai), mobile app links and /l/ deep links (siteAppLink, siteDeepLink, resolveSiteAppLinks, sitesDeepLinkUrl), and the tenant-vs-platform naming rule (db.site vs db.platformSite). Use when asked to 'provision a static site', 'deploy a static build', 'release manifest', 'roll back a site', 'preview URL', 'provisionSitePreview', 'setSitePreview', 'time travel a release', 'publish a page version', 'install mantra', 'add login pages to a site', 'install legal pages', 'robots preset', 'content preset', 'universal links', 'assetlinks', 'apple-app-site-association', 'deep link', 'SUBDOMAIN_APEX_NOT_PUBLISHED', 'ROUTE_BINDINGS_SITE_NOT_ROUTED', 'SITE_PREVIEW_COMMIT_SITE_MISMATCH', or when choosing between db.site and db.platformSite."
+description: "Provision and deploy Constructive static sites with sitesProvisionStaticSite and deploySite. Manage release manifests, publish or roll back activeCommitId, set up preview routes, and use Merkle-versioned pages, Mantra auth pages, content presets, app links, and deep links. Use for site deploys, rollback, preview URLs, routing errors, and tenant db.site vs platform db.platformSite."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -61,6 +61,8 @@ const db = createClient({
 ## Quick start: a static site, deployed as a release
 
 ```typescript
+import { deploySite } from '@constructive-io/site-deploy';
+
 // 1. One call: public bucket + site + web config + hostname + route.
 const { sitesProvisionStaticSite } = await db.mutation
   .sitesProvisionStaticSite(
@@ -76,39 +78,17 @@ const { sitesProvisionStaticSite } = await db.mutation
   .unwrap();
 const siteId = sitesProvisionStaticSite?.result?.targetSiteId!;
 
-// 2. Upload each file to cas/sha256/<sha256> in the site's bucket
-//    (presigned upload — see constructive-storage), then commit one manifest.
-const { createSiteRelease } = await db.siteRelease
-  .create({
-    data: {
-      siteId,
-      databaseId,
-      manifest: {
-        files: {
-          'index.html': { hash: '9a3f…', content_type: 'text/html', size: 2841 },
-          'assets/app.4f2c.js': { hash: '1be5…', content_type: 'application/javascript', size: 91043 },
-        },
-        file_count: 2,
-        total_bytes: 93884,
-      },
-    },
-    select: { id: true, commitId: true, storeId: true },
-  })
-  .unwrap();
-const release = createSiteRelease.siteRelease;
-if (!release.commitId || !release.storeId) throw new Error('release was not versioned');
-
-// 3. Publish: one pointer move, atomic for every in-flight visitor.
-await db.site
-  .update({
-    where: { id: siteId },
-    data: { activeCommitId: release.commitId },
-    select: { id: true, activeCommitId: true },
-  })
-  .unwrap();
+// 2. Upload managed bytes, commit the manifest, and publish.
+const release = await deploySite({
+  api, // authenticated GraphQL executor for the endpoint exposing site upload and release
+  siteId,
+  databaseId,
+  source: './dist',
+  publish: true,
+});
 ```
 
-Rollback is step 3 with an older `commitId`. A site whose `activeCommitId` is null serves straight from the bucket root (no release). Details, previews and time travel: [static-sites.md](./references/static-sites.md), [releases-and-previews.md](./references/releases-and-previews.md).
+Rollback by setting `site.activeCommitId` to an older `commitId`. Use an authenticated GraphQL executor for an endpoint that exposes both `upload<Prefix>SiteFiles` and the release mutations. If the site upload mutation is missing, deployment is unavailable on that endpoint; do not substitute generic storage uploads or write `cas/` object keys yourself. A site whose `activeCommitId` is null serves straight from the bucket root (no release). Details, previews and time travel: [static-sites.md](./references/static-sites.md), [releases-and-previews.md](./references/releases-and-previews.md).
 
 ## Core models (tenant lane)
 

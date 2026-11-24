@@ -42,7 +42,7 @@ app (1)
         ├── channel (3)    ← parent_entity = 'org'
         ├── department (4) ← parent_entity = 'org'
         │     └── team (5) ← parent_entity = 'department'
-        └── data_room (6)  ← parent_entity = 'org', has_storage = true
+        └── data_room (6)  ← parent_entity = 'org', storage = [{}]
 ```
 
 Nested types must be provisioned after their parent type.
@@ -71,20 +71,20 @@ Use `entityTypeProvision` for direct provisioning. See [orm-provisioning.md](./r
 
 ### 3. CLI
 
-```bash
-constructive public:entity-type-provision create \
-  --databaseId <UUID> \
-  --name "Channel Member" --prefix channel \
-  --parentEntity org --hasStorage true
+```typescript
+await db.entityTypeProvision.create({
+  data: { databaseId, name: 'Channel Member', prefix: 'channel', parentEntity: 'org', storage: [{}] },
+  select: { id: true },
+}).unwrap();
 ```
 
 ## Entity-Scoped Storage
 
-Set `has_storage: true` on entity type provisioning to create per-entity buckets and files tables with RLS scoped to entity membership.
+Set `storage: [{}]` on entity type provisioning to create per-entity buckets and files tables with RLS scoped to entity membership.
 
 ## Agent Module
 
-Set `has_agents: true` to provision agent infrastructure per entity:
+Set `agents: [{}]` to provision the base agent module per entity. Pass options such as `agents: [{ has_agents: true }]` for the additional agent registry and personas:
 - `{prefix}_agent_threads` — conversation threads
 - `{prefix}_agent_messages` — messages within threads (attributed via `actor_id`, optional `agent_id` for multi-agent)
 - `{prefix}_agent_tasks` — actionable tasks (attributed via `actor_id`)
@@ -102,7 +102,7 @@ Auto-registers capabilities: `invoke_agents` (default for all members), `manage_
 
 ## Namespace Module
 
-Set `has_namespaces: true` to provision `{prefix}_namespace_events` — a partitioned metrics/events log for K8s-style namespace tracking.
+Set `namespaces: [{}]` to provision `{prefix}_namespace_events` — a partitioned metrics/events log for K8s-style namespace tracking.
 
 ## Invite System
 

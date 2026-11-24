@@ -71,7 +71,7 @@ await db.siteErrorPage
 
 ## Upload content
 
-Files go into the site's bucket through the storage presigned-upload flow (`requestUploadUrl` → `PUT` → done) documented in [`constructive-storage`](../../constructive-storage/SKILL.md). For a bucket-root site, object keys are the served paths (`index.html`, `assets/app.js`). For a released site, bytes live at `cas/sha256/<sha256>` and the manifest maps paths to hashes — see [releases-and-previews.md](./releases-and-previews.md).
+Use [`deploySite`](./releases-and-previews.md) to deploy a static build. It uses the site-scoped upload mutation, waits for the uploaded files to settle, then writes and optionally publishes the release manifest. Do not use generic `requestUploadUrl` or manually upload to `cas/` for a site release. Without an active release, a bucket-root site serves objects at their existing logical paths (such as `index.html`).
 
 A route whose bucket has nothing uploaded yet serves 404 — the "site exists, nothing uploaded" state, not an error.
 

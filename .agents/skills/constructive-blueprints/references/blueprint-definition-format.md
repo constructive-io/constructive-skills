@@ -13,13 +13,13 @@ The blueprint `definition` is a JSONB document that declaratively describes a co
   "tables": [ ... ],
   "relations": [ ... ],
   "indexes": [ ... ],
-  "full_text_search": [ ... ],
+  "full_text_searches": [ ... ],
   "unique_constraints": [ ... ],
   "achievements": [ ... ]
 }
 ```
 
-`tables` is required. `storage`, `entity_types`, `relations`, `indexes`, `full_text_search`, `unique_constraints`, and `achievements` are optional top-level keys. Each of `indexes`, `full_text_search`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
+Provide at least one entry in `tables` or `entity_types`. `storage`, `entity_types`, `relations`, `indexes`, `full_text_searches`, `unique_constraints`, and `achievements` are optional top-level keys. Each of `indexes`, `full_text_searches`, and `unique_constraints` can also be defined inline per-table (see below). `constructBlueprint()` collects from both locations.
 
 
 ## Top-Level Storage (Phase 0.5)
@@ -79,9 +79,9 @@ When infra is installed (`infra_public` schema exists), a private `functions` bu
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
 | `scope` | string | No | `"app"` | `"app"` for app-level storage, `"org"` for per-org/user storage |
-| `storage_key` | string | No | `"default"` | Multi-module discriminator. Non-default keys create infix tables: `{prefix}_{key}_buckets` |
+| `key` | string | No | `"default"` | Multi-module discriminator. Non-default keys create infix tables: `{prefix}_{key}_buckets` |
 | `buckets` | array | No | `[]` | Bucket definitions to seed at deploy time |
-| `policies` | jsonb[] | No | sensible defaults | Policy objects. If provided, fully replaces defaults |
+| `provisions` | object | No | module defaults | Per-table overrides keyed by `buckets` or `files`; a supplied `policies[]` replaces defaults on that table |
 | `upload_url_expiry_seconds` | integer | No | module default | Override presigned upload URL TTL |
 | `download_url_expiry_seconds` | integer | No | module default | Override presigned download URL TTL |
 | `default_max_file_size` | integer | No | module default | Override default max file size (bytes) |
@@ -158,8 +158,7 @@ This provides two equivalent paths for org storage — matching the pattern wher
 | `has_levels` | boolean | No | `false` | Provision an events module (event tracking, achievements, trust ladders). See [`constructive-events`](../../constructive-events/SKILL.md) |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) |
 | `has_invite_achievements` | boolean | No | `false` | Auto-attach EventTracker to `claimed_invites` for invite-based achievements + invitee virality trigger. Requires `has_invites` AND `has_levels`. See [`constructive-events`](../../constructive-events/SKILL.md) |
-| `has_storage` | boolean | No | `false` | Provision a storage module (buckets and files tables) |
-| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. Supports `is_public` (boolean) and `policies` (array of policy objects: `{ "$type", "privileges", "data", "tables" }`). See [storage-policies.md](../../constructive-security/references/storage-policies.md) |
+| `storage` | array | No | — | Storage module entries, each with optional `key`, `buckets`, and `provisions`. Omit the array to skip storage. See [storage policies](../../constructive-security/references/storage-policies.md). |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero default RLS policies on the entity table |
 | `table_provision` | object | No | `null` | Override object for the entity table (shape mirrors `tables[]`: `nodes`, `fields`, `grants`, `use_rls`, `policies`). When supplied, `policies[]` **replaces** the 5 default entity-table policies; `is_visible` becomes a no-op |
 
@@ -212,7 +211,7 @@ Each entry in `tables[]` defines one database table:
 | `use_rls` | boolean | No | Enable RLS (default: `true`) |
 | `policies` | array | No | Constructive Authz policy definitions (see below) |
 | `indexes` | array | No | Per-table index definitions (see Indexes section) |
-| `full_text_search` | array | No | Per-table FTS definitions (see Full-Text Search section) |
+| `full_text_searches` | array | No | Per-table FTS definitions (see Full-Text Search section) |
 | `unique_constraints` | array | No | Per-table unique constraint definitions (see Unique Constraints section) |
 
 ### Referencing a module-generated table
@@ -319,7 +318,7 @@ Common table node types are summarized below. Use [node-type-registry.md](./node
 |-----------|---------|----------------|---------------|
 | `DataPublishable` | `is_published boolean NOT NULL DEFAULT false`, `published_at timestamptz` | (none) | `AuthzPublishable` |
 | `DataSoftDelete` | `deleted_at timestamptz`, `is_deleted boolean NOT NULL DEFAULT false` | (none) | — |
-| `DataStatusField` | Status `text NOT NULL` field + B-tree index | `field_name` (default `'status'`), `default_value` (default `'draft'`) | — |
+| `DataStatusField` | Status `text NOT NULL` field + B-tree index | `field_name` (default `'status'`), `default_value` (structured default `{ "value": "draft" }`) | — |
 
 #### Data Fields
 
@@ -420,7 +419,7 @@ Inside every `entity_lookup`, `obj_table` and `obj_field` are required and `obj_
   "fields": [ { "name": "title", "type": { "name": "text" } } ]
 }
 ```
-Seed `limit_caps_defaults` with `{ name: 'advanced_reporting', max: 1 }` to enable, or `max: 0` to disable. Per-entity overrides go in `limit_caps`.
+Configure the `advanced_reporting` cap in the `limits_module` provisioning options with `max: 1` to enable or `max: 0` to disable. This is not a blueprint key.
 
 #### Composition
 
@@ -817,7 +816,7 @@ Index definitions can appear at the top level (`definition.indexes[]`) or inline
 
 ## Full-Text Search
 
-FTS definitions can appear at the top level (`definition.full_text_search[]`) or inline per-table (`tables[].full_text_search[]`).
+FTS definitions can appear at the top level (`definition.full_text_searches[]`) or inline per-table (`tables[].full_text_searches[]`).
 
 ```json
 {

@@ -32,11 +32,11 @@ Use this skill when:
 
 ```
 1. Receive a provisioned database identity and endpoint descriptor
-2. Create table        → db.secureTableProvision.create({ tableName, nodeType, ... })
+2. Create table        → db.secureTableProvision.create({ tableName, nodes, ... })
 3. Add fields          → db.field.create({ tableId, name, type, ... })
 4. Add constraints     → db.checkConstraint.create / db.foreignKeyConstraint.create
 5. Add indexes         → db.index.create({ tableId, fieldIds, ... })
-6. Add relations       → db.relationProvision.create({ fromTableId, toTableId, ... })
+6. Add relations       → db.relationProvision.create({ relationType, sourceTableId, targetTableId, ... })
 7. Apply security      → see constructive-security skill
 ```
 
@@ -54,20 +54,25 @@ Create tables via `secureTableProvision` (recommended) or `db.table.create`:
 await db.secureTableProvision.create({
   data: {
     databaseId,
+    schemaId,
     tableName: 'projects',
-    nodeType: 'DataEntityMembership',
+    nodes: ['DataId', { $type: 'DataEntityMembership', data: { include_id: false } }],
     useRls: true,
-    grantRoles: ['authenticated'],
-    grantPrivileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']] as unknown as Record<string, unknown>,
-    policyType: 'AuthzEntityMembership',
-    policyPermissive: true,
-    policyData: { entity_field: 'entity_id', membership_type: 2 },
+    grants: [{
+      roles: ['authenticated'],
+      privileges: [['select', '*'], ['insert', '*'], ['update', '*'], ['delete', '*']],
+    }],
+    policies: [{
+      $type: 'AuthzEntityMembership',
+      privileges: ['select', 'insert', 'update', 'delete'],
+      data: { entity_field: 'entity_id', membership_type: 2 },
+    }],
   },
   select: { id: true, tableId: true, outFields: true },
 }).execute();
 ```
 
-For full table management operations, see the generated `orm-*` skills in `constructive-db`.
+For full table management operations, see the generated `orm-*` skills in `constructive`.
 
 ## Fields
 
@@ -186,20 +191,21 @@ Four relation types via `db.relationProvision.create`:
 
 | Type | Description |
 |------|-------------|
-| `BelongsTo` | FK on source → target PK (default) |
-| `HasMany` | FK on target → source PK |
-| `HasOne` | FK on target → source PK (unique) |
-| `ManyToMany` | Junction table auto-created |
+| `RelationBelongsTo` | FK on source → target PK |
+| `RelationHasMany` | FK on target → source PK |
+| `RelationHasOne` | FK on target → source PK (unique) |
+| `RelationManyToMany` | Junction table auto-created |
 
 ```typescript
 await db.relationProvision.create({
   data: {
     databaseId,
-    fromTableId: projectsTableId,
-    toTableId: organizationsTableId,
-    fromFieldName: 'organization_id',
+    relationType: 'RelationBelongsTo',
+    sourceTableId: projectsTableId,
+    targetTableId: organizationsTableId,
+    fieldName: 'organization_id',
     apiRequired: true,
-    cascadeDelete: 'no_action',
+    deleteAction: 'r', // RESTRICT
   },
   select: { id: true },
 }).execute();

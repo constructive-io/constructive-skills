@@ -1,6 +1,6 @@
 ---
 name: constructive-principals
-description: "Principals — scoped sub-identities for API keys and agents: short-lived access tokens with rotating refresh (mintAccessToken/refreshAccessToken), narrow-only child principals (createChildPrincipal), principal presets (createPrincipalFromPreset), API-key TTL caps, cascade revocation, the intent claim, trust-ladder unlocks and the agent ladder, refusal events recorded under their error code, and limit_refusals. Use when asked to 'create an API key', 'issue an agent credential', 'mint an access token', 'refresh token', 'REFRESH_TOKEN_REUSED', 'delegate to a child principal', 'PRINCIPAL_CHILD_WIDENS', 'deploy-bot preset', 'read-only-analyst', 'agent trust ladder', 'unlock a capability', 'scope an agent to an org', 'entity-scoped API key', 'read-only API key', 'revoke an API key', 'revoke a session', 'create a principal', 'org API key', 'service account', 'machine identity', 'agent identity', 'bypass step-up for a bot', 'STEP_UP_REQUIRED', 'principalEntity', 'principalScopeOverride', 'limit_refusals', or when managing agent/API-key identities via the SDK ORM."
+description: "Manage scoped identities for API keys, agents, and service accounts with the SDK ORM. Use for API key lifecycle, org or read-only scoping, mintAccessToken or refreshAccessToken, narrow-only child principals and presets, cascade revocation, step-up and trust ladders, and principal refusal errors such as PRINCIPAL_CHILD_WIDENS or REFRESH_TOKEN_REUSED."
 metadata:
   author: constructive-io
   version: "1.1.0"
