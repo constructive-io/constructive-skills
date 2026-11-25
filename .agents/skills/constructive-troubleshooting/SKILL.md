@@ -729,45 +729,40 @@ pnpm build
 
 ---
 
-## Phase 2.3: SignUp return type missing ok/errors fields
+## Phase 2.3: SignUp return type missing ok/errors/result fields
 
 ### Problem
 
-Compilation error:
+Compilation or validation error:
 
 ```
 Object literal may only specify known properties, and 'ok' does not exist in type 'SignUpPayloadSelect'.
+Cannot query field "accessToken" on type "SignUpPayload".
 ```
 
 ### Cause
 
-SDK's `signUp` mutation returns `SignUpPayloadSelect`, which has structure `{ result: { select: SignUpRecordSelect } }`, without `ok` and `errors` fields.
+`signUp` returns nothing but `clientMutationId`: no `ok`, `errors`, `result` or `accessToken`. Sign-up never signs
+anyone in and answers the same whether or not the address already has an account, so nobody can use it to probe which
+emails exist. A failure (sign-up closed, rate limit, weak password) comes back as GraphQL errors: `.execute()`
+resolves to `{ ok: false, errors }` without throwing, and `.unwrap()` throws.
 
 ### Solution
 
-**Use the correct select structure:**
-
 ```typescript
 // ❌ Wrong
-const signUpResult = await authDb.mutation
-  .signUp(
-    { input: { email, password } },
-    { select: { ok: true, errors: true } }  // These fields don't exist
-  )
+await authDb.mutation
+  .signUp({ input: { email, password } }, { select: { ok: true, errors: true } })
   .execute();
 
-// ✅ Correct
-const signUpResult = await authDb.mutation
-  .signUp(
-    { input: { email, password } },
-    { select: { result: { select: { userId: true } } } }
-  )
-  .execute();
-
-// Check result
-if (!signUpResult.ok || !signUpResult.data?.signUp?.result) {
-  console.log('Sign up failed or user already exists');
-}
+// ✅ Correct: sign up (unwrap() throws if it failed), verify the email, then sign in for the token
+await authDb.mutation
+  .signUp({ input: { email, password } }, { select: { clientMutationId: true } })
+  .unwrap();
+// ...user clicks the verification link (or call verifyEmail)...
+const signIn = await authDb.mutation
+  .signIn({ input: { email, password } }, { select: { result: { select: { accessToken: true } } } })
+  .unwrap();
 ```
 
 ### Verification

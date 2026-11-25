@@ -138,7 +138,7 @@ Any module-generated table a `module` reference can resolve — the addressable 
 
 ## Cross-references
 
-- **Module references, table keys, scope/prefix disambiguation:** [`constructive-blueprints` → blueprint-definition-format.md](../constructive-blueprints/references/blueprint-definition-format.md)
+- **Module references, table keys, scope/prefix disambiguation:** [`constructive-blueprints` → blueprint-definition-format.md](../../constructive-blueprints/references/blueprint-definition-format.md)
 - **Policy node shapes for the declared `policies[]`:** [authz-types.md](./authz-types.md) (`$type`, `data`, `privileges`, `permissive`, `policy_role`)
 - **Composition of permissive and restrictive policies:** [`constructive-security`](../SKILL.md)
 - **Capability names usable in a declared policy:** [capability-defaults.md](./capability-defaults.md)

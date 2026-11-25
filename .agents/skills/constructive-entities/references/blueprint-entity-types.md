@@ -66,42 +66,33 @@ When extending, the entry only needs `prefix` and the capabilities to add (e.g. 
 | `has_limits` | boolean | No | `false` | Provision a `limits_module` for this type |
 | `has_profiles` | boolean | No | `false` | Provision a `profiles_module` for named capability roles |
 | `has_levels` | boolean | No | `false` | Provision an `events_module` for this type — events, levels, requirements, grants, and rewards. Powers achievements and trust ladders alike. See [`constructive-events`](../../constructive-events/SKILL.md) |
-| `has_storage` | boolean | No | `false` | Provision a `storage_module` with buckets and files tables |
 | `has_invites` | boolean | No | `false` | Provision entity-scoped invite tables (`{prefix}_invites`, `{prefix}_claimed_invites`) and a `submit_{prefix}_invite_code()` function |
 | `has_invite_achievements` | boolean | No | `false` | Auto-attach an EventTracker to `claimed_invites` for invite-based achievements + wire the invitee achievement virality trigger. Requires `has_invites=true` AND `has_levels=true`. See [`constructive-events`](../../constructive-events/SKILL.md). |
-| `storage_config` | object | No | `null` | Storage configuration when `has_storage` is true. See [Storage Config](#storage-config-has_storage-storage_config) |
+| `storage` | array | No | — | One storage module per entry. See [Storage Config](#storage-config). |
 | `skip_entity_policies` | boolean | No | `false` | Escape hatch: apply zero policies on the entity table. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `table_provision` | object | No | `null` | Override object for the entity table (nodes, fields, grants, policies). When supplied, `policies[]` **replaces** the five default entity-table policies. See [Entity-Table Policies](#entity-table-policies-is_visible-skip_entity_policies-table_provision) |
 | `agents` | jsonb array | No | `null` | Agent module config. Provisions `agent_module` tables (thread, message, task, prompt, plan, resource, agent, persona). See [Agents Config](#agents-config) |
-| `namespaces` | jsonb | No | `null` | Namespace module config. Provisions `namespace_module` tables (namespaces + namespace_events partitioned log). See [Namespaces Config](#namespaces-config) |
-| `functions` | jsonb | No | `null` | Function module config. Provisions `function_module` tables (functions, invocations) |
+| `namespaces` | array | No | `null` | Namespace module config. Provisions `namespace_module` tables (namespaces + namespace_events partitioned log). See [Namespaces Config](#namespaces-config) |
+| `functions` | array | No | `null` | Function module config. Provisions `function_module` tables (functions, invocations) |
 
-## Storage Config (`has_storage`, `storage_config`)
+## Storage Config
 
-When `has_storage: true`, the system provisions a `storage_module` for the entity type, creating `{prefix}_buckets` and `{prefix}_files` tables with RLS security policies.
-
-The optional `storage_config` object controls bucket behavior:
+A non-empty `storage` array provisions entity-scoped storage. Use `storage: [{}]` for defaults, or pass options per entry:
 
 ```json
 {
   "name": "Data Room",
   "prefix": "data_room",
   "parent_entity": "org",
-  "has_storage": true,
-  "storage_config": {
-    "policies": [
-      { "$type": "AuthzEntityMembership", "privileges": ["select", "insert", "update", "delete"] },
-      { "$type": "AuthzPublishable", "privileges": ["select"], "tables": ["buckets", "files"] }
-    ]
-  }
+  "storage": [{ "key": "default", "buckets": [{ "name": "documents", "is_public": false }] }]
 }
 ```
 
-### `storage_config` fields
+### `storage[]` entry fields
 
 | Field | Type | Required | Default | Description |
 |-------|------|----------|---------|-------------|
-| `is_public` | boolean | No | `false` | S3 bucket ACL — `true` = publicly readable URLs, `false` = presigned URLs required |
+| `buckets` | array | No | — | Seed buckets; set `is_public` on each bucket entry |
 | `provisions` | object | No | `null` | Per-table overrides keyed by `"files"` or `"buckets"`. Each value uses the same shape as `table_provision`: `{ nodes, fields, grants, use_rls, policies }`. Fanned out to `secure_table_provision`. When a key includes `policies[]`, those REPLACE the default storage policies for that table; tables without a key still get defaults |
 | `upload_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned upload URL expiry time in seconds |
 | `download_url_expiry_seconds` | integer | No | *(module default)* | Override for presigned download URL expiry time in seconds |
@@ -304,7 +295,7 @@ This produces `agent_thread`, `agent_message`, etc. instead of
 
 ### Composing storage + agents on the same entity
 
-An entity type can have both `has_storage` + `storage` AND `agents` simultaneously (PR #1335):
+An entity type can have both `storage` and `agents`:
 
 ```json
 {
@@ -313,7 +304,6 @@ An entity type can have both `has_storage` + `storage` AND `agents` simultaneous
       "name": "Data Room",
       "prefix": "data_room",
       "parent_entity": "org",
-      "has_storage": true,
       "storage": [{ "buckets": [{ "name": "documents" }] }],
       "agents": [{ "has_plans": true, "has_resources": true, "has_agents": true }]
     }

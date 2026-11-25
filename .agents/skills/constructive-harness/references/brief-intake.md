@@ -90,7 +90,7 @@ node -e '
     list.features.push({
       id,
       name: e + ": list / create / edit / delete UI",
-      skill: "constructive-skill-supplements",
+      skill: "constructive-frontend",
       entity: e,
       dependencies: ["frontend-scaffold"],
       status: "not-started",

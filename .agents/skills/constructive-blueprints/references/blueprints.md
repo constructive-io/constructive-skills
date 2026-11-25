@@ -176,7 +176,7 @@ constructive public:blueprint-construction get <construction-id>
    - Creates the relation (FK or junction table)
 6. **Phase 3 — Indexes:** For each entry in `definition.indexes[]` (or per-table `indexes[]`):
    - Creates indexes on the resolved table/columns
-7. **Phase 4 — Full-Text Search:** For each entry in `definition.full_text_search[]` (or per-table `full_text_search[]`):
+7. **Phase 4 — Full-Text Search:** For each entry in `definition.full_text_searches[]` (or per-table `full_text_searches[]`):
    - Creates tsvector column + GIN index + auto-update trigger
 8. **Phase 5 — Unique Constraints:** For each entry in `definition.unique_constraints[]` (or per-table `unique_constraints[]`):
    - Creates unique constraints on the resolved columns
