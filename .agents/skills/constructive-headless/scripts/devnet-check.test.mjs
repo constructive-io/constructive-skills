@@ -36,3 +36,41 @@ test('authenticated checks stop before HTTP when the platform token is missing',
     assert.match(result.stderr, /Inject the devnet platform credential/);
   }
 });
+
+test('endpoint overrides in the environment take precedence over devnet.env.example', (t) => {
+  const fixtureDir = mkdtempSync(join(tmpdir(), 'constructive-headless-override-'));
+  t.after(() => rmSync(fixtureDir, { recursive: true, force: true }));
+
+  writeFileSync(
+    join(fixtureDir, 'curl'),
+    [
+      '#!/usr/bin/env bash',
+      'endpoint="${!#}"',
+      'if [[ "$endpoint" != "$EXPECTED_ENDPOINT" ]]; then',
+      '  printf "unexpected endpoint: %s\\n" "$endpoint" >&2',
+      '  exit 9',
+      'fi',
+      'printf \'%s\\n\' \'{"data":{"databases":{"nodes":[],"pageInfo":{"hasNextPage":false,"endCursor":null}}}}\'',
+    ].join('\n'),
+    { mode: 0o700 },
+  );
+
+  const customEndpoint = 'https://custom-api.example/graphql';
+  const result = spawnSync('bash', [script, 'databases'], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${fixtureDir}${delimiter}${process.env.PATH}`,
+      CONSTRUCTIVE_DEVNET_API_ENDPOINT: customEndpoint,
+      CONSTRUCTIVE_DEVNET_PLATFORM_TOKEN: 'test-token',
+      EXPECTED_ENDPOINT: customEndpoint,
+    },
+  });
+
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    nodes: [],
+    pageInfo: { hasNextPage: false, endCursor: null },
+  });
+});

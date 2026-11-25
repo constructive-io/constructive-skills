@@ -38,14 +38,14 @@ For a program that drives Pi, `npx --yes --package=@agentic-kit/cli -- agent --m
 
 ## Match the available tools to the workflow
 
-The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. The [Constructive Harness workflow](https://github.com/constructive-io/constructive-skills/tree/main/.agents/skills/constructive-harness) expects a host that materializes the project templates and registers `run_preflight`. For the published terminal CLI, use the standalone walkthrough below. It uses the shared tools directly. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
+The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. The [Constructive Harness workflow](../../constructive-harness/SKILL.md) expects a host that materializes the project templates and registers `run_preflight`. For the published terminal CLI, use the standalone walkthrough below. It uses the shared tools directly. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
 
 The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, `add_records`, and `run_codegen`. Run `devnet-check.sh probe` to check network reachability. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
 
 ## Build a first private table
 
 1. In a clean checkout, use the approval-capable CLI to run `provision_database` for a disposable devnet database. Record its database ID and explicit auth and data endpoints. Keep the generated environment binding with credentials out of version control.
-2. Run `describe_schema`, then use `provision_blueprint` with the registered tool schema. This example fits a standalone personal expense log. Each user owns their own rows. For membership-scoped data, choose an owner policy that also enforces membership. [Policy types](https://github.com/constructive-io/constructive-skills/blob/main/.agents/skills/constructive-security/references/authz-types.md)
+2. Run `describe_schema`, then use `provision_blueprint` with the registered tool schema. This example fits a standalone personal expense log. Each user owns their own rows. For membership-scoped data, choose an owner policy that also enforces membership. [Policy types](../../constructive-security/references/authz-types.md)
 3. Verify `expenses` on the served data endpoint. Use a tenant user to create and read a test row, then verify a second tenant user and an anonymous client cannot read it. Build the frontend after the tenant flow works. Record which host, endpoints, and operations passed.
 
 Example `provision_blueprint` input for the terminal CLI tool schema:

@@ -2,7 +2,12 @@
 set -euo pipefail
 
 skill_dir=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-source "$skill_dir/devnet.env.example"
+while IFS='=' read -r key value || [[ -n "$key" ]]; do
+  [[ -z "$key" || "$key" == \#* ]] && continue
+  if [[ -z "${!key:-}" ]]; then
+    export "$key=$value"
+  fi
+done < "$skill_dir/devnet.env.example"
 
 query() {
   local endpoint=$1 payload=$2
