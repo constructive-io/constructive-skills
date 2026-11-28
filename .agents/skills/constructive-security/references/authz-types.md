@@ -1,8 +1,8 @@
 # Constructive Authz Policy Types (Authz*) — Detailed Reference
 
-Complete documentation for the 25 Authz nodes exported by the canonical Constructive DB registry, plus the platform-applied `AuthzHumanOnly` guard. `AuthzComposite` composes registry nodes, while `AuthzColumnSecurity` generates write triggers instead of stored RLS policies.
+Complete documentation for the 27 Authz nodes that the `node-type-registry` package exports. `AuthzComposite` composes registry nodes, while `AuthzColumnSecurity` generates write triggers instead of stored RLS policies. For one plain sentence per node and its parameters, see [authz-node-reference.md](./authz-node-reference.md).
 
-> **Source of truth:** use `packages/node-type-registry/src/authz/index.ts` and the registry's `allNodeTypes` assembly in `constructive-db`. The generated blueprint union currently contains 24 of the 25 registry Authz nodes and omits `AuthzColumnSecurity`; do not infer that the node is unavailable or hand-edit generated output. Regenerate it through the backend codegen workflow only when backend work is explicitly in scope.
+> **Source of truth:** the `allNodeTypes` export of the `node-type-registry` package. Do not hand-edit generated blueprint types; they are regenerated from the registry.
 
 Each mechanism is described as:
 - **Intent**: what it's for
@@ -587,7 +587,7 @@ Effective: org members can read; only system sessions (triggers/jobs) can write
 
 > **Guard-style, human-only.** Blocks principals (agents / API keys) from a sensitive mutation so that only the owning human can perform it. This is the counterpart to `AuthzSystemOnly`: `AuthzHumanOnly` blocks non-human principals, `AuthzSystemOnly` blocks everyone who is not the platform.
 >
-> **Note:** `AuthzHumanOnly` is outside the `node_type_registry` and cannot be selected in a blueprint. The platform applies it as an inline guard inside SECURITY DEFINER credential/principal mutations. For the SQL-level details see the `constructive-db-principals` and `constructive-db-security` skills.
+> **Note:** the platform also applies `AuthzHumanOnly` as a guard on its own credential and principal operations.
 
 **Intent:** Only a human session (not a delegated principal) may call the operation.
 

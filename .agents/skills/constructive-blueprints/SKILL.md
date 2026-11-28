@@ -93,10 +93,10 @@ The node type registry defines all node types available in blueprint definitions
 - **Job nodes** — `JobTrigger`
 - **Event nodes** — `EventTracker`, `EventReferral`
 - **Guard nodes** — `GuardStepUp`
-- **Limit nodes** — eight enforce, track, and warning nodes, including `LimitEnforceCounter`, `LimitTrackUsage`, and `LimitWarningRate`
-- **Security nodes** — 25 registry-selectable Authz nodes, including the `AuthzColumnSecurity` write guard; the platform-applied `AuthzHumanOnly` mechanism is documented separately (see `constructive-security`)
+- **Limit nodes** — enforce, track, and warning nodes, including `LimitEnforceCounter`, `LimitTrackUsage`, and `LimitWarningRate`
+- **Security nodes** — the Authz nodes, including the `AuthzColumnSecurity` write guard; the platform-applied `AuthzHumanOnly` mechanism is documented separately (see `constructive-security`)
 
-See [node-type-registry.md](./references/node-type-registry.md) for the full catalog.
+See [node-reference.md](./references/node-reference.md), generated from the registry, for every node: where a blueprint names it, whether a table can name it as a string, and its parameters.
 
 ## References
 
@@ -105,7 +105,8 @@ See [node-type-registry.md](./references/node-type-registry.md) for the full cat
 | [blueprint-definition-format.md](./references/blueprint-definition-format.md) | Full definition spec with examples |
 | [blueprints.md](./references/blueprints.md) | System reference — templates, construction, hashing |
 | [module-presets.md](./references/module-presets.md) | Preset catalog, shape, and per-module rationale |
-| [node-type-registry.md](./references/node-type-registry.md) | All node type families and their config shapes |
+| [node-type-registry.md](./references/node-type-registry.md) | The node families, and where each goes in a blueprint |
+| [node-reference.md](./references/node-reference.md) | Every node and its parameters, generated from the registry |
 
 ## Cross-References
 

@@ -6,10 +6,11 @@ The Constructive harness registers typed tools that own the entire database/sche
 
 | Purpose | Tool(s) |
 |---|---|
-| Backend reachability + host CLIs | `run_preflight` when registered; see [Preflight](#preflight) otherwise |
+| Backend reachability + host CLIs | No tool; see [Preflight](#preflight) |
 | Bootstrap a database for the project | `provision_database` |
 | Inspect the provisioned schema on the control plane (read-only) | `describe_schema` |
-| Create entity tables (+ grants, policies, standard columns) | `provision_blueprint` |
+| Create entity tables with the rules you give them, grants and standard columns | `provision_blueprint` |
+| Inspect or replace a table's access (rule types, what each rule checks) | `describe_policy_type`, `explain_access`, `set_access` |
 | Add a relation between **existing** tables | `add_relation` |
 | Table templates | `list_templates`, `apply_template`, `create_template`, `update_template`, `delete_template` |
 | Evolve fields / drop tables | `create_field`, `update_field`, `delete_field`, `delete_table` |
@@ -25,10 +26,9 @@ Mutating tools prompt the user for confirmation through the host automatically. 
 
 ## Preflight
 
-If the host registers `run_preflight`, call it with no arguments. It probes the configured backend with a read-only GraphQL `{ __typename }` query and checks host CLIs (`pnpm` required, `psql` optional). It retries transient connection failures before reporting `down`.
+There is no preflight tool. Check `pnpm --version`, and when reachability needs checking, send one unauthenticated `{ __typename }` POST to the configured platform GraphQL API endpoint. Do not guess an endpoint or send credentials for this probe.
 
 - **When:** first turn in a Constructive project; before any backend-dependent step (`db-setup`, `provision-db`, `blueprint-schemas`, `sdk-codegen`, `frontend-scaffold`); after any unexpected backend failure; after `command not found: pnpm`.
-- **No preflight tool:** For the terminal CLI or another host without `run_preflight`, check `pnpm --version`. When reachability needs checking, send one unauthenticated `{ __typename }` POST to the configured platform GraphQL API endpoint. Do not guess an endpoint or send credentials for this probe.
 - **Backend `down`:** treat as an external outage. Mark the current backend-dependent feature `blocked` in `feature_list.json` (`evidence: "BACKEND UNREACHABLE: <URL> …"`), tell the user plainly, and continue with non-backend work (`SERVER-001`, `LIFECYCLE-001`, `BLOCKED-PROCEED-001`). Never start, restart, kill, or install backend processes, and never instruct the user to — surface the outage like the network being down. No retry timers (`THRASH-001`).
 - **Missing required CLI:** tell the user which CLI is missing and check again only after they confirm it is available. Never `npm install -g` around it.
 
@@ -80,14 +80,14 @@ Goal shape: every app entity gets a table granted to `authenticated` and protect
 
 - In a templated project, collect entities from `feature_list.json` (`*-crud-ui` features carry an `entity` field) and cross-reference `BRIEF.md` for fields and relations. Without the template bundle, use the entity list, fields, and relationships from your intake notes; neither file is required. Normalize entity names to lowercase plural in either case.
 - **All related tables in a SINGLE call** so relations construct together — for a small app that is one call for the whole schema.
-- Follow the registered tool schema. Supply `table_name`, fields (bare-string types like `'text'` are fine), required/default markers, and any relations. The terminal CLI requires an explicit `policies` field per table. Supply the policy `$type` and configuration for the intended access model. The tool expands these into grants and standard nodes, then polls for construction.
+- Follow the registered tool schema. Supply `table_name`, fields (bare-string types like `'text'` are fine), required/default markers, and any relations. Give each table its `policies`, each with its `$type`, `privileges` and `data`, for the intended access model: the tool adds no rule of its own, and a table with row security and no rule lets no one in. It adds the grants, the standard nodes and the Data nodes the rules need, then polls for construction.
 - Never name a table `users` (built-in). For what each Data\*/Search\*/etc node module generates, load `constructive-blueprints` (see its `references/node-type-registry.md`).
 - An `already exists` error means the table is constructed — verify instead of re-running (`THRASH-001`). Use `verify-feature.sh blueprint-schemas` when the verification scripts are available, or `describe_schema` to inspect the live schema. Never use psql (`SQL-001`).
 - A relation that surfaces **after** tables exist: use `add_relation` (adds the FK column or junction table without recreating anything).
 
 ## Policies — `add_policies`
 
-Supported types: **AuthzDirectOwner, AuthzEntityMembership, AuthzOrgHierarchy, AuthzPublishable** — the tool auto-creates the companion Data\* columns each needs. NOT supported by the tool (route the user to the policies UI instead): AuthzDirectOwnerAny, AuthzMemberList, AuthzTemporal, AuthzComposite.
+`add_policies` adds `policies` (each a registry Authz `$type` with its `privileges` and `data`) to an existing table, and keeps the rules it has. A rule whose type reads columns that a Data node adds gets those columns when the table lacks them. `set_access` replaces every rule of a table instead. Call `describe_policy_type` for the types, and with one type for its parameters and the columns it needs, instead of relying on a list here.
 
 For choosing the right type, config shapes, and permissive/restrictive composition, load `constructive-security` (Authz\* semantics, RLS, grants) and `constructive-access-control`. Rule of thumb: entity-scoped rows want `AuthzEntityMembership` (bound to the row's entity field), not an app-level gate.
 

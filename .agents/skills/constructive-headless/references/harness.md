@@ -5,7 +5,8 @@
 | Goal | Use |
 | --- | --- |
 | Use your own Codex, Claude Code, CI job, or backend | The [devnet profile](../devnet.env.example), direct GraphQL or SDK, and the existing domain skills |
-| Run Constructive's typed database, blueprint, policy, record, and codegen tools from a terminal | [`@agentic-kit/cli`](https://github.com/constructive-io/constructive/tree/main/agentic/cli), which runs the Pi harness and registers the shared tools |
+| Run Constructive's typed database, blueprint, policy, and codegen tools from a terminal | [`@agentic-kit/cli`](https://github.com/constructive-io/constructive/tree/main/agentic/cli), which runs the Pi harness and registers the shared tools |
+| Run the database, schema, and access operations as commands from a script or your own agent, or serve them to an MCP host | The `constructive` CLI (see [With the Constructive CLI](../SKILL.md#with-the-constructive-cli)). `constructive mcp` serves its tools over MCP. |
 | Embed those tools in another agent host | [`@agentic-kit/db-tools`](https://github.com/constructive-io/constructive/tree/main/agentic/db-tools) for the tool definitions and [`@agentic-kit/harness`](https://github.com/constructive-io/constructive/tree/main/agentic/harness) for host contracts, skill resolution, and gates. The host must supply credentials, workspace context, and a way to decide approvals. |
 | Run Codex or Claude on an enrolled Constructive machine | The [`constructive-agent-cli` adapter](https://github.com/constructive-io/constructive/tree/main/agentic/agent-cli) speaks the machine runner's stdio and approval protocol. It serves machine-bound runs. |
 
@@ -38,9 +39,9 @@ For a program that drives Pi, `npx --yes --package=@agentic-kit/cli -- agent --m
 
 ## Match the available tools to the workflow
 
-The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. The [Constructive Harness workflow](../../constructive-harness/SKILL.md) expects a host that materializes the project templates and registers `run_preflight`. For the published terminal CLI, use the standalone walkthrough below. It uses the shared tools directly. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
+The terminal CLI loads a `constructive-skills` source and its local overlay. The Pi adapter registers the shared database tools. The [Constructive Harness workflow](../../constructive-harness/SKILL.md) expects a host that materializes the project templates. For the published terminal CLI, use the standalone walkthrough below. It uses the shared tools directly. [CLI tool registration](https://github.com/constructive-io/constructive/blob/main/agentic/cli/src/db-tools.ts)
 
-The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, `add_records`, and `run_codegen`. Run `devnet-check.sh probe` to check network reachability. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
+The published CLI's shared toolset includes `provision_database`, `provision_blueprint`, `describe_schema`, `add_policies`, and `run_codegen`. It does not register `add_records`. Run `devnet-check.sh probe` to check network reachability. `describe_schema` reads the provisioned schema on the control plane. Inspect the tenant data endpoint separately to verify what it actually serves.
 
 ## Build a first private table
 

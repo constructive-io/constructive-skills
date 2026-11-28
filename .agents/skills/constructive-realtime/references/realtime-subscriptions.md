@@ -404,7 +404,7 @@ A collaborative document editor with realtime updates:
       "policies": [
         {
           "$type": "AuthzDirectOwner",
-          "data": { "owner_field": "owner_id" },
+          "data": { "entity_field": "owner_id" },
           "privileges": ["select", "insert", "update", "delete"]
         }
       ]
@@ -416,7 +416,6 @@ A collaborative document editor with realtime updates:
         { "$type": "DataRealtime", "data": { "operations": ["INSERT"] } }
       ],
       "fields": [
-        { "name": "document_id", "type": { "name": "uuid" } },
         { "name": "editor_id", "type": { "name": "uuid" } },
         { "name": "patch", "type": { "name": "jsonb" } }
       ],
@@ -427,10 +426,11 @@ A collaborative document editor with realtime updates:
   ],
   "relations": [
     {
+      "$type": "RelationBelongsTo",
       "source_table": "document_edits",
       "target_table": "documents",
-      "source_field": "document_id",
-      "delete_action": "cascade"
+      "field_name": "document_id",
+      "delete_action": "c"
     }
   ]
 }
