@@ -690,6 +690,7 @@ A common pattern: provision entity types in Phase 0, then create domain tables i
       "source_table": "messages",
       "target_table": "channels",
       "field_name": "channel_id",
+      "delete_action": "c",
       "is_required": true
     }
   ]

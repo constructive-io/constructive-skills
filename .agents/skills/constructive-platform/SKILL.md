@@ -1,6 +1,6 @@
 ---
 name: constructive-platform
-description: "Platform core — services/schemas, deployment, server config, cloud functions, environment configuration, and the cnc CLI execution engine. Use when asked to 'deploy constructive', 'start the server', 'cnc server', 'GraphQL API', 'configure domains', 'cloud functions', 'Knative', 'env config', 'cnc execute', 'docker compose', 'set up service', 'API routing', 'services_public', or when working with server deployment or environment configuration."
+description: "Platform core — services/schemas, deployment, server config, cloud functions, environment configuration, and the cnc CLI execution engine. Use when asked to 'deploy constructive', 'start the server', 'cnc server', 'GraphQL API', 'configure domains', 'cloud functions', 'Knative', 'env config', 'cnc api query', 'docker compose', 'set up service', 'API routing', 'services_public', or when working with server deployment or environment configuration."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -73,9 +73,9 @@ Sub-references:
 
 ## CNC CLI Execution Engine
 
-- Execute raw GraphQL queries against Constructive APIs using the `cnc` CLI
-- Context management (create, list, switch, delete) similar to kubectl contexts, stored in `~/.cnc/config/`
-- Authentication: secure token storage, per-context credentials, expiration support
+- Run raw GraphQL against Constructive APIs with `cnc api query` (reads) and `cnc api mutate` (changes, after approval), and find types and fields with `cnc api search` and `cnc api describe`
+- Backend contexts (`context list`, `add`, `use`, `remove`), stored in the shared Constructive store (`~/.constructive`)
+- Sign-in with `cnc login` (email and password; it makes an API key that lasts 30 days), and `whoami`, `status` and `logout`
 
 See [cnc-cli.md](./references/cnc-cli.md) for details.
 

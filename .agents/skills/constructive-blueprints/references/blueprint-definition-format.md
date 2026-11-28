@@ -278,12 +278,12 @@ Full semantics, validation rules, what replacement removes, and the post-install
 
 `nodes[]` entries define data behaviors (column generators, indexes, etc.) from the `node_type_registry`. Each entry is either:
 
-**String shorthand** — type name with default parameters:
+**String shorthand** — the type name alone, for a node that needs no data (it takes its defaults):
 ```json
 "DataTimestamps"
 ```
 
-**Object with params** — type name + custom configuration:
+**Object with params** — type name + its parameters; a node with required parameters must use this form:
 ```json
 {
   "$type": "DataOwnershipInEntity",
@@ -291,43 +291,43 @@ Full semantics, validation rules, what replacement removes, and the post-install
 }
 ```
 
-Common table node types are summarized below. Use [node-type-registry.md](./node-type-registry.md) for the complete 87-node canonical registry inventory; do not infer registry availability from this shorter authoring guide.
+Common table node types are summarized below: what each creates and the Authz node it pairs with. [node-reference.md](./node-reference.md) is generated from the registry and lists every node, whether a table can name it as a string, and its parameters, with their defaults and the ones a blueprint must give; do not infer registry availability from this shorter authoring guide.
 
 #### Core Identity & Ownership
 
-| Node Type | Creates | `data` options | Paired Authz* |
-|-----------|---------|----------------|---------------|
-| `DataId` | `id uuid PRIMARY KEY DEFAULT uuidv7()` | `field_name` (default `'id'`) | — |
-| `DataDirectOwner` | `owner_id uuid NOT NULL` + FK to users + index | `owner_field_name` (default `'owner_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzDirectOwner` |
-| `DataEntityMembership` | `entity_id uuid NOT NULL` + FK to users + index | `entity_field_name` (default `'entity_id'`), `include_user_fk` (default `true`), `create_index` (default `true`) | `AuthzEntityMembership` |
-| `DataOwnershipInEntity` | Both `owner_id` and `entity_id` + FKs | `include_user_fk` (default `true`) | `AuthzEntityMembership` (+ `AuthzMemberOwner` for an owner-only arm; never a bare `AuthzDirectOwner`, which would outlive membership removal) |
+| Node Type | Creates | Paired Authz* |
+|-----------|---------|---------------|
+| `DataId` | `id uuid PRIMARY KEY DEFAULT uuidv7()` | — |
+| `DataDirectOwner` | `owner_id uuid NOT NULL` + FK to users + index | `AuthzDirectOwner` |
+| `DataEntityMembership` | `entity_id uuid NOT NULL` + FK to users + index | `AuthzEntityMembership` |
+| `DataOwnershipInEntity` | Both `owner_id` and `entity_id` + FKs | `AuthzEntityMembership` (+ `AuthzMemberOwner` for an owner-only arm; never a bare `AuthzDirectOwner`, which would outlive membership removal) |
 
 **`DataId` is explicit:** There is no implicit ID creation. If a table needs a primary key (most do), `DataId` must be the first entry in `nodes[]`. This was a deliberate design choice — explicit is better than implicit.
 
 #### Timestamps & Audit
 
-| Node Type | Creates | `data` options |
-|-----------|---------|----------------|
-| `DataTimestamps` | `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()` | (none) |
-| `DataPeoplestamps` | `created_by uuid` (nullable), `updated_by uuid` (nullable) — the **human** (`current_user_id()`) | `include_user_fk` (default `false`) |
-| `DataPrincipalstamps` | `created_by_principal uuid` (nullable), `updated_by_principal uuid` (nullable) — the **acting principal** (agent/API key/service, `current_principal_id()`); no user FK | `created_by_principal_field`, `updated_by_principal_field`, `create_index` (default `true`) |
+| Node Type | Creates |
+|-----------|---------|
+| `DataTimestamps` | `created_at timestamptz NOT NULL DEFAULT now()`, `updated_at timestamptz NOT NULL DEFAULT now()` |
+| `DataPeoplestamps` | `created_by uuid` (nullable), `updated_by uuid` (nullable) — the **human** (`current_user_id()`) |
+| `DataPrincipalstamps` | `created_by_principal uuid` (nullable), `updated_by_principal uuid` (nullable) — the **acting principal** (agent/API key/service, `current_principal_id()`); no user FK |
 
 #### Publishing & Lifecycle
 
-| Node Type | Creates | `data` options | Paired Authz* |
-|-----------|---------|----------------|---------------|
-| `DataPublishable` | `is_published boolean NOT NULL DEFAULT false`, `published_at timestamptz` | (none) | `AuthzPublishable` |
-| `DataSoftDelete` | `deleted_at timestamptz`, `is_deleted boolean NOT NULL DEFAULT false` | (none) | — |
-| `DataStatusField` | Status `text NOT NULL` field + B-tree index | `field_name` (default `'status'`), `default_value` (structured default `{ "value": "draft" }`) | — |
+| Node Type | Creates | Paired Authz* |
+|-----------|---------|---------------|
+| `DataPublishable` | `is_published boolean NOT NULL DEFAULT false`, `published_at timestamptz` | `AuthzPublishable` |
+| `DataSoftDelete` | `deleted_at timestamptz`, `is_deleted boolean NOT NULL DEFAULT false` | — |
+| `DataStatusField` | Status `text NOT NULL` field + B-tree index | — |
 
 #### Data Fields
 
-| Node Type | Creates | `data` options |
-|-----------|---------|----------------|
-| `DataTags` | `text[]` tags field + GIN index | `field_name` (default `'tags'`) |
-| `DataJsonb` | `jsonb` field with default `'{}'` | `field_name` (default `'data'`) |
-| `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger | `field_name` (default `'embedding_text'`), `source_fields` (required, array of `{"field": "name", "weight": "A"\|"B"\|"C"\|"D"}`), `separator` (default `' '`) |
-| `DataGenerated` | Native PostgreSQL generated column computed from source fields. Emits `GENERATED ALWAYS AS (expr) STORED` (persisted) or, on PostgreSQL 18+, `GENERATED ALWAYS AS (expr) VIRTUAL` (computed on read) depending on `generation_type`. `data` also supports `type` (`FieldType`, default `{ name: 'text' }`), `format` (`'labeled'|'plain'`, for `concat`), and `is_required` (default `false`) | `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `generation_type` (`'stored'` \| `'virtual'`, default `'stored'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
+| Node Type | Creates |
+|-----------|---------|
+| `DataTags` | `text[]` tags field + GIN index |
+| `DataJsonb` | `jsonb` field with default `'{}'` |
+| `DataCompositeField` | Derived `text` field that concatenates source columns + auto-update trigger |
+| `DataGenerated` | Native PostgreSQL generated column computed from source fields. Emits `GENERATED ALWAYS AS (expr) STORED` (persisted) or, on PostgreSQL 18+, `GENERATED ALWAYS AS (expr) VIRTUAL` (computed on read) depending on `generation_type`. `data` also supports `type` (`FieldType`, default `{ name: 'text' }`), `format` (`'labeled'| `target` (required — field name), `kind` (`'expression'`, `'concat'`, `'slug'`, `'object_name'`, `'hash'`), `generation_type` (`'stored'` \| `'virtual'`, default `'stored'`), `source_field`/`source_fields`, `expression`, `separator` (default `' '`), `prefix`/`suffix` (for `object_name`), `algorithm` (default `'sha256'`) |
 
 **`generation_type` — stored vs. virtual generated columns**
 
@@ -367,29 +367,29 @@ Common table node types are summarized below. Use [node-type-registry.md](./node
 
 #### Behavior Triggers (trigger-only — attach to existing fields)
 
-| Node Type | Purpose | `data` options |
-|-----------|---------|----------------|
-| `DataSlug` | Auto-generates URL slugs from a source field | `field_name` (default `'slug'` — must already exist), `source_field_name` (defaults to `field_name`) |
-| `DataInflection` | Applies chained text transformations via trigger | `field_name` (required — must already exist), `ops` (required, array of `'slugify'`\|`'lower'`\|`'upper'`\|`'trim'`\|`'unaccent'`) |
-| `DataOwnedFields` | Prevents non-owners from modifying protected fields | `role_key_field_name` (required — identifies row owner), `protected_field_names` (required, array of field names) |
-| `DataInheritFromParent` | Copies field values from parent row (via FK) on insert/update | `parent_fk_field` (required — FK field pointing to parent), `fields` (required, array of field names to copy) |
-| `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update | `field_name` (default `'actor_id'` — must already exist) |
-| `DataImmutableFields` | Prevents fields from being modified after initial insert | `fields` (required, array of field names to protect) |
-| `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` | `task_identifier` (required), `payload_strategy` (default `'row_id'`), `events` (default `['INSERT','UPDATE']`), `conditions` (compound WHEN clause — leaf conditions, AND/OR/NOT combinators, column-aware type resolution), `condition_field`/`condition_value` (shorthand for simple equality), `watch_fields` (optional array), `payload_fields` (optional array), `payload_custom` (object), `include_old` (default `false`), `include_meta` (default `false`), `job_key`, `queue_name`, `priority`, `run_at_delay`, `max_attempts` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
-| `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. | `event_name` (required), `events` (default `['INSERT']`), `count` (default `1`), `toggle` (default `false`), `actor_field` (default `'owner_id'`, column-ref), `entity_field` (optional column-ref for entity-scoped events), `auto_register_type` (default `true`), `watch_fields` (optional array), `conditions` (compound WHEN clause — same syntax as JobTrigger), `condition_field`/`condition_value` (shorthand for simple equality) — see [`constructive-events`](../../constructive-events/SKILL.md) |
+| Node Type | Purpose |
+|-----------|---------|
+| `DataSlug` | Auto-generates URL slugs from a source field |
+| `DataInflection` | Applies chained text transformations via trigger |
+| `DataOwnedFields` | Prevents non-owners from modifying protected fields |
+| `DataInheritFromParent` | Copies field values from parent row (via FK) on insert/update |
+| `DataForceCurrentUser` | Forces a field to `current_user_id()` on insert/update |
+| `DataImmutableFields` | Prevents fields from being modified after initial insert |
+| `JobTrigger` | Creates triggers that enqueue background jobs via `app_jobs.add_job()` |
+| `EventTracker` | Creates triggers that record events via the events module when rows change. Uses the same compound conditions system as `JobTrigger`. |
 
 #### Limits, Billing Usage & Warnings (trigger-only)
 
-| Node Type | Purpose | `data` options |
-|-----------|---------|----------------|
-| `LimitEnforceCounter` | Enforces and updates a per-actor limit counter on table events | `limit_name` (required), `scope` (`'app'`), `actor_field` (`'owner_id'`), optional `entity_field` + `entity_lookup`, `events` (`['INSERT','DELETE']`) |
-| `LimitEnforceAggregate` | Enforces and updates a counter shared by an entity | `limit_name` (required), `scope` (`'org'`), `entity_field` (`'entity_id'`), optional `entity_lookup`, `events` (`['INSERT','DELETE']`) |
-| `LimitEnforceFeature` | Gates INSERT behind a cap resolved from per-entity override, scope default, then zero | `feature_name` (required), `scope` (`'app'`), `entity_field` (`'entity_id'`), optional `entity_lookup` |
-| `LimitEnforceRate` | Enforces configured entity, actor-in-entity, and actor sliding-window limits before mutation | `meter_slug` (required), `entity_field` (`'entity_id'`), optional `entity_lookup`, `actor_field` (`'owner_id'`), `events` (`['INSERT']`; `INSERT`/`UPDATE` only) |
-| `LimitTrackUsage` | Records billing usage, reversal, and entity-transfer events | `meter_slug` (required), `entity_field` (`'entity_id'`), optional `entity_lookup`, `quantity` (`1`), `events` (`['INSERT','DELETE']`) |
-| `LimitWarningCounter` | Enqueues a deduplicated first-crossing job for an actor counter threshold | `limit_name` (required), `scope` (`'app'`), `actor_field` (`'owner_id'`), optional `entity_field` + `entity_lookup` |
-| `LimitWarningAggregate` | Enqueues a deduplicated first-crossing job for an entity aggregate threshold | `limit_name` (required), `scope` (`'org'`), `entity_field` (`'entity_id'`), optional `entity_lookup` |
-| `LimitWarningRate` | Enqueues a deduplicated first-crossing job for an active rate-window threshold | `meter_slug` (required), `scope` (`'app'`), `entity_field` (`'entity_id'`), optional `entity_lookup`, `actor_field` (`'owner_id'`) |
+| Node Type | Purpose |
+|-----------|---------|
+| `LimitEnforceCounter` | Enforces and updates a per-actor limit counter on table events |
+| `LimitEnforceAggregate` | Enforces and updates a counter shared by an entity |
+| `LimitEnforceFeature` | Gates INSERT behind a cap resolved from per-entity override, scope default, then zero |
+| `LimitEnforceRate` | Enforces configured entity, actor-in-entity, and actor sliding-window limits before mutation |
+| `LimitTrackUsage` | Records billing usage, reversal, and entity-transfer events |
+| `LimitWarningCounter` | Enqueues a deduplicated first-crossing job for an actor counter threshold |
+| `LimitWarningAggregate` | Enqueues a deduplicated first-crossing job for an entity aggregate threshold |
+| `LimitWarningRate` | Enqueues a deduplicated first-crossing job for an active rate-window threshold |
 
 Inside every `entity_lookup`, `obj_table` and `obj_field` are required and `obj_schema` is optional. The limits nodes resolve `scope` from the membership-type prefix, so custom provisioned scopes such as `data_room` are valid.
 
@@ -423,15 +423,15 @@ Configure the `advanced_reporting` cap in the `limits_module` provisioning optio
 
 #### Composition
 
-| Node Type | Purpose | `data` options |
-|-----------|---------|----------------|
-| `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines | `field_name` (default `'embedding'`), `dimensions` (default `512`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `task_identifier` (default `'embedding:process_file_embedding'`), `mime_patterns` (default `['image/%']`), `payload_custom` — see [`constructive-jobs`](../../constructive-jobs/SKILL.md) |
+| Node Type | Purpose |
+|-----------|---------|
+| `ProcessImageEmbedding` | Combines SearchVector + JobTrigger for image embedding pipelines |
 
 #### Internationalization
 
-| Node Type | Creates | `data` options |
-|-----------|---------|----------------|
-| `DataI18n` | Creates a `{table}_translations` table with FK, `lang_code`, and copies of translatable fields. Unique constraint on `(parent_fk, lang_code)`. When `search` is provided, creates a SearchFullText tsvector on the translations table with dynamic per-row language stemming (30+ languages out of the box). | `fields` (required — array of field names to make translatable), `search` (optional — SearchFullText config, auto-sets `lang_column: 'lang_code'` for dynamic stemming) |
+| Node Type | Creates |
+|-----------|---------|
+| `DataI18n` | Creates a `{table}_translations` table with FK, `lang_code`, and copies of translatable fields. Unique constraint on `(parent_fk, lang_code)`. When `search` is provided, creates a SearchFullText tsvector on the translations table with dynamic per-row language stemming (30+ languages out of the box). |
 
 **Prerequisites:** Requires `i18n_module` to be provisioned. Use the current `full` backend profile or add the module through an explicit custom backend composition.
 
@@ -474,9 +474,9 @@ Each translation row is stemmed in its own language — insert with `lang_code =
 
 #### Realtime
 
-| Node Type | Purpose | `data` options |
-|-----------|---------|----------------|
-| `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. | `operations` (default `['INSERT', 'UPDATE', 'DELETE']` — which DML operations to track), `subscriber_table_name` (default `'{source_table}_subscriber'`) |
+| Node Type | Purpose |
+|-----------|---------|
+| `DataRealtime` | Creates a per-table subscriber table in `subscriptions_public` with RLS policies derived from source table SELECT policies. Attaches statement-level `emit_change()` triggers to track changes. Requires `realtime_module`. |
 
 **Provisioning:** Add `DataRealtime` to the table's `nodes[]`. No current official backend preset contains `realtime_module`; the `DataRealtime` provisioner creates the shared module when it is absent. Do not copy or extend a preset module array.
 
@@ -505,15 +505,15 @@ See [realtime-subscriptions.md](../../constructive-realtime/references/realtime-
 
 #### Search & AI
 
-| Node Type | Creates | `data` options |
-|-----------|---------|----------------|
-| `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration | `source_fields` (optional, creates DataCompositeField first), `bm25` (sub-config), `trgm` (sub-config), `fts` (sub-config), `boost_recency` (optional `{"field": "updated_at"}`) |
-| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue | `field_name` (default `'embedding'`), `dimensions` (default `768`), `index_method` (`'hnsw'`\|`'ivfflat'`), `metric` (`'cosine'`\|`'l2'`\|`'ip'`), `include_updated_at` (default `true`), `enqueue_job` (default `true`), `job_task_name` (default `'generate_embedding'`), `source_fields` (optional), `index_options` (optional), `chunks_config` (optional: `content_field_name`, `chunk_size`, `chunk_overlap`, `chunk_strategy`, `enqueue_chunking_job`, `chunking_task_name`) — see [`constructive-agents`](../../constructive-agents/SKILL.md) |
-| `SearchFullText` | `tsvector` column + GIN index + auto-update trigger | `field_name` (default `'search'`), `source_fields` (array of `{"field", "weight", "lang"}`), `lang_column` (optional — column name containing a `regconfig` value for dynamic per-row language stemming, e.g. `'lang_code'`), `search_score_weight` (default `1.0`) |
-| `SearchBm25` | BM25 (pg_textsearch) index on existing text field | `field_name` (required — must already exist), `text_config` (default `'english'`), `search_score_weight` (default `1.0`), `k1` (optional BM25 tuning), `b` (optional BM25 tuning) |
-| `SearchTrgm` | GIN trigram indexes on existing fields | `fields` (required, array of field names — must already exist). Sets `@trgmSearch` smart tag |
-| `SearchSpatial` | PostGIS `geometry`/`geography` column + GiST index | `field_name` (default `'geom'`), `geometry_type` (default `'Point'`), `srid` (default `4326`), `dimension` (default `2`), `use_geography` (default `false`), `index_method` (`'gist'`\|`'spgist'`) |
-| `SearchSpatialAggregate` | Materialized aggregate geometry on parent table + auto-update triggers | `field_name` (default `'geom_aggregate'`), `source_table_id` (required), `source_geom_field` (default `'geom'`), `source_fk_field` (optional), `aggregate_function` (default `'union'` — also `'collect'`, `'convex_hull'`, `'concave_hull'`), `geometry_type` (default `'MultiPolygon'`), `srid`, `dimension`, `use_geography`, `index_method` |
+| Node Type | Creates |
+|-----------|---------|
+| `SearchUnified` | Orchestrates BM25 + trigram + FTS + composite field in one declaration |
+| `SearchVector` | `vector(N)` column + HNSW/IVFFlat index + stale tracking + job enqueue |
+| `SearchFullText` | `tsvector` column + GIN index + auto-update trigger |
+| `SearchBm25` | BM25 (pg_textsearch) index on existing text field |
+| `SearchTrgm` | GIN trigram indexes on existing fields |
+| `SearchSpatial` | PostGIS `geometry`/`geography` column + GiST index |
+| `SearchSpatialAggregate` | Materialized aggregate geometry on parent table + auto-update triggers |
 
 **Processing:** All nodes are processed together when the table is created. The table and all its fields are provisioned in one step.
 
@@ -680,7 +680,7 @@ Each entry in `relations[]` defines a relationship between two tables:
   "source_table": "products",
   "target_table": "categories",
   "field_name": "category_id",
-  "delete_action": "SET NULL",
+  "delete_action": "n",
   "is_required": false
 }
 ```
@@ -695,7 +695,7 @@ Each entry in `relations[]` defines a relationship between two tables:
 | `source_module` | object | Yes* | Module reference identifying the source table instead of naming it (see below) |
 | `target_module` | object | Yes* | Module reference identifying the target table instead of naming it (see below) |
 | `field_name` | string | No | FK column name on the source table |
-| `delete_action` | string | No | FK delete action (e.g. `CASCADE`, `SET NULL`, `RESTRICT`) |
+| `delete_action` | string | Yes for `RelationBelongsTo`, `RelationHasOne` and `RelationHasMany` | FK delete action: `c` CASCADE, `r` RESTRICT, `n` SET NULL, `d` SET DEFAULT, `a` NO ACTION |
 | `is_required` | boolean | No | Whether the FK is NOT NULL (default: `true`) |
 | `scope_fields` | string[] | No | `RelationBelongsTo` only: columns both tables carry that the referenced row must share (see below) |
 | `junction_table_name` | string | No | For ManyToMany: name of the junction table |
@@ -719,7 +719,7 @@ A plain `RelationBelongsTo` only checks that the referenced row exists. `scope_f
   "source_table": "project_contacts",
   "target_table": "project_stages",
   "field_name": "stage_id",
-  "delete_action": "SET NULL",
+  "delete_action": "n",
   "is_required": false,
   "scope_fields": ["project_id"]
 }
@@ -740,7 +740,7 @@ This adds a composite FK `(stage_id, project_id) -> project_stages(id, project_i
   "target_module": { "type": "agent", "scope": "app", "table": "thread" },
   "field_name": "source_thread_id",
   "is_required": false,
-  "delete_action": "SET NULL"
+  "delete_action": "n"
 }
 ```
 
@@ -767,7 +767,7 @@ This adds a composite FK `(stage_id, project_id) -> project_stages(id, project_i
   "target_module": { "type": "storage", "scope": "app", "table": "files" },
   "field_name": "file_id",
   "is_required": false,
-  "delete_action": "SET NULL"
+  "delete_action": "n"
 }
 ```
 
@@ -986,7 +986,7 @@ For full examples including invite virality and cross-table achievements, see [`
       "source_table": "products",
       "target_table": "categories",
       "field_name": "category_id",
-      "delete_action": "SET NULL",
+      "delete_action": "n",
       "is_required": false
     },
     {
@@ -994,7 +994,7 @@ For full examples including invite virality and cross-table achievements, see [`
       "source_table": "orders",
       "target_table": "products",
       "field_name": "product_id",
-      "delete_action": "RESTRICT",
+      "delete_action": "r",
       "is_required": true
     }
   ]

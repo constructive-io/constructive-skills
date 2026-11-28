@@ -1,6 +1,6 @@
 ---
 name: constructive-security
-description: "Authorization with Constructive Authz, 25 registry Authz nodes plus platform-applied AuthzHumanOnly, RLS, grants, capabilities, GuardStepUp, read-only access, storage policies, secureTableProvision, and owning the security of a module-generated table. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, capability defaults, step-up auth, replacing a module's default grants or policies (registries, images, repositories, machines), blueprint provisions overrides, or authorization in blueprints and the ORM."
+description: "Authorization with Constructive Authz, 27 registry Authz nodes, RLS, grants, capabilities, GuardStepUp, read-only access, storage policies, secureTableProvision, and owning the security of a module-generated table. Use for RLS, grants, policies, AuthzAppMemberOwner, AuthzRelatedMemberOwner, AuthzColumnSecurity, AuthzComposite, system-only or human-only operations, column write guards, storage security, capability defaults, step-up auth, replacing a module's default grants or policies (registries, images, repositories, machines), blueprint provisions overrides, or authorization in blueprints and the ORM."
 metadata:
   author: constructive-io
   version: "1.0.0"
@@ -39,7 +39,7 @@ Every user has an "org identity" — a personal org with org-level membership. T
 
 ## Authz mechanisms
 
-The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` composes other nodes, while `AuthzColumnSecurity` generates a column-level write guard instead of a stored RLS policy. The platform also applies `AuthzHumanOnly` outside the registry, so this skill documents 26 distinct authorization mechanisms without pretending they share one execution model.
+The registry (`node-type-registry`) exports 27 Authz nodes, so this skill documents 27 authorization mechanisms without pretending they share one execution model. `AuthzComposite` composes other nodes, while `AuthzColumnSecurity` generates a column-level write guard instead of a stored RLS policy.
 
 | # | Type | Intent | Key Config |
 |---|------|--------|------------|
@@ -68,11 +68,14 @@ The canonical Constructive DB registry exports 25 Authz nodes. `AuthzComposite` 
 | 23 | `AuthzValueExists` | `EXISTS` in a related table joined to the protected row | referenced table ref, `join`; optional `conditions` |
 | 24 | `AuthzValueMatch` | `EXISTS` in a related table with a value match on the ref row | referenced table ref, `join`, `match`; optional `conditions` |
 | 25 | `AuthzColumnSecurity` | Guard selected INSERT/UPDATE column writes with a nested Authz node or immutability rule | `columns`, `rule`, `authz`/`values`/`allowed` |
-| — | `AuthzHumanOnly` | Platform-applied guard that blocks principals from sensitive mutations | Not registry-selectable |
+| 26 | `AuthzDatabaseClaim` | Rows that the platform's connections bound to one database reach; checks no person or team | `entity_field` (default `database_id`) or `schema_id`; optional `lane_attested` |
+| 27 | `AuthzHumanOnly` | Only a person signed in as themselves passes, not an agent key with its own identity; a limit on top of the policy that grants access | `{}` |
 
 > **Ownership on membership-scoped tables:** never put a bare `AuthzDirectOwner` / `AuthzDirectOwnerAny` on a table that also has a membership policy (`AuthzAppMembership`, `AuthzEntityMembership`, `AuthzRelatedEntityMembership`). Permissive policies are ORed, so the owner arm survives membership removal — a user kicked out of the org still reads and edits everything they authored. Use the compound owner policies: `AuthzAppMemberOwner` (app-global rows), `AuthzMemberOwner` (`entity_id` on the row), `AuthzRelatedMemberOwner` (entity reached via a related table). `AuthzDirectOwner` is for personal tables with no membership context (emails, devices, settings) and for rows whose owner is legitimately not a member (pending membership self-read, invite receiver, share grantee). Nothing enforces this at write time — it is a documented convention.
 
 See [authz-types.md](./references/authz-types.md) for full config shapes, semantics, and examples.
+
+For each node in plain words (who one policy lets in, its parameters, when to use it, when to avoid it, and its risks), see [authz-node-reference.md](./references/authz-node-reference.md). It is generated from `node-type-registry`.
 
 ## `AuthzAppMembership` vs `AuthzEntityMembership`
 
@@ -353,7 +356,8 @@ See [guard-nodes.md](./references/guard-nodes.md) for all options, the SDK lock/
 
 | File | Content |
 |------|---------|
-| [authz-types.md](./references/authz-types.md) | All 25 registry Authz nodes plus platform-applied `AuthzHumanOnly`, with config shapes and examples |
+| [authz-types.md](./references/authz-types.md) | Config shapes, semantics, and examples for each Authz node except `AuthzDatabaseClaim` |
+| [authz-node-reference.md](./references/authz-node-reference.md) | Every registry Authz node in plain words — who it lets in, parameters, use/avoid/risks (generated from `node-type-registry`) |
 | [capability-defaults.md](./references/capability-defaults.md) | Module capability defaults — ORM tables, helper queries, grant/revoke examples |
 | [profiles.md](./references/profiles.md) | Profiles (RBAC) — capability bundles, profile tables, membership integration |
 | [storage-policies.md](./references/storage-policies.md) | Per-bucket RLS policy combinations |
